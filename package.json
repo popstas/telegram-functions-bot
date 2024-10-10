@@ -1,0 +1,35 @@
+{
+  "name": "telegram-planfix-bot",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@agentic/core": "^7.0.0",
+    "https-proxy-agent": "^7.0.2",
+    "js-tiktoken": "^1.0.15",
+    "js-yaml": "^4.1.0",
+    "lodash.debounce": "^4.0.8",
+    "openai": "^4.67.2",
+    "telegraf": "^4.15.0",
+    "telegramify-markdown": "^1.0.6",
+    "tsx": "^4.9.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@tsconfig/recommended": "^1.0.2",
+    "@types/js-yaml": "^4.0.5",
+    "@types/lodash.debounce": "^4.0.7",
+    "@types/lodash.throttle": "^4.1.7",
+    "@types/node": "^22.7.5",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.2"
+  },
+  "overrides": {
+    "esbuild": "^0.24.0"
+  }
+}

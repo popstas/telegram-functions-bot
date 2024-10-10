@@ -1,0 +1,21 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# production
+/build
+/data
+
+# dev scripts
+/scripts
+
+# misc
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# config
+config.yml
+config-*
