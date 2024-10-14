@@ -218,7 +218,11 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
     tool_choice: 'auto',
   });
 
-  function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[]) {
+  function isTestUser(msg: Message.TextMessage) {
+    return config.testUsers?.includes(msg.from?.username || '');
+  }
+
+  function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[], dryRun: boolean = false) {
     const toolPromises = toolCalls.map(async (toolCall) => {
       const tool = planfix.functions.get(toolCall.function.name)
       if (!tool) return
@@ -230,15 +234,22 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
       params.description += `\n\nПолный текст:\n${msgs}`
       toolParams = JSON.stringify(params)
 
-      const toolResult = await tool(toolParams)
-      return toolResult
+      const testResult = {
+        title: 'test',
+        url: 'test',
+        description: params.description,
+      }
+
+      return !dryRun ? await tool(toolParams) : testResult
     })
     return Promise.all(toolPromises)
   }
 
   const message = res.choices[0]?.message!
   if (message.tool_calls?.length) {
-    const tool_res = await callTools(message.tool_calls);
+    const dryRun = isTestUser(msg);
+    const tool_res = await callTools(message.tool_calls, dryRun);
+
     if (tool_res) {
       const task = tool_res[0] as PlanfixResponse;
       // console.log("tool_res:", tool_res);
@@ -364,7 +375,9 @@ Your username: ${msg.from?.username}, chat id: ${msg.chat.id}`)
   const username = forwardOrigin?.sender_user?.username
   const isOurUser = username && config.allowedPrivateUsers?.includes(username)
   if (forwardOrigin && !isOurUser) {
-    const name = forwardOrigin.type === 'hidden_user' ? forwardOrigin.sender_user_name : `${forwardOrigin.sender_user.first_name} ${forwardOrigin.sender_user.last_name}`
+    const name = forwardOrigin.type === 'hidden_user' ?
+      forwardOrigin.sender_user_name :
+      `${forwardOrigin.sender_user.first_name ?? ''} ${forwardOrigin.sender_user.last_name ?? ''}`.trim()
     const username = forwardOrigin?.sender_user?.username;
     msg.text = `Переслано от: ${name}` +
       `${username ? `, Telegram: @${username}` : ''}\n` + msg.text

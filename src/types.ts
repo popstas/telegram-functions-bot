@@ -38,6 +38,7 @@ export type ConfigType = {
   timeoutMs?: number
   completionParams: CompletionParamsType
   allowedPrivateUsers?: string[]
+  testUsers?: string[]
   chats: ConfigChatType[]
   planfix: PlanfixConfigType
 }
