@@ -14,8 +14,7 @@ import {
   ConfigChatButtonType, ToolResponse,
 } from './types'
 import {readConfig} from './config'
-import {HttpsProxyAgent} from "https-proxy-agent";
-import {PowershellCommandClient} from "./functions/powershell";
+import {HttpsProxyAgent} from "https-proxy-agent"
 
 const threads = {} as { [key: number]: ThreadStateType }
 
@@ -23,6 +22,7 @@ const configPath = process.env.CONFIG || 'config.yml'
 let config: ConfigType
 let bot: Telegraf<Context>
 let api: OpenAI
+let functionModules: { [key: string]: any } = {}
 
 // watch config file
 watchFile(configPath, debounce(() => {
@@ -98,6 +98,11 @@ async function start() {
         description: 'Начальные установки',
       },
     ])
+
+    // Import all functions dynamically based on config.functions array
+    for (const func of config.functions) {
+      functionModules[func] = await import(`./functions/${func}.ts`)
+    }
 
   } catch (e) {
     console.log('restart after 5 seconds...')
@@ -204,8 +209,6 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
 
   let messages = buildMessages(systemMessage, thread.messages);
 
-  const powershell = new PowershellCommandClient();
-
   console.log(msg.text);
 
   const res = await api.chat.completions.create({
@@ -214,7 +217,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
     temperature: thread.completionParams?.temperature || config.completionParams.temperature,
     // tools: thread.completionParams?.functions,
     // tool_choice: 'required',
-    tools: powershell.functions.toolSpecs,
+    tools: Object.values(functionModules).flatMap(mod => mod.functions.toolSpecs),
     // tools: weather.functions.toolSpecs,
     // tools: wikipedia.functions.toolSpecs,
     // tool_choice: 'auto',
@@ -226,8 +229,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
 
   function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[], dryRun: boolean = false) {
     const toolPromises = toolCalls.map(async (toolCall) => {
-      // powershell is global
-      const tool = powershell.functions.get(toolCall.function.name)
+      const tool = Object.values(functionModules).flatMap(mod => mod.functions.get(toolCall.function.name)).find(Boolean)
       if (!tool) return
       let toolParams = toolCall.function.arguments
 
@@ -268,7 +270,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
         messages,
         model: thread.completionParams?.model || config.completionParams.model,
         temperature: thread.completionParams?.temperature || config.completionParams.temperature,
-        tools: powershell.functions.toolSpecs,
+        tools: Object.values(functionModules).flatMap(mod => mod.functions.toolSpecs),
         tool_choice: 'auto',
       });
 
