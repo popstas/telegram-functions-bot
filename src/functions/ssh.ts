@@ -56,43 +56,37 @@ export class SshCommandClient extends AIFunctionsProvider {
     const tempFile = tmp.fileSync({ mode: 0o755, prefix: 'ssh_command-', postfix: '.sh' });
     writeFileSync(tempFile.name, cmd);
 
-    const cmdArgs = [
-      '-o "StrictHostKeyChecking no"',
-      '-o "UserKnownHostsFile /dev/null"',
-      '-o "LogLevel ERROR"',
-      '-o "ConnectTimeout 10"',
-      '-o "ServerAliveInterval 60"',
-      '-o "ServerAliveCountMax 3"',
-      '-o "BatchMode yes"',
-      '-o "PasswordAuthentication no"',
-      '-o "PreferredAuthentications publickey"',
-      '-o "IdentityFile ~/.ssh/id_rsa"',
-      `-o "User ${user}"`,
-      host,
-      `"bash ${tempFile.name}"`
-    ];
-    const cmdStr = `ssh ${cmdArgs.join(' ')}`;
+    const scpCmd = `scp ${tempFile.name} ${user}@${host}:/tmp/${tempFile.name}`;
+    const sshCmd = `ssh ${user}@${host} "bash /tmp/${tempFile.name}"`;
+
     const args = {command: cmd};
     const res = await new Promise((resolve, reject) => {
-      exec(cmdStr, (error, stdout, stderr) => {
-        tempFile.removeCallback();
-        if (error) {
-          console.error(`error: ${error.message}`);
-          if (error.code) {
-            resolve({content: `Exit code: ${error.code}`, args});
-          } else {
-            reject(error.message);
-          }
-        }
-        if (stderr) {
-          console.error(`stderr: ${stderr}`);
-          reject(stderr);
-        }
-        if (!stdout) {
-          resolve({content: 'Exit code: 0', args});
-          return
+      exec(scpCmd, (scpError) => {
+        if (scpError) {
+          console.error(`scp error: ${scpError.message}`);
+          reject(scpError.message);
         } else {
-          resolve({content: '```\n' + stdout + '\n```', args});
+          exec(sshCmd, (sshError, stdout, stderr) => {
+            tempFile.removeCallback();
+            if (sshError) {
+              console.error(`ssh error: ${sshError.message}`);
+              if (sshError.code) {
+                resolve({content: `Exit code: ${sshError.code}`, args});
+              } else {
+                reject(sshError.message);
+              }
+            }
+            if (stderr) {
+              console.error(`stderr: ${stderr}`);
+              reject(stderr);
+            }
+            if (!stdout) {
+              resolve({content: 'Exit code: 0', args});
+              return
+            } else {
+              resolve({content: '```\n' + stdout + '\n```', args});
+            }
+          });
         }
       });
     });
