@@ -43,10 +43,16 @@ export type ConfigType = {
   planfix: PlanfixConfigType
   functions: {
     ssh: SshConfigType
+    powershell: PowershellConfigType
   }
 }
 
 export type SshConfigType = {
+  host: string
+  user: string
+}
+
+export type PowershellConfigType = {
   host: string
   user: string
 }
