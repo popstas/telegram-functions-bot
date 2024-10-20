@@ -41,6 +41,14 @@ export type ConfigType = {
   testUsers?: string[]
   chats: ConfigChatType[]
   planfix: PlanfixConfigType
+  functions: {
+    ssh: SshConfigType
+  }
+}
+
+export type SshConfigType = {
+  host: string
+  user: string
 }
 
 export type ThreadStateType = {
@@ -67,4 +75,11 @@ export type PlanfixConfigType = {
   user_login: string
   user_password: string
   templateId: number
+}
+
+export interface ToolResponse {
+  content: string
+  args?: {
+    command?: string
+  }
 }

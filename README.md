@@ -1,11 +1,9 @@
-Telegram bot with tool for creating Planfix tasks.
+Telegram bot with functions tools
 
-Бот принимает сообщения, проверяет, что в них есть контакты клиента и создаёт входящую заявку в Планфиксе.
+## Pipeline
+- Receive question
+- Use tool to get answer, send tool usage to user
+- Read tool answer, answer user
 
-Считает несколько пересланных сообщений за одно.
-
-### Проблемы определения юзера
-В Telegram есть несколько вариантов пользователей:
-- Обычный пользователь, видно имя и логин
-- Обычный пользователь, видно только имя (нет логина)
-- Скрытый пользователь, видно только имя
+## Functions
+- `ssh` - exec ssh shell command, single server from config

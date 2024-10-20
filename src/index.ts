@@ -11,11 +11,11 @@ import {
   ConfigChatType,
   ThreadStateType,
   CompletionParamsType,
-  ConfigChatButtonType,
+  ConfigChatButtonType, ToolResponse,
 } from './types'
 import {readConfig} from './config'
 import {HttpsProxyAgent} from "https-proxy-agent";
-import {PlanfixResponse, PlanfixClient} from "./tools/planfix"
+import {SshCommandClient} from "./functions/ssh";
 
 const threads = {} as { [key: number]: ThreadStateType }
 
@@ -202,9 +202,11 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
 
   // let typingSent = false
 
-  const messages = buildMessages(systemMessage, thread.messages);
+  let messages = buildMessages(systemMessage, thread.messages);
 
-  const planfix = new PlanfixClient();
+  const ssh = new SshCommandClient();
+
+  console.log(msg.text);
 
   const res = await api.chat.completions.create({
     messages,
@@ -212,10 +214,10 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
     temperature: thread.completionParams?.temperature || config.completionParams.temperature,
     // tools: thread.completionParams?.functions,
     // tool_choice: 'required',
-    tools: planfix.functions.toolSpecs,
+    tools: ssh.functions.toolSpecs,
     // tools: weather.functions.toolSpecs,
     // tools: wikipedia.functions.toolSpecs,
-    tool_choice: 'auto',
+    // tool_choice: 'auto',
   });
 
   function isTestUser(msg: Message.TextMessage) {
@@ -224,25 +226,29 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
 
   function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[], dryRun: boolean = false) {
     const toolPromises = toolCalls.map(async (toolCall) => {
-      const tool = planfix.functions.get(toolCall.function.name)
+      // ssh is global
+      const tool = ssh.functions.get(toolCall.function.name)
       if (!tool) return
       let toolParams = toolCall.function.arguments
 
       // add full cite
       const params = JSON.parse(toolParams)
-      const msgs = thread.messages.map(msg => msg.content).join('\n\n');
-      params.description += `\n\nПолный текст:\n${msgs}`
-      toolParams = JSON.stringify(params)
+      if (params.command) {
+        // msg is global
+        void await sendTelegramMessage(msg.chat.id, '```\n'+params.command+'\n```', {parse_mode: 'MarkdownV2'});
+      }
+      // const msgs = thread.messages.map(msg => msg.content).join('\n\n');
+      // params.description += `\n\nПолный текст:\n${msgs}`
+      // toolParams = JSON.stringify(params)
 
-      const testResult = {
-        title: 'test',
-        url: 'test',
-        description: params.description,
+      const toolResult = {
+        args: {command: params.command},
+        content: 'empty result',
       }
 
-      return !dryRun ? await tool(toolParams) : testResult
+      return (!dryRun ? await tool(toolParams) : toolResult) as ToolResponse
     })
-    return Promise.all(toolPromises)
+    return Promise.all(toolPromises) as Promise<ToolResponse[]>
   }
 
   const message = res.choices[0]?.message!
@@ -251,14 +257,25 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
     const tool_res = await callTools(message.tool_calls, dryRun);
 
     if (tool_res) {
-      const task = tool_res[0] as PlanfixResponse;
-      // console.log("tool_res:", tool_res);
+      const toolRes = tool_res[0] as ToolResponse;
+      console.log(toolRes.content);
+      void await sendTelegramMessage(msg.chat.id, toolRes.content, {parse_mode: 'MarkdownV2'});
+      console.log('');
+
+      messages = [...messages, {role: 'system', content: `> ${toolRes?.args?.command}:\n${toolRes.content}`}];
+
+      const res = await api.chat.completions.create({
+        messages,
+        model: thread.completionParams?.model || config.completionParams.model,
+        temperature: thread.completionParams?.temperature || config.completionParams.temperature,
+        tools: ssh.functions.toolSpecs,
+        tool_choice: 'auto',
+      });
 
       forgetHistory(msg.chat.id);
 
-      const status = task.url ? 'Задача создана' : 'Не удалось создать задачу'
-      const content = `${status}:\n${task.url}\n\n${task.description}\n\n${res.choices[0]?.message?.content ?? ''}`;
-      return {content}
+      const message = res.choices[0]?.message?.content!
+      return {content: message};
     }
   }
 
@@ -468,7 +485,7 @@ async function answerToMessage(ctx: Context & { secondTry?: boolean }, msg: Mess
       thread.partialAnswer = ''
       const res = await getChatgptAnswer(msg, chat)
       thread.partialAnswer = ''
-      if (config.debug) console.log('res:', res)
+      // if (config.debug) console.log('res:', res)
 
       let text = res?.content || 'бот не ответил'
 
