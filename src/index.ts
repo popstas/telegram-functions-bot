@@ -15,7 +15,7 @@ import {
 } from './types'
 import {readConfig} from './config'
 import {HttpsProxyAgent} from "https-proxy-agent";
-import {SshCommandClient} from "./functions/ssh";
+import {PowershellCommandClient} from "./functions/powershell";
 
 const threads = {} as { [key: number]: ThreadStateType }
 
@@ -204,7 +204,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
 
   let messages = buildMessages(systemMessage, thread.messages);
 
-  const ssh = new SshCommandClient();
+  const powershell = new PowershellCommandClient();
 
   console.log(msg.text);
 
@@ -214,7 +214,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
     temperature: thread.completionParams?.temperature || config.completionParams.temperature,
     // tools: thread.completionParams?.functions,
     // tool_choice: 'required',
-    tools: ssh.functions.toolSpecs,
+    tools: powershell.functions.toolSpecs,
     // tools: weather.functions.toolSpecs,
     // tools: wikipedia.functions.toolSpecs,
     // tool_choice: 'auto',
@@ -226,8 +226,8 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
 
   function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[], dryRun: boolean = false) {
     const toolPromises = toolCalls.map(async (toolCall) => {
-      // ssh is global
-      const tool = ssh.functions.get(toolCall.function.name)
+      // powershell is global
+      const tool = powershell.functions.get(toolCall.function.name)
       if (!tool) return
       let toolParams = toolCall.function.arguments
 
@@ -268,7 +268,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
         messages,
         model: thread.completionParams?.model || config.completionParams.model,
         temperature: thread.completionParams?.temperature || config.completionParams.temperature,
-        tools: ssh.functions.toolSpecs,
+        tools: powershell.functions.toolSpecs,
         tool_choice: 'auto',
       });
 

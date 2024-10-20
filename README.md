@@ -7,3 +7,4 @@ Telegram bot with functions tools
 
 ## Functions
 - `ssh` - exec ssh shell command, single server from config
+- `powershell` - exec PowerShell command, single server from config
