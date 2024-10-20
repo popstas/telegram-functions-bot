@@ -14,6 +14,8 @@ export type ConfigChatType = {
   debug?: boolean
   memoryless?: boolean
   buttons?: ConfigChatButtonType[]
+  functions?: string[]
+  options?: FunctionsConfigType
 }
 
 export type CompletionParamsType = {
@@ -41,10 +43,7 @@ export type ConfigType = {
   testUsers?: string[]
   chats: ConfigChatType[]
   planfix: PlanfixConfigType
-  functions: {
-    ssh: SshConfigType
-    powershell: PowershellConfigType
-  }
+  functions: string[]
 }
 
 export type SshConfigType = {
@@ -88,4 +87,9 @@ export interface ToolResponse {
   args?: {
     command?: string
   }
+}
+
+export type FunctionsConfigType = {
+  ssh: SshConfigType
+  powershell: PowershellConfigType
 }
