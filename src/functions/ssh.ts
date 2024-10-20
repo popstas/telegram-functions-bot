@@ -6,6 +6,8 @@ import {z} from 'zod'
 import {readConfig} from '../config.ts'
 import {ConfigChatType, ConfigType, ToolResponse} from "../types.ts";
 import {exec} from "child_process";
+import { writeFileSync, unlinkSync } from 'fs';
+import * as tmp from 'tmp';
 
 type ToolArgsType = {
   command: string
@@ -51,6 +53,9 @@ export class SshCommandClient extends AIFunctionsProvider {
     const host = this.configChat.options?.ssh?.host || 'localhost'
     const user = this.configChat.options?.ssh?.user || 'root'
 
+    const tempFile = tmp.fileSync({ mode: 0o755, prefix: 'ssh_command-', postfix: '.sh' });
+    writeFileSync(tempFile.name, cmd);
+
     const cmdArgs = [
       '-o "StrictHostKeyChecking no"',
       '-o "UserKnownHostsFile /dev/null"',
@@ -64,12 +69,13 @@ export class SshCommandClient extends AIFunctionsProvider {
       '-o "IdentityFile ~/.ssh/id_rsa"',
       `-o "User ${user}"`,
       host,
-      `"${cmd}"`
+      `"bash ${tempFile.name}"`
     ];
     const cmdStr = `ssh ${cmdArgs.join(' ')}`;
     const args = {command: cmd};
     const res = await new Promise((resolve, reject) => {
       exec(cmdStr, (error, stdout, stderr) => {
+        tempFile.removeCallback();
         if (error) {
           console.error(`error: ${error.message}`);
           if (error.code) {
