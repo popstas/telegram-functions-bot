@@ -101,7 +101,10 @@ async function start() {
 
     // Import all functions dynamically based on config.functions array
     for (const func of config.functions) {
-      functionModules[func] = await import(`./functions/${func}.ts`)
+      const mod = await import(`./functions/${func}.ts`)
+      if (typeof mod.call === 'function') {
+        functionModules[func] = mod
+      }
     }
 
   } catch (e) {
@@ -211,13 +214,15 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
 
   console.log(msg.text);
 
+  const chatTools = chatConfig.functions ? chatConfig.functions.map(f => functionModules[f]).filter(Boolean) : []
+  const tools = chatTools.map(f => f.call(chatConfig).functions.toolSpecs).flat()
   const res = await api.chat.completions.create({
     messages,
     model: thread.completionParams?.model || config.completionParams.model,
     temperature: thread.completionParams?.temperature || config.completionParams.temperature,
     // tools: thread.completionParams?.functions,
     // tool_choice: 'required',
-    tools: Object.values(functionModules).flatMap(mod => mod.functions.toolSpecs),
+    tools,
     // tools: weather.functions.toolSpecs,
     // tools: wikipedia.functions.toolSpecs,
     // tool_choice: 'auto',
@@ -229,7 +234,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
 
   function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[], dryRun: boolean = false) {
     const toolPromises = toolCalls.map(async (toolCall) => {
-      const tool = Object.values(functionModules).flatMap(mod => mod.functions.get(toolCall.function.name)).find(Boolean)
+      const tool = chatTools[0].call(chatConfig).functions.get(toolCall.function.name)
       if (!tool) return
       let toolParams = toolCall.function.arguments
 
@@ -270,7 +275,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
         messages,
         model: thread.completionParams?.model || config.completionParams.model,
         temperature: thread.completionParams?.temperature || config.completionParams.temperature,
-        tools: Object.values(functionModules).flatMap(mod => mod.functions.toolSpecs),
+        tools,
         tool_choice: 'auto',
       });
 

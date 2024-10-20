@@ -51,11 +51,6 @@ export type SshConfigType = {
   user: string
 }
 
-export type PowershellConfigType = {
-  host: string
-  user: string
-}
-
 export type ThreadStateType = {
   partialAnswer: string
   history: Message.TextMessage[]
@@ -91,5 +86,4 @@ export interface ToolResponse {
 
 export type FunctionsConfigType = {
   ssh: SshConfigType
-  powershell: PowershellConfigType
 }

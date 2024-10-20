@@ -11,6 +11,8 @@ type ToolArgsType = {
   command: string
 }
 
+let client: PowershellCommandClient | undefined
+
 export const description = 'PowerShell config.powershell.user shell, host from config.powershell.host'
 export const details = `- convert question to command
 - exec PowerShell from your machine, with your user PowerShell access
@@ -44,9 +46,6 @@ export class PowershellCommandClient extends AIFunctionsProvider {
 
     console.log('cmd:', cmd);
 
-    const host = this.config.functions.powershell.host;
-    const user = this.config.functions.powershell.user;
-
     const cmdStr = `powershell -Command "${cmd}"`;
     const args = {command: cmd};
     const res = await new Promise((resolve, reject) => {
@@ -73,4 +72,9 @@ export class PowershellCommandClient extends AIFunctionsProvider {
     });
     return res as ToolResponse
   }
+}
+
+export function call() {
+  if (!client) client = new PowershellCommandClient();
+  return client
 }

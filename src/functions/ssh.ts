@@ -4,12 +4,14 @@ import {
 } from '@agentic/core'
 import {z} from 'zod'
 import {readConfig} from '../config.ts'
-import {ConfigType, ToolResponse} from "../types.ts";
+import {ConfigChatType, ConfigType, ToolResponse} from "../types.ts";
 import {exec} from "child_process";
 
 type ToolArgsType = {
   command: string
 }
+
+let client: SshCommandClient | undefined
 
 export const description = 'SSH config.ssh.user shell, host from config.ssh.host'
 export const details = `- convert question to command
@@ -20,11 +22,13 @@ export const details = `- convert question to command
 
 export class SshCommandClient extends AIFunctionsProvider {
   protected readonly config: ConfigType
+  protected readonly configChat: ConfigChatType
 
-  constructor() {
+  constructor(configChat: ConfigChatType) {
     super()
 
     this.config = readConfig();
+    this.configChat = configChat
   }
 
   @aiFunction({
@@ -44,8 +48,8 @@ export class SshCommandClient extends AIFunctionsProvider {
 
     console.log('cmd:', cmd);
 
-    const host = this.config.functions.ssh.host;
-    const user = this.config.functions.ssh.user;
+    const host = this.configChat.options?.ssh?.host || 'localhost'
+    const user = this.configChat.options?.ssh?.user || 'root'
 
     const cmdArgs = [
       '-o "StrictHostKeyChecking no"',
@@ -88,4 +92,9 @@ export class SshCommandClient extends AIFunctionsProvider {
     });
     return res as ToolResponse
   }
+}
+
+export function call(configChat: ConfigChatType) {
+  if (!client) client = new SshCommandClient(configChat);
+  return client
 }
