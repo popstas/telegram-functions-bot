@@ -232,7 +232,28 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
     return config.testUsers?.includes(msg.from?.username || '');
   }
 
-  function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[], dryRun: boolean = false) {
+  // join "arguments.command" values with \n when same name, return array unique by name
+  function groupToolCalls(toolCalls: OpenAI.ChatCompletionMessageToolCall[]) {
+    const grouped = {} as { [key: string]: OpenAI.ChatCompletionMessageToolCall[] };
+    toolCalls.forEach((toolCall) => {
+      const name = toolCall.function.name;
+      if (!grouped[name]) {
+        grouped[name] = [];
+      }
+      grouped[name].push(toolCall);
+    });
+
+    return Object.values(grouped).map((group) => {
+      const combinedCommand = group.map((call) => JSON.parse(call.function.arguments).command).join('\n');
+      return {
+        ...group[0],
+        function: {...group[0].function, arguments: JSON.stringify({command: combinedCommand})}
+      };
+    });
+  }
+
+  async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[], dryRun: boolean = false) {
+    toolCalls = groupToolCalls(toolCalls)
     const toolPromises = toolCalls.map(async (toolCall) => {
       const tool = chatTools[0].call(chatConfig).functions.get(toolCall.function.name)
       if (!tool) return
@@ -242,7 +263,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
       const params = JSON.parse(toolParams)
       if (params.command) {
         // msg is global
-        void await sendTelegramMessage(msg.chat.id, '```\n'+params.command+'\n```', {parse_mode: 'MarkdownV2'});
+        void await sendTelegramMessage(msg.chat.id, '```\n' + params.command + '\n```', {parse_mode: 'MarkdownV2'});
       }
       // const msgs = thread.messages.map(msg => msg.content).join('\n\n');
       // params.description += `\n\nПолный текст:\n${msgs}`
@@ -360,7 +381,7 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
   // console.log("ctx:", ctx);
 
   let ctxChat: Chat | undefined
-  let msg: Message.TextMessage & {forward_origin?: any } | undefined
+  let msg: Message.TextMessage & { forward_origin?: any } | undefined
 
   // edited message
   if (ctx.hasOwnProperty('update')) {
@@ -484,7 +505,9 @@ Your username: ${msg.from?.username}, chat id: ${msg.chat.id}`)
 }
 
 // send request to chatgpt, answer to telegram
-async function answerToMessage(ctx: Context & { secondTry?: boolean }, msg: Message.TextMessage, chat: ConfigChatType, extraMessageParams: any) {
+async function answerToMessage(ctx: Context & {
+  secondTry?: boolean
+}, msg: Message.TextMessage, chat: ConfigChatType, extraMessageParams: any) {
   const thread = threads[msg.chat.id];
   try {
     await ctx.persistentChatAction('typing', async () => {

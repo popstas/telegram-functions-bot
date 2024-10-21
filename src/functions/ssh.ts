@@ -6,16 +6,15 @@ import {z} from 'zod'
 import {readConfig} from '../config.ts'
 import {ConfigChatType, ConfigType, ToolResponse} from "../types.ts";
 import {exec} from "child_process";
-import { writeFileSync, unlinkSync } from 'fs';
+import { writeFileSync } from 'fs';
+import * as path from 'path';
 import * as tmp from 'tmp';
 
 type ToolArgsType = {
   command: string
 }
 
-let client: SshCommandClient | undefined
-
-export const description = 'SSH config.ssh.user shell, host from config.ssh.host'
+export const description = 'SSH config.ssh.user shell, host from config.ssh.host, can run multiline scripts as command'
 export const details = `- convert question to command
 - exec ssh from your machine, with your user ssh access
 - answer with command output
@@ -56,8 +55,9 @@ export class SshCommandClient extends AIFunctionsProvider {
     const tempFile = tmp.fileSync({ mode: 0o755, prefix: 'ssh_command-', postfix: '.sh' });
     writeFileSync(tempFile.name, cmd);
 
-    const scpCmd = `scp ${tempFile.name} ${user}@${host}:/tmp/${tempFile.name}`;
-    const sshCmd = `ssh ${user}@${host} "bash /tmp/${tempFile.name}"`;
+    const destFilename = path.basename(tempFile.name);
+    const scpCmd = `scp ${tempFile.name} ${user}@${host}:/tmp/${destFilename}`;
+    const sshCmd = `ssh ${user}@${host} "bash /tmp/${destFilename}"`;
 
     const args = {command: cmd};
     const res = await new Promise((resolve, reject) => {
@@ -95,6 +95,5 @@ export class SshCommandClient extends AIFunctionsProvider {
 }
 
 export function call(configChat: ConfigChatType) {
-  if (!client) client = new SshCommandClient(configChat);
-  return client
+  return new SshCommandClient(configChat);
 }
