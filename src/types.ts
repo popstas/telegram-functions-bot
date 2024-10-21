@@ -16,6 +16,7 @@ export type ConfigChatType = {
   buttons?: ConfigChatButtonType[]
   functions?: string[]
   options?: FunctionsConfigType
+  confirmation: boolean
 }
 
 export type CompletionParamsType = {

@@ -274,7 +274,43 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
         content: 'empty result',
       }
 
-      return (!dryRun ? await tool(toolParams) : toolResult) as ToolResponse
+      // Check for 'confirm' or 'noconfirm' in the message to set confirmation
+      if (msg.text.includes('noconfirm')) {
+        chatConfig.confirmation = false;
+      } else if (msg.text.includes('confirm')) {
+        chatConfig.confirmation = true;
+      }
+
+      if (chatConfig.confirmation) {
+        return new Promise(async (resolve, reject) => {
+          // Send confirmation message with Yes/No buttons
+          await sendTelegramMessage(msg.chat.id, 'Do you want to proceed?', {
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {text: 'Yes', callback_data: 'confirm_tool'},
+                  {text: 'No', callback_data: 'cancel_tool'}
+                ]
+              ]
+            }
+          });
+
+          // Handle the callback query
+          bot.action('confirm_tool', async (ctx) => {
+            const res = await tool(toolParams); // Execute the tool
+            resolve(res);
+            return;
+          });
+          bot.action('cancel_tool', async (ctx) => {
+            await sendTelegramMessage(msg.chat.id, 'Tool execution canceled.');
+            reject('Tool execution canceled.');
+            return;
+          });
+        });
+      } else {
+        // Execute the tool without confirmation
+        return (!dryRun ? await tool(toolParams) : toolResult) as ToolResponse
+      }
     })
     return Promise.all(toolPromises) as Promise<ToolResponse[]>
   }
