@@ -259,9 +259,16 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
       if (!tool) return
       let toolParams = toolCall.function.arguments
 
+      // Check for 'confirm' or 'noconfirm' in the message to set confirmation
+      if (msg.text.includes('noconfirm')) {
+        chatConfig.confirmation = false;
+      } else if (msg.text.includes('confirm')) {
+        chatConfig.confirmation = true;
+      }
+
       // add full cite
       const params = JSON.parse(toolParams)
-      if (params.command) {
+      if (params.command && !chatConfig.confirmation) {
         // msg is global
         void await sendTelegramMessage(msg.chat.id, '```\n' + params.command + '\n```', {parse_mode: 'MarkdownV2'});
       }
@@ -274,36 +281,31 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
         content: 'empty result',
       }
 
-      // Check for 'confirm' or 'noconfirm' in the message to set confirmation
-      if (msg.text.includes('noconfirm')) {
-        chatConfig.confirmation = false;
-      } else if (msg.text.includes('confirm')) {
-        chatConfig.confirmation = true;
-      }
-
       if (chatConfig.confirmation) {
         return new Promise(async (resolve, reject) => {
           // Send confirmation message with Yes/No buttons
-          await sendTelegramMessage(msg.chat.id, 'Do you want to proceed?', {
+          const uniqueId = Date.now().toString();
+          await sendTelegramMessage(msg.chat.id, '```\n' + params.command + '\n```\nDo you want to proceed?', {
+            parse_mode: 'MarkdownV2',
             reply_markup: {
               inline_keyboard: [
                 [
-                  {text: 'Yes', callback_data: 'confirm_tool'},
-                  {text: 'No', callback_data: 'cancel_tool'}
+                  {text: 'Yes', callback_data: `confirm_tool_${uniqueId}`},
+                  {text: 'No', callback_data: `cancel_tool_${uniqueId}`}
                 ]
               ]
             }
           });
 
           // Handle the callback query
-          bot.action('confirm_tool', async (ctx) => {
+          bot.action(`confirm_tool_${uniqueId}`, async (ctx) => {
             const res = await tool(toolParams); // Execute the tool
             resolve(res);
             return;
           });
-          bot.action('cancel_tool', async (ctx) => {
+          bot.action(`cancel_tool_${uniqueId}`, async (ctx) => {
             await sendTelegramMessage(msg.chat.id, 'Tool execution canceled.');
-            reject('Tool execution canceled.');
+            resolve({content:'Tool execution canceled.'});
             return;
           });
         });
@@ -464,18 +466,10 @@ Your username: ${msg.from?.username}, chat id: ${msg.chat.id}`)
       `${username ? `, Telegram: @${username}` : ''}\n` + msg.text
   }
 
-  // console.log("ctx.message.text:", ctx.message?.text);
-  addToHistory({
-    msg,
-    systemMessage: getSystemMessage(chat),
-    completionParams: chat.completionParams,
-  })
-
-  const thread = threads[msg.chat.id]
-
   // replace msg.text to button.prompt if match button.name
   let matchedButton: ConfigChatButtonType | undefined = undefined
-  const activeButton = thread.activeButton
+
+  // replace msg.text to button.prompt
   const buttons = chat.buttons
   if (buttons) {
 
@@ -483,7 +477,25 @@ Your username: ${msg.from?.username}, chat id: ${msg.chat.id}`)
     matchedButton = buttons.find(b => b.name === msg?.text || '')
     if (matchedButton) {
       msg.text = matchedButton.prompt || ''
+    }
+  }
 
+  // console.log("ctx.message.text:", ctx.message?.text);
+  // addToHistory should be after replace msg.text
+  addToHistory({
+    msg,
+    systemMessage: getSystemMessage(chat),
+    completionParams: chat.completionParams,
+  })
+  // should be after addToHistory
+  const thread = threads[msg.chat.id]
+
+  // should be after const thread
+  const activeButton = thread?.activeButton
+  if (buttons) {
+    // message == button.name
+    matchedButton = buttons.find(b => b.name === msg?.text || '')
+    if (matchedButton) {
       // send ask for text message
       if (matchedButton.waitMessage) {
         thread.activeButton = matchedButton

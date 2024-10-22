@@ -71,14 +71,17 @@ export class SshCommandClient extends AIFunctionsProvider {
             if (sshError) {
               console.error(`ssh error: ${sshError.message}`);
               if (sshError.code) {
-                resolve({content: `Exit code: ${sshError.code}`, args});
+                resolve({content: `Exit code: ${sshError.code}` + '\n```\n' + `${stdout}\n${sshError.message}` + '\n```', args});
               } else {
                 reject(sshError.message);
               }
+              return
             }
             if (stderr) {
-              console.error(`stderr: ${stderr}`);
-              reject(stderr);
+              resolve({content: '```\n' + `${stdout}\n${stderr}` + '\n```', args});
+              // console.error(`stderr: ${stderr}`);
+              // reject(stderr);
+              return
             }
             if (!stdout) {
               resolve({content: 'Exit code: 0', args});
