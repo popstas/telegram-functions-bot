@@ -52,6 +52,11 @@ export type SshConfigType = {
   user: string
 }
 
+export type ObsidianConfigType = {
+  root_path: string
+  out_file: string
+}
+
 export type ThreadStateType = {
   partialAnswer: string
   history: Message.TextMessage[]
@@ -86,5 +91,6 @@ export interface ToolResponse {
 }
 
 export type FunctionsConfigType = {
-  ssh: SshConfigType
+  obsidian?: ObsidianConfigType
+  ssh?: SshConfigType
 }

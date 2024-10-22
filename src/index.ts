@@ -35,6 +35,14 @@ watchFile(configPath, debounce(() => {
     forgetHistory(c.id)
     threads[c.id].customSystemMessage = ''
   })
+
+  for (let chat of config.chats) {
+    const thread = threads[chat.id]
+    if (!thread) continue
+    thread.completionParams = chat.completionParams
+    thread.customSystemMessage = chat.systemMessage
+    // thread.options = chat.options
+  }
 }, 2000))
 
 /*onunhandledrejection = (reason, p) => {
@@ -215,6 +223,12 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
   console.log(msg.text);
 
   const chatTools = chatConfig.functions ? chatConfig.functions.map(f => functionModules[f]).filter(Boolean) : []
+
+  const prompts = await Promise.all(chatTools.filter(f => typeof f.prompt_append === 'function').map(async f => await f.prompt_append(chatConfig)))
+  if (prompts.length) {
+    messages = [...messages, {role: 'system', content: prompts.join('\n\n')}]
+  }
+
   const tools = chatTools.map(f => f.call(chatConfig).functions.toolSpecs).flat()
   const res = await api.chat.completions.create({
     messages,
@@ -389,7 +403,13 @@ async function sendTelegramMessage(chat_id: number, text: string, extraMessagePa
     }
 
     msgs.forEach(async (msg) => {
-      await bot.telegram.sendMessage(chat_id, msg, params)
+      try {
+        await bot.telegram.sendMessage(chat_id, msg, params)
+      } catch(e) {
+        const err = e as { message: string }
+        await bot.telegram.sendMessage(chat_id, msg)
+        // await bot.telegram.sendMessage(chat_id, `${err.message}`, params)
+      }
     })
     resolve(true)
   })
