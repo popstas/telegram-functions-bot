@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@agentic/core": "^7.0.0",
+    "@agentic/core": "^7.1.0",
     "https-proxy-agent": "^7.0.2",
     "js-tiktoken": "^1.0.15",
     "js-yaml": "^4.1.0",

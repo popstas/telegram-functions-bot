@@ -14,12 +14,12 @@ type ToolArgsType = {
   command: string
 }
 
-export const description = 'SSH config.ssh.user shell, host from config.ssh.host, can run multiline scripts as command'
+export const description = 'SSH config.ssh_command.user shell, host from config.ssh_command.host, can run multiline scripts as command'
 export const details = `- convert question to command
 - exec ssh from your machine, with your user ssh access
 - answer with command output
-- user: config.ssh.user
-- host: config.ssh.host`
+- user: config.ssh_command.user
+- host: config.ssh_command.host`
 
 export class SshCommandClient extends AIFunctionsProvider {
   protected readonly config: ConfigType
@@ -49,8 +49,8 @@ export class SshCommandClient extends AIFunctionsProvider {
 
     console.log('cmd:', cmd);
 
-    const host = this.configChat.options?.ssh?.host || 'localhost'
-    const user = this.configChat.options?.ssh?.user || 'root'
+    const host = this.configChat.options?.ssh_command?.host || 'localhost'
+    const user = this.configChat.options?.ssh_command?.user || 'root'
 
     const tempFile = tmp.fileSync({ mode: 0o755, prefix: 'ssh_command-', postfix: '.sh' });
     writeFileSync(tempFile.name, cmd);

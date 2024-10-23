@@ -92,5 +92,5 @@ export interface ToolResponse {
 
 export type FunctionsConfigType = {
   obsidian?: ObsidianConfigType
-  ssh?: SshConfigType
+  ssh_command?: SshConfigType
 }

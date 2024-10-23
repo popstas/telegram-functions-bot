@@ -222,14 +222,14 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
 
   console.log(msg.text);
 
-  const chatTools = chatConfig.functions ? chatConfig.functions.map(f => functionModules[f]).filter(Boolean) : []
+  const chatTools = chatConfig.functions ? chatConfig.functions.map(f => ({name: f, module: functionModules[f]})).filter(Boolean) : []
 
-  const prompts = await Promise.all(chatTools.filter(f => typeof f.prompt_append === 'function').map(async f => await f.prompt_append(chatConfig)))
+  const prompts = await Promise.all(chatTools.filter(f => typeof f.module.prompt_append === 'function').map(async f => await f.module.prompt_append(chatConfig)))
   if (prompts.length) {
     messages = [...messages, {role: 'system', content: prompts.join('\n\n')}]
   }
 
-  const tools = chatTools.map(f => f.call(chatConfig).functions.toolSpecs).flat()
+  const tools = chatTools.map(f => f.module.call(chatConfig).functions.toolSpecs).flat()
   const res = await api.chat.completions.create({
     messages,
     model: thread.completionParams?.model || config.completionParams.model,
@@ -269,7 +269,10 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
   async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[], dryRun: boolean = false) {
     toolCalls = groupToolCalls(toolCalls)
     const toolPromises = toolCalls.map(async (toolCall) => {
-      const tool = chatTools[0].call(chatConfig).functions.get(toolCall.function.name)
+      const chatTool = chatTools.find(f => f.name === toolCall.function.name)
+      if (!chatTool) return;
+
+      const tool = chatTool.module.call(chatConfig).functions.get(toolCall.function.name)
       if (!tool) return
       let toolParams = toolCall.function.arguments
 
@@ -280,11 +283,10 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
         chatConfig.confirmation = true;
       }
 
-      // add full cite
-      const params = JSON.parse(toolParams)
+      const params = JSON.parse(toolParams) // as ToolResponse
       if (params.command && !chatConfig.confirmation) {
         // msg is global
-        void await sendTelegramMessage(msg.chat.id, '```\n' + params.command + '\n```', {parse_mode: 'MarkdownV2'});
+        void await sendTelegramMessage(msg.chat.id, '`'+toolCall.function.name + '()`:\n```\n' + params.command + '\n```', {parse_mode: 'MarkdownV2'});
       }
       // const msgs = thread.messages.map(msg => msg.content).join('\n\n');
       // params.description += `\n\nПолный текст:\n${msgs}`
@@ -296,10 +298,10 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
       }
 
       if (chatConfig.confirmation) {
-        return new Promise(async (resolve, reject) => {
+        return new Promise(async (resolve) => {
           // Send confirmation message with Yes/No buttons
           const uniqueId = Date.now().toString();
-          await sendTelegramMessage(msg.chat.id, '```\n' + params.command + '\n```\nDo you want to proceed?', {
+          await sendTelegramMessage(msg.chat.id, '`'+toolCall.function.name + '()`:\n```\n' + params.command + '\n```\nDo you want to proceed?', {
             parse_mode: 'MarkdownV2',
             reply_markup: {
               inline_keyboard: [
@@ -312,12 +314,12 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
           });
 
           // Handle the callback query
-          bot.action(`confirm_tool_${uniqueId}`, async (ctx) => {
+          bot.action(`confirm_tool_${uniqueId}`, async () => {
             const res = await tool(toolParams); // Execute the tool
             resolve(res);
             return;
           });
-          bot.action(`cancel_tool_${uniqueId}`, async (ctx) => {
+          bot.action(`cancel_tool_${uniqueId}`, async () => {
             await sendTelegramMessage(msg.chat.id, 'Tool execution canceled.');
             resolve({content:'Tool execution canceled.'});
             return;
@@ -331,37 +333,47 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
     return Promise.all(toolPromises) as Promise<ToolResponse[]>
   }
 
-  const message = res.choices[0]?.message!
-  if (message.tool_calls?.length) {
-    const dryRun = isTestUser(msg);
-    const tool_res = await callTools(message.tool_calls, dryRun);
+  // async function onGptAnswer(msg: Message.TextMessage, res: OpenAI.ChatCompletionMessage) {
+  async function onGptAnswer(msg: Message.TextMessage, res: OpenAI.ChatCompletion, level: number = 1): Promise<ToolResponse> {
+    console.log(`onGptAnswer, level ${level}`)
+    const message = res.choices[0]?.message!
+    if (message.tool_calls?.length) {
+      const dryRun = isTestUser(msg);
+      const tool_res = await callTools(message.tool_calls, dryRun);
+      const tool_call = message.tool_calls[0];
 
-    if (tool_res) {
-      const toolRes = tool_res[0] as ToolResponse;
-      console.log(toolRes.content);
-      void await sendTelegramMessage(msg.chat.id, toolRes.content, {parse_mode: 'MarkdownV2'});
-      console.log('');
+      if (tool_res) {
+        const toolRes = tool_res[0] as ToolResponse; // TODO: several tool_res
+        console.log(toolRes.content);
+        void await sendTelegramMessage(msg.chat.id, toolRes.content, {parse_mode: 'MarkdownV2'});
+        console.log('');
 
-      messages = [...messages, {role: 'system', content: `> ${toolRes?.args?.command}:\n${toolRes.content}`}];
+        messages = [...messages, {role: 'system', content: `${tool_call.function.name}(): ${toolRes?.args?.command}:\n${toolRes.content}`}];
 
-      const res = await api.chat.completions.create({
-        messages,
-        model: thread.completionParams?.model || config.completionParams.model,
-        temperature: thread.completionParams?.temperature || config.completionParams.temperature,
-        tools,
-        tool_choice: 'auto',
-      });
+        const res = await api.chat.completions.create({
+          messages,
+          model: thread.completionParams?.model || config.completionParams.model,
+          temperature: thread.completionParams?.temperature || config.completionParams.temperature,
+          // cannot use functions at 3+ level of chaining
+          tools: level > 2 ? undefined : tools,
+          tool_choice: (level > 2 ? undefined : 'auto'), //'auto',
+        });
 
-      forgetHistory(msg.chat.id);
-
-      const message = res.choices[0]?.message?.content!
-      return {content: message};
+        return await onGptAnswer(msg, res, level + 1);
+        // forgetHistory(msg.chat.id);
+        //
+        // const message = res.choices[0]?.message?.content!
+        // return {content: message};
+      }
     }
+
+    const answer = res.choices[0]?.message.content || ''
+    addToHistory({msg, answer, systemMessage});
+    forgetHistory(msg.chat.id)
+    return {content: answer}
   }
 
-  const answer = res.choices[0]?.message.content || ''
-  addToHistory({msg, answer, systemMessage});
-  return {content: answer}
+  return await onGptAnswer(msg, res);
 }
 
 function defaultSystemMessage() {
@@ -407,7 +419,8 @@ async function sendTelegramMessage(chat_id: number, text: string, extraMessagePa
         await bot.telegram.sendMessage(chat_id, msg, params)
       } catch(e) {
         const err = e as { message: string }
-        await bot.telegram.sendMessage(chat_id, msg)
+        const failsafeParams = { reply_markup: params.reply_markup }
+        await bot.telegram.sendMessage(chat_id, msg, failsafeParams)
         // await bot.telegram.sendMessage(chat_id, `${err.message}`, params)
       }
     })

@@ -33,9 +33,9 @@ export class ObsidianReadClient extends AIFunctionsProvider {
     })
   })
   obsidian_read(options: ToolArgsType): ToolResponse {
-    const root_path = this.configChat.options?.obsidian?.root_path || '.';
+    const root_path = path.resolve(this.configChat.options?.obsidian?.root_path || '.');
     const file_paths = options.command.split('\n').map(f => path.resolve(`${root_path}/${f}`))
-    const content = file_paths.map(f => `\n\n=== ${f} ===\n` + fs.readFileSync(f, 'utf8')).join('\n');
+    const content = file_paths.map(f => `\n\n=== ${f.replace(root_path, '')} ===\n` + fs.readFileSync(f, 'utf8')).join('\n');
     return {content, args: {command: options.command}};
   }
 }
@@ -54,7 +54,7 @@ export async function prompt_append(configChat: ConfigChatType): Promise<string>
       }
     });
   }) as string[];
-  return `Obsidian files: ${files.map(f => `- ${f}`).join('\n')}`;
+  return `## Obsidian files:\n${files.map(f => `- ${f}`).join('\n')}`;
 }
 
 export function call(configChat: ConfigChatType) {
