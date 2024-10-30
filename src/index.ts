@@ -222,14 +222,18 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
 
   console.log(msg.text);
 
-  const chatTools = chatConfig.functions ? chatConfig.functions.map(f => ({name: f, module: functionModules[f]})).filter(Boolean) : []
+  const chatTools = chatConfig.functions ? chatConfig.functions.map(f => ({
+    name: f,
+    module: functionModules[f]
+  })).filter(Boolean) : []
 
   const prompts = await Promise.all(chatTools.filter(f => typeof f.module.prompt_append === 'function').map(async f => await f.module.prompt_append(chatConfig)))
   if (prompts.length) {
     messages = [...messages, {role: 'system', content: prompts.join('\n\n')}]
   }
 
-  const tools = chatTools.map(f => f.module.call(chatConfig).functions.toolSpecs).flat()
+  const isTools = chatTools.length > 0;
+  const tools = isTools ? chatTools.map(f => f.module.call(chatConfig).functions.toolSpecs).flat() : undefined;
   const res = await api.chat.completions.create({
     messages,
     model: thread.completionParams?.model || config.completionParams.model,
@@ -286,7 +290,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
       const params = JSON.parse(toolParams) // as ToolResponse
       if (params.command && !chatConfig.confirmation) {
         // msg is global
-        void await sendTelegramMessage(msg.chat.id, '`'+toolCall.function.name + '()`:\n```\n' + params.command + '\n```', {parse_mode: 'MarkdownV2'});
+        void await sendTelegramMessage(msg.chat.id, '`' + toolCall.function.name + '()`:\n```\n' + params.command + '\n```', {parse_mode: 'MarkdownV2'});
       }
       // const msgs = thread.messages.map(msg => msg.content).join('\n\n');
       // params.description += `\n\nПолный текст:\n${msgs}`
@@ -301,7 +305,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
         return new Promise(async (resolve) => {
           // Send confirmation message with Yes/No buttons
           const uniqueId = Date.now().toString();
-          await sendTelegramMessage(msg.chat.id, '`'+toolCall.function.name + '()`:\n```\n' + params.command + '\n```\nDo you want to proceed?', {
+          await sendTelegramMessage(msg.chat.id, '`' + toolCall.function.name + '()`:\n```\n' + params.command + '\n```\nDo you want to proceed?', {
             parse_mode: 'MarkdownV2',
             reply_markup: {
               inline_keyboard: [
@@ -321,7 +325,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
           });
           bot.action(`cancel_tool_${uniqueId}`, async () => {
             await sendTelegramMessage(msg.chat.id, 'Tool execution canceled.');
-            resolve({content:'Tool execution canceled.'});
+            resolve({content: 'Tool execution canceled.'});
             return;
           });
         });
@@ -348,15 +352,22 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
         void await sendTelegramMessage(msg.chat.id, toolRes.content, {parse_mode: 'MarkdownV2'});
         console.log('');
 
-        messages = [...messages, {role: 'system', content: `${tool_call.function.name}(): ${toolRes?.args?.command}:\n${toolRes.content}`}];
+        messages = [...messages, message, {
+          role: 'tool',
+          // content: `${tool_call.function.name}(): ${toolRes?.args?.command}:\n${toolRes.content}`,
+          content: toolRes.content,
+          tool_call_id: tool_call.id,
+        }];
+
+        const isNoTool = level > 2 || !tools?.length;
 
         const res = await api.chat.completions.create({
           messages,
           model: thread.completionParams?.model || config.completionParams.model,
           temperature: thread.completionParams?.temperature || config.completionParams.temperature,
           // cannot use functions at 3+ level of chaining
-          tools: level > 2 ? undefined : tools,
-          tool_choice: (level > 2 ? undefined : 'auto'), //'auto',
+          tools: isNoTool ? undefined : tools,
+          tool_choice: isNoTool ? undefined : 'auto',
         });
 
         return await onGptAnswer(msg, res, level + 1);
@@ -417,9 +428,9 @@ async function sendTelegramMessage(chat_id: number, text: string, extraMessagePa
     msgs.forEach(async (msg) => {
       try {
         await bot.telegram.sendMessage(chat_id, msg, params)
-      } catch(e) {
+      } catch (e) {
         const err = e as { message: string }
-        const failsafeParams = { reply_markup: params.reply_markup }
+        const failsafeParams = {reply_markup: params.reply_markup}
         await bot.telegram.sendMessage(chat_id, msg, failsafeParams)
         // await bot.telegram.sendMessage(chat_id, `${err.message}`, params)
       }
