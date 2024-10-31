@@ -1,8 +1,8 @@
-import { OAuth2Client } from 'google-auth-library';
-import { aiFunction, AIFunctionsProvider } from '@agentic/core';
-import { z } from 'zod';
+import {OAuth2Client} from 'google-auth-library';
+import {aiFunction, AIFunctionsProvider} from '@agentic/core';
+import {z} from 'zod';
 import {ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from '../types';
-import { readConfig } from '../config';
+import {readConfig} from '../config';
 import readGoogleSheet from "../helpers/readGoogleSheet.ts";
 
 type ToolArgsType = {
@@ -31,14 +31,14 @@ export class GoogleSheetClient extends AIFunctionsProvider {
       sheetId: z.string().describe('Google Sheet ID'),
     }),
   })
-  async read_google_sheet({ sheetId }: ToolArgsType): Promise<ToolResponse> {
+  async read_google_sheet({sheetId}: ToolArgsType): Promise<ToolResponse> {
     if (!this.oauth2Client?.credentials?.access_token) {
-      return { content: 'No access token, auth with /google_auth' };
+      return {content: 'No access token, auth with /google_auth'};
     }
 
     const data = await readGoogleSheet(sheetId, this.oauth2Client);
 
-    return { content: JSON.stringify(data) };
+    return {content: JSON.stringify(data)};
   }
 }
 

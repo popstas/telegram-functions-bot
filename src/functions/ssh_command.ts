@@ -6,7 +6,7 @@ import {z} from 'zod'
 import {readConfig} from '../config.ts'
 import {ConfigChatType, ConfigType, ToolResponse} from "../types.ts";
 import {exec} from "child_process";
-import { writeFileSync } from 'fs';
+import {writeFileSync} from 'fs';
 import * as path from 'path';
 // @ts-ignore
 import * as tmp from 'tmp';
@@ -53,7 +53,7 @@ export class SshCommandClient extends AIFunctionsProvider {
     const host = this.configChat.options?.ssh_command?.host || 'localhost'
     const user = this.configChat.options?.ssh_command?.user || 'root'
 
-    const tempFile = tmp.fileSync({ mode: 0o755, prefix: 'ssh_command-', postfix: '.sh' });
+    const tempFile = tmp.fileSync({mode: 0o755, prefix: 'ssh_command-', postfix: '.sh'});
     writeFileSync(tempFile.name, cmd);
 
     const destFilename = path.basename(tempFile.name);
@@ -72,7 +72,10 @@ export class SshCommandClient extends AIFunctionsProvider {
             if (sshError) {
               console.error(`ssh error: ${sshError.message}`);
               if (sshError.code) {
-                resolve({content: `Exit code: ${sshError.code}` + '\n```\n' + `${stdout}\n${sshError.message}` + '\n```', args});
+                resolve({
+                  content: `Exit code: ${sshError.code}` + '\n```\n' + `${stdout}\n${sshError.message}` + '\n```',
+                  args
+                });
               } else {
                 reject(sshError.message);
               }

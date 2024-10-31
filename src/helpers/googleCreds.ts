@@ -11,6 +11,7 @@ export function getUserGoogleCreds(user_id?: number): Credentials | undefined {
   const creds = loadGoogleCreds();
   return creds[user_id];
 }
+
 export function loadGoogleCreds() {
   let existingCreds: { [key: number]: Credentials } = {};
   if (fs.existsSync(credsFilePath)) {
@@ -19,6 +20,7 @@ export function loadGoogleCreds() {
   }
   return existingCreds;
 }
+
 export function saveUserGoogleCreds(creds?: Credentials | null, user_id?: number) {
   if (!user_id) {
     console.error('No user_id to save creds')

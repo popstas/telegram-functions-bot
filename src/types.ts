@@ -1,6 +1,6 @@
-import { Message } from 'telegraf/types'
+import {Message} from 'telegraf/types'
 import OpenAI from "openai";
-import { OAuth2Client } from 'google-auth-library';
+import {OAuth2Client} from 'google-auth-library';
 
 export type ConfigChatType = {
   name: string

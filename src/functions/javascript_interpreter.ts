@@ -60,7 +60,7 @@ export class JavascriptInterpreterClient extends AIFunctionsProvider {
       result = `Error: ${error.message}`;
     }
 
-    return { content: `${result}` } as ToolResponse;
+    return {content: `${result}`} as ToolResponse;
 
     /*const isolate = new ivm.Isolate({memoryLimit: 128});
     const context = isolate.createContextSync();

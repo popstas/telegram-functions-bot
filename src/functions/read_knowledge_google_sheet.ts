@@ -1,5 +1,5 @@
 import {aiFunction, AIFunctionsProvider} from '@agentic/core';
-import { z } from 'zod';
+import {z} from 'zod';
 import {ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from "../types.ts";
 import {readConfig} from "../config.ts";
 import readGoogleSheet from "../helpers/readGoogleSheet.ts";
@@ -66,7 +66,7 @@ export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
     const textCol = this.configChat.options?.knowledge_google_sheet.textCol || 'text';
     const found = data?.find((row: any) => row[titleCol] === title);
     // @ts-ignore
-    const content = found ? found[textCol] :  `No answer found for ${title}`;
+    const content = found ? found[textCol] : `No answer found for ${title}`;
     return {content, args: {command: options.title}};
   }
 }
