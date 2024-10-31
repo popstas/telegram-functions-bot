@@ -15,6 +15,7 @@ import {
 } from './types'
 import {readConfig} from './config'
 import {HttpsProxyAgent} from "https-proxy-agent"
+import { call as callGoogleSheet, setAnswerFunc as setGoogleSheetAnswerFunc } from './functions/read_google_sheet'
 
 const threads = {} as { [key: number]: ThreadStateType }
 
@@ -63,11 +64,11 @@ async function start() {
 
   try {
     api = new OpenAI({
-      apiKey: config.auth.chatgpt_api_key,
+      apiKey: config.oauth_google.chatgpt_api_key,
       httpAgent,
     })
 
-    bot = new Telegraf(config.auth.bot_token)
+    bot = new Telegraf(config.oauth_google.bot_token)
     console.log('bot started')
     // bot.on('channel_post', onMessage);
 
@@ -84,6 +85,11 @@ async function start() {
       const answer = getInfoMessage(chat)
       return sendTelegramMessage(ctx.chat.id, answer)
     })
+
+    bot.command('google_auth', async ctx => {
+      const authUrl = callGoogleSheet().getAuthUrl();
+      return await ctx.telegram.sendMessage(ctx.chat.id, `Please authenticate with Google: ${authUrl}`);
+    });
 
     // bot.on([message('text'), editedMessage('text')], onMessage)
     bot.on([message('text'), editedMessage('text')], onMessageDebounced)
@@ -104,6 +110,10 @@ async function start() {
       {
         command: '/info',
         description: 'Начальные установки',
+      },
+      {
+        command: '/google_auth',
+        description: 'Authenticate with Google',
       },
     ])
 
