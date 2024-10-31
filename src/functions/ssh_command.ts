@@ -8,6 +8,7 @@ import {ConfigChatType, ConfigType, ToolResponse} from "../types.ts";
 import {exec} from "child_process";
 import { writeFileSync } from 'fs';
 import * as path from 'path';
+// @ts-ignore
 import * as tmp from 'tmp';
 
 type ToolArgsType = {

@@ -437,7 +437,7 @@ async function sendTelegramMessage(chat_id: number, text: string, extraMessagePa
       try {
         await bot.telegram.sendMessage(chat_id, msg, params)
       } catch (e) {
-        const err = e as { message: string }
+        // const err = e as { message: string }
         const failsafeParams = {reply_markup: params.reply_markup}
         await bot.telegram.sendMessage(chat_id, msg, failsafeParams)
         // await bot.telegram.sendMessage(chat_id, `${err.message}`, params)

@@ -5,11 +5,7 @@ import {
 import {z} from 'zod'
 import {readConfig} from '../config.ts'
 import {ConfigType, ToolResponse} from "../types.ts";
-import {exec} from "child_process";
-import {writeFileSync} from "fs";
-import * as tmp from 'tmp';
-// import isolated-vm
-// import ivm from 'isolated-vm';
+// import * as tmp from 'tmp';
 import vm from 'vm';
 
 type ToolArgsType = {
