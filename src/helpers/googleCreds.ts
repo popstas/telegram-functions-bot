@@ -47,14 +47,26 @@ export async function ensureAuth(user_id: number, ctx: Context) {
   if (creds) {
     const oauth2Client = new google.auth.OAuth2();
     oauth2Client.setCredentials(creds);
+
+    // Check if the credentials have expired
+    if (creds.expiry_date && creds.expiry_date <= Date.now()) {
+      try {
+        console.log('refresh token...')
+        await oauth2Client.refreshAccessToken();
+        const newCreds = oauth2Client.credentials;
+        saveUserGoogleCreds(newCreds, user_id);
+      } catch (error) {
+        console.error('Error refreshing access token:', error);
+      }
+    }
+
     return oauth2Client;
   }
 
-  // get auth url
-  const oauth2Client = new google.auth.OAuth2(
+  // get auth url oauth2Client
+  return new google.auth.OAuth2(
     config.oauth_google.client_id,
     config.oauth_google.client_secret,
     config.oauth_google.redirect_uri
   );
-  return oauth2Client
 }
