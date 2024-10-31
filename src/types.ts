@@ -99,4 +99,9 @@ export interface ToolResponse {
 export type FunctionsConfigType = {
   obsidian?: ObsidianConfigType
   ssh_command?: SshConfigType
+  knowledge_google_sheet: {
+    sheetId: string
+    titleCol: string
+    textCol: string
+  }
 }

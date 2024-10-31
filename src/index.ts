@@ -161,10 +161,12 @@ async function start() {
 
 // load/save data/creds.json, key is msg.from.id
 
-function addOauthToThread(oauth2Client: OAuth2Client, threads: { [key: number]: ThreadStateType }, msg: Message.TextMessage) {
+function addOauthToThread(oauth2Client: OAuth2Client, threads: {
+  [key: number]: ThreadStateType
+}, msg: Message.TextMessage) {
   const key = msg.chat?.id
   if (!key) return
-  if (!threads[key]){
+  if (!threads[key]) {
     threads[key] = {
       history: [],
       messages: [],
@@ -183,7 +185,7 @@ function createAuthServer(oauth2Client: OAuth2Client, msg: Message.TextMessage) 
       const code = qs.get('code');
       if (code) {
         // Exchange code for tokens
-        oauth2Client.getToken(code, (err: GaxiosError | null, creds: Credentials | null | undefined ) => {
+        oauth2Client.getToken(code, (err: GaxiosError | null, creds: Credentials | null | undefined) => {
           if (err) {
             console.error('Error retrieving access creds', err);
             res.end('Error retrieving access creds');
@@ -320,13 +322,20 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
     module: functionModules[f]
   })).filter(Boolean) : []
 
-  const prompts = await Promise.all(chatTools.filter(f => typeof f.module.prompt_append === 'function').map(async f => await f.module.prompt_append(chatConfig)))
+  const isTools = chatTools.length > 0;
+  const tools = isTools ? chatTools.map(f => f.module.call(chatConfig, thread, msg).functions.toolSpecs).flat() : undefined;
+
+  // prompts from functions, should be after tools
+  const prompts = await Promise.all(
+    chatTools
+      .filter(f => typeof f.module.prompt_append === 'function')
+      .map(async f => await f.module.prompt_append(chatConfig))
+      .filter(f => !!f)
+  )
   if (prompts.length) {
     messages = [...messages, {role: 'system', content: prompts.join('\n\n')}]
   }
 
-  const isTools = chatTools.length > 0;
-  const tools = isTools ? chatTools.map(f => f.module.call(chatConfig, thread, msg).functions.toolSpecs).flat() : undefined;
   const res = await api.chat.completions.create({
     messages,
     model: thread.completionParams?.model || config.completionParams.model,

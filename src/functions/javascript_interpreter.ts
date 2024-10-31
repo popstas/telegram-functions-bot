@@ -38,14 +38,13 @@ export class JavascriptInterpreterClient extends AIFunctionsProvider {
         ),
     })
   })
-
   async javascript_interpreter(options: ToolArgsType) {
     const code = options.command;
 
     console.log('code:', code);
 
     if (typeof answerFunc === 'function') {
-      await answerFunc(`\`\`\`javascript\n${code}\n\`\`\``);
+      void answerFunc(`\`\`\`javascript\n${code}\n\`\`\``);
     }
 
     // Create a new context for the script to run in
