@@ -1,5 +1,6 @@
-import { Message } from 'telegraf/types'
+import {Message} from 'telegraf/types'
 import OpenAI from "openai";
+import {OAuth2Client} from 'google-auth-library';
 
 export type ConfigChatType = {
   name: string
@@ -35,6 +36,11 @@ export type ConfigType = {
     bot_token: string
     chatgpt_api_key: string
   }
+  oauth_google: {
+    client_id: string
+    client_secret: string
+    redirect_uri: string
+  }
   proxyUrl?: string
   helpText: string
   systemMessage?: string
@@ -58,13 +64,13 @@ export type ObsidianConfigType = {
 }
 
 export type ThreadStateType = {
-  partialAnswer: string
   history: Message.TextMessage[]
   messages: OpenAI.ChatCompletionMessageParam[]
   customSystemMessage?: string
   completionParams?: CompletionParamsType
   activeButton?: ConfigChatButtonType
   nextSystemMessage?: string
+  oauth2Client?: OAuth2Client
 }
 
 export type ConfigChatButtonType = {
@@ -93,4 +99,9 @@ export interface ToolResponse {
 export type FunctionsConfigType = {
   obsidian?: ObsidianConfigType
   ssh_command?: SshConfigType
+  knowledge_google_sheet: {
+    sheetId: string
+    titleCol: string
+    textCol: string
+  }
 }

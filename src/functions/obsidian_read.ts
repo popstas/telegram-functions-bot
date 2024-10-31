@@ -1,8 +1,9 @@
 import * as fs from 'fs';
 import {aiFunction, AIFunctionsProvider} from '@agentic/core';
-import { z } from 'zod';
+import {z} from 'zod';
 import {ConfigChatType, ConfigType, ToolResponse} from "../types.ts";
 import {readConfig} from "../config.ts";
+// @ts-ignore
 import recursiveReaddir from 'recursive-readdir';
 import path from "node:path";
 

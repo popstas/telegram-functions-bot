@@ -5,7 +5,7 @@ Telegram bot with functions tools
 - Single answer to several forwarded messages to bot
 - Bot can use tools to get answer
 - Better fallback answer when telegram markdown is wrong
-- 
+- Agent-like pipelines: bot can use several tools to get answer
 
 ## Pipeline
 - Receive question
@@ -13,8 +13,11 @@ Telegram bot with functions tools
 - Read tool answer, answer user
 
 ## Functions
-- `ssh` - exec ssh shell command, single server from config
-- `powershell` - exec PowerShell command, single server from config
-- `obsidian_write` - append text to a markdown file specified by `out_file`
+- `get_next_offday` - count 4-days cycle: day, night, sleep, offday
+- `javascript_interpreter` - exec JavaScript code
 - `obsidian_read` - return the contents of an Obsidian file specified by `file_path`, list of files pass to the prompt
-
+- `obsidian_write` - append text to a markdown file specified by `out_file`
+- `powershell` - exec PowerShell command, single server from config
+- `read_google_sheet` - read Google Sheet
+- `read_knowledge_google_sheet` - questions and ansers from Google Sheet
+- `ssh_command` - exec ssh shell command, single server from config
