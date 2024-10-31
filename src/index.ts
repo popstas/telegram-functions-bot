@@ -15,7 +15,12 @@ import {
 } from './types'
 import {readConfig} from './config'
 import {HttpsProxyAgent} from "https-proxy-agent"
-import { call as callGoogleSheet, setAnswerFunc as setGoogleSheetAnswerFunc } from './functions/read_google_sheet'
+import http from 'http'
+import url from 'url'
+import {OAuth2Client} from "google-auth-library/build/src/auth/oauth2client";
+import {Credentials} from "google-auth-library/build/src/auth/credentials";
+import {GaxiosError} from "gaxios";
+import {ensureAuth, saveUserGoogleCreds} from "./helpers/googleCreds.ts";
 
 const threads = {} as { [key: number]: ThreadStateType }
 
@@ -64,11 +69,11 @@ async function start() {
 
   try {
     api = new OpenAI({
-      apiKey: config.oauth_google.chatgpt_api_key,
+      apiKey: config.auth.chatgpt_api_key,
       httpAgent,
     })
 
-    bot = new Telegraf(config.oauth_google.bot_token)
+    bot = new Telegraf(config.auth.bot_token)
     console.log('bot started')
     // bot.on('channel_post', onMessage);
 
@@ -87,8 +92,31 @@ async function start() {
     })
 
     bot.command('google_auth', async ctx => {
-      const authUrl = callGoogleSheet().getAuthUrl();
-      return await ctx.telegram.sendMessage(ctx.chat.id, `Please authenticate with Google: ${authUrl}`);
+      const {msg, chat}: {
+        msg: Message.TextMessage & { forward_origin?: any } | undefined;
+        chat: ConfigChatType | undefined
+      } = getCtxChatMsg(ctx);
+
+      if (!chat || !msg) {
+        console.log('no ctx message detected')
+        return await ctx.telegram.sendMessage(ctx.chat.id, `Unable to auth with Google`);
+      }
+
+      const oauth2Client = await ensureAuth(msg.from?.id || 0, ctx);
+      if (!oauth2Client.credentials?.access_token) {
+        const authUrl = oauth2Client.generateAuthUrl({
+          access_type: 'offline',
+          scope: ['https://www.googleapis.com/auth/spreadsheets.readonly']
+        });
+
+        await ctx.telegram.sendMessage(ctx?.chat?.id, `Please authenticate with Google: ${authUrl}`);
+
+        createAuthServer(oauth2Client, msg);
+        return
+      }
+
+      addOauthToThread(oauth2Client, threads, msg);
+      await ctx.telegram.sendMessage(ctx.chat?.id, 'Google auth successful, now you can use google functions');
     });
 
     // bot.on([message('text'), editedMessage('text')], onMessage)
@@ -129,6 +157,63 @@ async function start() {
     console.log('restart after 5 seconds...')
     setTimeout(start, 5000)
   }
+}
+
+// load/save data/creds.json, key is msg.from.id
+
+function addOauthToThread(oauth2Client: OAuth2Client, threads: { [key: number]: ThreadStateType }, msg: Message.TextMessage) {
+  const key = msg.chat?.id
+  if (!key) return
+  if (!threads[key]){
+    threads[key] = {
+      history: [],
+      messages: [],
+      customSystemMessage: config.systemMessage,
+      completionParams: config.completionParams,
+    }
+  }
+  threads[key].oauth2Client = oauth2Client
+  // console.log("thread.oauth2Client:", threads[key].oauth2Client);
+}
+
+function createAuthServer(oauth2Client: OAuth2Client, msg: Message.TextMessage) {
+  const server = http.createServer((req, res) => {
+    if (req.url) {
+      const qs = new url.URL(req.url, 'http://localhost:3000').searchParams;
+      const code = qs.get('code');
+      if (code) {
+        // Exchange code for tokens
+        oauth2Client.getToken(code, (err: GaxiosError | null, creds: Credentials | null | undefined ) => {
+          if (err) {
+            console.error('Error retrieving access creds', err);
+            res.end('Error retrieving access creds');
+            server.close();
+            return;
+          }
+          oauth2Client.setCredentials(creds!);
+          console.log('Token acquired:');
+          console.log(creds);
+          void saveUserGoogleCreds(creds, msg?.from?.id);
+
+          res.end('Authentication successful! You can close this window.');
+          server.close();
+
+          addOauthToThread(oauth2Client, threads, msg);
+          void sendTelegramMessage(msg.chat.id, 'Google auth successful, you can use google functions');
+        });
+      } else {
+        res.end('No code found in the query string.');
+      }
+    } else {
+      res.end('No query string found.');
+    }
+  });
+
+  server.listen(3000, () => {
+    console.log('Listening on port 3000 for OAuth callback...');
+  });
+
+  return server;
 }
 
 function getChatConfig(ctxChat: Chat) {
@@ -173,8 +258,6 @@ function addToHistory({msg, answer, systemMessage, completionParams}: {
     threads[key] = {
       history: [],
       messages: [],
-      // lastAnswer: undefined,
-      partialAnswer: '',
       customSystemMessage: systemMessage || config.systemMessage,
       completionParams: completionParams || config.completionParams,
     }
@@ -243,7 +326,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
   }
 
   const isTools = chatTools.length > 0;
-  const tools = isTools ? chatTools.map(f => f.module.call(chatConfig).functions.toolSpecs).flat() : undefined;
+  const tools = isTools ? chatTools.map(f => f.module.call(chatConfig, thread, msg).functions.toolSpecs).flat() : undefined;
   const res = await api.chat.completions.create({
     messages,
     model: thread.completionParams?.model || config.completionParams.model,
@@ -477,9 +560,8 @@ async function onMessageDebounced(ctx: Context & { secondTry?: boolean }) {
   return await onMessage(ctx)
 }
 
-async function onMessage(ctx: Context & { secondTry?: boolean }) {
-  // console.log("ctx:", ctx);
-
+// return {chat, msg}
+function getCtxChatMsg(ctx: Context) {
   let ctxChat: Chat | undefined
   let msg: Message.TextMessage & { forward_origin?: any } | undefined
 
@@ -495,21 +577,32 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
     // return;
   }
 
+  if (!ctxChat) {
+    console.log('no ctx chat detected')
+    return {chat: undefined, msg: undefined}
+  }
+
+  const chat = getChatConfig(ctxChat)
+
+  return {chat, msg}
+}
+
+async function onMessage(ctx: Context & { secondTry?: boolean }) {
+  // console.log("ctx:", ctx);
+
+  const {msg, chat}: {
+    msg: Message.TextMessage & { forward_origin?: any } | undefined;
+    chat: ConfigChatType | undefined
+  } = getCtxChatMsg(ctx);
+
   if (!msg) {
     console.log('no ctx message detected')
     return
   }
 
-  if (!ctxChat) {
-    console.log('no ctx chat detected')
-    return
-  }
-
-  const chat = getChatConfig(ctxChat)
-
   if (!chat) {
     console.log(`Not in whitelist: }`, msg.from)
-    return await ctx.telegram.sendMessage(ctxChat.id, `You are not allowed to use this bot.
+    return await ctx.telegram.sendMessage(msg.chat.id, `You are not allowed to use this bot.
 Your username: ${msg.from?.username}, chat id: ${msg.chat.id}`)
   }
 
@@ -619,12 +712,12 @@ async function answerToMessage(ctx: Context & {
   secondTry?: boolean
 }, msg: Message.TextMessage, chat: ConfigChatType, extraMessageParams: any) {
   const thread = threads[msg.chat.id];
+  const oauth2Client = await ensureAuth(msg.from?.id || 0, ctx); // for add to threads
+  addOauthToThread(oauth2Client, threads, msg);
   try {
     await ctx.persistentChatAction('typing', async () => {
       if (!msg) return
-      thread.partialAnswer = ''
       const res = await getChatgptAnswer(msg, chat)
-      thread.partialAnswer = ''
       // if (config.debug) console.log('res:', res)
 
       let text = res?.content || 'бот не ответил'
@@ -655,14 +748,7 @@ async function answerToMessage(ctx: Context & {
       void onMessage(ctx) // специально без await
     }
 
-    if (thread.partialAnswer !== '') {
-      const answer = `Бот ответил частично и забыл диалог:\n\n${error.message}\n\n${thread.partialAnswer}`
-      forgetHistory(msg.chat.id)
-      thread.partialAnswer = ''
-      return await sendTelegramMessage(msg.chat.id, answer, extraMessageParams)
-    } else {
-      return await sendTelegramMessage(msg.chat.id, `${error.message}${ctx.secondTry ? '\n\nПовторная отправка последнего сообщения...' : ''}`, extraMessageParams)
-    }
+    return await sendTelegramMessage(msg.chat.id, `${error.message}${ctx.secondTry ? '\n\nПовторная отправка последнего сообщения...' : ''}`, extraMessageParams)
   }
 }
 

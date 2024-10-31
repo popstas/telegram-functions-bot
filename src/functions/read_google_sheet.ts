@@ -1,9 +1,9 @@
-import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import { aiFunction, AIFunctionsProvider } from '@agentic/core';
 import { z } from 'zod';
-import { ConfigType, ToolResponse } from '../types';
+import {ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from '../types';
 import { readConfig } from '../config';
+import readGoogleSheet from "../helpers/readGoogleSheet.ts";
 
 type ToolArgsType = {
   sheetId: string;
@@ -18,14 +18,10 @@ export class GoogleSheetClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;
   private oauth2Client: OAuth2Client;
 
-  constructor() {
+  constructor(oauth2Client: OAuth2Client) {
     super();
     this.config = readConfig();
-    this.oauth2Client = new google.auth.OAuth2(
-      this.config.auth.client_id,
-      this.config.auth.client_secret,
-      this.config.auth.redirect_uris[0]
-    );
+    this.oauth2Client = oauth2Client;
   }
 
   @aiFunction({
@@ -36,31 +32,18 @@ export class GoogleSheetClient extends AIFunctionsProvider {
     }),
   })
   async read_google_sheet({ sheetId }: ToolArgsType): Promise<ToolResponse> {
-    const sheets = google.sheets({ version: 'v4', auth: this.oauth2Client });
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: sheetId,
-      range: 'Sheet1',
-    });
-
-    const rows = response.data.values;
-    if (!rows || rows.length === 0) {
-      return { content: 'No data found.' };
+    if (!this.oauth2Client?.credentials?.access_token) {
+      return { content: 'No access token, auth with /google_auth' };
     }
 
-    const headers = rows[0];
-    const data = rows.slice(1).map((row) => {
-      const obj: { [key: string]: string } = {};
-      row.forEach((value, index) => {
-        obj[headers[index]] = value;
-      });
-      return obj;
-    });
+    const data = await readGoogleSheet(sheetId, this.oauth2Client);
 
     return { content: JSON.stringify(data) };
   }
 }
 
-export function call() {
-  if (!client) client = new GoogleSheetClient();
+export function call(configChat: ConfigChatType, thread: ThreadStateType) {
+  const oauth2Client = thread?.oauth2Client as OAuth2Client;
+  if (!client) client = new GoogleSheetClient(oauth2Client);
   return client;
 }
