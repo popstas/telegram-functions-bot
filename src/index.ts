@@ -262,10 +262,13 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
     });
 
     return Object.values(grouped).map((group) => {
+      if (group.length === 1) {
+        return group[0];
+      }
       const combinedCommand = group.map((call) => JSON.parse(call.function.arguments).command).join('\n');
       return {
         ...group[0],
-        function: {...group[0].function, arguments: JSON.stringify({command: combinedCommand})}
+        function: {...group[0].function, arguments: JSON.stringify({command: combinedCommand})} // TODO: remove hardcoded command
       };
     });
   }
@@ -280,6 +283,11 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
       if (!tool) return
       let toolParams = toolCall.function.arguments
 
+      if (chatTool.module.setAnswerFunc) {
+        const answerFunc = async (text: string) => await sendTelegramMessage(msg.chat.id, text, {parse_mode: 'MarkdownV2'})
+        chatTool.module.setAnswerFunc(answerFunc);
+      }
+
       // Check for 'confirm' or 'noconfirm' in the message to set confirmation
       if (msg.text.includes('noconfirm')) {
         chatConfig.confirmation = false;
@@ -288,9 +296,9 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
       }
 
       const params = JSON.parse(toolParams) // as ToolResponse
-      if (params.command && !chatConfig.confirmation) {
+      if (toolParams && !chatConfig.confirmation && !chatTool.module.setAnswerFunc) {
         // msg is global
-        void await sendTelegramMessage(msg.chat.id, '`' + toolCall.function.name + '()`:\n```\n' + params.command + '\n```', {parse_mode: 'MarkdownV2'});
+        void await sendTelegramMessage(msg.chat.id, '`' + toolCall.function.name + '()`:\n```\n' + toolParams + '\n```', {parse_mode: 'MarkdownV2'});
       }
       // const msgs = thread.messages.map(msg => msg.content).join('\n\n');
       // params.description += `\n\nПолный текст:\n${msgs}`
@@ -359,7 +367,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
           tool_call_id: tool_call.id,
         }];
 
-        const isNoTool = level > 2 || !tools?.length;
+        const isNoTool = level > 6 || !tools?.length;
 
         const res = await api.chat.completions.create({
           messages,
