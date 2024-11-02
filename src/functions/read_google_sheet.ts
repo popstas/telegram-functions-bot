@@ -42,7 +42,7 @@ export class GoogleSheetClient extends AIFunctionsProvider {
   }
 }
 
-export function call(configChat: ConfigChatType, thread: ThreadStateType) {
+export function call(configChat: ConfigChatType, thread: ThreadStateType, answerFunc: Function) {
   const oauth2Client = thread?.oauth2Client as OAuth2Client;
   if (!client) client = new GoogleSheetClient(oauth2Client);
   return client;

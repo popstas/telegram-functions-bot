@@ -4,7 +4,7 @@ import {
 } from '@agentic/core'
 import {z} from 'zod'
 import {readConfig} from '../config.ts'
-import {ConfigType, ToolResponse} from "../types.ts";
+import {ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from "../types.ts";
 import {exec} from "child_process";
 
 type ToolArgsType = {
@@ -25,7 +25,6 @@ export class PowershellCommandClient extends AIFunctionsProvider {
 
   constructor() {
     super()
-
     this.config = readConfig();
   }
 
@@ -40,7 +39,6 @@ export class PowershellCommandClient extends AIFunctionsProvider {
         ),
     })
   })
-
   async powershellCommand(options: ToolArgsType) {
     const cmd = options.command;
 
@@ -74,7 +72,7 @@ export class PowershellCommandClient extends AIFunctionsProvider {
   }
 }
 
-export function call() {
+export function call(configChat: ConfigChatType, thread: ThreadStateType, answerFunc: Function) {
   if (!client) client = new PowershellCommandClient();
   return client
 }

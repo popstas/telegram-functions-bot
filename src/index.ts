@@ -326,8 +326,16 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
     module: functionModules[f]
   })).filter(Boolean) : []
 
+  const answerFunc = async (text: string, extraMessageParams: any) => {
+    const extraParams: any = {
+      ...extraMessageParams,
+      ...{parse_mode: 'MarkdownV2', deleteAfter: 5000}
+    }
+    await sendTelegramMessage(msg.chat.id, text, extraParams)
+  }
+
   const isTools = chatTools.length > 0;
-  const tools = isTools ? chatTools.map(f => f.module.call(chatConfig, thread, msg).functions.toolSpecs).flat() : undefined;
+  const tools = isTools ? chatTools.map(f => f.module.call(chatConfig, thread, answerFunc).functions.toolSpecs).flat() : undefined;
 
   // prompts from functions, should be after tools
   const prompts = await Promise.all(
@@ -389,17 +397,6 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
       if (!tool) return
       let toolParams = toolCall.function.arguments
 
-      if (chatTool.module.setAnswerFunc) {
-        const answerFunc = async (text: string, extraMessageParams: any) => {
-          const extraParams: any = {
-            ...extraMessageParams,
-            ...{parse_mode: 'MarkdownV2', deleteAfter: 5000}
-          }
-          await sendTelegramMessage(msg.chat.id, text, extraParams)
-        }
-        chatTool.module.setAnswerFunc(answerFunc);
-      }
-
       // Check for 'confirm' or 'noconfirm' in the message to set confirmation
       if (msg.text.includes('noconfirm')) {
         chatConfig.confirmation = false;
@@ -408,17 +405,13 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
       }
 
       const params = JSON.parse(toolParams) // as ToolResponse
-      if (toolParams && !chatConfig.confirmation && !chatTool.module.setAnswerFunc) {
+      if (toolParams && !chatConfig.confirmation && !chatTool.module.call().answerFunc) {
         // send message with tool call params
         void await sendTelegramMessage(msg.chat.id, '`' + toolCall.function.name + '()`:\n```\n' + toolParams + '\n```', {
           parse_mode: 'MarkdownV2',
           deleteAfterNext: true
         });
       }
-      // const msgs = thread.messages.map(msg => msg.content).join('\n\n');
-      // params.description += `\n\nПолный текст:\n${msgs}`
-      // toolParams = JSON.stringify(params)
-
       const toolResult = {
         args: {command: params.command},
         content: 'empty result',

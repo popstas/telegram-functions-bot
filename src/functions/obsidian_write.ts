@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import {aiFunction, AIFunctionsProvider} from '@agentic/core';
 import {z} from 'zod';
-import {ConfigChatType, ConfigType, ToolResponse} from "../types.ts";
+import {ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from "../types.ts";
 import {readConfig} from "../config.ts";
 import * as path from 'path';
 
@@ -10,13 +10,14 @@ type ToolArgsType = {
   // file_path: string
 }
 
+let client: ObsidianWriteClient
+
 export class ObsidianWriteClient extends AIFunctionsProvider {
   protected readonly config: ConfigType
   protected readonly configChat: ConfigChatType
 
   constructor(configChat: ConfigChatType) {
     super()
-
     this.config = readConfig();
     this.configChat = configChat
   }
@@ -57,6 +58,7 @@ export class ObsidianWriteClient extends AIFunctionsProvider {
   }
 }
 
-export function call(configChat: ConfigChatType) {
-  return new ObsidianWriteClient(configChat);
+export function call(configChat: ConfigChatType, thread: ThreadStateType, answerFunc: Function) {
+  if (!client) client = new ObsidianWriteClient(configChat);
+  return client;
 }

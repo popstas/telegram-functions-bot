@@ -4,7 +4,7 @@ import {
 } from '@agentic/core'
 import {z} from 'zod'
 import {readConfig} from '../config.ts'
-import {ConfigType, ToolResponse} from "../types.ts";
+import {ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from "../types.ts";
 
 type ToolArgsType = {
   startOffDate: string,
@@ -13,7 +13,7 @@ type ToolArgsType = {
 
 let client: NextOffdayClient | undefined
 
-export const description = 'Useful for running JavaScript code in sandbox. Input is a string of JavaScript code, output is the result of the code.'
+export const description = 'Get the next offday from the start off date'
 export const details = ``
 
 export class NextOffdayClient extends AIFunctionsProvider {
@@ -21,7 +21,6 @@ export class NextOffdayClient extends AIFunctionsProvider {
 
   constructor() {
     super()
-
     this.config = readConfig();
   }
 
@@ -41,7 +40,6 @@ export class NextOffdayClient extends AIFunctionsProvider {
         ),
     })
   })
-
   async get_next_offday({startOffDate, currentDate}: ToolArgsType) {
     const startDate = new Date(startOffDate);
     const current = new Date(currentDate);
@@ -59,7 +57,7 @@ export class NextOffdayClient extends AIFunctionsProvider {
   }
 }
 
-export function call() {
+export function call(configChat: ConfigChatType, thread: ThreadStateType, answerFunc: Function) {
   if (!client) client = new NextOffdayClient();
   return client
 }

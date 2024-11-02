@@ -4,7 +4,7 @@ import {
 } from '@agentic/core'
 import {z} from 'zod'
 import {readConfig} from '../config.ts'
-import {ConfigChatType, ConfigType, ToolResponse} from "../types.ts";
+import {ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from "../types.ts";
 import {exec} from "child_process";
 import {writeFileSync} from 'fs';
 import * as path from 'path';
@@ -14,6 +14,8 @@ import * as tmp from 'tmp';
 type ToolArgsType = {
   command: string
 }
+
+let client: SshCommandClient
 
 export const description = 'SSH config.ssh_command.user shell, host from config.ssh_command.host, can run multiline scripts as command'
 export const details = `- convert question to command
@@ -28,7 +30,6 @@ export class SshCommandClient extends AIFunctionsProvider {
 
   constructor(configChat: ConfigChatType) {
     super()
-
     this.config = readConfig();
     this.configChat = configChat
   }
@@ -44,7 +45,6 @@ export class SshCommandClient extends AIFunctionsProvider {
         ),
     })
   })
-
   async sshCommand(options: ToolArgsType) {
     const cmd = options.command;
 
@@ -101,6 +101,7 @@ export class SshCommandClient extends AIFunctionsProvider {
   }
 }
 
-export function call(configChat: ConfigChatType) {
-  return new SshCommandClient(configChat);
+export function call(configChat: ConfigChatType, thread: ThreadStateType, answerFunc: Function) {
+  if (!client) client = new SshCommandClient(configChat);
+  return client
 }

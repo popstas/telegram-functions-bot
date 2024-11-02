@@ -11,11 +11,11 @@ type ToolArgsType = {
 
 let client: KnowledgeGoogleSheetClient | undefined;
 let cache: { [sheetId: string]: Object[] } = {};
-let answerFunc: Function
 
 function getCache(sheetId: string) {
   return cache[sheetId];
 }
+
 function setCache(sheetId: string, data: Object[]) {
   cache[sheetId] = data;
 }
@@ -23,14 +23,15 @@ function setCache(sheetId: string, data: Object[]) {
 export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
   protected readonly config: ConfigType
   public readonly configChat: ConfigChatType
-  private oauth2Client: OAuth2Client;
+  private readonly oauth2Client: OAuth2Client;
+  public readonly answerFunc: Function;
 
-  constructor(configChat: ConfigChatType, oauth2Client: OAuth2Client) {
+  constructor(configChat: ConfigChatType, oauth2Client: OAuth2Client, answerFunc: Function) {
     super()
-
     this.config = readConfig();
     this.configChat = configChat
     this.oauth2Client = oauth2Client;
+    this.answerFunc = answerFunc;
   }
 
   async read_sheet() {
@@ -62,9 +63,7 @@ export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
   async read_knowledge_google_sheet(options: ToolArgsType): Promise<ToolResponse> {
     const title = options.title;
 
-    if (typeof answerFunc === 'function') {
-      void answerFunc(`\`read_knowledge_google_sheet(${title})\``);
-    }
+    void this.answerFunc(`\`Google sheet: ${title}\``);
 
     const data = await this.read_sheet();
     if (!data) return {content: 'No data, auth with /google_auth'};
@@ -77,7 +76,7 @@ export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
   }
 }
 
-export async function prompt_append(configChat: ConfigChatType): Promise<string | undefined> {
+export async function prompt_append(): Promise<string | undefined> {
   if (!client) return "";
   const data = await client.read_sheet();
   const titleCol = client.configChat.options?.knowledge_google_sheet.titleCol || 'title';
@@ -85,12 +84,8 @@ export async function prompt_append(configChat: ConfigChatType): Promise<string 
   if (titles) return '## Google Sheet Knowledge base titles:\n' + titles.map(f => `- ${f}`).join('\n');
 }
 
-export function call(configChat: ConfigChatType, thread: ThreadStateType) {
+export function call(configChat: ConfigChatType, thread: ThreadStateType, answerFunc: Function) {
   const oauth2Client = thread?.oauth2Client as OAuth2Client;
-  if (!client) client = new KnowledgeGoogleSheetClient(configChat, oauth2Client);
+  if (!client) client = new KnowledgeGoogleSheetClient(configChat, oauth2Client, answerFunc);
   return client;
-}
-
-export function setAnswerFunc(val: Function) {
-  answerFunc = val
 }

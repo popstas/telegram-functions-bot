@@ -4,8 +4,7 @@ import {
 } from '@agentic/core'
 import {z} from 'zod'
 import {readConfig} from '../config.ts'
-import {ConfigType, ToolResponse} from "../types.ts";
-// import * as tmp from 'tmp';
+import {ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from "../types.ts";
 import vm from 'vm';
 
 type ToolArgsType = {
@@ -13,18 +12,18 @@ type ToolArgsType = {
 }
 
 let client: JavascriptInterpreterClient | undefined
-let answerFunc: Function
 
 export const description = 'Useful for running JavaScript code in sandbox. Input is a string of JavaScript code, output is the result of the code.'
 export const details = ``
 
 export class JavascriptInterpreterClient extends AIFunctionsProvider {
   protected readonly config: ConfigType
+  public readonly answerFunc: Function;
 
-  constructor() {
+  constructor(answerFunc: Function) {
     super()
-
     this.config = readConfig();
+    this.answerFunc = answerFunc;
   }
 
   @aiFunction({
@@ -43,9 +42,7 @@ export class JavascriptInterpreterClient extends AIFunctionsProvider {
 
     console.log('code:', code);
 
-    if (typeof answerFunc === 'function') {
-      void answerFunc(`\`\`\`javascript\n${code}\n\`\`\``);
-    }
+    void this.answerFunc(`\`\`\`javascript\n${code}\n\`\`\``);
 
     // Create a new context for the script to run in
     const context = vm.createContext({});
@@ -61,16 +58,6 @@ export class JavascriptInterpreterClient extends AIFunctionsProvider {
     }
 
     return {content: `${result}`} as ToolResponse;
-
-    /*const isolate = new ivm.Isolate({memoryLimit: 128});
-    const context = isolate.createContextSync();
-    const jail = context.global;
-    const jailFunc = isolate.compileScriptSync(`let x = ${code}`);
-    jailFunc.runSync(context);
-    const res = jail.getSync('result');
-    console.log('res:', res);
-
-    return {content: res} as ToolResponse*/
   }
 
   // version with exec
@@ -111,11 +98,7 @@ export class JavascriptInterpreterClient extends AIFunctionsProvider {
   }*/
 }
 
-export function call() {
-  if (!client) client = new JavascriptInterpreterClient();
+export function call(configChat: ConfigChatType, thread: ThreadStateType, answerFunc: Function) {
+  if (!client) client = new JavascriptInterpreterClient(answerFunc);
   return client
-}
-
-export function setAnswerFunc(val: Function) {
-  answerFunc = val
 }

@@ -1,25 +1,28 @@
 import * as fs from 'fs';
 import {aiFunction, AIFunctionsProvider} from '@agentic/core';
 import {z} from 'zod';
-import {ConfigChatType, ConfigType, ToolResponse} from "../types.ts";
+import {ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from "../types.ts";
 import {readConfig} from "../config.ts";
+import path from "node:path";
 // @ts-ignore
 import recursiveReaddir from 'recursive-readdir';
-import path from "node:path";
 
 type ToolArgsType = {
   command: string
 }
 
+let client: ObsidianReadClient | undefined;
+
 export class ObsidianReadClient extends AIFunctionsProvider {
   protected readonly config: ConfigType
-  protected readonly configChat: ConfigChatType
+  public readonly configChat: ConfigChatType
+  public readonly answerFunc: Function;
 
-  constructor(configChat: ConfigChatType) {
+  constructor(configChat: ConfigChatType, answerFunc: Function) {
     super()
-
     this.config = readConfig();
     this.configChat = configChat
+    this.answerFunc = answerFunc;
   }
 
   @aiFunction({
@@ -35,15 +38,25 @@ export class ObsidianReadClient extends AIFunctionsProvider {
   })
   obsidian_read(options: ToolArgsType): ToolResponse {
     const root_path = path.resolve(this.configChat.options?.obsidian?.root_path || '.');
-    const file_paths = options.command.split('\n').map(f => path.resolve(`${root_path}/${f}`))
-    const content = file_paths.map(f => `\n\n=== ${f.replace(root_path, '')} ===\n` + fs.readFileSync(f, 'utf8')).join('\n');
+    const file_paths = options.command.split('\n')
+    const file_paths_abs = file_paths.map(f => path.resolve(`${root_path}/${f}`))
+    // const file_paths = options.command.split('\n').map(f => path.resolve(`${root_path}/${f}`))
+    void this.answerFunc(`\`Obsidian: ${file_paths.join(', ')}\``);
+    const content = file_paths_abs.map(f => {
+      try {
+        const text = fs.readFileSync(f, 'utf8');
+        return `\n\n=== ${f.replace(root_path, '')} ===\n` + text
+      } catch (e) {
+        return `\n\n=== ${f.replace(root_path, '')} ===\n` + (e as Error).message
+      }
+    }).join('\n');
     return {content, args: {command: options.command}};
   }
 }
 
-export async function prompt_append(configChat: ConfigChatType): Promise<string> {
-  // const client = call(configChat)
-  const root_path = configChat.options?.obsidian?.root_path || '.';
+export async function prompt_append(): Promise<string> {
+  if (!client) return "";
+  const root_path = client.configChat.options?.obsidian?.root_path || '.';
   const files = await new Promise((resolve, reject) => {
     recursiveReaddir(root_path, (err: string, files: string[]) => {
       if (err) {
@@ -58,6 +71,7 @@ export async function prompt_append(configChat: ConfigChatType): Promise<string>
   return `## Obsidian files:\n${files.map(f => `- ${f}`).join('\n')}`;
 }
 
-export function call(configChat: ConfigChatType) {
-  return new ObsidianReadClient(configChat);
+export function call(configChat: ConfigChatType, thread: ThreadStateType, answerFunc: Function) {
+  if (!client) client = new ObsidianReadClient(configChat, answerFunc);
+  return client;
 }
