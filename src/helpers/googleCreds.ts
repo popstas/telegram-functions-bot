@@ -46,23 +46,30 @@ export async function ensureAuth(user_id: number, ctx: Context) {
   const creds = getUserGoogleCreds(user_id);
   const config = readConfig();
 
-  if (creds) {
+  // Check if the user has credentials
+  if (creds && creds.expiry_date && creds.expiry_date > Date.now()) {
     const oauth2Client = new google.auth.OAuth2();
     oauth2Client.setCredentials(creds);
 
-    // Check if the credentials have expired
-    if (creds.expiry_date && creds.expiry_date <= Date.now()) {
-      try {
-        console.log('refresh token...')
-        await oauth2Client.refreshAccessToken();
-        const newCreds = oauth2Client.credentials;
-        saveUserGoogleCreds(newCreds, user_id);
-      } catch (error) {
-        console.error('Error refreshing access token:', error);
+    // handling token refresh
+    oauth2Client.on('tokens', (tokens) => {
+      if (tokens.refresh_token) {
+        // store the refresh_token in my database!
+        console.log(tokens.refresh_token);
       }
-    }
+      console.log(tokens.access_token);
+      void saveUserGoogleCreds(oauth2Client.credentials, user_id);
+    });
 
     return oauth2Client;
+  }
+
+  // common service account
+  if (config.auth.google_service_account?.private_key) {
+    return new google.auth.GoogleAuth({
+      credentials: config.auth.google_service_account,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets']
+    });
   }
 
   // get auth url oauth2Client
