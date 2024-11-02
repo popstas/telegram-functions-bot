@@ -5,7 +5,7 @@ import {CredentialBody} from "google-auth-library/build/src/auth/credentials";
 
 export type ConfigChatType = {
   name: string
-  id: number
+  id?: number
   ids?: number[]
   username?: string
   prefix?: string
@@ -13,7 +13,7 @@ export type ConfigChatType = {
   progInfoPrefix?: string
   forgetPrefix?: string
   systemMessage?: string
-  completionParams?: CompletionParamsType
+  completionParams: CompletionParamsType
   debug?: boolean
   memoryless?: boolean
   buttons?: ConfigChatButtonType[]

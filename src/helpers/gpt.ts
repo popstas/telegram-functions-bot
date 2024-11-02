@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import {ChatToolType, ConfigChatType, ToolResponse} from "../types.ts";
-import {bot, config, threads} from "../index.ts";
+import {bot, config} from "../index.ts";
 import {getEncoding, TiktokenEncoding} from "js-tiktoken";
 import {sendTelegramMessage} from "./telegram.ts";
 import {Message} from "telegraf/types";
@@ -47,7 +47,7 @@ Current date: ${new Date().toISOString()}\n\n`
 }
 
 export function getSystemMessage(chatConfig: ConfigChatType) {
-  return threads[chatConfig.id]?.customSystemMessage || chatConfig.systemMessage || config.systemMessage || defaultSystemMessage()
+  return chatConfig.systemMessage || config.systemMessage || defaultSystemMessage()
 }
 
 export function getTokensCount(text: string) {

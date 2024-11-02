@@ -49,10 +49,10 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
     }
 
     // deleteAfter timeout
-    if (extraMessageParams.deleteAfter) {
+    if (params.deleteAfter) {
       if (response) setTimeout(async () => {
         await bot.telegram.deleteMessage(response.chat.id, response.message_id);
-      }, extraMessageParams.deleteAfter);
+      }, params.deleteAfter);
     }
 
     if (forDelete) {
@@ -61,7 +61,7 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
     }
 
     // deleteAfterNext message
-    if (extraMessageParams.deleteAfterNext) {
+    if (params.deleteAfterNext) {
       forDelete = response
     }
 
@@ -82,8 +82,10 @@ export function buildButtonRows(buttons: ConfigChatButtonType[]) {
 }
 
 function getChatConfig(ctxChat: Chat) {
-  // global config
   let chat = config.chats.find(c => c.id == ctxChat?.id || c.ids?.includes(ctxChat?.id) || 0) || {} as ConfigChatType
+
+  const defaultChat = config.chats.find(c => c.name === 'default')
+
   if (!chat.id) {
     // console.log("ctxChat:", ctxChat);
     if (ctxChat?.type !== 'private') {
@@ -91,9 +93,6 @@ function getChatConfig(ctxChat: Chat) {
       return
     }
 
-    // default chat, with name 'default'
-    const defaultChat = config.chats.find(c => c.name === 'default')
-    // console.log("defaultChat:", defaultChat);
     if (defaultChat) chat = defaultChat
 
     if (ctxChat?.type === 'private') {
@@ -105,11 +104,21 @@ function getChatConfig(ctxChat: Chat) {
 
       // user chat, with username
       const userChat = config.chats.find(c => c.username === privateChat.username || '')
-      if (userChat) chat = {...defaultChat, ...userChat}
+      if (userChat) chat = userChat
     }
-
-    if (!chat && defaultChat) chat = defaultChat
   }
+
+  function mergeConfigParam(name: string, from: any, to: any) {
+    if (!from || !from[name]) return
+    to[name] = to[name] ? {...from[name], ...to[name]} : from[name]
+  }
+  mergeConfigParam('completionParams', config, chat);
+
+  if (chat && defaultChat) {
+    chat = {...defaultChat, ...chat}
+    mergeConfigParam('completionParams', defaultChat, chat);
+  }
+
   return chat
 }
 

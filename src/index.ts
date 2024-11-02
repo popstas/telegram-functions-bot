@@ -82,19 +82,11 @@ function watchConfigChanges() {
     config = readConfig(configPath)
     console.log('config:', config)
 
-    config.chats.filter(c => c.debug && threads[c.id]).forEach((c) => {
-      console.log('clear debug chat:', c.name)
-      forgetHistory(c.id)
-      threads[c.id].customSystemMessage = ''
+    config.chats.filter(c => c.id && threads[c.id]).forEach((c) => {
+      const id = c.id as number
+      threads[id].completionParams = c.completionParams
+      threads[id].customSystemMessage = c.systemMessage
     })
-
-    for (let chat of config.chats) {
-      const thread = threads[chat.id]
-      if (!thread) continue
-      thread.completionParams = chat.completionParams
-      thread.customSystemMessage = chat.systemMessage
-      // thread.options = chat.options
-    }
   }, 2000))
 }
 
@@ -140,11 +132,11 @@ async function initCommands(bot: Telegraf) {
 function getInfoMessage(chat: ConfigChatType) {
   const systemMessage = getSystemMessage(chat)
   const tokens = getTokensCount(systemMessage)
-  let answer = 'System: ' + systemMessage + '\n' + 'Tokens: ' + tokens + '\n'
-  if (chat.completionParams?.model) {
-    answer = `Модель: ${chat.completionParams.model}\n\n` + answer
-  }
-  return answer
+  return [
+    `System: ${systemMessage.trim()}`,
+    `Tokens: ${tokens}`,
+    `Model: ${chat.completionParams.model}`
+  ].join('\n\n')
 }
 
 async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChatType) {
