@@ -390,7 +390,13 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
       let toolParams = toolCall.function.arguments
 
       if (chatTool.module.setAnswerFunc) {
-        const answerFunc = async (text: string) => await sendTelegramMessage(msg.chat.id, text, {parse_mode: 'MarkdownV2'})
+        const answerFunc = async (text: string, extraMessageParams: any) => {
+          const extraParams: any = {
+            ...extraMessageParams,
+            ...{parse_mode: 'MarkdownV2', deleteAfter: 5000}
+          }
+          await sendTelegramMessage(msg.chat.id, text, extraParams)
+        }
         chatTool.module.setAnswerFunc(answerFunc);
       }
 
@@ -403,8 +409,11 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
 
       const params = JSON.parse(toolParams) // as ToolResponse
       if (toolParams && !chatConfig.confirmation && !chatTool.module.setAnswerFunc) {
-        // msg is global
-        void await sendTelegramMessage(msg.chat.id, '`' + toolCall.function.name + '()`:\n```\n' + toolParams + '\n```', {parse_mode: 'MarkdownV2'});
+        // send message with tool call params
+        void await sendTelegramMessage(msg.chat.id, '`' + toolCall.function.name + '()`:\n```\n' + toolParams + '\n```', {
+          parse_mode: 'MarkdownV2',
+          deleteAfterNext: true
+        });
       }
       // const msgs = thread.messages.map(msg => msg.content).join('\n\n');
       // params.description += `\n\nПолный текст:\n${msgs}`
@@ -463,7 +472,9 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
       if (tool_res) {
         const toolRes = tool_res[0] as ToolResponse; // TODO: several tool_res
         console.log(toolRes.content);
-        void await sendTelegramMessage(msg.chat.id, toolRes.content, {parse_mode: 'MarkdownV2'});
+        const params = {parse_mode: 'MarkdownV2', deleteAfter: 10000};
+        void sendTelegramMessage(msg.chat.id, toolRes.content, params);
+
         console.log('');
 
         messages = [...messages, message, {
@@ -526,9 +537,13 @@ function splitBigMessage(text: string) {
   return msgs
 }
 
-async function sendTelegramMessage(chat_id: number, text: string, extraMessageParams?: any) {
-  return new Promise((resolve) => {
+let lastResponse: Message.TextMessage | undefined
+let forDelete: Message.TextMessage | undefined
 
+async function sendTelegramMessage(chat_id: number, text: string, extraMessageParams?: any): Promise<Message.TextMessage | undefined> {
+  return new Promise(async (resolve) => {
+
+    let response: Message.TextMessage | undefined;
     const msgs = splitBigMessage(text)
     if (msgs.length > 1) console.log(`Split into ${msgs.length} messages`)
 
@@ -539,17 +554,36 @@ async function sendTelegramMessage(chat_id: number, text: string, extraMessagePa
       // parse_mode: 'HTML'
     }
 
-    msgs.forEach(async (msg) => {
+    for (const msg of msgs) {
       try {
-        await bot.telegram.sendMessage(chat_id, msg, params)
+        response = await bot.telegram.sendMessage(chat_id, msg, params)
       } catch (e) {
         // const err = e as { message: string }
         const failsafeParams = {reply_markup: params.reply_markup}
-        await bot.telegram.sendMessage(chat_id, msg, failsafeParams)
+        response = await bot.telegram.sendMessage(chat_id, msg, failsafeParams)
         // await bot.telegram.sendMessage(chat_id, `${err.message}`, params)
       }
-    })
-    resolve(true)
+    }
+
+    // deleteAfter timeout
+    if (extraMessageParams.deleteAfter) {
+      if (response) setTimeout(async () => {
+        await bot.telegram.deleteMessage(response.chat.id, response.message_id);
+      }, extraMessageParams.deleteAfter);
+    }
+
+    if (forDelete) {
+      await bot.telegram.deleteMessage(forDelete.chat.id, forDelete.message_id);
+      forDelete = undefined
+    }
+
+    // deleteAfterNext message
+    if (extraMessageParams.deleteAfterNext) {
+      forDelete = response
+    }
+
+    lastResponse = response
+    resolve(response)
   })
 }
 
@@ -724,7 +758,6 @@ Your username: ${msg.from?.username}, chat id: ${msg.chat.id}`)
 async function answerToMessage(ctx: Context & {
   secondTry?: boolean
 }, msg: Message.TextMessage, chat: ConfigChatType, extraMessageParams: any) {
-  const thread = threads[msg.chat.id];
   const oauth2Client = await ensureAuth(msg.from?.id || 0, ctx); // for add to threads
   addOauthToThread(oauth2Client, threads, msg);
   try {
