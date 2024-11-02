@@ -67,7 +67,7 @@ export type ObsidianConfigType = {
 }
 
 export type ThreadStateType = {
-  history: Message.TextMessage[]
+  msgs: Message.TextMessage[]
   messages: OpenAI.ChatCompletionMessageParam[]
   customSystemMessage?: string
   completionParams?: CompletionParamsType

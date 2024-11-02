@@ -172,7 +172,7 @@ function addOauthToThread(oauth2Client: OAuth2Client | GoogleAuth, threads: {
   if (!key) return
   if (!threads[key]) {
     threads[key] = {
-      history: [],
+      msgs: [],
       messages: [],
       customSystemMessage: config.systemMessage,
       completionParams: config.completionParams,
@@ -262,7 +262,7 @@ function addToHistory({msg, answer, systemMessage, completionParams}: {
   const key = msg.chat?.id || 0
   if (!threads[key]) {
     threads[key] = {
-      history: [],
+      msgs: [],
       messages: [],
       customSystemMessage: systemMessage || config.systemMessage,
       completionParams: completionParams || config.completionParams,
@@ -277,27 +277,48 @@ function addToHistory({msg, answer, systemMessage, completionParams}: {
     messageItem.content = msg.text || ''
   }
   threads[key].messages.push(messageItem)
+
+  if (!answer) threads[key].msgs.push(msg);
 }
 
 function forgetHistory(chatId: number) {
   if (threads[chatId]) {
-    threads[chatId].history = [];
     threads[chatId].messages = [];
   }
 }
 
-/*function getHistory(msg: Context) {
-  return threads[msg.chat?.id || 0].history || [];
-}*/
-
-function buildMessages(systemMessage: string, history: OpenAI.ChatCompletionMessageParam[]) {
+async function buildMessages(systemMessage: string, history: OpenAI.ChatCompletionMessageParam[], chatTools: {
+  name: string,
+  module: any
+}[]) {
+  const limit = 7 // TODO: to config
   const messages: OpenAI.ChatCompletionMessageParam[] = [
     {
       role: 'system',
       content: systemMessage,
     },
   ];
+
+  // limit history
+  history = history.slice(-limit)
+
+  // remove role: tool message from history if is first message
+  if (history.length && history[0].role === 'tool') {
+    history.shift()
+  }
+
   messages.push(...history)
+
+  // prompts from functions, should be after tools
+  const prompts = await Promise.all(
+    chatTools
+      .filter(f => typeof f.module.prompt_append === 'function')
+      .map(async f => await f.module.prompt_append())
+      .filter(f => !!f)
+  )
+  if (prompts.length) {
+    messages.push({role: 'system', content: prompts.join('\n\n')})
+  }
 
   return messages
 }
@@ -311,13 +332,6 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
     systemMessage = thread.nextSystemMessage || ''
     thread.nextSystemMessage = ''
   }
-
-  const date = new Date().toISOString()
-  systemMessage = systemMessage.replace(/\{date}/g, date)
-
-  // let typingSent = false
-
-  let messages = buildMessages(systemMessage, thread.messages);
 
   console.log(msg.text);
 
@@ -337,16 +351,9 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
   const isTools = chatTools.length > 0;
   const tools = isTools ? chatTools.map(f => f.module.call(chatConfig, thread, answerFunc).functions.toolSpecs).flat() : undefined;
 
-  // prompts from functions, should be after tools
-  const prompts = await Promise.all(
-    chatTools
-      .filter(f => typeof f.module.prompt_append === 'function')
-      .map(async f => await f.module.prompt_append(chatConfig))
-      .filter(f => !!f)
-  )
-  if (prompts.length) {
-    messages = [...messages, {role: 'system', content: prompts.join('\n\n')}]
-  }
+  const date = new Date().toISOString()
+  systemMessage = systemMessage.replace(/\{date}/g, date)
+  let messages = await buildMessages(systemMessage, thread.messages, chatTools);
 
   const res = await api.chat.completions.create({
     messages,
@@ -456,11 +463,11 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
   // async function onGptAnswer(msg: Message.TextMessage, res: OpenAI.ChatCompletionMessage) {
   async function onGptAnswer(msg: Message.TextMessage, res: OpenAI.ChatCompletion, level: number = 1): Promise<ToolResponse> {
     console.log(`onGptAnswer, level ${level}`)
-    const message = res.choices[0]?.message!
-    if (message.tool_calls?.length) {
+    const messageAgent = res.choices[0]?.message!
+    if (messageAgent.tool_calls?.length) {
       const dryRun = isTestUser(msg);
-      const tool_res = await callTools(message.tool_calls, dryRun);
-      const tool_call = message.tool_calls[0];
+      const tool_res = await callTools(messageAgent.tool_calls, dryRun);
+      const tool_call = messageAgent.tool_calls[0];
 
       if (tool_res) {
         const toolRes = tool_res[0] as ToolResponse; // TODO: several tool_res
@@ -470,12 +477,14 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
 
         console.log('');
 
-        messages = [...messages, message, {
+        const messageTool = {
           role: 'tool',
-          // content: `${tool_call.function.name}(): ${toolRes?.args?.command}:\n${toolRes.content}`,
           content: toolRes.content,
           tool_call_id: tool_call.id,
-        }];
+        } as OpenAI.ChatCompletionToolMessageParam
+
+        thread.messages.push(messageAgent, messageTool)
+        messages = await buildMessages(systemMessage, thread.messages, chatTools);
 
         const isNoTool = level > 6 || !tools?.length;
 
@@ -489,16 +498,12 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
         });
 
         return await onGptAnswer(msg, res, level + 1);
-        // forgetHistory(msg.chat.id);
-        //
-        // const message = res.choices[0]?.message?.content!
-        // return {content: message};
       }
     }
 
     const answer = res.choices[0]?.message.content || ''
     addToHistory({msg, answer, systemMessage});
-    forgetHistory(msg.chat.id)
+    forgetHistory(msg.chat.id); // TODO: smarter forget
     return {content: answer}
   }
 
@@ -773,7 +778,8 @@ async function answerToMessage(ctx: Context & {
         extraParams.reply_markup = {keyboard: buttonRows, resize_keyboard: true}
       }
 
-      void await sendTelegramMessage(msg.chat.id, text, extraParams)
+      const msgSent = await sendTelegramMessage(msg.chat.id, text, extraParams)
+      if (msgSent?.chat.id) threads[msgSent.chat.id].msgs.push(msgSent)
     }) // all done, stops sending typing
   } catch (e) {
     const error = e as { message: string }
