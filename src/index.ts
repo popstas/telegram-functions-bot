@@ -21,6 +21,7 @@ import {OAuth2Client} from "google-auth-library/build/src/auth/oauth2client";
 import {Credentials} from "google-auth-library/build/src/auth/credentials";
 import {GaxiosError} from "gaxios";
 import {ensureAuth, saveUserGoogleCreds} from "./helpers/googleCreds.ts";
+import {GoogleAuth} from "google-auth-library";
 
 const threads = {} as { [key: number]: ThreadStateType }
 
@@ -103,15 +104,18 @@ async function start() {
       }
 
       const oauth2Client = await ensureAuth(msg.from?.id || 0, ctx);
-      if (!oauth2Client.credentials?.access_token) {
-        const authUrl = oauth2Client.generateAuthUrl({
+
+      // login with link
+      const c = oauth2Client as OAuth2Client;
+      if (c.credentials && !c.credentials?.access_token) {
+        const authUrl = c.generateAuthUrl({
           access_type: 'offline',
           scope: ['https://www.googleapis.com/auth/spreadsheets.readonly']
         });
 
         await ctx.telegram.sendMessage(ctx?.chat?.id, `Please authenticate with Google: ${authUrl}`);
 
-        createAuthServer(oauth2Client, msg);
+        createAuthServer(c, msg);
         return
       }
 
@@ -161,7 +165,7 @@ async function start() {
 
 // load/save data/creds.json, key is msg.from.id
 
-function addOauthToThread(oauth2Client: OAuth2Client, threads: {
+function addOauthToThread(oauth2Client: OAuth2Client | GoogleAuth, threads: {
   [key: number]: ThreadStateType
 }, msg: Message.TextMessage) {
   const key = msg.chat?.id
