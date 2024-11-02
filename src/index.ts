@@ -223,7 +223,7 @@ function createAuthServer(oauth2Client: OAuth2Client, msg: Message.TextMessage) 
 }
 
 function getChatConfig(ctxChat: Chat) {
-  let chat = config.chats.find(c => c.id == ctxChat?.id || 0) || {} as ConfigChatType
+  let chat = config.chats.find(c => c.id == ctxChat?.id || c.ids?.includes(ctxChat?.id) || 0) || {} as ConfigChatType
   if (!chat.id) {
     // console.log("ctxChat:", ctxChat);
     if (ctxChat?.type !== 'private') {
