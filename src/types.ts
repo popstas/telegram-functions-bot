@@ -92,6 +92,11 @@ export type PlanfixConfigType = {
   templateId: number
 }
 
+export type ChatToolType = {
+  name: string
+  module: any
+}
+
 export interface ToolResponse {
   content: string
   args?: {
