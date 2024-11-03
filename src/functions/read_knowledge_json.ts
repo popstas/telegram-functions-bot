@@ -37,9 +37,11 @@ export class KnowledgeJsonClient extends AIFunctionsProvider {
   }
 
   async read_json() {
-    const jsonPath = this?.configChat?.toolParams?.read_knowledge_json?.jsonPath;
-    const jsonUrl = this?.configChat?.toolParams?.read_knowledge_json?.jsonUrl;
-    const cacheTime = this?.configChat?.toolParams?.read_knowledge_json?.cacheTime || 3600;
+    const opts = this?.configChat?.toolParams?.knowledge_json;
+    if (!opts) return;
+    const jsonPath = opts.jsonPath;
+    const jsonUrl = opts.jsonUrl;
+    const cacheTime = opts.cacheTime || 3600;
     if (!jsonPath && !jsonUrl) return;
 
     const path = jsonPath || jsonUrl;
@@ -71,8 +73,10 @@ export class KnowledgeJsonClient extends AIFunctionsProvider {
 
     const data = await this.read_json();
     if (!data) return { content: 'No data available' };
-    const titleCol = this.configChat.toolParams?.read_knowledge_json?.titleCol || 'title';
-    const textCol = this.configChat.toolParams?.read_knowledge_json?.textCol || 'text';
+    const opts = this?.configChat?.toolParams?.knowledge_json;
+    if (!opts) return { content: 'No config' };
+    const titleCol = opts.titleCol || 'title';
+    const textCol = opts.textCol || 'text';
     const found = data?.find((row: any) => row[titleCol] === title);
     const content = found ? found[textCol] : `No answer found for ${title}`;
     return { content };
@@ -88,7 +92,7 @@ export class KnowledgeJsonClient extends AIFunctionsProvider {
 export async function prompt_append(): Promise<string | undefined> {
   if (!client) return '';
   const data = await client.read_json();
-  const titleCol = client.configChat.toolParams?.read_knowledge_json?.titleCol || 'title';
+  const titleCol = client.configChat.toolParams?.knowledge_json?.titleCol || 'title';
   const titles = data?.map((row: any) => row[titleCol]);
   if (titles) return '## JSON Knowledge base titles:\n' + titles.map((f: string) => `- ${f}`).join('\n');
 }
