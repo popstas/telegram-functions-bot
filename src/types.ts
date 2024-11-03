@@ -114,4 +114,11 @@ export type FunctionsConfigType = {
     titleCol: string
     textCol: string
   }
+  knowledge_json?: {
+    jsonPath: string
+    jsonUrl: string
+    titleCol: string
+    textCol: string
+    cacheTime: number
+  }
 }
