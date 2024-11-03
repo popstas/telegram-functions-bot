@@ -29,7 +29,7 @@ export class PowershellCommandClient extends AIFunctionsProvider {
   }
 
   @aiFunction({
-    name: 'powershell_command',
+    name: 'powershell',
     description,
     inputSchema: z.object({
       command: z
@@ -39,19 +39,18 @@ export class PowershellCommandClient extends AIFunctionsProvider {
         ),
     })
   })
-  async powershellCommand(options: ToolArgsType) {
+  async powershell(options: ToolArgsType) {
     const cmd = options.command;
 
     console.log('cmd:', cmd);
 
     const cmdStr = `powershell -Command "${cmd}"`;
-    const args = {command: cmd};
     const res = await new Promise((resolve, reject) => {
       exec(cmdStr, (error, stdout, stderr) => {
         if (error) {
           console.error(`error: ${error.message}`);
           if (error.code) {
-            resolve({content: `Exit code: ${error.code}`, args});
+            resolve({content: `Exit code: ${error.code}`});
           } else {
             reject(error.message);
           }
@@ -61,18 +60,24 @@ export class PowershellCommandClient extends AIFunctionsProvider {
           reject(stderr);
         }
         if (!stdout) {
-          resolve({content: 'Exit code: 0', args});
+          resolve({content: 'Exit code: 0'});
           return
         } else {
-          resolve({content: '```\n' + stdout + '\n```', args});
+          resolve({content: '```\n' + stdout + '\n```'});
         }
       });
     });
     return res as ToolResponse
   }
+
+  options_string(str: string) {
+    const {command} = JSON.parse(str) as ToolArgsType;
+    if (!command) return str
+    return `\`Powershell:\`\n\`\`\`powershell\n${command}\n\`\`\``
+  }
 }
 
-export function call(configChat: ConfigChatType, thread: ThreadStateType, answerFunc: Function) {
+export function call(configChat: ConfigChatType, thread: ThreadStateType) {
   if (!client) client = new PowershellCommandClient();
   return client
 }

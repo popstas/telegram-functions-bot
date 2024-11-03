@@ -8,7 +8,7 @@ import {ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from "../type
 import vm from 'vm';
 
 type ToolArgsType = {
-  command: string
+  code: string
 }
 
 let client: JavascriptInterpreterClient | undefined
@@ -18,19 +18,17 @@ export const details = ``
 
 export class JavascriptInterpreterClient extends AIFunctionsProvider {
   protected readonly config: ConfigType
-  public readonly answerFunc: Function;
 
-  constructor(answerFunc: Function) {
+  constructor() {
     super()
     this.config = readConfig();
-    this.answerFunc = answerFunc;
   }
 
   @aiFunction({
     name: 'javascript_interpreter',
     description,
     inputSchema: z.object({
-      command: z
+      code: z
         .string()
         .describe(
           'Javascript code'
@@ -38,11 +36,9 @@ export class JavascriptInterpreterClient extends AIFunctionsProvider {
     })
   })
   async javascript_interpreter(options: ToolArgsType) {
-    const code = options.command;
+    const code = options.code;
 
     console.log('code:', code);
-
-    void this.answerFunc(`\`\`\`javascript\n${code}\n\`\`\``);
 
     // Create a new context for the script to run in
     const context = vm.createContext({});
@@ -62,21 +58,20 @@ export class JavascriptInterpreterClient extends AIFunctionsProvider {
 
   // version with exec
   /*async javascript_interpreter(options: ToolArgsType) {
-    const code = options.command;
+    const code = options.code;
 
     console.log('code:', code);
 
     const tempFile = tmp.fileSync({mode: 0o755, prefix: 'javacript_interpreter-', postfix: '.js'});
     writeFileSync(tempFile.name, code);
     const cmdStr = `node -e "console.log(require('${tempFile.name}'))"`;
-    const args = {command: options.command};
     const res = await new Promise((resolve, reject) => {
       exec(cmdStr, (error, stdout, stderr) => {
         tempFile.removeCallback();
         if (error) {
           console.error(`error: ${error.message}`);
           if (error.code) {
-            resolve({content: `Exit code: ${error.code}`, args});
+            resolve({content: `Exit code: ${error.code}`});
           } else {
             reject(error.message);
           }
@@ -86,19 +81,25 @@ export class JavascriptInterpreterClient extends AIFunctionsProvider {
           reject(stderr);
         }
         if (!stdout) {
-          resolve({content: 'Exit code: 0', args});
+          resolve({content: 'Exit code: 0'});
           return
         } else {
-          resolve({content: '```\n' + stdout + '\n```', args});
+          resolve({content: '```\n' + stdout + '\n```'});
         }
       });
     });
 
     return res as ToolResponse
   }*/
+
+  options_string(str: string) {
+    const {code} = JSON.parse(str) as ToolArgsType;
+    if (!code) return str
+    return `\`Javascript:\`\n\`\`\`js\n${code}\n\`\`\``
+  }
 }
 
-export function call(configChat: ConfigChatType, thread: ThreadStateType, answerFunc: Function) {
-  if (!client) client = new JavascriptInterpreterClient(answerFunc);
+export function call(configChat: ConfigChatType, thread: ThreadStateType) {
+  if (!client) client = new JavascriptInterpreterClient();
   return client
 }

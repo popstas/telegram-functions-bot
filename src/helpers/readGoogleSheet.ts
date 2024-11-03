@@ -1,7 +1,7 @@
 import {google} from "googleapis";
-import {OAuth2Client} from 'google-auth-library';
+import {GoogleAuth, OAuth2Client} from 'google-auth-library';
 
-export default async function readGoogleSheet(sheetId: string, auth: OAuth2Client): Promise<Object[]> {
+export default async function readGoogleSheet(sheetId: string, auth: OAuth2Client | GoogleAuth): Promise<Object[]> {
   const sheets = google.sheets({version: 'v4', auth});
   const firstSheet = await sheets.spreadsheets.get({spreadsheetId: sheetId});
   const response = await sheets.spreadsheets.values.get({

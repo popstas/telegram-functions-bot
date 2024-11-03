@@ -32,17 +32,23 @@ export class GoogleSheetClient extends AIFunctionsProvider {
     }),
   })
   async read_google_sheet({sheetId}: ToolArgsType): Promise<ToolResponse> {
-    if (!this.oauth2Client?.credentials?.access_token) {
+    const data = await readGoogleSheet(sheetId, this.oauth2Client);
+    // if (!this.oauth2Client?.credentials?.access_token || !this.oauth2Client?.jsonContent) {
+    if (!data) {
       return {content: 'No access token, auth with /google_auth'};
     }
 
-    const data = await readGoogleSheet(sheetId, this.oauth2Client);
+    return {content: '```json\n' + JSON.stringify(data) + '\n```'};
+  }
 
-    return {content: JSON.stringify(data)};
+  options_string(str: string) {
+    const {sheetId} = JSON.parse(str) as ToolArgsType;
+    if (!sheetId) return str
+    return `Read Google sheet: https://docs.google.com/spreadsheets/d/${sheetId}`
   }
 }
 
-export function call(configChat: ConfigChatType, thread: ThreadStateType, answerFunc: Function) {
+export function call(configChat: ConfigChatType, thread: ThreadStateType) {
   const oauth2Client = thread?.oauth2Client as OAuth2Client;
   if (!client) client = new GoogleSheetClient(oauth2Client);
   return client;

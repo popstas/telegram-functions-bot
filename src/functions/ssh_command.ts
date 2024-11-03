@@ -45,13 +45,12 @@ export class SshCommandClient extends AIFunctionsProvider {
         ),
     })
   })
-  async sshCommand(options: ToolArgsType) {
+  async ssh_command(options: ToolArgsType) {
     const cmd = options.command;
 
     console.log('cmd:', cmd);
 
-    const host = this.configChat.toolParams?.ssh_command?.host || 'localhost'
-    const user = this.configChat.toolParams?.ssh_command?.user || 'root'
+    const {user, host} = this.getUserHost();
 
     const tempFile = tmp.fileSync({mode: 0o755, prefix: 'ssh_command-', postfix: '.sh'});
     writeFileSync(tempFile.name, cmd);
@@ -60,7 +59,6 @@ export class SshCommandClient extends AIFunctionsProvider {
     const scpCmd = `scp ${tempFile.name} ${user}@${host}:/tmp/${destFilename}`;
     const sshCmd = `ssh ${user}@${host} "bash /tmp/${destFilename}"`;
 
-    const args = {command: cmd};
     const res = await new Promise((resolve, reject) => {
       exec(scpCmd, (scpError) => {
         if (scpError) {
@@ -74,7 +72,6 @@ export class SshCommandClient extends AIFunctionsProvider {
               if (sshError.code) {
                 resolve({
                   content: `Exit code: ${sshError.code}` + '\n```\n' + `${stdout}\n${sshError.message}` + '\n```',
-                  args
                 });
               } else {
                 reject(sshError.message);
@@ -82,16 +79,16 @@ export class SshCommandClient extends AIFunctionsProvider {
               return
             }
             if (stderr) {
-              resolve({content: '```\n' + `${stdout}\n${stderr}` + '\n```', args});
+              resolve({content: '```\n' + `${stdout}\n${stderr}` + '\n```'});
               // console.error(`stderr: ${stderr}`);
               // reject(stderr);
               return
             }
             if (!stdout) {
-              resolve({content: 'Exit code: 0', args});
+              resolve({content: 'Exit code: 0'});
               return
             } else {
-              resolve({content: '```\n' + stdout + '\n```', args});
+              resolve({content: '```\n' + stdout + '\n```'});
             }
           });
         }
@@ -99,9 +96,22 @@ export class SshCommandClient extends AIFunctionsProvider {
     });
     return res as ToolResponse
   }
+
+  getUserHost() {
+    const host = this.configChat.toolParams?.ssh_command?.host || 'localhost'
+    const user = this.configChat.toolParams?.ssh_command?.user || 'root'
+    return {user, host}
+  }
+
+  options_string(str: string) {
+    const {command} = JSON.parse(str) as ToolArgsType;
+    if (!command) return str
+    const {user, host} = this.getUserHost();
+    return `\`ssh ${user}@${host}:\`\n\`\`\`sh\n${command}\n\`\`\``
+  }
 }
 
-export function call(configChat: ConfigChatType, thread: ThreadStateType, answerFunc: Function) {
+export function call(configChat: ConfigChatType, thread: ThreadStateType) {
   if (!client) client = new SshCommandClient(configChat);
   return client
 }

@@ -14,10 +14,13 @@ export function splitBigMessage(text: string) {
   for (const line of text.split('\n')) {
     if (msg.length + line.length > sizeLimit) {
       // console.log("split msg:", msg);
-      msgs.push(msg)
+      if (msg.trim()) msgs.push(msg)
       msg = ''
     }
     msg += line + '\n'
+  }
+  if (msg.length > sizeLimit) {
+    msg = msg.slice(0, sizeLimit)
   }
   msgs.push(msg)
   return msgs
@@ -42,6 +45,7 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
         response = await bot.telegram.sendMessage(chat_id, msg, params)
       } catch (e) {
         // const err = e as { message: string }
+        console.log('failover sendTelegramMessage without markdown')
         const failsafeParams = {reply_markup: params.reply_markup}
         response = await bot.telegram.sendMessage(chat_id, msg, failsafeParams)
         // await bot.telegram.sendMessage(chat_id, `${err.message}`, params)

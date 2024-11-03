@@ -83,11 +83,16 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
   toolCalls = groupToolCalls(toolCalls)
   const toolPromises = toolCalls.map(async (toolCall) => {
     const chatTool = chatTools.find(f => f.name === toolCall.function.name)
-    if (!chatTool) return;
+    if (!chatTool) return {content: `Tool not found: ${toolCall.function.name}`};
 
     const tool = chatTool.module.call(chatConfig).functions.get(toolCall.function.name)
-    if (!tool) return
+    if (!tool) return {content: `Tool not found! ${toolCall.function.name}`};
     let toolParams = toolCall.function.arguments
+    const toolClient = chatTool.module.call();
+    let toolParamsStr = toolCall.function.name + '()`:\n```\n' + toolParams + '\n```'
+    if (typeof toolClient.options_string === 'function') {
+      toolParamsStr = toolClient.options_string(toolParams)
+    }
 
     // Check for 'confirm' or 'noconfirm' in the message to set confirmation
     if (msg.text.includes('noconfirm')) {
@@ -96,24 +101,23 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
       chatConfig.chatParams.confirmation = true;
     }
 
-    const params = JSON.parse(toolParams) // as ToolResponse
-    if (toolParams && !chatConfig.chatParams?.confirmation && !chatTool.module.call().answerFunc) {
+    if (toolParams && !chatConfig.chatParams?.confirmation) {
       // send message with tool call params
-      void await sendTelegramMessage(msg.chat.id, '`' + toolCall.function.name + '()`:\n```\n' + toolParams + '\n```', {
+      void await sendTelegramMessage(msg.chat.id, toolParamsStr, {
         parse_mode: 'MarkdownV2',
         deleteAfter: chatConfig.chatParams?.deleteToolAnswers
       });
     }
 
+    // Execute the tool without confirmation
     if (!chatConfig.chatParams?.confirmation) {
-      // Execute the tool without confirmation
       return await tool(toolParams) as ToolResponse
     }
 
+    // or send confirmation message with Yes/No buttons
     return new Promise(async (resolve) => {
-      // Send confirmation message with Yes/No buttons
       const uniqueId = Date.now().toString();
-      await sendTelegramMessage(msg.chat.id, '`' + toolCall.function.name + '()`:\n```\n' + params.command + '\n```\nDo you want to proceed?', {
+      await sendTelegramMessage(msg.chat.id, `${toolParamsStr}\nDo you want to proceed?`, {
         parse_mode: 'MarkdownV2',
         reply_markup: {
           inline_keyboard: [
@@ -128,13 +132,11 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
       // Handle the callback query
       bot.action(`confirm_tool_${uniqueId}`, async () => {
         const res = await tool(toolParams); // Execute the tool
-        resolve(res);
-        return;
+        return resolve(res);
       });
       bot.action(`cancel_tool_${uniqueId}`, async () => {
         await sendTelegramMessage(msg.chat.id, 'Tool execution canceled.');
-        resolve({content: 'Tool execution canceled.'});
-        return;
+        return resolve({content: 'Tool execution canceled.'});
       });
     });
   })

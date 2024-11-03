@@ -6,7 +6,7 @@ import {readConfig} from "../config.ts";
 import * as path from 'path';
 
 type ToolArgsType = {
-  command: string
+  markdown: string
   // file_path: string
 }
 
@@ -24,7 +24,7 @@ export class ObsidianWriteClient extends AIFunctionsProvider {
 
   @aiFunction({
     name: 'obsidian_write',
-    description: 'Append "command" text to file',
+    description: 'Append "markdown" text to file',
     inputSchema: z.object({
       // file_path: z
       //   .string()
@@ -32,7 +32,7 @@ export class ObsidianWriteClient extends AIFunctionsProvider {
       //   .describe(
       //     'File to append, path from Obsidian project'
       //   ),
-      command: z
+      markdown: z
         .string()
         .describe(
           'Text to append to the markdown file'
@@ -42,9 +42,8 @@ export class ObsidianWriteClient extends AIFunctionsProvider {
   })
   obsidian_write(options: ToolArgsType): ToolResponse {
     const root_path = this.configChat.toolParams?.obsidian?.root_path;
-    const args = {command: options.command};
     if (!root_path) {
-      return {content: 'No root_path in config', args} as ToolResponse;
+      return {content: 'No root_path in config'} as ToolResponse;
     }
 
     let out_file = this.configChat.toolParams?.obsidian?.out_file || 'gpt.md';
@@ -53,12 +52,18 @@ export class ObsidianWriteClient extends AIFunctionsProvider {
     }
 
     const out_path = `${root_path}/${out_file}`;
-    fs.appendFileSync(out_path, options.command + '\n');
-    return {content: `Appended to ${out_file}`, args} as ToolResponse;
+    fs.appendFileSync(out_path, options.markdown + '\n');
+    return {content: `Appended to ${out_file}`} as ToolResponse;
+  }
+
+  options_string(str: string) {
+    const {markdown} = JSON.parse(str) as ToolArgsType;
+    if (!markdown) return str
+    return `**Write to Obsidian:**\`\n\`\`\`md\n${markdown.replace(/```/g, '\\```')}\n\`\`\``
   }
 }
 
-export function call(configChat: ConfigChatType, thread: ThreadStateType, answerFunc: Function) {
+export function call(configChat: ConfigChatType, thread: ThreadStateType) {
   if (!client) client = new ObsidianWriteClient(configChat);
   return client;
 }

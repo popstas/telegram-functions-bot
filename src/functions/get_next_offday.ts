@@ -55,9 +55,15 @@ export class NextOffdayClient extends AIFunctionsProvider {
 
     return {content} as ToolResponse
   }
+
+  options_string(str: string) {
+    const {startOffDate, currentDate} = JSON.parse(str) as ToolArgsType;
+    if (!startOffDate || !currentDate) return str
+    return `\`get_next_offday(${startOffDate}, ${currentDate})\``
+  }
 }
 
-export function call(configChat: ConfigChatType, thread: ThreadStateType, answerFunc: Function) {
+export function call(configChat: ConfigChatType, thread: ThreadStateType) {
   if (!client) client = new NextOffdayClient();
   return client
 }

@@ -104,9 +104,6 @@ export type ChatToolType = {
 
 export interface ToolResponse {
   content: string
-  args?: {
-    command?: string
-  }
 }
 
 export type FunctionsConfigType = {

@@ -103,7 +103,7 @@ async function initCommands(bot: Telegraf) {
   bot.command('info', async ctx => {
     const {msg, chat}: { msg?: Message.TextMessage, chat?: ConfigChatType } = getCtxChatMsg(ctx);
     if (!chat || !msg) return;
-    const answer = getInfoMessage(chat)
+    const answer = getInfoMessage(msg, chat)
     return sendTelegramMessage(ctx.chat.id, answer)
   })
 
@@ -129,14 +129,24 @@ async function initCommands(bot: Telegraf) {
   ])
 }
 
-function getInfoMessage(chat: ConfigChatType) {
+function getInfoMessage(msg: Message.TextMessage, chat: ConfigChatType) {
   const systemMessage = getSystemMessage(chat)
   const tokens = getTokensCount(systemMessage)
-  return [
+
+  const lines = [
     `System: ${systemMessage.trim()}`,
     `Tokens: ${tokens}`,
     `Model: ${chat.completionParams.model}`
-  ].join('\n\n')
+  ]
+  if (msg.chat.type === 'private') {
+    lines.push(`Настройки приватного режима можно менять:
+- Отключать автоудаление сообщений от функций
+- Подтверждение на выполнение функций
+- Память (когда бот забывает историю сообщений после первого ответа)
+
+Бот понимает эти команды в произвольном виде.`)
+  }
+  return lines.join('\n\n')
 }
 
 async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChatType) {
@@ -166,9 +176,11 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
       const toolCall = (messageAgent as {
         tool_calls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]
       }).tool_calls[i];
-      console.log(toolRes.content);
+      console.log(`tool result:`, toolRes?.content);
       const params = {parse_mode: 'MarkdownV2', deleteAfter: chatConfig.chatParams?.deleteToolAnswers};
-      void sendTelegramMessage(msg.chat.id, toolRes.content, params);
+      const toolResMessageLimit = 8000;
+      const msgContentLimited = toolRes.content.length > toolResMessageLimit ? toolRes.content.slice(0, toolResMessageLimit) + '...' : toolRes.content;
+      void sendTelegramMessage(msg.chat.id, msgContentLimited, params);
 
       console.log('');
 
@@ -215,16 +227,8 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
     chatConfig.functions.map(f => globalTools.find(g => g.name === f) as ChatToolType).filter(Boolean) :
     []
 
-  const answerFunc = async (text: string, extraMessageParams: any) => {
-    const extraParams: any = {
-      ...extraMessageParams,
-      ...{parse_mode: 'MarkdownV2', deleteAfter: chatConfig.chatParams?.deleteToolAnswers}
-    }
-    await sendTelegramMessage(msg.chat.id, text, extraParams)
-  }
-
   const isTools = chatTools.length > 0;
-  const tools = isTools ? chatTools.map(f => f.module.call(chatConfig, thread, answerFunc).functions.toolSpecs).flat() : undefined;
+  const tools = isTools ? chatTools.map(f => f.module.call(chatConfig, thread).functions.toolSpecs).flat() : undefined;
 
   const date = new Date().toISOString()
   systemMessage = systemMessage.replace(/\{date}/g, date)

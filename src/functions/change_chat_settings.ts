@@ -1,7 +1,14 @@
 import { aiFunction, AIFunctionsProvider } from '@agentic/core';
 import { z } from 'zod';
 import { readConfig, writeConfig } from '../config';
-import { ConfigChatType, ConfigType, ChatSettingsType, ToolResponse } from '../types';
+import {
+  ConfigChatType,
+  ConfigType,
+  ChatSettingsType,
+  ToolResponse,
+  FunctionsConfigType,
+  ThreadStateType
+} from '../types';
 
 type ToolArgsType = {
   settings: ChatSettingsType;
@@ -11,13 +18,11 @@ let client: ChangeChatSettingsClient | undefined;
 
 export class ChangeChatSettingsClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;
-  public readonly answerFunc: Function;
   public readonly configChat: ConfigChatType;
 
-  constructor(configChat: ConfigChatType, answerFunc: Function) {
+  constructor(configChat: ConfigChatType) {
     super();
     this.config = readConfig();
-    this.answerFunc = answerFunc;
     this.configChat = configChat;
   }
 
@@ -42,11 +47,12 @@ export class ChangeChatSettingsClient extends AIFunctionsProvider {
         name: `Private ${this.configChat.username}`,
         username: this.configChat.username,
         completionParams: config.completionParams,
-        toolParams: {},
+        toolParams: {} as FunctionsConfigType,
         chatParams: settings,
       };
       config.chats.push(newChatConfig);
     } else {
+      if (!chatConfig.chatParams) chatConfig.chatParams = {};
       Object.assign(chatConfig.chatParams, settings);
     }
 
@@ -54,9 +60,16 @@ export class ChangeChatSettingsClient extends AIFunctionsProvider {
 
     return { content: 'Chat settings updated successfully' } as ToolResponse;
   }
+
+  options_string(str: string) {
+    const {settings} = JSON.parse(str) as ToolArgsType;
+    if (!settings) return str
+    const settingsStr = Object.entries(settings).map(([key, value]) => `${key}: ${value}`).join(', ');
+    return `**Change settings:** \`${settingsStr}\``
+  }
 }
 
-export function call(configChat: ConfigChatType, thread: ThreadStateType, answerFunc: Function) {
-  if (!client) client = new ChangeChatSettingsClient(configChat, answerFunc);
+export function call(configChat: ConfigChatType, thread: ThreadStateType) {
+  if (!client) client = new ChangeChatSettingsClient(configChat);
   return client;
 }
