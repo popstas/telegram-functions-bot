@@ -1,0 +1,99 @@
+import { aiFunction, AIFunctionsProvider } from '@agentic/core';
+import { z } from 'zod';
+import { ConfigChatType, ConfigType, ThreadStateType, ToolResponse } from '../types';
+import { readConfig } from '../config';
+import { readFileSync } from 'fs';
+
+type ToolArgsType = {
+  title: string;
+};
+
+let client: KnowledgeJsonClient | undefined;
+let cache: { [path: string]: { data: Object[]; expiry: number } } = {};
+
+function getCache(path: string) {
+  const cached = cache[path];
+  if (cached && cached.expiry > Date.now()) {
+    return cached.data;
+  }
+  return null;
+}
+
+function setCache(path: string, data: Object[], cacheTime: number) {
+  cache[path] = {
+    data,
+    expiry: Date.now() + cacheTime * 1000,
+  };
+}
+
+export class KnowledgeJsonClient extends AIFunctionsProvider {
+  protected readonly config: ConfigType;
+  public readonly configChat: ConfigChatType;
+
+  constructor(configChat: ConfigChatType) {
+    super();
+    this.config = readConfig();
+    this.configChat = configChat;
+  }
+
+  async read_json() {
+    const jsonPath = this?.configChat?.toolParams?.read_knowledge_json?.jsonPath;
+    const jsonUrl = this?.configChat?.toolParams?.read_knowledge_json?.jsonUrl;
+    const cacheTime = this?.configChat?.toolParams?.read_knowledge_json?.cacheTime || 3600;
+    if (!jsonPath && !jsonUrl) return;
+
+    const path = jsonPath || jsonUrl;
+    const cachedData = getCache(path);
+    if (cachedData) return cachedData;
+
+    let data;
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      const response = await fetch(path);
+      data = await response.json();
+    } else {
+      const fileContent = readFileSync(path, 'utf-8');
+      data = JSON.parse(fileContent);
+    }
+
+    setCache(path, data, cacheTime);
+    return data;
+  }
+
+  @aiFunction({
+    name: 'read_knowledge_json',
+    description: 'Read the contents of a JSON file from a URL or local file',
+    inputSchema: z.object({
+      title: z.string().describe('Title of the question'),
+    }),
+  })
+  async read_knowledge_json(options: ToolArgsType): Promise<ToolResponse> {
+    const title = options.title;
+
+    const data = await this.read_json();
+    if (!data) return { content: 'No data available' };
+    const titleCol = this.configChat.toolParams?.read_knowledge_json?.titleCol || 'title';
+    const textCol = this.configChat.toolParams?.read_knowledge_json?.textCol || 'text';
+    const found = data?.find((row: any) => row[titleCol] === title);
+    const content = found ? found[textCol] : `No answer found for ${title}`;
+    return { content };
+  }
+
+  options_string(str: string) {
+    const { title } = JSON.parse(str) as ToolArgsType;
+    if (!title) return str;
+    return `**JSON data:** \`${title}\``;
+  }
+}
+
+export async function prompt_append(): Promise<string | undefined> {
+  if (!client) return '';
+  const data = await client.read_json();
+  const titleCol = client.configChat.toolParams?.read_knowledge_json?.titleCol || 'title';
+  const titles = data?.map((row: any) => row[titleCol]);
+  if (titles) return '## JSON Knowledge base titles:\n' + titles.map((f: string) => `- ${f}`).join('\n');
+}
+
+export function call(configChat: ConfigChatType, thread: ThreadStateType) {
+  if (!client) client = new KnowledgeJsonClient(configChat);
+  return client;
+}

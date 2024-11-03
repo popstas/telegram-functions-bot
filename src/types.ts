@@ -114,4 +114,9 @@ export type FunctionsConfigType = {
     titleCol: string
     textCol: string
   }
+  read_knowledge_json?: {
+    jsonPath: string
+    jsonUrl: string
+    cacheTime: number
+  }
 }
