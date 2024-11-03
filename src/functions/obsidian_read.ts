@@ -11,8 +11,6 @@ type ToolArgsType = {
   file_path: string
 }
 
-let client: ObsidianReadClient | undefined;
-
 export class ObsidianReadClient extends AIFunctionsProvider {
   protected readonly config: ConfigType
   public readonly configChat: ConfigChatType
@@ -62,7 +60,6 @@ export class ObsidianReadClient extends AIFunctionsProvider {
 }
 
 export async function prompt_append(): Promise<string> {
-  if (!client) return "";
   const root_path = client.configChat.toolParams?.obsidian?.root_path || '.';
   const files = await new Promise((resolve, reject) => {
     recursiveReaddir(root_path, (err: string, files: string[]) => {
@@ -79,6 +76,5 @@ export async function prompt_append(): Promise<string> {
 }
 
 export function call(configChat: ConfigChatType, thread: ThreadStateType) {
-  if (!client) client = new ObsidianReadClient(configChat);
-  return client;
+  return new ObsidianReadClient(configChat);
 }

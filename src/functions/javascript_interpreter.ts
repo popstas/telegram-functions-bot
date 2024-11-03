@@ -11,8 +11,6 @@ type ToolArgsType = {
   code: string
 }
 
-let client: JavascriptInterpreterClient | undefined
-
 export const description = 'Useful for running JavaScript code in sandbox. Input is a string of JavaScript code, output is the result of the code.'
 export const details = ``
 
@@ -100,6 +98,5 @@ export class JavascriptInterpreterClient extends AIFunctionsProvider {
 }
 
 export function call(configChat: ConfigChatType, thread: ThreadStateType) {
-  if (!client) client = new JavascriptInterpreterClient();
-  return client
+  return new JavascriptInterpreterClient();
 }

@@ -8,7 +8,6 @@ type ToolArgsType = {
   title: string;
 };
 
-let client: KnowledgeJsonClient | undefined;
 let cache: { [path: string]: { data: Object[]; expiry: number } } = {};
 
 function getCache(path: string) {
@@ -89,8 +88,8 @@ export class KnowledgeJsonClient extends AIFunctionsProvider {
   }
 }
 
-export async function prompt_append(): Promise<string | undefined> {
-  if (!client) return '';
+export async function prompt_append(configChat: ConfigChatType, thread: ThreadStateType): Promise<string | undefined> {
+  const client = new KnowledgeJsonClient(configChat);
   const data = await client.read_json();
   const titleCol = client.configChat.toolParams?.knowledge_json?.titleCol || 'title';
   const titles = data?.map((row: any) => row[titleCol]);
@@ -98,6 +97,5 @@ export async function prompt_append(): Promise<string | undefined> {
 }
 
 export function call(configChat: ConfigChatType, thread: ThreadStateType) {
-  if (!client) client = new KnowledgeJsonClient(configChat);
-  return client;
+  return new KnowledgeJsonClient(configChat);
 }

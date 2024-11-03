@@ -14,8 +14,6 @@ type ToolArgsType = {
   settings: ChatSettingsType;
 };
 
-let client: ChangeChatSettingsClient | undefined;
-
 export class ChangeChatSettingsClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;
   public readonly configChat: ConfigChatType;
@@ -70,6 +68,5 @@ export class ChangeChatSettingsClient extends AIFunctionsProvider {
 }
 
 export function call(configChat: ConfigChatType, thread: ThreadStateType) {
-  if (!client) client = new ChangeChatSettingsClient(configChat);
-  return client;
+  return new ChangeChatSettingsClient(configChat);
 }

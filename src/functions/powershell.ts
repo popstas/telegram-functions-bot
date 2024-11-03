@@ -11,8 +11,6 @@ type ToolArgsType = {
   command: string
 }
 
-let client: PowershellCommandClient | undefined
-
 export const description = 'PowerShell config.powershell.user shell, host from config.powershell.host'
 export const details = `- convert question to command
 - exec PowerShell from your machine, with your user PowerShell access
@@ -78,6 +76,5 @@ export class PowershellCommandClient extends AIFunctionsProvider {
 }
 
 export function call(configChat: ConfigChatType, thread: ThreadStateType) {
-  if (!client) client = new PowershellCommandClient();
-  return client
+  return new PowershellCommandClient();
 }

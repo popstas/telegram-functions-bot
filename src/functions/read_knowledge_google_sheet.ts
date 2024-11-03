@@ -9,7 +9,6 @@ type ToolArgsType = {
   title: string
 }
 
-let client: KnowledgeGoogleSheetClient | undefined;
 let cache: { [sheetId: string]: Object[] } = {};
 
 function getCache(sheetId: string) {
@@ -78,8 +77,8 @@ export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
   }
 }
 
-export async function prompt_append(): Promise<string | undefined> {
-  if (!client) return "";
+export async function prompt_append(configChat: ConfigChatType, thread: ThreadStateType): Promise<string | undefined> {
+  const client = new KnowledgeGoogleSheetClient(configChat, thread.oauth2Client as OAuth2Client);
   const data = await client.read_sheet();
   const titleCol = client.configChat.toolParams?.knowledge_google_sheet.titleCol || 'title';
   const titles = data?.map((row: any) => row[titleCol]);
@@ -88,6 +87,5 @@ export async function prompt_append(): Promise<string | undefined> {
 
 export function call(configChat: ConfigChatType, thread: ThreadStateType) {
   const oauth2Client = thread?.oauth2Client as OAuth2Client;
-  if (!client) client = new KnowledgeGoogleSheetClient(configChat, oauth2Client);
-  return client;
+  return new KnowledgeGoogleSheetClient(configChat, oauth2Client);
 }

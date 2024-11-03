@@ -10,8 +10,6 @@ type ToolArgsType = {
   // file_path: string
 }
 
-let client: ObsidianWriteClient
-
 export class ObsidianWriteClient extends AIFunctionsProvider {
   protected readonly config: ConfigType
   protected readonly configChat: ConfigChatType
@@ -64,6 +62,5 @@ export class ObsidianWriteClient extends AIFunctionsProvider {
 }
 
 export function call(configChat: ConfigChatType, thread: ThreadStateType) {
-  if (!client) client = new ObsidianWriteClient(configChat);
-  return client;
+  return new ObsidianWriteClient(configChat);
 }

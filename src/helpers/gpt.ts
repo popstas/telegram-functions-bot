@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import {ChatToolType, ConfigChatType, ToolResponse} from "../types.ts";
-import {bot, config} from "../index.ts";
+import {bot, config, threads} from "../index.ts";
 import {getEncoding, TiktokenEncoding} from "js-tiktoken";
 import {sendTelegramMessage} from "./telegram.ts";
 import {Message} from "telegraf/types";
@@ -85,10 +85,11 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
     const chatTool = chatTools.find(f => f.name === toolCall.function.name)
     if (!chatTool) return {content: `Tool not found: ${toolCall.function.name}`};
 
-    const tool = chatTool.module.call(chatConfig).functions.get(toolCall.function.name)
+    const thread = threads[msg.chat.id || 0]
+    const tool = chatTool.module.call(chatConfig, thread).functions.get(toolCall.function.name)
     if (!tool) return {content: `Tool not found! ${toolCall.function.name}`};
     let toolParams = toolCall.function.arguments
-    const toolClient = chatTool.module.call();
+    const toolClient = chatTool.module.call(chatConfig, thread);
     let toolParamsStr = toolCall.function.name + '()`:\n```\n' + toolParams + '\n```'
     if (typeof toolClient.options_string === 'function') {
       toolParamsStr = toolClient.options_string(toolParams)

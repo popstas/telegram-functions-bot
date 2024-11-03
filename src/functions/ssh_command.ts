@@ -15,8 +15,6 @@ type ToolArgsType = {
   command: string
 }
 
-let client: SshCommandClient
-
 export const description = 'SSH config.ssh_command.user shell, host from config.ssh_command.host, can run multiline scripts as command'
 export const details = `- convert question to command
 - exec ssh from your machine, with your user ssh access
@@ -112,6 +110,5 @@ export class SshCommandClient extends AIFunctionsProvider {
 }
 
 export function call(configChat: ConfigChatType, thread: ThreadStateType) {
-  if (!client) client = new SshCommandClient(configChat);
-  return client
+  return new SshCommandClient(configChat);
 }
