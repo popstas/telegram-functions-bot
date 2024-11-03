@@ -101,7 +101,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
       // send message with tool call params
       void await sendTelegramMessage(msg.chat.id, '`' + toolCall.function.name + '()`:\n```\n' + toolParams + '\n```', {
         parse_mode: 'MarkdownV2',
-        deleteAfterNext: true
+        deleteAfter: chatConfig.deleteToolAnswers
       });
     }
 

@@ -167,7 +167,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
         tool_calls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]
       }).tool_calls[i];
       console.log(toolRes.content);
-      const params = {parse_mode: 'MarkdownV2', deleteAfter: 10000};
+      const params = {parse_mode: 'MarkdownV2', deleteAfter: chatConfig.deleteToolAnswers};
       void sendTelegramMessage(msg.chat.id, toolRes.content, params);
 
       console.log('');
@@ -213,7 +213,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
   const answerFunc = async (text: string, extraMessageParams: any) => {
     const extraParams: any = {
       ...extraMessageParams,
-      ...{parse_mode: 'MarkdownV2', deleteAfter: 5000}
+      ...{parse_mode: 'MarkdownV2', deleteAfter: chatConfig.deleteToolAnswers}
     }
     await sendTelegramMessage(msg.chat.id, text, extraParams)
   }

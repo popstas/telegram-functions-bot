@@ -14,12 +14,14 @@ export type ConfigChatType = {
   forgetPrefix?: string
   systemMessage?: string
   completionParams: CompletionParamsType
-  debug?: boolean
-  memoryless?: boolean
   buttons?: ConfigChatButtonType[]
   functions?: string[]
   options?: FunctionsConfigType
-  confirmation: boolean
+
+  confirmation?: boolean
+  deleteToolAnswers?: boolean | number
+  debug?: boolean
+  memoryless?: boolean
 }
 
 export type CompletionParamsType = {

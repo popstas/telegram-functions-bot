@@ -50,9 +50,10 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
 
     // deleteAfter timeout
     if (params.deleteAfter) {
+      const deleteAfter = typeof params.deleteAfter === 'number' ? params.deleteAfter : 10000;
       if (response) setTimeout(async () => {
         await bot.telegram.deleteMessage(response.chat.id, response.message_id);
-      }, params.deleteAfter);
+      }, deleteAfter);
     }
 
     if (forDelete) {
@@ -62,6 +63,7 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
 
     // deleteAfterNext message
     if (params.deleteAfterNext) {
+      // TODO: respect chat_id
       forDelete = response
     }
 
