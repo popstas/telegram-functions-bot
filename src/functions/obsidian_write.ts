@@ -41,13 +41,13 @@ export class ObsidianWriteClient extends AIFunctionsProvider {
     strict: true,
   })
   obsidian_write(options: ToolArgsType): ToolResponse {
-    const root_path = this.configChat.options?.obsidian?.root_path;
+    const root_path = this.configChat.toolParams?.obsidian?.root_path;
     const args = {command: options.command};
     if (!root_path) {
       return {content: 'No root_path in config', args} as ToolResponse;
     }
 
-    let out_file = this.configChat.options?.obsidian?.out_file || 'gpt.md';
+    let out_file = this.configChat.toolParams?.obsidian?.out_file || 'gpt.md';
     if (!fs.existsSync(path.join(root_path, out_file))) {
       out_file = 'gpt.md'
     }

@@ -50,8 +50,8 @@ export class SshCommandClient extends AIFunctionsProvider {
 
     console.log('cmd:', cmd);
 
-    const host = this.configChat.options?.ssh_command?.host || 'localhost'
-    const user = this.configChat.options?.ssh_command?.user || 'root'
+    const host = this.configChat.toolParams?.ssh_command?.host || 'localhost'
+    const user = this.configChat.toolParams?.ssh_command?.user || 'root'
 
     const tempFile = tmp.fileSync({mode: 0o755, prefix: 'ssh_command-', postfix: '.sh'});
     writeFileSync(tempFile.name, cmd);

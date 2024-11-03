@@ -37,7 +37,7 @@ export class ObsidianReadClient extends AIFunctionsProvider {
     })
   })
   obsidian_read(options: ToolArgsType): ToolResponse {
-    const root_path = path.resolve(this.configChat.options?.obsidian?.root_path || '.');
+    const root_path = path.resolve(this.configChat.toolParams?.obsidian?.root_path || '.');
     const file_paths = options.command.split('\n')
     const file_paths_abs = file_paths.map(f => path.resolve(`${root_path}/${f}`))
     // const file_paths = options.command.split('\n').map(f => path.resolve(`${root_path}/${f}`))
@@ -56,7 +56,7 @@ export class ObsidianReadClient extends AIFunctionsProvider {
 
 export async function prompt_append(): Promise<string> {
   if (!client) return "";
-  const root_path = client.configChat.options?.obsidian?.root_path || '.';
+  const root_path = client.configChat.toolParams?.obsidian?.root_path || '.';
   const files = await new Promise((resolve, reject) => {
     recursiveReaddir(root_path, (err: string, files: string[]) => {
       if (err) {

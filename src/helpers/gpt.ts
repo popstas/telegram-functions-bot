@@ -91,21 +91,21 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
 
     // Check for 'confirm' or 'noconfirm' in the message to set confirmation
     if (msg.text.includes('noconfirm')) {
-      chatConfig.confirmation = false;
+      chatConfig.chatParams.confirmation = false;
     } else if (msg.text.includes('confirm')) {
-      chatConfig.confirmation = true;
+      chatConfig.chatParams.confirmation = true;
     }
 
     const params = JSON.parse(toolParams) // as ToolResponse
-    if (toolParams && !chatConfig.confirmation && !chatTool.module.call().answerFunc) {
+    if (toolParams && !chatConfig.chatParams?.confirmation && !chatTool.module.call().answerFunc) {
       // send message with tool call params
       void await sendTelegramMessage(msg.chat.id, '`' + toolCall.function.name + '()`:\n```\n' + toolParams + '\n```', {
         parse_mode: 'MarkdownV2',
-        deleteAfter: chatConfig.deleteToolAnswers
+        deleteAfter: chatConfig.chatParams?.deleteToolAnswers
       });
     }
 
-    if (!chatConfig.confirmation) {
+    if (!chatConfig.chatParams?.confirmation) {
       // Execute the tool without confirmation
       return await tool(toolParams) as ToolResponse
     }

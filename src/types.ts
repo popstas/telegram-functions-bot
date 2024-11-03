@@ -13,15 +13,18 @@ export type ConfigChatType = {
   progInfoPrefix?: string
   forgetPrefix?: string
   systemMessage?: string
-  completionParams: CompletionParamsType
   buttons?: ConfigChatButtonType[]
   functions?: string[]
-  options?: FunctionsConfigType
+  completionParams: CompletionParamsType
+  toolParams: FunctionsConfigType
+  chatParams: ChatSettingsType
+}
 
+export type ChatSettingsType = {
   confirmation?: boolean
   deleteToolAnswers?: boolean | number
-  debug?: boolean
-  memoryless?: boolean
+  debug?: boolean // TODO: impl
+  memoryless?: boolean // TODO: impl
 }
 
 export type CompletionParamsType = {
