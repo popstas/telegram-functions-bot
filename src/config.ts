@@ -22,4 +22,3 @@ export function writeConfig(path: string = 'config.yml', config: ConfigType): Co
   // const config = yaml.load(readFileSync(path, 'utf8'))
   return config
 }
-

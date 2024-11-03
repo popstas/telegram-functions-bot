@@ -206,6 +206,11 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
 
   console.log(msg.text);
 
+  if (msg.chat.type === 'private') {
+    if (!chatConfig.functions) chatConfig.functions = []
+    chatConfig.functions.push('change_chat_settings')
+  }
+
   const chatTools = chatConfig.functions ?
     chatConfig.functions.map(f => globalTools.find(g => g.name === f) as ChatToolType).filter(Boolean) :
     []
