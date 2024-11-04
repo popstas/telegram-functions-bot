@@ -8,7 +8,7 @@ import {Message} from "telegraf/types";
 export async function buildMessages(systemMessage: string, history: OpenAI.ChatCompletionMessageParam[], chatTools: {
   name: string,
   module: any
-}[]) {
+}[], prompts: string[]) {
   const limit = 7 // TODO: to config
   const messages: OpenAI.ChatCompletionMessageParam[] = [
     {
@@ -27,13 +27,6 @@ export async function buildMessages(systemMessage: string, history: OpenAI.ChatC
 
   messages.push(...history)
 
-  // prompts from functions, should be after tools
-  const prompts = await Promise.all(
-    chatTools
-      .filter(f => typeof f.module.call(chatConfig, thread).prompt_append === 'function')
-      .map(async f => await f.module.call(chatConfig, thread).prompt_append())
-      .filter(f => !!f)
-  )
   if (prompts.length) {
     messages.push({role: 'system', content: prompts.join('\n\n')})
   }
