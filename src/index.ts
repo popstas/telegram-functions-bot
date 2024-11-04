@@ -17,6 +17,7 @@ import {addOauthToThread, commandGoogleOauth, ensureAuth} from "./helpers/google
 import {buildButtonRows, getCtxChatMsg, sendTelegramMessage} from "./helpers/telegram.ts";
 import {buildMessages, callTools, getSystemMessage, getTokensCount} from "./helpers/gpt.ts";
 import {addToHistory, forgetHistory} from "./helpers/history.ts";
+import {log} from './helpers.ts'; // P08dc
 
 export const threads = {} as { [key: number]: ThreadStateType }
 
@@ -272,6 +273,8 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
 Your username: ${msg.from?.username}, chat id: ${msg.chat.id}`)
   }
 
+  log({ msg: msg.text, logLevel: 'info', chatId: msg.chat.id, role: 'user' }); // Pba7c
+
   // console.log('chat:', chat)
   const extraMessageParams = {reply_to_message_id: ctx.message?.message_id}
 
@@ -396,6 +399,9 @@ async function answerToMessage(ctx: Context & {
         const buttonRows = buildButtonRows(buttons)
         extraParams.reply_markup = {keyboard: buttonRows, resize_keyboard: true}
       }
+
+      log({ msg: text, logLevel: 'info', chatId: msg.chat.id, role: 'system' }); // Pba7c
+
 
       const msgSent = await sendTelegramMessage(msg.chat.id, text, extraParams)
       if (msgSent?.chat.id) threads[msgSent.chat.id].msgs.push(msgSent)

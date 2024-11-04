@@ -59,6 +59,7 @@ export type ConfigType = {
   chats: ConfigChatType[]
   planfix: PlanfixConfigType
   functions: string[]
+  logLevel?: 'debug' | 'info' | 'warn' | 'error'
 }
 
 export type SshConfigType = {
