@@ -46,7 +46,7 @@ export class SshCommandClient extends AIFunctionsProvider {
   async ssh_command(options: ToolArgsType) {
     const cmd = options.command;
 
-    console.log('cmd:', cmd);
+    // console.log('cmd:', cmd);
 
     const {user, host} = this.getUserHost();
 

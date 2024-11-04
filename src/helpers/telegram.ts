@@ -20,7 +20,7 @@ export function splitBigMessage(text: string) {
     msg += line + '\n'
   }
   if (msg.length > sizeLimit) {
-    msg = msg.slice(0, sizeLimit)
+    msg = msg.slice(0, sizeLimit-3) + '...'
   }
   msgs.push(msg)
   return msgs
@@ -31,7 +31,7 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
 
     let response: Message.TextMessage | undefined;
     const msgs = splitBigMessage(text)
-    if (msgs.length > 1) console.log(`Split into ${msgs.length} messages`)
+    // if (msgs.length > 1) console.log(`Split into ${msgs.length} messages`)
 
     const params = {
       ...extraMessageParams,

@@ -64,9 +64,9 @@ export async function ensureAuth(user_id: number) {
     oauth2Client.on('tokens', (tokens) => {
       if (tokens.refresh_token) {
         // store the refresh_token in my database!
-        console.log(tokens.refresh_token);
+        // console.log(tokens.refresh_token);
       }
-      console.log(tokens.access_token);
+      // console.log(tokens.access_token);
       void saveUserGoogleCreds(oauth2Client.credentials, user_id);
     });
 
@@ -105,7 +105,7 @@ export function createAuthServer(oauth2Client: OAuth2Client, msg: Message.TextMe
           }
           oauth2Client.setCredentials(creds!);
           console.log('Token acquired:');
-          console.log(creds);
+          // console.log(creds);
           void saveUserGoogleCreds(creds, msg?.from?.id);
 
           res.end('Authentication successful! You can close this window.');

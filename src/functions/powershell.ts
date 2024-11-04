@@ -40,7 +40,7 @@ export class PowershellCommandClient extends AIFunctionsProvider {
   async powershell(options: ToolArgsType) {
     const cmd = options.command;
 
-    console.log('cmd:', cmd);
+    // console.log('cmd:', cmd);
 
     const cmdStr = `powershell -Command "${cmd}"`;
     const res = await new Promise((resolve, reject) => {
