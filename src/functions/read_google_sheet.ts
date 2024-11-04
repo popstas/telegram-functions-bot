@@ -1,4 +1,4 @@
-import {OAuth2Client} from 'google-auth-library';
+import {GoogleAuth, OAuth2Client} from 'google-auth-library';
 import {aiFunction, AIFunctionsProvider} from '@agentic/core';
 import {z} from 'zod';
 import {ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from '../types';
@@ -14,12 +14,12 @@ export const details = '';
 
 export class GoogleSheetClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;
-  private oauth2Client: OAuth2Client;
+  private authClient?: OAuth2Client | GoogleAuth;
 
-  constructor(oauth2Client: OAuth2Client) {
+  constructor(authClient?: OAuth2Client | GoogleAuth) {
     super();
     this.config = readConfig();
-    this.oauth2Client = oauth2Client;
+    this.authClient = authClient;
   }
 
   @aiFunction({
@@ -30,8 +30,8 @@ export class GoogleSheetClient extends AIFunctionsProvider {
     }),
   })
   async read_google_sheet({sheetId}: ToolArgsType): Promise<ToolResponse> {
-    const data = await readGoogleSheet(sheetId, this.oauth2Client);
-    // if (!this.oauth2Client?.credentials?.access_token || !this.oauth2Client?.jsonContent) {
+    const data = await readGoogleSheet(sheetId, this.authClient);
+    // if (!this.authClient?.credentials?.access_token || !this.authClient?.jsonContent) {
     if (!data) {
       return {content: 'No access token, auth with /google_auth'};
     }
@@ -47,6 +47,5 @@ export class GoogleSheetClient extends AIFunctionsProvider {
 }
 
 export function call(configChat: ConfigChatType, thread: ThreadStateType) {
-  const oauth2Client = thread?.oauth2Client as OAuth2Client;
-  return new GoogleSheetClient(oauth2Client);
+  return new GoogleSheetClient(thread?.authClient);
 }

@@ -79,7 +79,7 @@ export type ThreadStateType = {
   completionParams?: CompletionParamsType
   activeButton?: ConfigChatButtonType
   nextSystemMessage?: string
-  oauth2Client?: OAuth2Client | GoogleAuth
+  authClient?: OAuth2Client | GoogleAuth
 }
 
 export type ConfigChatButtonType = {

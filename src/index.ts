@@ -378,8 +378,8 @@ Your username: ${msg.from?.username}, chat id: ${msg.chat.id}`)
 async function answerToMessage(ctx: Context & {
   secondTry?: boolean
 }, msg: Message.TextMessage, chat: ConfigChatType, extraMessageParams: any) {
-  const oauth2Client = await ensureAuth(msg.from?.id || 0); // for add to threads
-  addOauthToThread(oauth2Client, threads, msg);
+  const authClient = await ensureAuth(msg.from?.id || 0); // for add to threads
+  addOauthToThread(authClient, threads, msg);
   try {
     await ctx.persistentChatAction('typing', async () => {
       if (!msg) return

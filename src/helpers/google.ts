@@ -51,7 +51,7 @@ export function saveUserGoogleCreds(creds?: Credentials | null, user_id?: number
   fs.writeFileSync(credsFilePath, JSON.stringify(existingCreds, null, 2), 'utf-8');
 }
 
-export async function ensureAuth(user_id: number) {
+export async function ensureAuth(user_id: number): Promise<OAuth2Client | GoogleAuth> {
   const creds = getUserGoogleCreds(user_id);
   const config = readConfig();
 
@@ -129,7 +129,7 @@ export function createAuthServer(oauth2Client: OAuth2Client, msg: Message.TextMe
   return server;
 }
 
-export function addOauthToThread(oauth2Client: OAuth2Client | GoogleAuth, threads: {
+export function addOauthToThread(authClient: OAuth2Client | GoogleAuth, threads: {
   [key: number]: ThreadStateType
 }, msg: Message.TextMessage) {
   // global threads
@@ -141,27 +141,26 @@ export function addOauthToThread(oauth2Client: OAuth2Client | GoogleAuth, thread
       messages: [],
     }
   }
-  threads[key].oauth2Client = oauth2Client
-  // console.log("thread.oauth2Client:", threads[key].oauth2Client);
+  threads[key].authClient = authClient
 }
 
 export async function commandGoogleOauth(msg: Message.TextMessage) {
-  const oauth2Client = await ensureAuth(msg.from?.id || 0);
+  const authClient = await ensureAuth(msg.from?.id || 0);
 
   // login with link
-  const c = oauth2Client as OAuth2Client;
-  if (c.credentials && !c.credentials?.access_token) {
-    const authUrl = c.generateAuthUrl({
+  const oAuth2Client = authClient as OAuth2Client;
+  if (oAuth2Client.credentials && !oAuth2Client.credentials?.access_token) {
+    const authUrl = oAuth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: ['https://www.googleapis.com/auth/spreadsheets.readonly']
     });
 
     await sendTelegramMessage(msg?.chat?.id, `Please authenticate with Google: ${authUrl}`);
 
-    createAuthServer(c, msg);
+    createAuthServer(oAuth2Client, msg);
     return
   }
 
-  addOauthToThread(oauth2Client, threads, msg);
+  addOauthToThread(authClient, threads, msg);
   await sendTelegramMessage(msg.chat?.id, 'Google auth successful, now you can use google functions');
 }
