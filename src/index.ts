@@ -17,6 +17,7 @@ import {addOauthToThread, commandGoogleOauth, ensureAuth} from "./helpers/google
 import {buildButtonRows, getCtxChatMsg, sendTelegramMessage} from "./helpers/telegram.ts";
 import {buildMessages, callTools, getSystemMessage, getTokensCount} from "./helpers/gpt.ts";
 import {addToHistory, forgetHistory} from "./helpers/history.ts";
+import {log} from './helpers.ts';
 
 export const threads = {} as { [key: number]: ThreadStateType }
 
@@ -58,7 +59,7 @@ async function start() {
     })
 
     bot = new Telegraf(config.auth.bot_token)
-    console.log('bot started')
+    log({msg:'bot started'})
 
     bot.help(async ctx => ctx.reply(config.helpText))
 
@@ -154,7 +155,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
 
   // async function onGptAnswer(msg: Message.TextMessage, res: OpenAI.ChatCompletionMessage) {
   async function onGptAnswer(msg: Message.TextMessage, res: OpenAI.ChatCompletion, level: number = 1): Promise<ToolResponse> {
-    console.log(`onGptAnswer, level ${level}`)
+    // console.log(`onGptAnswer, level ${level}`)
     const messageAgent = res.choices[0]?.message!
     if (messageAgent.tool_calls?.length) {
       // const dryRun = isTestUser(msg);
@@ -176,7 +177,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
       const toolCall = (messageAgent as {
         tool_calls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]
       }).tool_calls[i];
-      console.log(`tool result:`, toolRes?.content);
+      // console.log(`tool result:`, toolRes?.content);
       const params = {parse_mode: 'MarkdownV2', deleteAfter: chatConfig.chatParams?.deleteToolAnswers};
       const toolResMessageLimit = 8000;
       const msgContentLimited = toolRes.content.length > toolResMessageLimit ? toolRes.content.slice(0, toolResMessageLimit) + '...' : toolRes.content;
@@ -215,8 +216,6 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
     systemMessage = thread.nextSystemMessage || ''
     thread.nextSystemMessage = ''
   }
-
-  console.log(msg.text);
 
   if (msg.chat.type === 'private') {
     if (!chatConfig.functions) chatConfig.functions = []
@@ -271,6 +270,8 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
     return await sendTelegramMessage(msg.chat.id, `You are not allowed to use this bot.
 Your username: ${msg.from?.username}, chat id: ${msg.chat.id}`)
   }
+
+  log({ msg: msg.text, logLevel: 'info', chatId: msg.chat.id, role: 'user' }); // Pba7c
 
   // console.log('chat:', chat)
   const extraMessageParams = {reply_to_message_id: ctx.message?.message_id}
@@ -396,6 +397,9 @@ async function answerToMessage(ctx: Context & {
         const buttonRows = buildButtonRows(buttons)
         extraParams.reply_markup = {keyboard: buttonRows, resize_keyboard: true}
       }
+
+      log({ msg: text, logLevel: 'info', chatId: msg.chat.id, role: 'system' }); // Pba7c
+
 
       const msgSent = await sendTelegramMessage(msg.chat.id, text, extraParams)
       if (msgSent?.chat.id) threads[msgSent.chat.id].msgs.push(msgSent)

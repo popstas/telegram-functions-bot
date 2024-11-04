@@ -4,6 +4,7 @@ import {bot, config, threads} from "../index.ts";
 import {getEncoding, TiktokenEncoding} from "js-tiktoken";
 import {sendTelegramMessage} from "./telegram.ts";
 import {Message} from "telegraf/types";
+import { log } from '../helpers.ts';
 
 export async function buildMessages(systemMessage: string, history: OpenAI.ChatCompletionMessageParam[], chatTools: {
   name: string,
@@ -97,6 +98,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
 
     if (toolParams && !chatConfig.chatParams?.confirmation) {
       // send message with tool call params
+      log({ msg: toolParamsStr, logLevel: 'info', chatId: msg.chat.id, role: 'assistant' });
       void await sendTelegramMessage(msg.chat.id, toolParamsStr, {
         parse_mode: 'MarkdownV2',
         deleteAfter: chatConfig.chatParams?.deleteToolAnswers
@@ -105,7 +107,9 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
 
     // Execute the tool without confirmation
     if (!chatConfig.chatParams?.confirmation) {
-      return await tool(toolParams) as ToolResponse
+      const result = await tool(toolParams) as ToolResponse;
+      log({ msg: result.content, logLevel: 'info', chatId: msg.chat.id, role: 'tool' });
+      return result;
     }
 
     // or send confirmation message with Yes/No buttons
@@ -126,6 +130,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
       // Handle the callback query
       bot.action(`confirm_tool_${uniqueId}`, async () => {
         const res = await tool(toolParams); // Execute the tool
+        log({ msg: res.content, logLevel: 'info', chatId: msg.chat.id, role: 'tool' });
         return resolve(res);
       });
       bot.action(`cancel_tool_${uniqueId}`, async () => {

@@ -21,6 +21,3 @@ Telegram bot with functions tools
 - `read_google_sheet` - read Google Sheet
 - `read_knowledge_google_sheet` - questions and ansers from Google Sheet
 - `ssh_command` - exec ssh shell command, single server from config
-
-## Known bugs
-- Одна и та же функция в разных чатах может выдавать контекст неправильного чата (toolParams). То есть работает нормально только по 1 функции с toolParams на инстанс.
