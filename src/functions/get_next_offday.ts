@@ -11,8 +11,6 @@ type ToolArgsType = {
   currentDate: string
 }
 
-let client: NextOffdayClient | undefined
-
 export const description = 'Get the next offday from the start off date'
 export const details = ``
 
@@ -64,6 +62,5 @@ export class NextOffdayClient extends AIFunctionsProvider {
 }
 
 export function call(configChat: ConfigChatType, thread: ThreadStateType) {
-  if (!client) client = new NextOffdayClient();
-  return client
+  return new NextOffdayClient();
 }

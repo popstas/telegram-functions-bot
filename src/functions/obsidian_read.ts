@@ -11,8 +11,6 @@ type ToolArgsType = {
   file_path: string
 }
 
-let client: ObsidianReadClient | undefined;
-
 export class ObsidianReadClient extends AIFunctionsProvider {
   protected readonly config: ConfigType
   public readonly configChat: ConfigChatType
@@ -59,26 +57,24 @@ export class ObsidianReadClient extends AIFunctionsProvider {
     const file_paths = this.getFilePath(options)
     return `**Obsidian read:** \`${file_paths.join(', ')}\``
   }
-}
 
-export async function prompt_append(): Promise<string> {
-  if (!client) return "";
-  const root_path = client.configChat.toolParams?.obsidian?.root_path || '.';
-  const files = await new Promise((resolve, reject) => {
-    recursiveReaddir(root_path, (err: string, files: string[]) => {
-      if (err) {
-        reject(err);
-      } else {
-        files = files.map(f => f.replace(path.resolve(root_path), '')) // relative paths
-        const excludeHidden = files.filter(f => !f.startsWith('\\.')).filter(f => !f.startsWith('.'))
-        resolve(excludeHidden);
-      }
-    });
-  }) as string[];
-  return `## Obsidian files:\n${files.map(f => `- ${f}`).join('\n')}`;
+  async prompt_append(): Promise<string> {
+    const root_path = this.configChat.toolParams?.obsidian?.root_path || '.';
+    const files = await new Promise((resolve, reject) => {
+      recursiveReaddir(root_path, (err: string, files: string[]) => {
+        if (err) {
+          reject(err);
+        } else {
+          files = files.map(f => f.replace(path.resolve(root_path), '')) // relative paths
+          const excludeHidden = files.filter(f => !f.startsWith('\\.')).filter(f => !f.startsWith('.'))
+          resolve(excludeHidden);
+        }
+      });
+    }) as string[];
+    return `## Obsidian files:\n${files.map(f => `- ${f}`).join('\n')}`;
+  }
 }
 
 export function call(configChat: ConfigChatType, thread: ThreadStateType) {
-  if (!client) client = new ObsidianReadClient(configChat);
-  return client;
+  return new ObsidianReadClient(configChat);
 }

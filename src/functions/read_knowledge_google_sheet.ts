@@ -9,7 +9,6 @@ type ToolArgsType = {
   title: string
 }
 
-let client: KnowledgeGoogleSheetClient | undefined;
 let cache: { [sheetId: string]: Object[] } = {};
 
 function getCache(sheetId: string) {
@@ -37,10 +36,6 @@ export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
     if (!sheetId) return
 
     if (getCache(sheetId)) return getCache(sheetId);
-    /*if (!this.oauth2Client?.credentials?.access_token) {
-      // return { content: 'No access token, auth with /google_auth' };
-      return
-    }*/
 
     const data = await readGoogleSheet(sheetId, this.oauth2Client);
     setCache(sheetId, data);
@@ -66,7 +61,6 @@ export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
     const titleCol = this.configChat.toolParams?.knowledge_google_sheet.titleCol || 'title';
     const textCol = this.configChat.toolParams?.knowledge_google_sheet.textCol || 'text';
     const found = data?.find((row: any) => row[titleCol] === title);
-    // @ts-ignore
     const content = found ? found[textCol] : `No answer found for ${title}`;
     return {content};
   }
@@ -76,18 +70,16 @@ export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
     if (!title) return str
     return `**Google sheet:** \`${title}\``
   }
-}
 
-export async function prompt_append(): Promise<string | undefined> {
-  if (!client) return "";
-  const data = await client.read_sheet();
-  const titleCol = client.configChat.toolParams?.knowledge_google_sheet.titleCol || 'title';
-  const titles = data?.map((row: any) => row[titleCol]);
-  if (titles) return '## Google Sheet Knowledge base titles:\n' + titles.map(f => `- ${f}`).join('\n');
+  async prompt_append(): Promise<string | undefined> {
+    const data = await this.read_sheet();
+    const titleCol = this.configChat.toolParams?.knowledge_google_sheet.titleCol || 'title';
+    const titles = data?.map((row: any) => row[titleCol]);
+    if (titles) return '## Google Sheet Knowledge base titles:\n' + titles.map(f => `- ${f}`).join('\n');
+  }
 }
 
 export function call(configChat: ConfigChatType, thread: ThreadStateType) {
   const oauth2Client = thread?.oauth2Client as OAuth2Client;
-  if (!client) client = new KnowledgeGoogleSheetClient(configChat, oauth2Client);
-  return client;
+  return new KnowledgeGoogleSheetClient(configChat, oauth2Client);
 }

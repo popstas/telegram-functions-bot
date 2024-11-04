@@ -193,7 +193,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
       thread.messages.push(messageAgent, messageTool)
     }
 
-    messages = await buildMessages(systemMessage, thread.messages, chatTools);
+    messages = await buildMessages(systemMessage, thread.messages, chatTools, prompts);
 
     const isNoTool = level > 6 || !tools?.length;
 
@@ -227,12 +227,20 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
     chatConfig.functions.map(f => globalTools.find(g => g.name === f) as ChatToolType).filter(Boolean) :
     []
 
+  // prompts from functions, should be after tools
+  const prompts = await Promise.all(
+    chatTools
+      .filter(f => typeof f.module.call(chatConfig, thread).prompt_append === 'function')
+      .map(async f => await f.module.call(chatConfig, thread).prompt_append())
+      .filter(f => !!f)
+  )
+
   const isTools = chatTools.length > 0;
   const tools = isTools ? chatTools.map(f => f.module.call(chatConfig, thread).functions.toolSpecs).flat() : undefined;
 
   const date = new Date().toISOString()
   systemMessage = systemMessage.replace(/\{date}/g, date)
-  let messages = await buildMessages(systemMessage, thread.messages, chatTools);
+  let messages = await buildMessages(systemMessage, thread.messages, chatTools, prompts);
 
   const res = await api.chat.completions.create({
     messages,

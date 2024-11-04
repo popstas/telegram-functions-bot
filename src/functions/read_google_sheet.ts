@@ -9,8 +9,6 @@ type ToolArgsType = {
   sheetId: string;
 };
 
-let client: GoogleSheetClient | undefined;
-
 export const description = 'Reads the first sheet of a Google Sheet using Google API and returns an array of objects with fields named by the table header.';
 export const details = '';
 
@@ -50,6 +48,5 @@ export class GoogleSheetClient extends AIFunctionsProvider {
 
 export function call(configChat: ConfigChatType, thread: ThreadStateType) {
   const oauth2Client = thread?.oauth2Client as OAuth2Client;
-  if (!client) client = new GoogleSheetClient(oauth2Client);
-  return client;
+  return new GoogleSheetClient(oauth2Client);
 }

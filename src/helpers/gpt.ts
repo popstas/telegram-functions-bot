@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import {ChatToolType, ConfigChatType, ToolResponse} from "../types.ts";
-import {bot, config} from "../index.ts";
+import {bot, config, threads} from "../index.ts";
 import {getEncoding, TiktokenEncoding} from "js-tiktoken";
 import {sendTelegramMessage} from "./telegram.ts";
 import {Message} from "telegraf/types";
@@ -8,7 +8,7 @@ import {Message} from "telegraf/types";
 export async function buildMessages(systemMessage: string, history: OpenAI.ChatCompletionMessageParam[], chatTools: {
   name: string,
   module: any
-}[]) {
+}[], prompts: string[]) {
   const limit = 7 // TODO: to config
   const messages: OpenAI.ChatCompletionMessageParam[] = [
     {
@@ -27,13 +27,6 @@ export async function buildMessages(systemMessage: string, history: OpenAI.ChatC
 
   messages.push(...history)
 
-  // prompts from functions, should be after tools
-  const prompts = await Promise.all(
-    chatTools
-      .filter(f => typeof f.module.prompt_append === 'function')
-      .map(async f => await f.module.prompt_append())
-      .filter(f => !!f)
-  )
   if (prompts.length) {
     messages.push({role: 'system', content: prompts.join('\n\n')})
   }
@@ -85,10 +78,11 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
     const chatTool = chatTools.find(f => f.name === toolCall.function.name)
     if (!chatTool) return {content: `Tool not found: ${toolCall.function.name}`};
 
-    const tool = chatTool.module.call(chatConfig).functions.get(toolCall.function.name)
+    const thread = threads[msg.chat.id || 0]
+    const tool = chatTool.module.call(chatConfig, thread).functions.get(toolCall.function.name)
     if (!tool) return {content: `Tool not found! ${toolCall.function.name}`};
     let toolParams = toolCall.function.arguments
-    const toolClient = chatTool.module.call();
+    const toolClient = chatTool.module.call(chatConfig, thread);
     let toolParamsStr = toolCall.function.name + '()`:\n```\n' + toolParams + '\n```'
     if (typeof toolClient.options_string === 'function') {
       toolParamsStr = toolClient.options_string(toolParams)
