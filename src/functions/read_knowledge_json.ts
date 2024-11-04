@@ -86,14 +86,13 @@ export class KnowledgeJsonClient extends AIFunctionsProvider {
     if (!title) return str;
     return `**JSON data:** \`${title}\``;
   }
-}
 
-export async function prompt_append(configChat: ConfigChatType, thread: ThreadStateType): Promise<string | undefined> {
-  const client = new KnowledgeJsonClient(configChat);
-  const data = await client.read_json();
-  const titleCol = client.configChat.toolParams?.knowledge_json?.titleCol || 'title';
-  const titles = data?.map((row: any) => row[titleCol]);
-  if (titles) return '## JSON Knowledge base titles:\n' + titles.map((f: string) => `- ${f}`).join('\n');
+  async prompt_append(): Promise<string | undefined> {
+    const data = await this.read_json();
+    const titleCol = this.configChat.toolParams?.knowledge_json?.titleCol || 'title';
+    const titles = data?.map((row: any) => row[titleCol]);
+    if (titles) return '## JSON Knowledge base titles:\n' + titles.map((f: string) => `- ${f}`).join('\n');
+  }
 }
 
 export function call(configChat: ConfigChatType, thread: ThreadStateType) {

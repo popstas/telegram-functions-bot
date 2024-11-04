@@ -30,8 +30,8 @@ export async function buildMessages(systemMessage: string, history: OpenAI.ChatC
   // prompts from functions, should be after tools
   const prompts = await Promise.all(
     chatTools
-      .filter(f => typeof f.module.prompt_append === 'function')
-      .map(async f => await f.module.prompt_append())
+      .filter(f => typeof f.module.call(chatConfig, thread).prompt_append === 'function')
+      .map(async f => await f.module.call(chatConfig, thread).prompt_append())
       .filter(f => !!f)
   )
   if (prompts.length) {
