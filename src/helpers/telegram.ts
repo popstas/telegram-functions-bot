@@ -155,3 +155,22 @@ export function getCtxChatMsg(ctx: Context) {
   return {chat, msg}
 }
 
+// Handle 'Add' button for admin users to add new chats
+bot.action('add_chat', async (ctx) => {
+  const chatId = ctx.chat?.id;
+  const chatName = ctx.chat?.title || `Chat ${chatId}`;
+  if (!chatId) return;
+
+  const newChat = {
+    name: chatName,
+    id: chatId,
+    completionParams: config.completionParams,
+    toolParams: {} as any,
+    chatParams: {} as any,
+  };
+
+  config.chats.push(newChat);
+  writeConfig(configPath, config);
+
+  await ctx.reply(`Chat added: ${chatName}`);
+});
