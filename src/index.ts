@@ -14,7 +14,7 @@ import {
 import {readConfig, writeConfig} from './config' // P7c20
 import {HttpsProxyAgent} from "https-proxy-agent"
 import {addOauthToThread, commandGoogleOauth, ensureAuth} from "./helpers/google.ts";
-import {buildButtonRows, getCtxChatMsg, sendTelegramMessage} from "./helpers/telegram.ts";
+import {buildButtonRows, getCtxChatMsg, isAdminUser, sendTelegramMessage} from "./helpers/telegram.ts";
 import {buildMessages, callTools, getSystemMessage, getTokensCount} from "./helpers/gpt.ts";
 import {addToHistory, forgetHistory} from "./helpers/history.ts";
 import {log} from './helpers.ts';
@@ -59,13 +59,25 @@ async function start() {
     })
 
     bot = new Telegraf(config.auth.bot_token)
-    log({msg:'bot started'})
+    log({msg: 'bot started'})
 
     bot.help(async ctx => ctx.reply(config.helpText))
 
     await initCommands(bot)
 
     bot.on([message('text'), editedMessage('text')], onMessage)
+
+    bot.action('add_chat', async (ctx) => {
+      const chatId = ctx.chat?.id;
+      // @ts-ignore
+      const chatName = ctx.chat?.title || `Chat ${chatId}`;
+      if (!chatId) return;
+
+      const newChat = {name: chatName, id: chatId} as ConfigChatType;
+      config.chats.push(newChat);
+      writeConfig(configPath, config);
+      await ctx.reply(`Chat added: ${chatName}`);
+    });
 
     process.once('SIGINT', () => bot.stop('SIGINT'))
     process.once('SIGTERM', () => bot.stop('SIGTERM'))
@@ -90,10 +102,6 @@ function watchConfigChanges() {
     })
   }, 2000))
 }
-
-/*function isTestUser(msg: Message.TextMessage) {
-  return config.testUsers?.includes(msg.from?.username || '');
-}*/
 
 async function initCommands(bot: Telegraf) {
   bot.command('forget', async ctx => {
@@ -158,7 +166,6 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
     // console.log(`onGptAnswer, level ${level}`)
     const messageAgent = res.choices[0]?.message!
     if (messageAgent.tool_calls?.length) {
-      // const dryRun = isTestUser(msg);
       const tool_res = await callTools(messageAgent.tool_calls, chatTools, chatConfig, msg);
       if (tool_res) {
         return processToolResponse(tool_res, messageAgent, level);
@@ -266,23 +273,19 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
   }
 
   if (!chat) {
-    console.log(`Not in whitelist: }`, msg.from)
-    const isAdmin = config.adminUsers?.includes(msg.from?.username || '') // P02aa
-    if (isAdmin) { // P02aa
-      return await sendTelegramMessage(msg.chat.id, `You are not allowed to use this bot.
-Your username: ${msg.from?.username}, chat id: ${msg.chat.id}`, { // P02aa
-        reply_markup: { // P02aa
-          inline_keyboard: [ // P02aa
-            [{ text: 'Add', callback_data: 'add_chat' }] // P02aa
-          ] // P02aa
-        } // P02aa
-      }) // P02aa
-    } // P02aa
-    return await sendTelegramMessage(msg.chat.id, `You are not allowed to use this bot.
-Your username: ${msg.from?.username}, chat id: ${msg.chat.id}`)
+    console.log(`Not in whitelist: `, msg.from)
+    const text = `This chat is not in whitelist.\nYour username: ${msg.from?.username}, chat id: ${msg.chat.id}`
+    const params = isAdminUser(msg) ? {
+      reply_markup: {
+        inline_keyboard: [
+          [{text: 'Add', callback_data: 'add_chat'}]
+        ]
+      }
+    } : undefined
+    return await sendTelegramMessage(msg.chat.id, text, params)
   }
 
-  log({ msg: msg.text, logLevel: 'info', chatId: msg.chat.id, role: 'user' }); // Pba7c
+  log({msg: msg.text, logLevel: 'info', chatId: msg.chat.id, role: 'user'}); // Pba7c
 
   // console.log('chat:', chat)
   const extraMessageParams = {reply_to_message_id: ctx.message?.message_id}
@@ -409,7 +412,7 @@ async function answerToMessage(ctx: Context & {
         extraParams.reply_markup = {keyboard: buttonRows, resize_keyboard: true}
       }
 
-      log({ msg: text, logLevel: 'info', chatId: msg.chat.id, role: 'system' }); // Pba7c
+      log({msg: text, logLevel: 'info', chatId: msg.chat.id, role: 'system'}); // Pba7c
 
 
       const msgSent = await sendTelegramMessage(msg.chat.id, text, extraParams)
@@ -431,18 +434,3 @@ async function answerToMessage(ctx: Context & {
   }
 }
 
-bot.action('add_chat', async (ctx) => {
-  const chatId = ctx.chat?.id;
-  const chatName = ctx.chat?.title || `Chat ${chatId}`;
-  if (!chatId) return;
-
-  const newChat = {
-    name: chatName,
-    id: chatId,
-  };
-
-  config.chats.push(newChat);
-  writeConfig(configPath, config);
-
-  await ctx.reply(`Chat added: ${chatName}`);
-});
