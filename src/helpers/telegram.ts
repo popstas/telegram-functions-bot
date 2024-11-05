@@ -76,6 +76,10 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
   })
 }
 
+export function isAdminUser(msg: Message.TextMessage) {
+  return config.adminUsers?.includes(msg.from?.username || '')
+}
+
 export function buildButtonRows(buttons: ConfigChatButtonType[]) {
   const buttonRows: { text: string }[][] = [[]]
   buttons.forEach(b => {
@@ -154,4 +158,3 @@ export function getCtxChatMsg(ctx: Context) {
 
   return {chat, msg}
 }
-

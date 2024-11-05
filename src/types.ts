@@ -54,6 +54,7 @@ export type ConfigType = {
   systemMessage?: string
   timeoutMs?: number
   completionParams: CompletionParamsType
+  adminUsers?: string[]
   allowedPrivateUsers?: string[]
   testUsers?: string[]
   chats: ConfigChatType[]
