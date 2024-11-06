@@ -105,7 +105,7 @@ export class SshCommandClient extends AIFunctionsProvider {
     const {command} = JSON.parse(str) as ToolArgsType;
     if (!command) return str
     const {user, host} = this.getUserHost();
-    return `\`ssh ${user}@${host}:\`\n\`\`\`sh\n${command}\n\`\`\``
+    return `\`ssh ${user}@${host}\`\n\`\`\`sh\n${command}\n\`\`\``
   }
 }
 

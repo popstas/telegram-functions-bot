@@ -50,36 +50,24 @@ export function getTokensCount(text: string) {
   return tokenizer.encode(text).length
 }
 
-// join "arguments.command" values with \n when same name, return array unique by name
-export function groupToolCalls(toolCalls: OpenAI.ChatCompletionMessageToolCall[]) {
-  const grouped = {} as { [key: string]: OpenAI.ChatCompletionMessageToolCall[] };
-  toolCalls.forEach((toolCall) => {
-    const name = toolCall.function.name;
-    if (!grouped[name]) {
-      grouped[name] = [];
-    }
-    grouped[name].push(toolCall);
-  });
+export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[], chatTools: ChatToolType[], chatConfig: ConfigChatType, msg: Message.TextMessage): Promise<ToolResponse[]> {
+  // toolCalls = groupToolCalls(toolCalls) // don't need to group anymore
 
-  return Object.values(grouped).map((group) => {
-    if (group.length === 1) {
-      return group[0];
-    }
-    const combinedCommand = group.map((call) => JSON.parse(call.function.arguments).command).join('\n');
-    return {
-      ...group[0],
-      function: {...group[0].function, arguments: JSON.stringify({command: combinedCommand})} // TODO: remove hardcoded command
-    };
-  });
-}
+  const thread = threads[msg.chat.id || 0]
 
-export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[], chatTools: ChatToolType[], chatConfig: ConfigChatType, msg: Message.TextMessage) {
-  toolCalls = groupToolCalls(toolCalls)
+  // Check for 'confirm' or 'noconfirm' in the message to set confirmation
+  if (msg.text.includes('noconfirm')) {
+    chatConfig.chatParams.confirmation = false;
+  } else if (msg.text.includes('confirm')) {
+    chatConfig.chatParams.confirmation = true;
+  }
+
+  const uniqueId = Date.now().toString();
+
   const toolPromises = toolCalls.map(async (toolCall) => {
     const chatTool = chatTools.find(f => f.name === toolCall.function.name)
     if (!chatTool) return {content: `Tool not found: ${toolCall.function.name}`};
 
-    const thread = threads[msg.chat.id || 0]
     const tool = chatTool.module.call(chatConfig, thread).functions.get(toolCall.function.name)
     if (!tool) return {content: `Tool not found! ${toolCall.function.name}`};
     let toolParams = toolCall.function.arguments
@@ -87,13 +75,6 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
     let toolParamsStr = toolCall.function.name + '()`:\n```\n' + toolParams + '\n```'
     if (typeof toolClient.options_string === 'function') {
       toolParamsStr = toolClient.options_string(toolParams)
-    }
-
-    // Check for 'confirm' or 'noconfirm' in the message to set confirmation
-    if (msg.text.includes('noconfirm')) {
-      chatConfig.chatParams.confirmation = false;
-    } else if (msg.text.includes('confirm')) {
-      chatConfig.chatParams.confirmation = true;
     }
 
     if (toolParams && !chatConfig.chatParams?.confirmation) {
@@ -114,7 +95,6 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
 
     // or send confirmation message with Yes/No buttons
     return new Promise(async (resolve) => {
-      const uniqueId = Date.now().toString();
       await sendTelegramMessage(msg.chat.id, `${toolParamsStr}\nDo you want to proceed?`, {
         parse_mode: 'MarkdownV2',
         reply_markup: {
@@ -128,7 +108,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
       });
 
       // Handle the callback query
-      bot.action(`confirm_tool_${uniqueId}`, async () => {
+      /*bot.action(`confirm_tool_${uniqueId}`, async () => {
         const res = await tool(toolParams); // Execute the tool
         log({ msg: res.content, logLevel: 'info', chatId: msg.chat.id, role: 'tool' });
         return resolve(res);
@@ -136,8 +116,49 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
       bot.action(`cancel_tool_${uniqueId}`, async () => {
         await sendTelegramMessage(msg.chat.id, 'Tool execution canceled.');
         return resolve({content: 'Tool execution canceled.'});
-      });
+      });*/
     });
-  })
+  });
+
+  if (chatConfig.chatParams.confirmation) {
+    // Handle the callback query
+    return new Promise(async (resolve) => {
+      bot.action(`confirm_tool_${uniqueId}`, async () => {
+        const configConfirmed = {...chatConfig};
+        configConfirmed.chatParams.confirmation = false;
+        const res = await callTools(toolCalls, chatTools, configConfirmed, msg);
+        log({ msg: 'tools called', logLevel: 'info', chatId: msg.chat.id, role: 'tool' });
+        return resolve(res);
+      });
+      bot.action(`cancel_tool_${uniqueId}`, async () => {
+        await sendTelegramMessage(msg.chat.id, 'Tool execution canceled.');
+        return resolve([]);
+      });
+    })
+  }
+
   return Promise.all(toolPromises) as Promise<ToolResponse[]>
 }
+
+// join "arguments.command" values with \n when same name, return array unique by name
+/*export function groupToolCalls(toolCalls: OpenAI.ChatCompletionMessageToolCall[]) {
+  const grouped = {} as { [key: string]: OpenAI.ChatCompletionMessageToolCall[] };
+  toolCalls.forEach((toolCall) => {
+    const name = toolCall.function.name;
+    if (!grouped[name]) {
+      grouped[name] = [];
+    }
+    grouped[name].push(toolCall);
+  });
+
+  return Object.values(grouped).map((group) => {
+    if (group.length === 1) {
+      return group[0];
+    }
+    const combinedCommand = group.map((call) => JSON.parse(call.function.arguments).command).join('\n');
+    return {
+      ...group[0],
+      function: {...group[0].function, arguments: JSON.stringify({command: combinedCommand})}
+    };
+  });
+}*/

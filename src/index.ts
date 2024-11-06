@@ -179,6 +179,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
   }
 
   async function processToolResponse(tool_res: ToolResponse[], messageAgent: OpenAI.ChatCompletionMessage, level: number): Promise<ToolResponse> {
+    thread.messages.push(messageAgent);
     for (let i = 0; i < tool_res.length; i++) {
       const toolRes = tool_res[i];
       const toolCall = (messageAgent as {
@@ -198,7 +199,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
         tool_call_id: toolCall.id,
       } as OpenAI.ChatCompletionToolMessageParam
 
-      thread.messages.push(messageAgent, messageTool)
+      thread.messages.push(messageTool)
     }
 
     messages = await buildMessages(systemMessage, thread.messages, chatTools, prompts);
