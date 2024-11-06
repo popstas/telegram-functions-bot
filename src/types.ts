@@ -66,6 +66,7 @@ export type ConfigType = {
 export type SshConfigType = {
   host: string
   user: string
+  strictHostKeyChecking?: boolean
 }
 
 export type ObsidianConfigType = {
