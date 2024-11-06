@@ -48,14 +48,14 @@ export class SshCommandClient extends AIFunctionsProvider {
 
     // console.log('cmd:', cmd);
 
-    const {user, host} = this.getUserHost();
+    const {user, host, strictHostKeyChecking} = this.getUserHost();
 
     const tempFile = tmp.fileSync({mode: 0o755, prefix: 'ssh_command-', postfix: '.sh'});
     writeFileSync(tempFile.name, cmd);
 
     const destFilename = path.basename(tempFile.name);
-    const scpCmd = `scp ${tempFile.name} ${user}@${host}:/tmp/${destFilename}`;
-    const sshCmd = `ssh ${user}@${host} "bash /tmp/${destFilename}"`;
+    const scpCmd = `scp -o StrictHostKeyChecking=${strictHostKeyChecking ? 'yes' : 'no'} ${tempFile.name} ${user}@${host}:/tmp/${destFilename}`;
+    const sshCmd = `ssh -o StrictHostKeyChecking=${strictHostKeyChecking ? 'yes' : 'no'} ${user}@${host} "bash /tmp/${destFilename}"`;
 
     const res = await new Promise((resolve, reject) => {
       exec(scpCmd, (scpError) => {
@@ -98,7 +98,8 @@ export class SshCommandClient extends AIFunctionsProvider {
   getUserHost() {
     const host = this.configChat.toolParams?.ssh_command?.host || 'localhost'
     const user = this.configChat.toolParams?.ssh_command?.user || 'root'
-    return {user, host}
+    const strictHostKeyChecking = this.configChat.toolParams?.ssh_command?.strictHostKeyChecking || false
+    return {user, host, strictHostKeyChecking}
   }
 
   options_string(str: string) {
