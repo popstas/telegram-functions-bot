@@ -52,7 +52,7 @@ async function start() {
     bot = new Telegraf(config.auth.bot_token)
     log({msg: 'bot started'})
 
-    bot.help(async ctx => ctx.reply(config.helpText))
+    bot.help(async ctx => ctx.reply('https://github.com/popstas/telegram-functions-bot'))
 
     await initCommands(bot)
 
@@ -142,18 +142,18 @@ async function initCommands(bot: Telegraf) {
   ])
 }
 
-function getInfoMessage(msg: Message.TextMessage, chat: ConfigChatType) {
-  const systemMessage = getSystemMessage(chat)
-  const tokens = getTokensCount(systemMessage)
+function getInfoMessage(msg: Message.TextMessage, chatConfig: ConfigChatType) {
+  const systemMessage = getSystemMessage(chatConfig)
+  const tokens = getTokensCount(chatConfig, systemMessage)
 
   const lines = [
     `System: ${systemMessage.trim()}`,
     `Tokens: ${tokens}`,
-    `Model: ${chat.completionParams.model}`
+    `Model: ${chatConfig.completionParams.model}`
   ]
 
-  if (chat.chatParams?.forgetTimeout) {
-    lines.push(`Forget timeout: ${chat.chatParams.forgetTimeout} sec`)
+  if (chatConfig.chatParams?.forgetTimeout) {
+    lines.push(`Forget timeout: ${chatConfig.chatParams.forgetTimeout} sec`)
   }
 
   if (msg.chat.type === 'private') {
@@ -222,8 +222,8 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
 
     const res = await api.chat.completions.create({
       messages,
-      model: thread.completionParams?.model || config.completionParams.model,
-      temperature: thread.completionParams?.temperature || config.completionParams.temperature,
+      model: thread.completionParams?.model || 'gpt-4o-mini',
+      temperature: thread.completionParams?.temperature,
       // cannot use functions at 3+ level of chaining
       tools: isNoTool ? undefined : tools,
       tool_choice: isNoTool ? undefined : 'auto',
@@ -265,8 +265,8 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
 
   const res = await api.chat.completions.create({
     messages,
-    model: thread.completionParams?.model || config.completionParams.model,
-    temperature: thread.completionParams?.temperature || config.completionParams.temperature,
+    model: thread.completionParams?.model || 'gpt-4o-mini',
+    temperature: thread.completionParams?.temperature,
     // tool_choice: 'required',
     tools,
   });

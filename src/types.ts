@@ -51,15 +51,10 @@ export type ConfigType = {
     redirect_uri: string
   }
   proxyUrl?: string
-  helpText: string
-  systemMessage?: string
-  timeoutMs?: number
-  completionParams: CompletionParamsType
-  adminUsers?: string[]
   allowedPrivateUsers?: string[]
+  adminUsers?: string[]
   testUsers?: string[]
   chats: ConfigChatType[]
-  planfix: PlanfixConfigType
   logLevel?: 'debug' | 'info' | 'warn' | 'error'
 }
 
@@ -89,15 +84,6 @@ export type ConfigChatButtonType = {
   prompt: string
   row?: number
   waitMessage?: string
-}
-
-export type PlanfixConfigType = {
-  account: string
-  api_url: string
-  token: string
-  user_login: string
-  user_password: string
-  templateId: number
 }
 
 export type ChatToolType = {

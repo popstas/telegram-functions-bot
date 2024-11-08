@@ -41,11 +41,11 @@ Current date: ${new Date().toISOString()}\n\n`
 }
 
 export function getSystemMessage(chatConfig: ConfigChatType) {
-  return chatConfig.systemMessage || config.systemMessage || defaultSystemMessage()
+  return chatConfig.systemMessage || defaultSystemMessage()
 }
 
-export function getTokensCount(text: string) {
-  const encoding: TiktokenEncoding = config.completionParams.model.includes('4o') ? 'o200k_base' : 'cl100k_base';
+export function getTokensCount(chatConfig: ConfigChatType, text: string) {
+  const encoding: TiktokenEncoding = chatConfig.completionParams.model.includes('4o') ? 'o200k_base' : 'cl100k_base';
   const tokenizer = getEncoding(encoding);
   return tokenizer.encode(text).length
 }

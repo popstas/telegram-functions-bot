@@ -41,13 +41,12 @@ export class ChangeChatSettingsClient extends AIFunctionsProvider {
     const chatConfig = config.chats.find(chat => chat.username === this.configChat.username);
 
     if (!chatConfig) {
-      const newChatConfig: ConfigChatType = {
+      const newChatConfig = {
         name: `Private ${this.configChat.username}`,
         username: this.configChat.username,
-        completionParams: config.completionParams,
         toolParams: {} as FunctionsConfigType,
         chatParams: settings,
-      };
+      } as ConfigChatType;
       config.chats.push(newChatConfig);
     } else {
       if (!chatConfig.chatParams) chatConfig.chatParams = {};
