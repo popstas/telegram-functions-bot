@@ -174,7 +174,11 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
 
     const answer = res.choices[0]?.message.content || ''
     addToHistory({msg, answer, systemMessage});
-    forgetHistory(msg.chat.id); // TODO: smarter forget
+
+    // forget after tool
+    if (thread.messages.find(m => m.role === 'tool')) {
+      forgetHistory(msg.chat.id); // TODO: smarter forget
+    }
     return {content: answer}
   }
 
