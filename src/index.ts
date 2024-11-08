@@ -393,8 +393,13 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
 async function answerToMessage(ctx: Context & {
   secondTry?: boolean
 }, msg: Message.TextMessage, chat: ConfigChatType, extraMessageParams: any) {
-  const authClient = await ensureAuth(msg.from?.id || 0); // for add to threads
-  addOauthToThread(authClient, threads, msg);
+
+  // inject google oauth to thread
+  if (config.oauth_google?.client_id || config.auth.google_service_account?.private_key) {
+    const authClient = await ensureAuth(msg.from?.id || 0); // for add to threads
+    addOauthToThread(authClient, threads, msg);
+  }
+
   try {
     await ctx.persistentChatAction('typing', async () => {
       if (!msg) return
