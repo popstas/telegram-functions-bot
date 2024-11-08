@@ -10,9 +10,7 @@ import {
   ThreadStateType
 } from '../types';
 
-type ToolArgsType = {
-  settings: ChatSettingsType;
-};
+type ToolArgsType = ChatSettingsType;
 
 export class ChangeChatSettingsClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;
@@ -28,15 +26,14 @@ export class ChangeChatSettingsClient extends AIFunctionsProvider {
     name: 'change_chat_settings',
     description: 'Change chat settings in config.yml',
     inputSchema: z.object({
-      settings: z.object({
-        confirmation: z.boolean().optional(),
-        deleteToolAnswers: z.union([z.boolean(), z.number()]).optional(),
-        debug: z.boolean().optional(),
-        memoryless: z.boolean().optional(),
-      }).describe('Chat settings to be updated'),
+      confirmation: z.boolean().optional().describe('Whether to ask for confirmation before running a tool'),
+      deleteToolAnswers: z.union([z.boolean(), z.number()]).optional().describe('Whether to delete tool answers after a certain time'),
+      debug: z.boolean().optional(),
+      memoryless: z.boolean().optional().describe('Whether to forget the context after each message'),
+      forgetTimeout: z.number().optional().describe('Time in seconds to forget the context after'),
     }),
   })
-  async change_chat_settings({ settings }: ToolArgsType) {
+  async change_chat_settings(settings: ToolArgsType) {
     const config = readConfig();
     const chatConfig = config.chats.find(chat => chat.username === this.configChat.username);
 
@@ -59,7 +56,7 @@ export class ChangeChatSettingsClient extends AIFunctionsProvider {
   }
 
   options_string(str: string) {
-    const {settings} = JSON.parse(str) as ToolArgsType;
+    const settings = JSON.parse(str) as ToolArgsType;
     if (!settings) return str
     const settingsStr = Object.entries(settings).map(([key, value]) => `${key}: ${value}`).join(', ');
     return `**Change settings:** \`${settingsStr}\``
