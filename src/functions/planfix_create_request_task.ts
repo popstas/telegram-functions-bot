@@ -150,7 +150,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
       // console.log("answer:", JSON.stringify(answer, null, 2));
 
       return {
-        content: `Задача создана:\n${url}\n\n${postBody.description}`
+        content: `Задача создана:\n${url}\n\n${postBody.description.replace(/<br>/g, '\n')}`
       }
     } catch (e) {
       console.error(e);
