@@ -47,7 +47,7 @@ export function generateConfig(): ConfigType {
 
     },
     adminUsers: ['your_telegram_username'],
-    privateUsers: ['your_telegram_username'],
+    privateUsers: [],
     chats: [{
       name: 'default',
       completionParams: {

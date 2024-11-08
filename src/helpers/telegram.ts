@@ -20,7 +20,7 @@ export function splitBigMessage(text: string) {
     msg += line + '\n'
   }
   if (msg.length > sizeLimit) {
-    msg = msg.slice(0, sizeLimit-3) + '...'
+    msg = msg.slice(0, sizeLimit - 3) + '...'
   }
   msgs.push(msg)
   return msgs
@@ -107,7 +107,9 @@ function getChatConfig(ctxChat: Chat) {
 
     if (ctxChat?.type === 'private') {
       const privateChat = ctxChat as Chat.PrivateChat
-      const isAllowed = config.privateUsers?.includes(privateChat.username || '')
+      const username = privateChat.username || 'without_username'
+      const isAllowed = config.privateUsers?.includes(username) ||
+        config.adminUsers?.includes(username)
       if (!isAllowed) {
         return
       }
@@ -122,6 +124,7 @@ function getChatConfig(ctxChat: Chat) {
     if (!from || !from[name]) return
     to[name] = to[name] ? {...from[name], ...to[name]} : from[name]
   }
+
   mergeConfigParam('completionParams', config, chat);
 
   if (chat && defaultChat) {

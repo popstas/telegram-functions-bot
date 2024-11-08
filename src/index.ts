@@ -306,7 +306,9 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
 
   if (!chat) {
     console.log(`Not in whitelist: `, msg.from)
-    const text = `This chat is not in whitelist.\nYour username: ${msg.from?.username}, chat id: ${msg.chat.id}`
+    const text = msg.chat.type === 'private' ?
+      `You are not in whitelist. Your username: ${msg.from?.username}` :
+      `This chat is not in whitelist.\nYour username: ${msg.from?.username}, chat id: ${msg.chat.id}`
     const params = isAdminUser(msg) ? {
       reply_markup: {
         inline_keyboard: [
