@@ -3,7 +3,8 @@ import {readFileSync, writeFileSync, existsSync} from 'fs'
 import {ConfigType} from './types.js'
 import {log} from "./helpers.ts";
 
-export function readConfig(path: string = 'config.yml'): ConfigType {
+export function readConfig(path?: string): ConfigType {
+  if (!path) path = process.env.CONFIG || 'config.yml';
   if (!existsSync(path)) {
     const config = generateConfig()
     writeConfig(path, config)
