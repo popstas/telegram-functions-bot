@@ -160,11 +160,20 @@ function getInfoMessage(msg: Message.TextMessage, chatConfig: ConfigChatType) {
     lines.push(`Forget timeout: ${chatConfig.chatParams.forgetTimeout} sec`)
   }
 
+  if (chatConfig.tools) {
+    // f.module.call(chatConfig, thread).functions.toolSpecs - has descriptions too
+    const tools = chatConfig.tools
+      .map(f => globalTools.find(g => g.name === f) as ChatToolType).filter(Boolean)
+      .map(f => `- ${f.name}${f.module.description ? ` - ${f.module.description}` : ''}`)
+    lines.push(`Tools:\n${tools.join('\n')}`)
+  }
+
   if (msg.chat.type === 'private') {
     lines.push(`Настройки приватного режима можно менять:
-- Отключать автоудаление сообщений от функций
+- Автоудаление сообщений от функций
 - Подтверждение на выполнение функций
 - Память (когда бот забывает историю сообщений после первого ответа)
+- Время забывания контекста
 
 Бот понимает эти команды в произвольном виде.`)
   }
