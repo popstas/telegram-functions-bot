@@ -25,6 +25,7 @@ export type ChatSettingsType = {
   deleteToolAnswers?: boolean | number
   debug?: boolean // TODO: impl
   memoryless?: boolean // TODO: impl
+  forgetTimeout?: number // in seconds
 }
 
 export type CompletionParamsType = {
