@@ -4,14 +4,14 @@ import telegramifyMarkdown from 'telegramify-markdown'
 import {Message} from 'telegraf/types'
 import OpenAI from 'openai'
 import debounce from 'lodash.debounce'
-import {watchFile} from 'fs'
+import {watchFile, readdirSync} from 'fs'
 import {
   ConfigType,
   ConfigChatType,
   ThreadStateType,
   ConfigChatButtonType, ToolResponse, ChatToolType,
 } from './types'
-import {readConfig, writeConfig} from './config' // P7c20
+import {readConfig, writeConfig} from './config'
 import {HttpsProxyAgent} from "https-proxy-agent"
 import {addOauthToThread, commandGoogleOauth, ensureAuth} from "./helpers/google.ts";
 import {buildButtonRows, getCtxChatMsg, isAdminUser, sendTelegramMessage} from "./helpers/telegram.ts";
@@ -39,16 +39,7 @@ async function start() {
   config = readConfig(configPath);
   watchConfigChanges();
 
-  // globalTools modules init
-  for (let f of config.functions) {
-    const mod = await import(`./functions/${f}.ts`)
-    if (typeof mod.call === 'function') {
-      globalTools.push({
-        name: f,
-        module: mod,
-      });
-    }
-  }
+  await initFunctions()
 
   const httpAgent = config.proxyUrl ? new HttpsProxyAgent(`${config.proxyUrl}`) : undefined;
 
@@ -101,6 +92,19 @@ function watchConfigChanges() {
       threads[id].customSystemMessage = c.systemMessage
     })
   }, 2000))
+}
+
+async function initFunctions() {
+  readdirSync('src/functions')
+    .filter(file => file.endsWith('.ts'))
+    .map(async file => {
+      const name = file.replace('.ts', '')
+      const module = await import(`./functions/${name}`)
+      if (typeof module.call !== 'function') {
+        return log({msg: `Function ${name} has no call() method`, logLevel: 'warn'})
+      }
+      globalTools.push({name, module})
+    });
 }
 
 async function initCommands(bot: Telegraf) {
@@ -460,4 +464,3 @@ async function answerToMessage(ctx: Context & {
     return await sendTelegramMessage(msg.chat.id, `${error.message}${ctx.secondTry ? '\n\nПовторная отправка последнего сообщения...' : ''}`, extraMessageParams)
   }
 }
-

@@ -60,7 +60,6 @@ export type ConfigType = {
   testUsers?: string[]
   chats: ConfigChatType[]
   planfix: PlanfixConfigType
-  functions: string[]
   logLevel?: 'debug' | 'info' | 'warn' | 'error'
 }
 
