@@ -56,6 +56,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
   const thread = threads[msg.chat.id || 0]
 
   // Check for 'confirm' or 'noconfirm' in the message to set confirmation
+  // TODO: remove from text
   if (msg.text.includes('noconfirm')) {
     chatConfig.chatParams.confirmation = false;
   } else if (msg.text.includes('confirm')) {

@@ -6,7 +6,7 @@ import {
   ConfigType,
   ChatSettingsType,
   ToolResponse,
-  FunctionsConfigType,
+  ToolParamsType,
   ThreadStateType
 } from '../types';
 
@@ -44,7 +44,7 @@ export class ChangeChatSettingsClient extends AIFunctionsProvider {
       const newChatConfig = {
         name: `Private ${this.configChat.username}`,
         username: this.configChat.username,
-        toolParams: {} as FunctionsConfigType,
+        toolParams: {} as ToolParamsType,
         chatParams: settings,
       } as ConfigChatType;
       config.chats.push(newChatConfig);

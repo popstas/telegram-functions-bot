@@ -55,7 +55,7 @@ export class ObsidianReadClient extends AIFunctionsProvider {
     const options = JSON.parse(str) as ToolArgsType;
     if (!options) return str
     const file_paths = this.getFilePath(options)
-    return `**Obsidian read:** \`${file_paths.join(', ')}\``
+    return `**Obsidian read:** \`${file_paths.join(', ').replace(/\\/g, '/')}\``
   }
 
   async prompt_append(): Promise<string> {

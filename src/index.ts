@@ -43,7 +43,7 @@ async function start() {
   }
   watchConfigChanges();
 
-  await initFunctions()
+  await initTools()
 
   const httpAgent = config.auth.proxy_url ? new HttpsProxyAgent(`${config.auth.proxy_url}`) : undefined;
 
@@ -98,12 +98,12 @@ function watchConfigChanges() {
   }, 2000))
 }
 
-async function initFunctions() {
-  readdirSync('src/functions')
+async function initTools() {
+  readdirSync('src/tools')
     .filter(file => file.endsWith('.ts'))
     .map(async file => {
       const name = file.replace('.ts', '')
-      const module = await import(`./functions/${name}`)
+      const module = await import(`./tools/${name}`)
       if (typeof module.call !== 'function') {
         return log({msg: `Function ${name} has no call() method`, logLevel: 'warn'})
       }
@@ -228,7 +228,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
       messages,
       model: thread.completionParams?.model || 'gpt-4o-mini',
       temperature: thread.completionParams?.temperature,
-      // cannot use functions at 3+ level of chaining
+      // cannot use functions at 6+ level of chaining
       tools: isNoTool ? undefined : tools,
       tool_choice: isNoTool ? undefined : 'auto',
     });
@@ -244,12 +244,12 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
   }
 
   if (msg.chat.type === 'private') {
-    if (!chatConfig.functions) chatConfig.functions = []
-    chatConfig.functions.push('change_chat_settings')
+    if (!chatConfig.tools) chatConfig.tools = []
+    chatConfig.tools.push('change_chat_settings')
   }
 
-  const chatTools = chatConfig.functions ?
-    chatConfig.functions.map(f => globalTools.find(g => g.name === f) as ChatToolType).filter(Boolean) :
+  const chatTools = chatConfig.tools ?
+    chatConfig.tools.map(f => globalTools.find(g => g.name === f) as ChatToolType).filter(Boolean) :
     []
 
   // prompts from functions, should be after tools

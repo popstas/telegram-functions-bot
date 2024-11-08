@@ -12,7 +12,7 @@ Telegram bot with functions tools
 - Use tool to get answer, send tool usage to user
 - Read tool answer, answer user
 
-## Functions
+## Tools
 - `change_chat_settings` - Change chat settings in config.yml
 - `get_next_offday` - count 4-days cycle: day, night, sleep, offday
 - `javascript_interpreter` - exec JavaScript code

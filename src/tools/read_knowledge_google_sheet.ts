@@ -33,7 +33,7 @@ export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
 
   async read_sheet() {
     if (!this.authClient) return [];
-    const sheetId = this?.configChat?.toolParams?.knowledge_google_sheet.sheetId
+    const sheetId = this?.configChat?.toolParams?.knowledge_google_sheet?.sheetId
     if (!sheetId) return
 
     if (getCache(sheetId)) return getCache(sheetId);
@@ -59,8 +59,8 @@ export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
 
     const data = await this.read_sheet() as Array<{ [key: string]: string }>;
     if (!data.length) return {content: 'No data, auth with /google_auth'};
-    const titleCol = this.configChat.toolParams?.knowledge_google_sheet.titleCol || 'title';
-    const textCol = this.configChat.toolParams?.knowledge_google_sheet.textCol || 'text';
+    const titleCol = this.configChat.toolParams?.knowledge_google_sheet?.titleCol || 'title';
+    const textCol = this.configChat.toolParams?.knowledge_google_sheet?.textCol || 'text';
     const found = data.find((row: any) => row[titleCol] === title);
     const content = found ? found[textCol] : `No answer found for ${title}`;
     return {content};
@@ -74,7 +74,7 @@ export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
 
   async prompt_append(): Promise<string | undefined> {
     const data = await this.read_sheet();
-    const titleCol = this.configChat.toolParams?.knowledge_google_sheet.titleCol || 'title';
+    const titleCol = this.configChat.toolParams?.knowledge_google_sheet?.titleCol || 'title';
     const titles = data?.map((row: any) => row[titleCol]);
     if (titles) return '## Google Sheet Knowledge base titles:\n' + titles.map(f => `- ${f}`).join('\n');
   }

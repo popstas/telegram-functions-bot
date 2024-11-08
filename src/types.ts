@@ -12,9 +12,9 @@ export type ConfigChatType = {
   prefix?: string
   systemMessage?: string
   buttons?: ConfigChatButtonType[]
-  functions?: string[]
+  tools?: string[]
   chatParams: ChatSettingsType
-  toolParams: FunctionsConfigType
+  toolParams: ToolParamsType
 }
 
 export type ChatSettingsType = {
@@ -92,7 +92,7 @@ export interface ToolResponse {
   content: string
 }
 
-export type FunctionsConfigType = {
+export type ToolParamsType = {
   obsidian?: ObsidianConfigType
   ssh_command?: SshConfigType
   knowledge_google_sheet?: {
