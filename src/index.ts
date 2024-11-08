@@ -147,7 +147,7 @@ async function initCommands(bot: Telegraf) {
 }
 
 function getInfoMessage(msg: Message.TextMessage, chatConfig: ConfigChatType) {
-  const systemMessage = getSystemMessage(chatConfig)
+  const systemMessage = getSystemMessage(chatConfig, [])
   const tokens = getTokensCount(chatConfig, systemMessage)
 
   const lines = [
@@ -236,35 +236,48 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
     return await onGptAnswer(msg, res, level + 1);
   }
 
-  const thread = threads[msg.chat?.id || 0]
-  let systemMessage = thread?.systemMessage || getSystemMessage(chatConfig)
-  if (thread?.nextSystemMessage) {
-    systemMessage = thread.nextSystemMessage || ''
-    thread.nextSystemMessage = ''
-  }
 
+  // begin answer, define thread
+  const thread = threads[msg.chat?.id || 0]
+
+  // tools change_chat_settings
   if (msg.chat.type === 'private') {
     if (!chatConfig.tools) chatConfig.tools = []
     chatConfig.tools.push('change_chat_settings')
   }
 
+  // chatTools
   const chatTools = chatConfig.tools ?
     chatConfig.tools.map(f => globalTools.find(g => g.name === f) as ChatToolType).filter(Boolean) :
     []
-
-  // prompts from functions, should be after tools
+  // prompts from tools, should be after tools
   const prompts = await Promise.all(
     chatTools
       .filter(f => typeof f.module.call(chatConfig, thread).prompt_append === 'function')
       .map(async f => await f.module.call(chatConfig, thread).prompt_append())
       .filter(f => !!f)
   )
-
+  // systemMessages from tools, should be after tools
+  const systemMessages = await Promise.all(
+    chatTools
+      .filter(f => typeof f.module.call(chatConfig, thread).systemMessage === 'function')
+      .map(async f => await f.module.call(chatConfig, thread).systemMessage())
+      .filter(f => !!f)
+  )
   const isTools = chatTools.length > 0;
   const tools = isTools ? chatTools.map(f => f.module.call(chatConfig, thread).functions.toolSpecs).flat() : undefined;
 
+  // systemMessage
+  let systemMessage = getSystemMessage(chatConfig, systemMessages)
   const date = new Date().toISOString()
   systemMessage = systemMessage.replace(/\{date}/g, date)
+  thread.systemMessage = systemMessage
+  if (thread?.nextSystemMessage) {
+    systemMessage = thread.nextSystemMessage || ''
+    thread.nextSystemMessage = ''
+  }
+
+  // messages
   let messages = await buildMessages(systemMessage, thread.messages, chatTools, prompts);
 
   const res = await api.chat.completions.create({
@@ -309,6 +322,7 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
   // console.log('chat:', chat)
   const extraMessageParams = {reply_to_message_id: ctx.message?.message_id}
 
+  // add "Forwarded from" to message
   // TODO: getTelegramUser(msg)
   const forwardOrigin = msg.forward_origin;
   const username = forwardOrigin?.sender_user?.username
@@ -339,13 +353,24 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
   // addToHistory should be after replace msg.text
   addToHistory({
     msg,
-    systemMessage: getSystemMessage(chat),
+    systemMessage: getSystemMessage(chat, []),
     completionParams: chat.completionParams,
   })
   // should be after addToHistory
   const thread = threads[msg.chat.id]
 
-  // should be after const thread
+  // Check previous message time and forget history if time delta exceeds forgetTimeout
+  const forgetTimeout = chat.chatParams?.forgetTimeout;
+  if (forgetTimeout && thread.msgs.length > 1) {
+    const lastMessageTime = new Date(thread.msgs[thread.msgs.length - 2].date * 1000).getTime();
+    const currentTime = new Date().getTime();
+    const timeDelta = (currentTime - lastMessageTime) / 1000; // in seconds
+    if (timeDelta > forgetTimeout) {
+      forgetHistory(msg.chat.id);
+    }
+  }
+
+  // activeButton, should be after const thread
   const activeButton = thread?.activeButton
   if (buttons) {
     // message == button.name
@@ -379,17 +404,6 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
   // skip replies to other people
   if (msg.reply_to_message && msg.from?.username !== msg.reply_to_message.from?.username) {
     if (msg.reply_to_message.from?.username !== config.bot_name) return
-  }
-
-  // Check previous message time and forget history if time delta exceeds forgetTimeout
-  const forgetTimeout = chat.chatParams?.forgetTimeout;
-  if (forgetTimeout && thread.msgs.length > 1) {
-    const lastMessageTime = new Date(thread.msgs[thread.msgs.length - 2].date * 1000).getTime();
-    const currentTime = new Date().getTime();
-    const timeDelta = (currentTime - lastMessageTime) / 1000; // in seconds
-    if (timeDelta > forgetTimeout) {
-      forgetHistory(msg.chat.id);
-    }
   }
 
   const historyLength = thread.messages.length

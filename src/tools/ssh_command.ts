@@ -108,6 +108,15 @@ export class SshCommandClient extends AIFunctionsProvider {
     const {user, host} = this.getUserHost();
     return `\`ssh ${user}@${host}\`\n\`\`\`sh\n${command}\n\`\`\``
   }
+
+  systemMessage() {
+    const {user, host} = this.getUserHost();
+    return [
+      `You are using ssh commands on remote ssh server ${user}@${host}.`,
+      `Don't use sudo.`,
+      `Current date: {date}`
+      ].join('\n');
+  }
 }
 
 export function call(configChat: ConfigChatType, thread: ThreadStateType) {

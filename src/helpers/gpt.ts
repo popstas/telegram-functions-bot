@@ -35,13 +35,10 @@ export async function buildMessages(systemMessage: string, history: OpenAI.ChatC
   return messages
 }
 
-export function defaultSystemMessage() {
-  return `You answer as concisely as possible for each response. If you are generating a list, do not have too many items.
-Current date: ${new Date().toISOString()}\n\n`
-}
-
-export function getSystemMessage(chatConfig: ConfigChatType) {
-  return chatConfig.systemMessage || defaultSystemMessage()
+export function getSystemMessage(chatConfig: ConfigChatType, systemMessages: string[]): string {
+  if (chatConfig.systemMessage) return chatConfig.systemMessage
+  if (systemMessages.length > 0) return systemMessages[0]
+  return 'You are using functions to answer the questions. Current date: {date}'
 }
 
 export function getTokensCount(chatConfig: ConfigChatType, text: string) {

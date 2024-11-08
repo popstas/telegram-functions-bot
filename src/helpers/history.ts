@@ -28,7 +28,11 @@ export function addToHistory({msg, answer, systemMessage, completionParams}: {
   }
   threads[key].messages.push(messageItem)
 
-  if (!answer) threads[key].msgs.push(msg);
+  if (!answer) {
+    threads[key].msgs.push(msg);
+    // limit history from begin to last 20 messages
+    threads[key].msgs = threads[key].msgs.slice(-20)
+  }
 }
 
 export function forgetHistory(chatId: number) {
