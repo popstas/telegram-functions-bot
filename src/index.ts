@@ -147,6 +147,11 @@ function getInfoMessage(msg: Message.TextMessage, chat: ConfigChatType) {
     `Tokens: ${tokens}`,
     `Model: ${chat.completionParams.model}`
   ]
+
+  if (chat.chatParams?.forgetTimeout) {
+    lines.push(`Forget timeout: ${chat.chatParams.forgetTimeout} sec`)
+  }
+
   if (msg.chat.type === 'private') {
     lines.push(`Настройки приватного режима можно менять:
 - Отключать автоудаление сообщений от функций
@@ -155,6 +160,7 @@ function getInfoMessage(msg: Message.TextMessage, chat: ConfigChatType) {
 
 Бот понимает эти команды в произвольном виде.`)
   }
+
   return lines.join('\n\n')
 }
 
@@ -352,17 +358,6 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
     }
   }
 
-  // Check previous message time and forget history if time delta exceeds forgetTimeout
-  const forgetTimeout = chat.chatParams?.forgetTimeout;
-  if (forgetTimeout && thread.msgs.length > 0) {
-    const lastMessageTime = new Date(thread.msgs[thread.msgs.length - 1].date).getTime();
-    const currentTime = new Date().getTime();
-    const timeDelta = (currentTime - lastMessageTime) / 1000; // in seconds
-    if (timeDelta > forgetTimeout) {
-      forgetHistory(msg.chat.id);
-    }
-  }
-
   // answer only to prefixed message
   if (chat.prefix && !matchedButton && !activeButton) {
     const re = new RegExp(`^${chat.prefix}`, 'i')
@@ -376,6 +371,17 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
   // skip replies to other people
   if (msg.reply_to_message && msg.from?.username !== msg.reply_to_message.from?.username) {
     if (msg.reply_to_message.from?.username !== config.bot_name) return
+  }
+
+  // Check previous message time and forget history if time delta exceeds forgetTimeout
+  const forgetTimeout = chat.chatParams?.forgetTimeout;
+  if (forgetTimeout && thread.msgs.length > 1) {
+    const lastMessageTime = new Date(thread.msgs[thread.msgs.length - 2].date * 1000).getTime();
+    const currentTime = new Date().getTime();
+    const timeDelta = (currentTime - lastMessageTime) / 1000; // in seconds
+    if (timeDelta > forgetTimeout) {
+      forgetHistory(msg.chat.id);
+    }
   }
 
   // prog system message
