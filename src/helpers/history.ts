@@ -26,6 +26,7 @@ export function addToHistory({msg, answer, systemMessage, completionParams}: {
     messageItem.role = 'user'
     messageItem.content = msg.text || ''
   }
+  messageItem.timestamp = new Date().toISOString(); // Store the timestamp of each message
   threads[key].messages.push(messageItem)
 
   if (!answer) threads[key].msgs.push(msg);

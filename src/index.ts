@@ -352,6 +352,17 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
     }
   }
 
+  // Check previous message time and forget history if time delta exceeds forgetTimeout
+  const forgetTimeout = chat.chatParams?.forgetTimeout;
+  if (forgetTimeout && thread.msgs.length > 0) {
+    const lastMessageTime = new Date(thread.msgs[thread.msgs.length - 1].date).getTime();
+    const currentTime = new Date().getTime();
+    const timeDelta = (currentTime - lastMessageTime) / 1000; // in seconds
+    if (timeDelta > forgetTimeout) {
+      forgetHistory(msg.chat.id);
+    }
+  }
+
   // answer only to prefixed message
   if (chat.prefix && !matchedButton && !activeButton) {
     const re = new RegExp(`^${chat.prefix}`, 'i')
