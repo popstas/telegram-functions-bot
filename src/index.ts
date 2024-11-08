@@ -286,7 +286,7 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
     return await sendTelegramMessage(msg.chat.id, text, params)
   }
 
-  log({msg: msg.text, logLevel: 'info', chatId: msg.chat.id, role: 'user'}); // Pba7c
+  log({msg: msg.text, logLevel: 'info', chatId: msg.chat.id, role: 'user', username: msg?.from?.username});
 
   // console.log('chat:', chat)
   const extraMessageParams = {reply_to_message_id: ctx.message?.message_id}
@@ -413,7 +413,7 @@ async function answerToMessage(ctx: Context & {
         extraParams.reply_markup = {keyboard: buttonRows, resize_keyboard: true}
       }
 
-      log({msg: text, logLevel: 'info', chatId: msg.chat.id, role: 'system'}); // Pba7c
+      log({msg: text, logLevel: 'info', chatId: msg.chat.id, role: 'system'});
 
 
       const msgSent = await sendTelegramMessage(msg.chat.id, text, extraParams)

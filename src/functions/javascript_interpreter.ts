@@ -36,7 +36,7 @@ export class JavascriptInterpreterClient extends AIFunctionsProvider {
   async javascript_interpreter(options: ToolArgsType) {
     const code = options.code;
 
-    console.log('code:', code);
+    // console.log('code:', code);
 
     // Create a new context for the script to run in
     const context = vm.createContext({});
