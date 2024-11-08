@@ -107,7 +107,7 @@ function getChatConfig(ctxChat: Chat) {
 
     if (ctxChat?.type === 'private') {
       const privateChat = ctxChat as Chat.PrivateChat
-      const isAllowed = config.allowedPrivateUsers?.includes(privateChat.username || '')
+      const isAllowed = config.privateUsers?.includes(privateChat.username || '')
       if (!isAllowed) {
         return
       }

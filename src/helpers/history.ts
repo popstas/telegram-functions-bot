@@ -14,8 +14,8 @@ export function addToHistory({msg, answer, systemMessage, completionParams}: {
     threads[key] = {
       msgs: [],
       messages: [],
-      customSystemMessage: systemMessage,
-      completionParams: completionParams,
+      systemMessage,
+      completionParams,
     }
   }
   const messageItem = {} as OpenAI.ChatCompletionMessageParam;

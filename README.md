@@ -24,3 +24,7 @@ Telegram bot with functions tools
 - `read_knowledge_google_sheet` - questions and ansers from Google Sheet
 - `read_knowledge_json` - questions and ansers from json file/url
 - `ssh_command` - exec ssh shell command, single server from config
+
+## Config
+Empty `config.yml` should be generated. Fill it with your data:
+- 

@@ -5,19 +5,16 @@ import {CredentialBody} from "google-auth-library/build/src/auth/credentials";
 
 export type ConfigChatType = {
   name: string
+  completionParams: CompletionParamsType
   id?: number
   ids?: number[]
   username?: string
   prefix?: string
-  progPrefix?: string
-  progInfoPrefix?: string
-  forgetPrefix?: string
   systemMessage?: string
   buttons?: ConfigChatButtonType[]
   functions?: string[]
-  completionParams: CompletionParamsType
-  toolParams: FunctionsConfigType
   chatParams: ChatSettingsType
+  toolParams: FunctionsConfigType
 }
 
 export type ChatSettingsType = {
@@ -33,7 +30,7 @@ export type CompletionParamsType = {
   temperature?: number
   top_p?: number
   presence_penalty?: number
-  max_tokens: number
+  max_tokens?: number
 }
 
 export type ConfigType = {
@@ -43,16 +40,16 @@ export type ConfigType = {
   auth: {
     bot_token: string
     chatgpt_api_key: string
-    google_service_account: CredentialBody
+    google_service_account?: CredentialBody
+    oauth_google?: {
+      client_id: string
+      client_secret: string
+      redirect_uri: string
+    }
+    proxy_url?: string
   }
-  oauth_google: {
-    client_id: string
-    client_secret: string
-    redirect_uri: string
-  }
-  proxyUrl?: string
-  allowedPrivateUsers?: string[]
   adminUsers?: string[]
+  privateUsers: string[]
   testUsers?: string[]
   chats: ConfigChatType[]
   logLevel?: 'debug' | 'info' | 'warn' | 'error'
@@ -72,7 +69,7 @@ export type ObsidianConfigType = {
 export type ThreadStateType = {
   msgs: Message.TextMessage[]
   messages: OpenAI.ChatCompletionMessageParam[]
-  customSystemMessage?: string
+  systemMessage?: string
   completionParams?: CompletionParamsType
   activeButton?: ConfigChatButtonType
   nextSystemMessage?: string
@@ -98,7 +95,7 @@ export interface ToolResponse {
 export type FunctionsConfigType = {
   obsidian?: ObsidianConfigType
   ssh_command?: SshConfigType
-  knowledge_google_sheet: {
+  knowledge_google_sheet?: {
     sheetId: string
     titleCol: string
     textCol: string

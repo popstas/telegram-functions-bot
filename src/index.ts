@@ -11,7 +11,7 @@ import {
   ThreadStateType,
   ConfigChatButtonType, ToolResponse, ChatToolType,
 } from './types'
-import {readConfig, writeConfig} from './config'
+import {readConfig, validateConfig, writeConfig} from './config'
 import {HttpsProxyAgent} from "https-proxy-agent"
 import {addOauthToThread, commandGoogleOauth, ensureAuth} from "./helpers/google.ts";
 import {buildButtonRows, getCtxChatMsg, isAdminUser, sendTelegramMessage} from "./helpers/telegram.ts";
@@ -37,11 +37,15 @@ void start()
 async function start() {
   // global
   config = readConfig(configPath);
+  if (!validateConfig(config)) {
+    console.log('Invalid config, exiting...')
+    process.exit(1)
+  }
   watchConfigChanges();
 
   await initFunctions()
 
-  const httpAgent = config.proxyUrl ? new HttpsProxyAgent(`${config.proxyUrl}`) : undefined;
+  const httpAgent = config.auth.proxy_url ? new HttpsProxyAgent(`${config.auth.proxy_url}`) : undefined;
 
   try {
     api = new OpenAI({
@@ -89,7 +93,7 @@ function watchConfigChanges() {
     config.chats.filter(c => c.id && threads[c.id]).forEach((c) => {
       const id = c.id as number
       threads[id].completionParams = c.completionParams
-      threads[id].customSystemMessage = c.systemMessage
+      threads[id].systemMessage = c.systemMessage
     })
   }, 2000))
 }
@@ -233,7 +237,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
   }
 
   const thread = threads[msg.chat?.id || 0]
-  let systemMessage = thread?.customSystemMessage || getSystemMessage(chatConfig)
+  let systemMessage = thread?.systemMessage || getSystemMessage(chatConfig)
   if (thread?.nextSystemMessage) {
     systemMessage = thread.nextSystemMessage || ''
     thread.nextSystemMessage = ''
@@ -308,7 +312,7 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
   // TODO: getTelegramUser(msg)
   const forwardOrigin = msg.forward_origin;
   const username = forwardOrigin?.sender_user?.username
-  const isOurUser = username && config.allowedPrivateUsers?.includes(username)
+  const isOurUser = username && config.privateUsers?.includes(username)
   if (forwardOrigin && !isOurUser) {
     const name = forwardOrigin.type === 'hidden_user' ?
       forwardOrigin.sender_user_name :
@@ -388,22 +392,6 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
     }
   }
 
-  // prog system message
-  if (chat.progPrefix) {
-    const re = new RegExp(`^${chat.progPrefix}`, 'i')
-    const isProg = re.test(msg.text)
-    if (isProg) {
-      thread.customSystemMessage = msg.text.replace(re, '').trim()
-      forgetHistory(msg.chat.id)
-      if (thread.customSystemMessage === '') {
-        return await sendTelegramMessage(msg.chat.id, 'Начальная установка сброшена')
-      } else {
-        thread.customSystemMessage = `Я ${thread.customSystemMessage}`
-        return await sendTelegramMessage(msg.chat.id, 'Сменил начальную установку на: ' + thread.customSystemMessage)
-      }
-    }
-  }
-
   const historyLength = thread.messages.length
   setTimeout(async () => {
     if (thread.messages.length !== historyLength) {
@@ -420,7 +408,7 @@ async function answerToMessage(ctx: Context & {
 }, msg: Message.TextMessage, chat: ConfigChatType, extraMessageParams: any) {
 
   // inject google oauth to thread
-  if (config.oauth_google?.client_id || config.auth.google_service_account?.private_key) {
+  if (config.auth.oauth_google?.client_id || config.auth.google_service_account?.private_key) {
     const authClient = await ensureAuth(msg.from?.id || 0); // for add to threads
     addOauthToThread(authClient, threads, msg);
   }

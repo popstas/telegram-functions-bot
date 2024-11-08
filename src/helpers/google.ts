@@ -83,9 +83,9 @@ export async function ensureAuth(user_id: number): Promise<OAuth2Client | Google
 
   // get auth url oauth2Client
   return new google.auth.OAuth2(
-    config.oauth_google.client_id,
-    config.oauth_google.client_secret,
-    config.oauth_google.redirect_uri
+    config.auth.oauth_google?.client_id,
+    config.auth.oauth_google?.client_secret,
+    config.auth.oauth_google?.redirect_uri
   );
 }
 

@@ -1,10 +1,22 @@
 import * as yaml from 'js-yaml'
-import {readFileSync, writeFileSync} from 'fs'
+import {readFileSync, writeFileSync, existsSync} from 'fs'
 import {ConfigType} from './types.js'
+import {log} from "./helpers.ts";
 
 export function readConfig(path: string = 'config.yml'): ConfigType {
-  const config = yaml.load(readFileSync(path, 'utf8'))
-  return config as ConfigType
+  if (!existsSync(path)) {
+    const config = generateConfig()
+    writeConfig(path, config)
+    console.log('Generated config.yml file, please fill it with your data.')
+    return config
+  }
+  const config = yaml.load(readFileSync(path, 'utf8')) as ConfigType
+
+  if (config.auth.proxy_url === generateConfig().auth.proxy_url) {
+    delete(config.auth.proxy_url);
+  }
+
+  return config
 }
 
 // TODO: write to config.compiled.yml, for preserve config.yml comments
@@ -15,11 +27,47 @@ export function writeConfig(path: string = 'config.yml', config: ConfigType): Co
       noCompatMode: true,
       quotingType: '"',
     })
-    console.log('yamlRaw:', yamlRaw)
+    // console.log('yamlRaw:', yamlRaw)
     writeFileSync(path, yamlRaw);
   } catch (e) {
     console.error('Error in writeConfig(): ', e)
   }
   // const config = yaml.load(readFileSync(path, 'utf8'))
   return config
+}
+
+export function generateConfig(): ConfigType {
+  return {
+    bot_name: 'replace_to_your_bot',
+    auth: {
+      bot_token: 'replace_to_your_bot_token',
+      chatgpt_api_key: 'replace_to_your_chatgpt_api_key',
+      proxy_url: 'http://user:pass@host:port',
+
+    },
+    adminUsers: ['your_telegram_username'],
+    privateUsers: ['your_telegram_username'],
+    chats: [{
+      name: 'default',
+      completionParams: {
+        model: 'gpt-4o-mini',
+      },
+      systemMessage: 'You can use functions to answer the questions.',
+      functions: ['javascript_interpreter'],
+      chatParams: {},
+      toolParams: {},
+    }],
+  }
+}
+
+export function validateConfig(config: ConfigType) {
+  let valid = true
+  const gen = generateConfig()
+  for (const conf of ['bot_token', 'chatgpt_api_key'] as const) {
+    if (!config.auth[conf] || config.auth[conf] === gen.auth[conf]) {
+      log({msg: `No auth.${conf} in config`, logLevel: 'error'});
+      valid = false
+    }
+  }
+  return valid
 }
