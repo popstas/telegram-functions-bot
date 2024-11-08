@@ -124,4 +124,12 @@ export type FunctionsConfigType = {
     textCol: string
     cacheTime: number
   }
+  planfix?: {
+    account: string
+    token: string
+  }
+  planfix_create_request_task?: {
+    name: string
+    templateId?: number
+  }
 }

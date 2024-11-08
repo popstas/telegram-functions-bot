@@ -7,6 +7,7 @@ export function readConfig(path: string = 'config.yml'): ConfigType {
   return config as ConfigType
 }
 
+// TODO: write to config.compiled.yml, for preserve config.yml comments
 export function writeConfig(path: string = 'config.yml', config: ConfigType): ConfigType {
   try {
     const yamlRaw = yaml.dump(config, {
