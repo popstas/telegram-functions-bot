@@ -1,7 +1,7 @@
 import {Telegraf, Context, Scenes} from 'telegraf'
 import {message, editedMessage} from 'telegraf/filters'
 import telegramifyMarkdown from 'telegramify-markdown'
-import {Message} from 'telegraf/types'
+import {Chat, Message} from 'telegraf/types'
 import OpenAI from 'openai'
 import debounce from 'lodash.debounce'
 import {watchFile, readdirSync} from 'fs'
@@ -397,8 +397,11 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
     return
   }
 
+  const chatTitle = (ctx.chat as Chat.TitleChat).title
+  const chatId = msg.chat.id
+
   if (!chat) {
-    log({msg: `Not in whitelist: ${JSON.stringify(msg.from)}`, logLevel: 'warn'})
+    log({msg: `Not in whitelist, from: ${JSON.stringify(msg.from)}`, chatId, chatTitle, logLevel: 'warn'})
     const text = msg.chat.type === 'private' ?
       `You are not in whitelist. Your username: ${msg.from?.username}` :
       `This chat is not in whitelist.\nYour username: ${msg.from?.username}, chat id: ${msg.chat.id}`
@@ -412,7 +415,7 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
     return await sendTelegramMessage(msg.chat.id, text, params)
   }
 
-  log({msg: msg.text, logLevel: 'info', chatId: msg.chat.id, role: 'user', username: msg?.from?.username});
+  log({msg: msg.text, logLevel: 'info', chatId, chatTitle, role: 'user', username: msg?.from?.username});
 
   // console.log('chat:', chat)
   const extraMessageParams = {reply_to_message_id: ctx.message?.message_id}
@@ -540,7 +543,8 @@ async function answerToMessage(ctx: Context & {
         extraParams.reply_markup = {keyboard: buttonRows, resize_keyboard: true}
       }
 
-      log({msg: text, logLevel: 'info', chatId: msg.chat.id, role: 'system'});
+      const chatTitle = (msg.chat as Chat.TitleChat).title
+      log({msg: text, logLevel: 'info', chatId: msg.chat.id, chatTitle, role: 'system'});
 
 
       const msgSent = await sendTelegramMessage(msg.chat.id, text, extraParams)

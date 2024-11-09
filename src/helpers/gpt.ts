@@ -3,7 +3,7 @@ import {ChatToolType, ConfigChatType, ToolResponse} from "../types.ts";
 import {bot, config, threads} from "../index.ts";
 import {getEncoding, TiktokenEncoding} from "js-tiktoken";
 import {sendTelegramMessage} from "./telegram.ts";
-import {Message} from "telegraf/types";
+import {Chat, Message} from "telegraf/types";
 import { log } from '../helpers.ts';
 
 export async function buildMessages(systemMessage: string, history: OpenAI.ChatCompletionMessageParam[], chatTools: {
@@ -75,9 +75,12 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
       toolParamsStr = toolClient.options_string(toolParams)
     }
 
+    const chatTitle = (msg.chat as Chat.TitleChat).title
+    const chatId = msg.chat.id
+
     if (toolParams && !chatConfig.chatParams?.confirmation && chatConfig.chatParams?.showToolMessages !== false) {
       // send message with tool call params
-      log({ msg: toolParamsStr, logLevel: 'info', chatId: msg.chat.id, role: 'assistant' });
+      log({ msg: toolParamsStr, chatId, chatTitle, role: 'assistant' });
       void await sendTelegramMessage(msg.chat.id, toolParamsStr, {
         parse_mode: 'MarkdownV2',
         deleteAfter: chatConfig.chatParams?.deleteToolAnswers
@@ -87,7 +90,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
     // Execute the tool without confirmation
     if (!chatConfig.chatParams?.confirmation) {
       const result = await tool(toolParams) as ToolResponse;
-      log({ msg: result.content, logLevel: 'info', chatId: msg.chat.id, role: 'tool' });
+      log({ msg: result.content, chatId, chatTitle, role: 'tool' });
       return result;
     }
 
@@ -125,7 +128,8 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
         const configConfirmed = {...chatConfig};
         configConfirmed.chatParams.confirmation = false;
         const res = await callTools(toolCalls, chatTools, configConfirmed, msg);
-        log({ msg: 'tools called', logLevel: 'info', chatId: msg.chat.id, role: 'tool' });
+        const chatTitle = (msg.chat as Chat.TitleChat).title
+        log({ msg: 'tools called', logLevel: 'info', chatId: msg.chat.id, chatTitle, role: 'tool' });
         return resolve(res);
       });
       bot.action(`cancel_tool_${uniqueId}`, async () => {

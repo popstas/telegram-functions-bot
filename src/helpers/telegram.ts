@@ -101,7 +101,8 @@ function getChatConfig(ctxChat: Chat) {
   if (!chat.id) {
     // console.log("ctxChat:", ctxChat);
     if (ctxChat?.type !== 'private') {
-      log({msg: `This is ${ctxChat?.type} chat, not in whitelist: ${ctxChat.id}`, chatId: ctxChat.id, logLevel: 'warn'})
+      const chatTitle = (ctxChat as Chat.TitleChat).title
+      log({msg: `This is ${ctxChat?.type} chat, not in whitelist: ${ctxChat.title}`, chatId: ctxChat.id, chatTitle, logLevel: 'warn'})
       return
     }
 
