@@ -14,7 +14,7 @@ export function readConfig(path?: string): ConfigType {
   const config = yaml.load(readFileSync(path, 'utf8')) as ConfigType
 
   if (config.auth.proxy_url === generateConfig().auth.proxy_url) {
-    delete(config.auth.proxy_url);
+    delete (config.auth.proxy_url);
   }
 
   return config
@@ -80,4 +80,28 @@ export function generatePrivateChatConfig(username: string) {
     toolParams: {} as ToolParamsType,
     chatParams: {} as ChatParamsType,
   } as ConfigChatType;
+}
+
+export function logConfigChanges(oldConfig: any, newConfig: any) {
+  const oldConfigYaml = yaml.dump(oldConfig, {lineWidth: -1, noCompatMode: true, quotingType: '"'});
+  const newConfigYaml = yaml.dump(newConfig, {lineWidth: -1, noCompatMode: true, quotingType: '"'});
+  if (oldConfigYaml !== newConfigYaml) {
+    const diff = generateDiff(oldConfigYaml, newConfigYaml);
+    log({msg: `Config changes:\n${diff}`});
+  }
+}
+
+function generateDiff(oldStr: string, newStr: string): string {
+  const oldLines = oldStr.split('\n');
+  const newLines = newStr.split('\n');
+  const diffLines = [];
+
+  for (let i = 0; i < Math.max(oldLines.length, newLines.length); i++) {
+    if (oldLines[i] !== newLines[i]) {
+      diffLines.push(`- ${oldLines[i] || ''}`);
+      diffLines.push(`+ ${newLines[i] || ''}`);
+    }
+  }
+
+  return diffLines.join('\n');
 }

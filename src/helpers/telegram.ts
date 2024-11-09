@@ -3,6 +3,7 @@ import {bot, config} from "../index.ts";
 import {ConfigChatButtonType, ConfigChatType} from "../types.ts";
 import {Context, Scenes} from "telegraf";
 import {User} from "@telegraf/types/manage";
+import {log} from "../helpers.ts";
 
 let lastResponse: Message.TextMessage | undefined
 let forDelete: Message.TextMessage | undefined
@@ -46,7 +47,7 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
         response = await bot.telegram.sendMessage(chat_id, msg, params)
       } catch (e) {
         // const err = e as { message: string }
-        console.log('failover sendTelegramMessage without markdown')
+        log({msg: 'failover sendTelegramMessage without markdown', chatId: chat_id, logLevel: 'warn'})
         const failsafeParams = {reply_markup: params.reply_markup}
         response = await bot.telegram.sendMessage(chat_id, msg, failsafeParams)
         // await bot.telegram.sendMessage(chat_id, `${err.message}`, params)
@@ -100,7 +101,7 @@ function getChatConfig(ctxChat: Chat) {
   if (!chat.id) {
     // console.log("ctxChat:", ctxChat);
     if (ctxChat?.type !== 'private') {
-      console.log(`This is ${ctxChat?.type} chat, not in whitelist: ${ctxChat.id}`)
+      log({msg: `This is ${ctxChat?.type} chat, not in whitelist: ${ctxChat.id}`, chatId: ctxChat.id, logLevel: 'warn'})
       return
     }
 

@@ -11,7 +11,7 @@ import {
   ThreadStateType,
   ConfigChatButtonType, ToolResponse, ChatToolType, ToolParamsType,
 } from './types'
-import {generatePrivateChatConfig, readConfig, validateConfig, writeConfig} from './config'
+import {generatePrivateChatConfig, logConfigChanges, readConfig, validateConfig, writeConfig} from './config'
 import {HttpsProxyAgent} from "https-proxy-agent"
 import {addOauthToThread, commandGoogleOauth, ensureAuth} from "./helpers/google.ts";
 import {
@@ -92,9 +92,11 @@ async function start() {
 function watchConfigChanges() {
   // global threads, config
   watchFile(configPath, debounce(() => {
-    console.log('reload config...')
+    const configOld = config
     config = readConfig(configPath)
-    console.log('config:', config)
+    logConfigChanges(configOld, config)
+    // log({msg: `reload config, chats: ${configOld.chats.length} -> ${config.chats.length}`});
+    // console.log('config:', config)
 
     config.chats.filter(c => c.id && threads[c.id]).forEach((c) => {
       const id = c.id as number
@@ -396,7 +398,7 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
   }
 
   if (!chat) {
-    console.log(`Not in whitelist: `, msg.from)
+    log({msg: `Not in whitelist: ${JSON.stringify(msg.from)}`, logLevel: 'warn'})
     const text = msg.chat.type === 'private' ?
       `You are not in whitelist. Your username: ${msg.from?.username}` :
       `This chat is not in whitelist.\nYour username: ${msg.from?.username}, chat id: ${msg.chat.id}`
