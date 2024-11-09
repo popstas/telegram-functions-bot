@@ -12,7 +12,10 @@ type ToolArgsType = {
 }
 
 export const description = 'Get the next offday from the start off date'
-export const details = ``
+export const details = `- Calculate the next offday from the start off date
+- cycle length is 4 days
+- startOffDate: YYYY-MM-DD
+- currentDate: YYYY-MM-DD`
 
 export class NextOffdayClient extends AIFunctionsProvider {
   protected readonly config: ConfigType

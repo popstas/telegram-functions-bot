@@ -19,8 +19,8 @@ export const description = 'Run commands via SSH, can run multiline scripts as c
 export const details = `- convert question to command
 - exec ssh from your machine, with your user ssh access
 - answer with command output
-- user: config.ssh_command.user
-- host: config.ssh_command.host`
+- user: toolParams.ssh_command.user
+- host: toolParams.ssh_command.host`
 // export const configFields = ['user', 'host']
 export const defaultParams = {
   ssh_command: {

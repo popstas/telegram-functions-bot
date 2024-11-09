@@ -9,6 +9,13 @@ type ToolArgsType = {
 };
 
 export const description = 'Read the contents of a JSON file from a URL or local file by titles list'
+export const details = `- read titles and includes it to prompt
+- when answer, read the text by title
+- jsonPath: toolParams.knowledge_json.jsonPath - local file
+- jsonUrl: toolParams.knowledge_json.jsonUrl - or url, cached for 1 hour
+- titleCol: toolParams.knowledge_json.titleCol
+- textCol: toolParams.knowledge_json.textCol
+- cacheTime: toolParams.knowledge_json.cacheTime - seconds`
 export const defaultParams = {
   knowledge_json: {
     jsonPath: '/path/to/json',

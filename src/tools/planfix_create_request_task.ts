@@ -27,6 +27,10 @@ type TaskBodyType = {
 }
 
 export const description = 'Creates new task in CRM Planfix.'
+export const details = `- create contactsMap from clientName, phone, email, telegram, referrer in task description
+- add all thread messages to description
+- add from username to description
+- create task in Planfix`
 export const defaultParams = {
   planfix: {
     account: 'your_account',

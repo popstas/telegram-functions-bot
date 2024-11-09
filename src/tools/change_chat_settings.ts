@@ -6,11 +6,16 @@ import {
   ConfigType,
   ChatParamsType,
   ToolResponse,
-  ToolParamsType,
   ThreadStateType
 } from '../types';
 
 type ToolArgsType = ChatParamsType;
+
+const description = 'Change chat settings in config.yml'
+const details = `- Change chat settings in config.yml
+- Change any chatParams settings
+- If private chat not found, create new chat with settings
+- If group chat not found, ignore`
 
 export class ChangeChatSettingsClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;
@@ -26,7 +31,7 @@ export class ChangeChatSettingsClient extends AIFunctionsProvider {
 
   @aiFunction({
     name: 'change_chat_settings',
-    description: 'Change chat settings in config.yml',
+    description,
     inputSchema: z.object({
       confirmation: z.boolean().optional().describe('Whether to ask for confirmation before running a tool'),
       deleteToolAnswers: z.union([z.boolean(), z.number()]).optional().describe('Whether to delete tool answers after a certain time'),

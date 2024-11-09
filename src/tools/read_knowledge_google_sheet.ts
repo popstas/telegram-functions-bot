@@ -10,6 +10,12 @@ type ToolArgsType = {
 }
 
 export const description = 'Read the contents of Google Sheet by titles list'
+export const details = `- read titles and includes it to prompt
+- when answer, read the content from the sheet by title
+- text part should be larger than title 
+- sheetId: toolParams.knowledge_google_sheet.sheetId
+- titleCol: toolParams.knowledge_google_sheet.titleCol
+- textCol: toolParams.knowledge_google_sheet.textCol`
 export const defaultParams = {
   knowledge_google_sheet: {
     sheetId: 'sheet_id',

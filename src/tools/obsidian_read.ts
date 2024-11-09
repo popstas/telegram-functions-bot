@@ -18,6 +18,10 @@ type ToolArgsType = {
 }
 
 export const description = 'Read the contents of an Obsidian file by files list'
+export const details = `- read all obsidian file tree and includes it to prompt
+- when answer, read the content from file(s) by path
+- root_path: toolParams.obsidian.root_path
+- out_file: toolParams.obsidian.out_file`
 export const defaultParams = {
   obsidian: {
     root_path: '/path/to/obsidian',

@@ -10,7 +10,10 @@ type ToolArgsType = {
 };
 
 export const description = 'Reads the first sheet of a Google Sheet and returns an array of objects';
-
+export const details = `- read using google api
+- using bot-shared google service account by default
+- able to auth with /google_auth with your own account in chat scope
+- convert sheet to json`
 export class GoogleSheetClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;
   private readonly authClient?: OAuth2Client | GoogleAuth;

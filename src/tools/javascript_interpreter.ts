@@ -12,7 +12,8 @@ type ToolArgsType = {
 }
 
 export const description = 'Run JavaScript code in sandbox'
-
+export const details = `- Use nodejs vm.Script to run code in sandbox
+- return result of the code execution or error message`
 export class JavascriptInterpreterClient extends AIFunctionsProvider {
   protected readonly config: ConfigType
 

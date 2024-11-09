@@ -27,4 +27,6 @@ Telegram bot with functions tools
 
 ## Config
 Empty `config.yml` should be generated. Fill it with your data:
-- 
+- bot_name
+- auth.token
+- auth.chatgpt_api_key

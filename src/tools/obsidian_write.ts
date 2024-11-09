@@ -11,10 +11,12 @@ type ToolArgsType = {
 }
 
 export const description = 'Append markdown text to file'
+export const details = `- Just append markdown text to file
+- default: gpt.md`
 export const defaultParams = {
   obsidian: {
     root_path: '/path/to/obsidian',
-    out_file: 'GPT.md'
+    out_file: 'gpt.md'
   }
 } as { obsidian: ObsidianConfigType }
 
