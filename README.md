@@ -1,4 +1,6 @@
-Telegram bot with functions tools
+Telegram bot with functions tools.
+
+[CHANGELOG.md](CHANGELOG.md)
 
 ## Features
 - In comparsion with [popstas/telegram-chatgpt-bot](https://github.com/popstas/telegram-chatgpt-bot)

@@ -1,9 +1,15 @@
-# [](https://github.com/popstas/telegram-functions-bot/compare/v2024.11.3...v) (2024-11-08)
+# [](https://github.com/popstas/telegram-functions-bot/compare/v2024.11.3...v) (2024-11-09)
 
 
 ### Bug Fixes
 
 * add username to log ([4b86efa](https://github.com/popstas/telegram-functions-bot/commit/4b86efad059ac4a79279a3c75105f92078cfbc58))
+* allow admin using private chat ([9937f74](https://github.com/popstas/telegram-functions-bot/commit/9937f7483213fd94b908640c528a90bf07927f03))
+* better logging ([4678515](https://github.com/popstas/telegram-functions-bot/commit/4678515be9e10af661b58fe1090f8e6d4a0c9579)), closes [#32](https://github.com/popstas/telegram-functions-bot/issues/32)
+* BREAKING: move config.oauth_google to config.auth.oauth_google, rename config.proxyUrl to config.auth.proxy_url, config.allowedPrivateUsers to config.privateUsers, remove from chat config: progPrefix, progInfoPrefix, forgetPrefix ([4ab0036](https://github.com/popstas/telegram-functions-bot/commit/4ab003631a1d530d8a6a16d64198a071763b36c2))
+* BREAKING: remove config.systemMessage, completionParams, helpText, timeoutMs, planfix ([886d51b](https://github.com/popstas/telegram-functions-bot/commit/886d51ba07f591f25244d80f8a834e901dc8cb34))
+* BREAKING: rename functions to tools everywhere ([0732f13](https://github.com/popstas/telegram-functions-bot/commit/0732f13547d3f44dd31acceafd6704abcefdd4c5))
+* **change_chat_settings:** describe params, add forgetTimeout, remove outer `settings` object ([0cb2794](https://github.com/popstas/telegram-functions-bot/commit/0cb2794851f822b5e932395e1434a53cd4c6af47))
 * comment console.log, log() fixes ([d611adc](https://github.com/popstas/telegram-functions-bot/commit/d611adcd683fa665ce4089fe98351f45f0e547ec))
 * config read_knowledge_json -> knowledge_json ([863906b](https://github.com/popstas/telegram-functions-bot/commit/863906b2c129d3475ba2c81e76a3e6fdfe48228c))
 * fix br in planfix_create_request_task response ([e1fa867](https://github.com/popstas/telegram-functions-bot/commit/e1fa8674692b977d8e296bf693194df0cdb5839f))
@@ -12,11 +18,18 @@
 * **gpt:** fix working multiple tool calls in single message ([afad6d8](https://github.com/popstas/telegram-functions-bot/commit/afad6d87e7088681db375654257cd2a82c3bb5c6))
 * move chatTools prompts generate from buildMessages to getChatgptAnswer ([007b15c](https://github.com/popstas/telegram-functions-bot/commit/007b15c81e3b47cd7b462907e943d72eeca8d2a6))
 * optional google auth ([49e62e4](https://github.com/popstas/telegram-functions-bot/commit/49e62e43f320382e91ae031730446d53375874e0))
+* remove config.functions ([d673fdd](https://github.com/popstas/telegram-functions-bot/commit/d673fdd78dad8d4327dce0ac23d17a02c3947d85))
 
 
 ### Features
 
+* /add_tool to config from chat for adminUsers ([9b1bf27](https://github.com/popstas/telegram-functions-bot/commit/9b1bf27b482108b21e458214d01fc6867c4cdc16))
+* add tool defaultParams to toolParams when /add_tool, update tools descriptions ([7cf1591](https://github.com/popstas/telegram-functions-bot/commit/7cf1591cc7c54a694b2fc194f76ca2fc5ad8f354))
+* **change_chat_settings:** adminUsers can change chatParams now ([704afc3](https://github.com/popstas/telegram-functions-bot/commit/704afc324c1c62516cb990aca75042d4c5e10892))
+* CONFIG env for multiple configs ([d3b0cce](https://github.com/popstas/telegram-functions-bot/commit/d3b0cceb3a69cc2c2729029de619f645b52d14ec))
+* **info:** describe enabled tools at /info ([7f698ed](https://github.com/popstas/telegram-functions-bot/commit/7f698ed12280fbe61e5c213b66cafc622894186c))
 * new function planfix_create_request_task ([07182fc](https://github.com/popstas/telegram-functions-bot/commit/07182fc42523938938c920f61b14b84e4e139c3f))
+* tool systemMessage for ssh_command ([9b3cebe](https://github.com/popstas/telegram-functions-bot/commit/9b3cebe76967f9dd4e199f5d498fef62d1a6b4f1))
 
 
 
