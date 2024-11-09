@@ -14,7 +14,7 @@ export const details = '';
 
 export class GoogleSheetClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;
-  private authClient?: OAuth2Client | GoogleAuth;
+  private readonly authClient?: OAuth2Client | GoogleAuth;
 
   constructor(authClient?: OAuth2Client | GoogleAuth) {
     super();

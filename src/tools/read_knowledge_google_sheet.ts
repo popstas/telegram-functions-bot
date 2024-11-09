@@ -21,7 +21,7 @@ function setCache(sheetId: string, data: Object[]) {
 
 export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
   protected readonly config: ConfigType
-  public readonly configChat: ConfigChatType
+  protected readonly configChat: ConfigChatType
   private readonly authClient?: OAuth2Client | GoogleAuth;
 
   constructor(configChat: ConfigChatType, authClient?: OAuth2Client | GoogleAuth) {
@@ -33,7 +33,7 @@ export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
 
   async read_sheet() {
     if (!this.authClient) return [];
-    const sheetId = this?.configChat?.toolParams?.knowledge_google_sheet?.sheetId
+    const sheetId = this.configChat.toolParams?.knowledge_google_sheet?.sheetId
     if (!sheetId) return
 
     if (getCache(sheetId)) return getCache(sheetId);

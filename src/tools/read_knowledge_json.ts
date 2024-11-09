@@ -27,7 +27,7 @@ function setCache(path: string, data: Object[], cacheTime: number) {
 
 export class KnowledgeJsonClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;
-  public readonly configChat: ConfigChatType;
+  protected readonly configChat: ConfigChatType;
 
   constructor(configChat: ConfigChatType) {
     super();

@@ -13,7 +13,7 @@ type ToolArgsType = {
 
 export class ObsidianReadClient extends AIFunctionsProvider {
   protected readonly config: ConfigType
-  public readonly configChat: ConfigChatType
+  protected readonly configChat: ConfigChatType
 
   constructor(configChat: ConfigChatType) {
     super()
