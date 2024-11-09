@@ -75,7 +75,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
       toolParamsStr = toolClient.options_string(toolParams)
     }
 
-    if (toolParams && !chatConfig.chatParams?.confirmation) {
+    if (toolParams && !chatConfig.chatParams?.confirmation && chatConfig.chatParams?.showToolMessages !== false) {
       // send message with tool call params
       log({ msg: toolParamsStr, logLevel: 'info', chatId: msg.chat.id, role: 'assistant' });
       void await sendTelegramMessage(msg.chat.id, toolParamsStr, {
@@ -88,6 +88,12 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
     if (!chatConfig.chatParams?.confirmation) {
       const result = await tool(toolParams) as ToolResponse;
       log({ msg: result.content, logLevel: 'info', chatId: msg.chat.id, role: 'tool' });
+      if (chatConfig.chatParams?.showToolMessages === true || chatConfig.chatParams?.showToolMessages === undefined) {
+        void await sendTelegramMessage(msg.chat.id, result.content, {
+          parse_mode: 'MarkdownV2',
+          deleteAfter: chatConfig.chatParams?.deleteToolAnswers
+        });
+      }
       return result;
     }
 

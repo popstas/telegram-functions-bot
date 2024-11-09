@@ -23,6 +23,7 @@ export type ChatSettingsType = {
   debug?: boolean // TODO: impl
   memoryless?: boolean // TODO: impl
   forgetTimeout?: number // in seconds
+  showToolMessages?: true | false | undefined | "headers"
 }
 
 export type CompletionParamsType = {
