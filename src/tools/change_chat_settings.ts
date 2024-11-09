@@ -1,6 +1,6 @@
-import { aiFunction, AIFunctionsProvider } from '@agentic/core';
-import { z } from 'zod';
-import { readConfig, writeConfig } from '../config';
+import {aiFunction, AIFunctionsProvider} from '@agentic/core';
+import {z} from 'zod';
+import {readConfig, writeConfig} from '../config';
 import {
   ConfigChatType,
   ConfigType,
@@ -14,12 +14,14 @@ type ToolArgsType = ChatSettingsType;
 
 export class ChangeChatSettingsClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;
-  public readonly configChat: ConfigChatType;
+  protected readonly configChat: ConfigChatType;
+  protected readonly thread: ThreadStateType
 
-  constructor(configChat: ConfigChatType) {
+  constructor(configChat: ConfigChatType, thread: ThreadStateType) {
     super();
     this.config = readConfig();
     this.configChat = configChat;
+    this.thread = thread
   }
 
   @aiFunction({
@@ -36,7 +38,9 @@ export class ChangeChatSettingsClient extends AIFunctionsProvider {
   })
   async change_chat_settings(settings: ToolArgsType) {
     const config = readConfig();
-    const chatConfig = config.chats.find(chat => chat.username === this.configChat.username);
+    const privateChatConfig = config.chats.find(chat => this.configChat.username && chat.username === this.configChat.username);
+    const groupChatConfig = config.chats.find(chat => chat.id === this.thread.id || chat.ids?.includes(this.thread.id));
+    const chatConfig = groupChatConfig || privateChatConfig;
 
     if (!chatConfig) {
       const newChatConfig = {
@@ -53,7 +57,7 @@ export class ChangeChatSettingsClient extends AIFunctionsProvider {
 
     writeConfig('config.yml', config);
 
-    return { content: 'Chat settings updated successfully' } as ToolResponse;
+    return {content: 'Chat settings updated successfully'} as ToolResponse;
   }
 
   options_string(str: string) {
@@ -65,5 +69,5 @@ export class ChangeChatSettingsClient extends AIFunctionsProvider {
 }
 
 export function call(configChat: ConfigChatType, thread: ThreadStateType) {
-  return new ChangeChatSettingsClient(configChat);
+  return new ChangeChatSettingsClient(configChat, thread);
 }

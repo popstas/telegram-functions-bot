@@ -12,6 +12,7 @@ export function addToHistory({msg, answer, systemMessage, completionParams}: {
   const key = msg.chat?.id || 0
   if (!threads[key]) {
     threads[key] = {
+      id: key,
       msgs: [],
       messages: [],
       systemMessage,

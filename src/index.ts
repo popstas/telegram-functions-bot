@@ -253,8 +253,8 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
   // begin answer, define thread
   const thread = threads[msg.chat?.id || 0]
 
-  // tools change_chat_settings
-  if (msg.chat.type === 'private') {
+  // tools change_chat_settings for private chats and admins
+  if (msg.chat.type === 'private' || isAdminUser(msg)) {
     if (!chatConfig.tools) chatConfig.tools = []
     chatConfig.tools.push('change_chat_settings')
   }

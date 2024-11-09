@@ -137,6 +137,7 @@ export function addOauthToThread(authClient: OAuth2Client | GoogleAuth, threads:
   if (!key) return
   if (!threads[key]) {
     threads[key] = {
+      id: key,
       msgs: [],
       messages: [],
     }
