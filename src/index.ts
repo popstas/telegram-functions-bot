@@ -1,4 +1,4 @@
-import {Telegraf, Context} from 'telegraf'
+import {Telegraf, Context, Scenes} from 'telegraf'
 import {message, editedMessage} from 'telegraf/filters'
 import telegramifyMarkdown from 'telegramify-markdown'
 import {Message} from 'telegraf/types'
@@ -11,10 +11,16 @@ import {
   ThreadStateType,
   ConfigChatButtonType, ToolResponse, ChatToolType,
 } from './types'
-import {readConfig, validateConfig, writeConfig} from './config'
+import {generatePrivateChatConfig, readConfig, validateConfig, writeConfig} from './config'
 import {HttpsProxyAgent} from "https-proxy-agent"
 import {addOauthToThread, commandGoogleOauth, ensureAuth} from "./helpers/google.ts";
-import {buildButtonRows, getCtxChatMsg, isAdminUser, sendTelegramMessage} from "./helpers/telegram.ts";
+import {
+  buildButtonRows,
+  getActionUserMsg,
+  getCtxChatMsg,
+  isAdminUser,
+  sendTelegramMessage
+} from "./helpers/telegram.ts";
 import {buildMessages, callTools, getSystemMessage, getTokensCount} from "./helpers/gpt.ts";
 import {addToHistory, forgetHistory} from "./helpers/history.ts";
 import {log} from './helpers.ts';
@@ -99,16 +105,16 @@ function watchConfigChanges() {
 }
 
 async function initTools() {
-  readdirSync('src/tools')
-    .filter(file => file.endsWith('.ts'))
-    .map(async file => {
-      const name = file.replace('.ts', '')
-      const module = await import(`./tools/${name}`)
-      if (typeof module.call !== 'function') {
-        return log({msg: `Function ${name} has no call() method`, logLevel: 'warn'})
-      }
-      globalTools.push({name, module})
-    });
+  const files = readdirSync('src/tools').filter(file => file.endsWith('.ts'))
+  for (const file of files) {
+    const name = file.replace('.ts', '')
+    const module = await import(`./tools/${name}`)
+    if (typeof module.call !== 'function') {
+      log({msg: `Function ${name} has no call() method`, logLevel: 'warn'})
+      continue
+    }
+    globalTools.push({name, module})
+  }
 }
 
 async function initCommands(bot: Telegraf) {
@@ -130,6 +136,12 @@ async function initCommands(bot: Telegraf) {
     await commandGoogleOauth(msg)
   });
 
+  bot.command('add_tool', async ctx => {
+    const {msg, chat}: { msg?: Message.TextMessage, chat?: ConfigChatType } = getCtxChatMsg(ctx);
+    if (!chat || !msg) return;
+    await commandAddTool(msg)
+  });
+
   await bot.telegram.setMyCommands([
     {
       command: '/forget',
@@ -143,7 +155,67 @@ async function initCommands(bot: Telegraf) {
       command: '/google_auth',
       description: 'Authenticate with Google',
     },
+    {
+      command: '/add_tool',
+      description: 'Add/edit tool (admins only)',
+    },
   ])
+}
+
+// add tool to chat config
+async function commandAddTool(msg: Message.TextMessage) {
+  const excluded = ['change_chat_settings']
+  const tools = globalTools.filter(t => !excluded.includes(t.name)).map(t => t.name)
+  const toolsInfo = getToolsInfo(tools)
+  const text = `Available tools:\n\n${toolsInfo.join('\n\n')}\n\nSelect tool to add:`
+
+  for (const tool of globalTools) {
+    bot.action(`add_tool_${tool.name}`, async (ctx) => {
+      const chatId = ctx.chat?.id;
+      if (!chatId) return;
+
+      // check admin
+      const {user} = getActionUserMsg(ctx)
+      const username = user?.username || 'without_username'
+      if (!user || !config.adminUsers?.includes(username)) return;
+
+      let chatConfig: ConfigChatType | undefined;
+      if (ctx.chat?.type === 'private') {
+        // edit/add private chat
+        chatConfig = config.chats.find(chat => username && chat.username === username);
+        if (!chatConfig) {
+          chatConfig = generatePrivateChatConfig(username);
+          config.chats.push(chatConfig);
+          // writeConfig(configPath, config)
+        }
+      } else {
+        // edit group chat
+        chatConfig = config.chats.find(chat => chat.id === chatId || chat.ids?.includes(chatId));
+        if (!chatConfig) {
+          void ctx.reply('Chat not found in config');
+        }
+      }
+      if (!chatConfig) return;
+
+      if (!chatConfig.tools) chatConfig.tools = []
+      if (!chatConfig.tools.includes(tool.name)) {
+        chatConfig.tools.push(tool.name)
+      }
+      chatConfig.tools = chatConfig.tools.filter(t => !excluded.includes(t))
+      writeConfig(configPath, config);
+      await ctx.reply(`Tool added: ${tool.name}`);
+    });
+  }
+
+  const buttons = tools.map(t => ([{text: t, callback_data: `add_tool_${t}`}]))
+  const params = {reply_markup: {inline_keyboard: buttons}/*, parse_mode: 'MarkdownV2'*/}
+  return await sendTelegramMessage(msg.chat.id, text, params)
+}
+
+function getToolsInfo(tools: string[]) {
+  return tools
+    .map(f => globalTools.find(g => g.name === f) as ChatToolType).filter(Boolean)
+    .map(f => `- ${f.name}${f.module.description ? ` - ${f.module.description}` : ''}`)
 }
 
 function getInfoMessage(msg: Message.TextMessage, chatConfig: ConfigChatType) {
@@ -162,9 +234,7 @@ function getInfoMessage(msg: Message.TextMessage, chatConfig: ConfigChatType) {
 
   if (chatConfig.tools) {
     // f.module.call(chatConfig, thread).functions.toolSpecs - has descriptions too
-    const tools = chatConfig.tools
-      .map(f => globalTools.find(g => g.name === f) as ChatToolType).filter(Boolean)
-      .map(f => `- ${f.name}${f.module.description ? ` - ${f.module.description}` : ''}`)
+    const tools = getToolsInfo(chatConfig.tools)
     lines.push(`Tools:\n${tools.join('\n')}`)
   }
 

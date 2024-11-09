@@ -1,6 +1,6 @@
 import {aiFunction, AIFunctionsProvider} from '@agentic/core';
 import {z} from 'zod';
-import {readConfig, writeConfig} from '../config';
+import {generatePrivateChatConfig, readConfig, writeConfig} from '../config';
 import {
   ConfigChatType,
   ConfigType,
@@ -43,12 +43,8 @@ export class ChangeChatSettingsClient extends AIFunctionsProvider {
     const chatConfig = groupChatConfig || privateChatConfig;
 
     if (!chatConfig) {
-      const newChatConfig = {
-        name: `Private ${this.configChat.username}`,
-        username: this.configChat.username,
-        toolParams: {} as ToolParamsType,
-        chatParams: settings,
-      } as ConfigChatType;
+      const newChatConfig = generatePrivateChatConfig(this.configChat.username || 'without_username');
+      newChatConfig.chatParams = settings;
       config.chats.push(newChatConfig);
     } else {
       if (!chatConfig.chatParams) chatConfig.chatParams = {};

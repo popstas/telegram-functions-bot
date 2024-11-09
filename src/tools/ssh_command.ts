@@ -21,6 +21,7 @@ export const details = `- convert question to command
 - answer with command output
 - user: config.ssh_command.user
 - host: config.ssh_command.host`
+// export const configFields = ['user', 'host']
 
 export class SshCommandClient extends AIFunctionsProvider {
   protected readonly config: ConfigType

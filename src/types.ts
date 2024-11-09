@@ -17,7 +17,7 @@ export type ConfigChatType = {
   toolParams: ToolParamsType
 }
 
-export type ChatSettingsType = {
+export type ChatSettingsType = { // TODO: rename to ChatParamsType
   confirmation?: boolean
   deleteToolAnswers?: boolean | number
   debug?: boolean // TODO: impl
@@ -35,7 +35,7 @@ export type CompletionParamsType = {
 }
 
 export type ConfigType = {
-  bot_name: string
+  bot_name: string // TODO: use ctx.botInfo.username
   debug?: boolean
   isTest?: boolean
   auth: {

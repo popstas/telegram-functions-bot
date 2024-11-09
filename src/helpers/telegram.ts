@@ -1,7 +1,8 @@
 import {Chat, Message, Update} from "telegraf/types";
 import {bot, config} from "../index.ts";
 import {ConfigChatButtonType, ConfigChatType} from "../types.ts";
-import {Context} from "telegraf";
+import {Context, Scenes} from "telegraf";
+import {User} from "@telegraf/types/manage";
 
 let lastResponse: Message.TextMessage | undefined
 let forDelete: Message.TextMessage | undefined
@@ -133,6 +134,17 @@ function getChatConfig(ctxChat: Chat) {
   }
 
   return chat
+}
+
+export function getActionUserMsg(ctx: Context): {user?: User, msg?: Message} {
+  // edited message
+  if (ctx.hasOwnProperty('update')) {
+    const updateQuery = ctx.update as Update.CallbackQueryUpdate
+    const user = updateQuery.callback_query.from
+    const msg = updateQuery.callback_query.message
+    return {user, msg}
+  }
+  return {}
 }
 
 // return {chat, msg}
