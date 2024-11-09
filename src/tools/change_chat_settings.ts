@@ -4,13 +4,13 @@ import {generatePrivateChatConfig, readConfig, writeConfig} from '../config';
 import {
   ConfigChatType,
   ConfigType,
-  ChatSettingsType,
+  ChatParamsType,
   ToolResponse,
   ToolParamsType,
   ThreadStateType
 } from '../types';
 
-type ToolArgsType = ChatSettingsType;
+type ToolArgsType = ChatParamsType;
 
 export class ChangeChatSettingsClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;

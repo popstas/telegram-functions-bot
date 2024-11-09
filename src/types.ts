@@ -13,11 +13,11 @@ export type ConfigChatType = {
   systemMessage?: string
   buttons?: ConfigChatButtonType[]
   tools?: string[]
-  chatParams: ChatSettingsType
+  chatParams: ChatParamsType
   toolParams: ToolParamsType
 }
 
-export type ChatSettingsType = { // TODO: rename to ChatParamsType
+export type ChatParamsType = {
   confirmation?: boolean
   deleteToolAnswers?: boolean | number
   debug?: boolean // TODO: impl

@@ -1,6 +1,6 @@
 import * as yaml from 'js-yaml'
 import {readFileSync, writeFileSync, existsSync} from 'fs'
-import {ChatSettingsType, ConfigChatType, ConfigType, ToolParamsType} from './types.js'
+import {ChatParamsType, ConfigChatType, ConfigType, ToolParamsType} from './types.js'
 import {log} from "./helpers.ts";
 
 export function readConfig(path?: string): ConfigType {
@@ -78,6 +78,6 @@ export function generatePrivateChatConfig(username: string) {
     name: `Private ${username}`,
     username,
     toolParams: {} as ToolParamsType,
-    chatParams: {} as ChatSettingsType,
+    chatParams: {} as ChatParamsType,
   } as ConfigChatType;
 }
