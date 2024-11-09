@@ -88,12 +88,6 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
     if (!chatConfig.chatParams?.confirmation) {
       const result = await tool(toolParams) as ToolResponse;
       log({ msg: result.content, logLevel: 'info', chatId: msg.chat.id, role: 'tool' });
-      if (chatConfig.chatParams?.showToolMessages === true || chatConfig.chatParams?.showToolMessages === undefined) {
-        void await sendTelegramMessage(msg.chat.id, result.content, {
-          parse_mode: 'MarkdownV2',
-          deleteAfter: chatConfig.chatParams?.deleteToolAnswers
-        });
-      }
       return result;
     }
 

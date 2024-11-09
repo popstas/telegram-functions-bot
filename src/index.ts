@@ -213,10 +213,14 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
         tool_calls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]
       }).tool_calls[i];
       // console.log(`tool result:`, toolRes?.content);
-      const params = {parse_mode: 'MarkdownV2', deleteAfter: chatConfig.chatParams?.deleteToolAnswers};
-      const toolResMessageLimit = 8000;
-      const msgContentLimited = toolRes.content.length > toolResMessageLimit ? toolRes.content.slice(0, toolResMessageLimit) + '...' : toolRes.content;
-      void sendTelegramMessage(msg.chat.id, msgContentLimited, params);
+
+      // show answer message
+      if (chatConfig.chatParams?.showToolMessages === true || chatConfig.chatParams?.showToolMessages === undefined) {
+        const params = {parse_mode: 'MarkdownV2', deleteAfter: chatConfig.chatParams?.deleteToolAnswers};
+        const toolResMessageLimit = 8000;
+        const msgContentLimited = toolRes.content.length > toolResMessageLimit ? toolRes.content.slice(0, toolResMessageLimit) + '...' : toolRes.content;
+        void sendTelegramMessage(msg.chat.id, msgContentLimited, params);
+      }
 
       console.log('');
 

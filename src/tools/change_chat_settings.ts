@@ -31,6 +31,7 @@ export class ChangeChatSettingsClient extends AIFunctionsProvider {
       debug: z.boolean().optional(),
       memoryless: z.boolean().optional().describe('Whether to forget the context after each message'),
       forgetTimeout: z.number().optional().describe('Time in seconds to forget the context after'),
+      showToolMessages: z.union([z.boolean(), z.literal('headers')]).optional().describe('Whether to show tool messages, "headers" means only tool calls'),
     }),
   })
   async change_chat_settings(settings: ToolArgsType) {
