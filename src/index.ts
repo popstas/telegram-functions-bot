@@ -30,7 +30,7 @@ export const threads = {} as { [key: number]: ThreadStateType }
 const configPath = process.env.CONFIG || 'config.yml'
 export let config: ConfigType
 export let bot: Telegraf<Context>
-let api: OpenAI
+export let api: OpenAI
 let globalTools: ChatToolType[] = []
 
 process.on('uncaughtException', (error, source) => {

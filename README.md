@@ -15,6 +15,7 @@ Telegram bot with functions tools.
 - Read tool answer, answer user
 
 ## Tools
+- `brainstorm` - Useful tool for brainstorming and planning task
 - `change_chat_settings` - Change chat settings in config.yml
 - `get_next_offday` - count 4-days cycle: day, night, sleep, offday
 - `javascript_interpreter` - exec JavaScript code

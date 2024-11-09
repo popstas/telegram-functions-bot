@@ -54,7 +54,7 @@ export function generateConfig(): ConfigType {
         model: 'gpt-4o-mini',
       },
       systemMessage: 'You can use functions to answer the questions.',
-      tools: ['javascript_interpreter'],
+      tools: ['javascript_interpreter', 'brainstorm'],
       chatParams: {},
       toolParams: {},
     }],

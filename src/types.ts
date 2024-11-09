@@ -94,7 +94,13 @@ export interface ToolResponse {
   content: string
 }
 
+export type BrainstormParamsType = {
+  promptBefore?: string
+  promptAfter?: string
+}
+
 export type ToolParamsType = {
+  brainstorm?: BrainstormParamsType
   obsidian?: ObsidianConfigType
   ssh_command?: SshConfigType
   knowledge_google_sheet?: {
