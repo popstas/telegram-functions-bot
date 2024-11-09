@@ -26,6 +26,18 @@ type TaskBodyType = {
   }
 }
 
+export const description = 'Creates new task in CRM Planfix.'
+export const defaultParams = {
+  planfix: {
+    account: 'your_account',
+    token: 'rest_api_token',
+  },
+  planfix_create_request_task: {
+    name: 'New task for {clientName}',
+    templateId: 0,
+  }
+} as { planfix: { account: string, token: string }, planfix_create_request_task: { name: string, templateId: number } }
+
 export class PlanfixCreateTaskClient extends AIFunctionsProvider {
   protected readonly ky: KyInstance
   protected readonly config: ConfigType
@@ -51,7 +63,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
 
   @aiFunction({
     name: 'planfix_create_request_task',
-    description: 'Creates new task in CRM Planfix.',
+    description,
     inputSchema: z.object({
       clientName: z
         .string()

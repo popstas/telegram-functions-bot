@@ -1,7 +1,13 @@
 import * as fs from 'fs';
 import {aiFunction, AIFunctionsProvider} from '@agentic/core';
 import {z} from 'zod';
-import {ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from "../types.ts";
+import {
+  ConfigChatType,
+  ConfigType,
+  ObsidianConfigType,
+  ThreadStateType,
+  ToolResponse
+} from "../types.ts";
 import {readConfig} from "../config.ts";
 import path from "node:path";
 // @ts-ignore
@@ -10,6 +16,14 @@ import recursiveReaddir from 'recursive-readdir';
 type ToolArgsType = {
   file_path: string
 }
+
+export const description = 'Read the contents of an Obsidian file by files list'
+export const defaultParams = {
+  obsidian: {
+    root_path: '/path/to/obsidian',
+    out_file: 'GPT.md'
+  }
+} as { obsidian: ObsidianConfigType }
 
 export class ObsidianReadClient extends AIFunctionsProvider {
   protected readonly config: ConfigType
@@ -23,7 +37,7 @@ export class ObsidianReadClient extends AIFunctionsProvider {
 
   @aiFunction({
     name: 'obsidian_read',
-    description: 'Read the contents of an Obsidian file',
+    description,
     inputSchema: z.object({
       file_path: z
         .string()
@@ -47,7 +61,7 @@ export class ObsidianReadClient extends AIFunctionsProvider {
     return {content};
   }
 
-  getFilePath(options: ToolArgsType){
+  getFilePath(options: ToolArgsType) {
     return options.file_path.split('\n')
   }
 

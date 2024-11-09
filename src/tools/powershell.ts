@@ -11,12 +11,10 @@ type ToolArgsType = {
   command: string
 }
 
-export const description = 'PowerShell config.powershell.user shell, host from config.powershell.host'
+export const description = 'Run PowerShell code'
 export const details = `- convert question to command
 - exec PowerShell from your machine, with your user PowerShell access
-- answer with command output
-- user: config.powershell.user
-- host: config.powershell.host`
+- answer with command output`
 
 export class PowershellCommandClient extends AIFunctionsProvider {
   protected readonly config: ConfigType

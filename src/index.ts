@@ -9,7 +9,7 @@ import {
   ConfigType,
   ConfigChatType,
   ThreadStateType,
-  ConfigChatButtonType, ToolResponse, ChatToolType,
+  ConfigChatButtonType, ToolResponse, ChatToolType, ToolParamsType,
 } from './types'
 import {generatePrivateChatConfig, readConfig, validateConfig, writeConfig} from './config'
 import {HttpsProxyAgent} from "https-proxy-agent"
@@ -202,8 +202,16 @@ async function commandAddTool(msg: Message.TextMessage) {
         chatConfig.tools.push(tool.name)
       }
       chatConfig.tools = chatConfig.tools.filter(t => !excluded.includes(t))
+
+      if (!chatConfig.toolParams) chatConfig.toolParams = {} as ToolParamsType
+      if (tool.module.defaultParams) {
+        chatConfig.toolParams = {
+          ...tool.module.defaultParams,
+          ...chatConfig.toolParams,
+        }
+      }
       writeConfig(configPath, config);
-      await ctx.reply(`Tool added: ${tool.name}`);
+      await ctx.reply(`Tool added: ${tool.name}${tool.module.defaultParams ? `, with default config: ${JSON.stringify(tool.module.defaultParams)}` : ''}`);
     });
   }
 

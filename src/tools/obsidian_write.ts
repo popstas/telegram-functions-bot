@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import {aiFunction, AIFunctionsProvider} from '@agentic/core';
 import {z} from 'zod';
-import {ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from "../types.ts";
+import {ConfigChatType, ConfigType, ObsidianConfigType, ThreadStateType, ToolResponse} from "../types.ts";
 import {readConfig} from "../config.ts";
 import * as path from 'path';
 
@@ -9,6 +9,14 @@ type ToolArgsType = {
   markdown: string
   // file_path: string
 }
+
+export const description = 'Append markdown text to file'
+export const defaultParams = {
+  obsidian: {
+    root_path: '/path/to/obsidian',
+    out_file: 'GPT.md'
+  }
+} as { obsidian: ObsidianConfigType }
 
 export class ObsidianWriteClient extends AIFunctionsProvider {
   protected readonly config: ConfigType
@@ -22,7 +30,7 @@ export class ObsidianWriteClient extends AIFunctionsProvider {
 
   @aiFunction({
     name: 'obsidian_write',
-    description: 'Append "markdown" text to file',
+    description,
     inputSchema: z.object({
       // file_path: z
       //   .string()

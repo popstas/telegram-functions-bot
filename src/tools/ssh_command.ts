@@ -4,7 +4,7 @@ import {
 } from '@agentic/core'
 import {z} from 'zod'
 import {readConfig} from '../config.ts'
-import {ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from "../types.ts";
+import {ConfigChatType, ConfigType, SshConfigType, ThreadStateType, ToolResponse} from "../types.ts";
 import {exec} from "child_process";
 import {writeFileSync} from 'fs';
 import * as path from 'path';
@@ -15,13 +15,19 @@ type ToolArgsType = {
   command: string
 }
 
-export const description = 'SSH config.ssh_command.user shell, host from config.ssh_command.host, can run multiline scripts as command'
+export const description = 'Run commands via SSH, can run multiline scripts as command'
 export const details = `- convert question to command
 - exec ssh from your machine, with your user ssh access
 - answer with command output
 - user: config.ssh_command.user
 - host: config.ssh_command.host`
 // export const configFields = ['user', 'host']
+export const defaultParams = {
+  ssh_command: {
+    user: 'root',
+    host: 'localhost',
+  }
+} as { ssh_command: SshConfigType }
 
 export class SshCommandClient extends AIFunctionsProvider {
   protected readonly config: ConfigType
@@ -116,7 +122,7 @@ export class SshCommandClient extends AIFunctionsProvider {
       `You are using ssh commands on remote ssh server ${user}@${host}.`,
       `Don't use sudo.`,
       `Current date: {date}`
-      ].join('\n');
+    ].join('\n');
   }
 }
 

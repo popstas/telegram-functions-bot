@@ -9,12 +9,19 @@ type ToolArgsType = {
   title: string
 }
 
-let cache: { [sheetId: string]: Object[] } = {};
+export const description = 'Read the contents of Google Sheet by titles list'
+export const defaultParams = {
+  knowledge_google_sheet: {
+    sheetId: 'sheet_id',
+    titleCol: 'title',
+    textCol: 'text',
+  }
+}
 
+let cache: { [sheetId: string]: Object[] } = {};
 function getCache(sheetId: string) {
   return cache[sheetId];
 }
-
 function setCache(sheetId: string, data: Object[]) {
   cache[sheetId] = data;
 }
@@ -45,7 +52,7 @@ export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
 
   @aiFunction({
     name: 'read_knowledge_google_sheet',
-    description: 'Read the contents of an Obsidian file',
+    description,
     inputSchema: z.object({
       title: z
         .string()

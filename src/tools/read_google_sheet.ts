@@ -9,8 +9,7 @@ type ToolArgsType = {
   sheetId: string;
 };
 
-export const description = 'Reads the first sheet of a Google Sheet using Google API and returns an array of objects with fields named by the table header.';
-export const details = '';
+export const description = 'Reads the first sheet of a Google Sheet and returns an array of objects';
 
 export class GoogleSheetClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;

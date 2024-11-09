@@ -11,8 +11,7 @@ type ToolArgsType = {
   code: string
 }
 
-export const description = 'Useful for running JavaScript code in sandbox. Input is a string of JavaScript code, output is the result of the code.'
-export const details = ``
+export const description = 'Run JavaScript code in sandbox'
 
 export class JavascriptInterpreterClient extends AIFunctionsProvider {
   protected readonly config: ConfigType

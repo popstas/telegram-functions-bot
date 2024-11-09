@@ -8,8 +8,17 @@ type ToolArgsType = {
   title: string;
 };
 
-let cache: { [path: string]: { data: Object[]; expiry: number } } = {};
+export const description = 'Read the contents of a JSON file from a URL or local file by titles list'
+export const defaultParams = {
+  knowledge_json: {
+    jsonPath: '/path/to/json',
+    jsonUrl: 'or url',
+    titleCol: 'title',
+    textCol: 'text',
+  }
+}
 
+let cache: { [path: string]: { data: Object[]; expiry: number } } = {};
 function getCache(path: string) {
   const cached = cache[path];
   if (cached && cached.expiry > Date.now()) {
@@ -17,7 +26,6 @@ function getCache(path: string) {
   }
   return null;
 }
-
 function setCache(path: string, data: Object[], cacheTime: number) {
   cache[path] = {
     data,
@@ -62,7 +70,7 @@ export class KnowledgeJsonClient extends AIFunctionsProvider {
 
   @aiFunction({
     name: 'read_knowledge_json',
-    description: 'Read the contents of a JSON file from a URL or local file',
+    description,
     inputSchema: z.object({
       title: z.string().describe('Title of the question'),
     }),
