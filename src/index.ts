@@ -397,6 +397,11 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
     return
   }
 
+  // skip replies to other people
+  if (msg.reply_to_message && msg.from?.username !== msg.reply_to_message.from?.username) {
+    if (msg.reply_to_message.from?.username !== config.bot_name) return
+  }
+
   const chatTitle = (ctx.chat as Chat.TitleChat).title
   const chatId = msg.chat.id
 
@@ -413,6 +418,16 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
       }
     } : undefined
     return await sendTelegramMessage(msg.chat.id, text, params)
+  }
+
+  // prefix (when defined): answer only to prefixed message
+  if (chat.prefix) {
+    const re = new RegExp(`^${chat.prefix}`, 'i')
+    const isBot = re.test(msg.text)
+    if (!isBot) {
+      // console.log("not to bot:", ctx.chat);
+      return
+    }
   }
 
   log({msg: msg.text, logLevel: 'info', chatId, chatTitle, role: 'user', username: msg?.from?.username});
@@ -465,9 +480,12 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
     const timeDelta = (currentTime - lastMessageTime) / 1000; // in seconds
     if (timeDelta > forgetTimeout) {
       forgetHistory(msg.chat.id);
+      addToHistory({
+        msg,
+        completionParams: chat.completionParams,
+      })
     }
   }
-
 
   // activeButton, should be after const thread
   const activeButton = thread?.activeButton
@@ -489,21 +507,6 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
       thread.nextSystemMessage = activeButton.prompt
       thread.activeButton = undefined
     }
-  }
-
-  // answer only to prefixed message
-  if (chat.prefix && !matchedButton && !activeButton) {
-    const re = new RegExp(`^${chat.prefix}`, 'i')
-    const isBot = re.test(msg.text)
-    if (!isBot) {
-      // console.log("not to bot:", ctx.chat);
-      return
-    }
-  }
-
-  // skip replies to other people
-  if (msg.reply_to_message && msg.from?.username !== msg.reply_to_message.from?.username) {
-    if (msg.reply_to_message.from?.username !== config.bot_name) return
   }
 
   const historyLength = thread.messages.length
