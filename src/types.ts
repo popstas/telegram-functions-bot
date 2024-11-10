@@ -12,6 +12,8 @@ export type ConfigChatType = {
   prefix?: string
   systemMessage?: string
   buttons?: ConfigChatButtonType[]
+  buttonsSync?: ButtonsSyncConfigType
+  buttonsSynced?: ConfigChatButtonType[]
   tools?: string[]
   chatParams: ChatParamsType
   toolParams: ToolParamsType
@@ -54,6 +56,11 @@ export type ConfigType = {
   testUsers?: string[]
   chats: ConfigChatType[]
   logLevel?: 'debug' | 'info' | 'warn' | 'error'
+}
+
+export type ButtonsSyncConfigType = {
+  sheetId: string
+  sheetName: string
 }
 
 export type SshConfigType = {

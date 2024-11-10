@@ -2,7 +2,7 @@ import {aiFunction, AIFunctionsProvider} from '@agentic/core';
 import {z} from 'zod';
 import {ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from "../types.ts";
 import {readConfig} from "../config.ts";
-import readGoogleSheet from "../helpers/readGoogleSheet.ts";
+import readGoogleSheetToRows from "../helpers/readGoogleSheet.ts";
 import {GoogleAuth, OAuth2Client} from "google-auth-library";
 
 type ToolArgsType = {
@@ -51,7 +51,7 @@ export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
 
     if (getCache(sheetId)) return getCache(sheetId);
 
-    const data = await readGoogleSheet(sheetId, this.authClient) || [];
+    const data = await readGoogleSheetToRows(sheetId, this.authClient) || [];
     setCache(sheetId, data);
     return data
   }

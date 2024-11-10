@@ -3,7 +3,7 @@ import {aiFunction, AIFunctionsProvider} from '@agentic/core';
 import {z} from 'zod';
 import {ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from '../types';
 import {readConfig} from '../config';
-import readGoogleSheet from "../helpers/readGoogleSheet.ts";
+import readGoogleSheetToRows from "../helpers/readGoogleSheet.ts";
 
 type ToolArgsType = {
   sheetId: string;
@@ -32,7 +32,7 @@ export class GoogleSheetClient extends AIFunctionsProvider {
     }),
   })
   async read_google_sheet({sheetId}: ToolArgsType): Promise<ToolResponse> {
-    const data = await readGoogleSheet(sheetId, this.authClient);
+    const data = await readGoogleSheetToRows(sheetId, this.authClient);
     // if (!this.authClient?.credentials?.access_token || !this.authClient?.jsonContent) {
     if (!data) {
       return {content: 'No access token, auth with /google_auth'};

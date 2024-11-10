@@ -53,7 +53,7 @@ export function generateConfig(): ConfigType {
       completionParams: {
         model: 'gpt-4o-mini',
       },
-      systemMessage: 'You can use functions to answer the questions.',
+      systemMessage: 'You are using functions to answer the questions. Current date: {date}',
       tools: ['javascript_interpreter', 'brainstorm'],
       chatParams: {},
       toolParams: {},

@@ -1,4 +1,4 @@
-import {Telegraf, Context, Scenes} from 'telegraf'
+import {Telegraf, Context, Markup} from 'telegraf'
 import {message, editedMessage} from 'telegraf/filters'
 import telegramifyMarkdown from 'telegramify-markdown'
 import {Chat, Message} from 'telegraf/types'
@@ -9,13 +9,12 @@ import {
   ConfigType,
   ConfigChatType,
   ThreadStateType,
-  ConfigChatButtonType, ToolResponse, ChatToolType, ToolParamsType,
+  ConfigChatButtonType, ToolResponse, ChatToolType, ToolParamsType, ButtonsSyncConfigType,
 } from './types'
 import {generatePrivateChatConfig, logConfigChanges, readConfig, validateConfig, writeConfig} from './config'
 import {HttpsProxyAgent} from "https-proxy-agent"
 import {addOauthToThread, commandGoogleOauth, ensureAuth} from "./helpers/google.ts";
 import {
-  buildButtonRows,
   getActionUserMsg,
   getCtxChatMsg,
   isAdminUser,
@@ -24,6 +23,9 @@ import {
 import {buildMessages, callTools, getSystemMessage, getTokensCount} from "./helpers/gpt.ts";
 import {addToHistory, forgetHistory} from "./helpers/history.ts";
 import {log} from './helpers.ts';
+import {readGoogleSheet} from "./helpers/readGoogleSheet.ts";
+import {OAuth2Client} from "google-auth-library/build/src/auth/oauth2client";
+import {GoogleAuth} from "google-auth-library";
 
 export const threads = {} as { [key: number]: ThreadStateType }
 
@@ -438,10 +440,11 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
   let matchedButton: ConfigChatButtonType | undefined = undefined
 
   // replace msg.text to button.prompt
-  const buttons = chat.buttons
+  const msgTextOrig = msg.text || ''
+  const buttons = chat.buttonsSynced || chat.buttons
   if (buttons) {
     // message == button.name
-    matchedButton = buttons.find(b => b.name === msg?.text || '')
+    matchedButton = buttons.find(b => b.name === msgTextOrig)
     if (matchedButton) {
       msg.text = matchedButton.prompt || ''
     }
@@ -472,7 +475,7 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
   const activeButton = thread?.activeButton
   if (buttons) {
     // message == button.name
-    matchedButton = buttons.find(b => b.name === msg?.text || '')
+    matchedButton = buttons.find(b => b.name === msgTextOrig)
     if (matchedButton) {
       // send ask for text message
       if (matchedButton.waitMessage) {
@@ -483,7 +486,8 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
 
     // received text, send prompt with text in the end
     if (activeButton) {
-      forgetHistory(msg.chat.id)
+      // forgetHistory(msg.chat.id)
+      thread.messages = thread.messages.slice(-1);
       thread.nextSystemMessage = activeButton.prompt
       thread.activeButton = undefined
     }
@@ -514,6 +518,53 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
   }, 500)
 }
 
+async function syncButtons(chat: ConfigChatType, authClient: OAuth2Client | GoogleAuth) {
+  // console.log("syncButtons...");
+  const syncConfig = chat.buttonsSync || {sheetId: '1TCtetO2kEsV7_yaLMej0GCR3lmDMg9nVRyRr82KT5EE', sheetName: 'gpt prompts all private chats'}
+  const buttons = await getGoogleButtons(syncConfig, authClient)
+  // console.log("buttons:", buttons);
+  if (!buttons) return
+
+  chat.buttonsSynced = buttons
+
+  config = readConfig(configPath)
+  const chatIndex = config.chats.findIndex(c => c.name === chat.name)
+
+  config.chats[chatIndex] = chat
+  writeConfig(configPath, config)
+
+  return buttons
+}
+
+async function getGoogleButtons(syncConfig: ButtonsSyncConfigType, authClient: OAuth2Client | GoogleAuth) {
+  const rows = await readGoogleSheet(syncConfig.sheetId, syncConfig.sheetName, authClient)
+  if (!rows) {
+    console.error(`Failed to load sheet "${syncConfig.sheetId}"`)
+    return
+  }
+
+  console.log("rows:", rows);
+  // const rows = await sheet.getRows()
+  const buttons: ConfigChatButtonType[] = []
+  for (let row of rows.slice(1)) {
+    // @ts-ignore
+    const button: ConfigChatButtonType = {
+      // @ts-ignore
+      name: row[0],
+      // @ts-ignore
+      prompt: row[1],
+      // @ts-ignore
+      row: row[2],
+      // @ts-ignore
+      waitMessage: row[3],
+    }
+    if (button.name.startsWith("#")) continue
+    buttons.push(button)
+  }
+  // console.log('buttons:', buttons)
+  return buttons
+}
+
 // send request to chatgpt, answer to telegram
 async function answerToMessage(ctx: Context & {
   secondTry?: boolean
@@ -523,6 +574,23 @@ async function answerToMessage(ctx: Context & {
   if (config.auth.oauth_google?.client_id || config.auth.google_service_account?.private_key) {
     const authClient = await ensureAuth(msg.from?.id || 0); // for add to threads
     addOauthToThread(authClient, threads, msg);
+
+    // sync buttons with Google sheet
+    if (chat.buttonsSync && msg.text === 'sync' && msg) {
+      return await ctx.persistentChatAction('typing', async () => {
+        if (!msg) return
+        const buttons = await syncButtons(chat, authClient)
+        if (!buttons) {
+          return void sendTelegramMessage(msg.chat.id, 'Ошибка синхронизации')
+        }
+
+        // const buttonRows = buildButtonRows(buttons)
+        // const extraParams = {reply_markup: {keyboard: buttonRows, resize_keyboard: true}}
+        const extraParams = Markup.keyboard(buttons.map(b => b.name)).resize()
+        const answer = 'Готово: ' + buttons.map(b => b.name).join(', ')
+        return void sendTelegramMessage(msg.chat.id, answer, extraParams)
+      })
+    }
   }
 
   try {
@@ -537,10 +605,12 @@ async function answerToMessage(ctx: Context & {
         ...{parse_mode: 'MarkdownV2'}
       }
 
-      const buttons = chat.buttons
+      const buttons = chat.buttonsSynced || chat.buttons
       if (buttons) {
-        const buttonRows = buildButtonRows(buttons)
-        extraParams.reply_markup = {keyboard: buttonRows, resize_keyboard: true}
+        // const buttonRows = buildButtonRows(buttons)
+        // extraParams.reply_markup = {keyboard: buttonRows, resize_keyboard: true}
+        const extraParamsButtons = Markup.keyboard(buttons.map(b => b.name)).resize()
+        Object.assign(extraParams, extraParamsButtons);
       }
 
       const chatTitle = (msg.chat as Chat.TitleChat).title
