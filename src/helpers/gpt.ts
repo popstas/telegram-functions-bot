@@ -83,7 +83,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
       log({ msg: toolParamsStr, chatId, chatTitle, role: 'assistant' });
       void await sendTelegramMessage(msg.chat.id, toolParamsStr, {
         parse_mode: 'MarkdownV2',
-        deleteAfter: chatConfig.chatParams?.deleteToolAnswers
+        deleteAfter: chatConfig.chatParams?.deleteToolAnswers,
       });
     }
 
