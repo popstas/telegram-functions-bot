@@ -78,7 +78,6 @@ export type ThreadStateType = {
   id: number,
   msgs: Message.TextMessage[]
   messages: OpenAI.ChatCompletionMessageParam[]
-  systemMessage?: string
   completionParams?: CompletionParamsType
   activeButton?: ConfigChatButtonType
   nextSystemMessage?: string

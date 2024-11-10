@@ -103,7 +103,6 @@ function watchConfigChanges() {
     config.chats.filter(c => c.id && threads[c.id]).forEach((c) => {
       const id = c.id as number
       threads[id].completionParams = c.completionParams
-      threads[id].systemMessage = c.systemMessage
     })
   }, 2000))
 }
@@ -278,7 +277,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
     }
 
     const answer = res.choices[0]?.message.content || ''
-    addToHistory({msg, answer, systemMessage});
+    addToHistory({msg, answer});
 
     // forget after tool
     if (thread.messages.find(m => m.role === 'tool')) {
@@ -366,7 +365,6 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
   let systemMessage = getSystemMessage(chatConfig, systemMessages)
   const date = new Date().toISOString()
   systemMessage = systemMessage.replace(/\{date}/g, date)
-  thread.systemMessage = systemMessage
   if (thread?.nextSystemMessage) {
     systemMessage = thread.nextSystemMessage || ''
     thread.nextSystemMessage = ''
@@ -454,7 +452,6 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
   // addToHistory should be after replace msg.text
   addToHistory({
     msg,
-    systemMessage: getSystemMessage(chat, []),
     completionParams: chat.completionParams,
   })
   // should be after addToHistory
@@ -470,6 +467,7 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
       forgetHistory(msg.chat.id);
     }
   }
+
 
   // activeButton, should be after const thread
   const activeButton = thread?.activeButton

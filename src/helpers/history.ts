@@ -3,10 +3,9 @@ import {CompletionParamsType} from "../types.ts";
 import OpenAI from "openai";
 import {threads} from "../index.ts";
 
-export function addToHistory({msg, answer, systemMessage, completionParams}: {
+export function addToHistory({msg, answer, completionParams}: {
   msg: Message.TextMessage;
   answer?: string,
-  systemMessage?: string;
   completionParams?: CompletionParamsType;
 }) {
   const key = msg.chat?.id || 0
@@ -15,7 +14,6 @@ export function addToHistory({msg, answer, systemMessage, completionParams}: {
       id: key,
       msgs: [],
       messages: [],
-      systemMessage,
       completionParams,
     }
   }
