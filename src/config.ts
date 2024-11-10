@@ -55,8 +55,18 @@ export function generateConfig(): ConfigType {
       },
       systemMessage: 'You are using functions to answer the questions. Current date: {date}',
       tools: ['javascript_interpreter', 'brainstorm'],
-      chatParams: {},
-      toolParams: {},
+      chatParams: {
+        forgetTimeout: 600,
+        deleteToolAnswers: 60,
+        confirmation: false,
+        showToolMessages: true,
+      },
+      toolParams: {
+        brainstorm: {
+          promptBefore: 'Составь только краткий план действий.',
+          promptAfter: 'Выше написан краткий план действий. Полный ответ:',
+        }
+      },
     }],
   }
 }
