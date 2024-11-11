@@ -73,10 +73,12 @@ export class SshCommandClient extends AIFunctionsProvider {
           exec(sshCmd, (sshError, stdout, stderr) => {
             tempFile.removeCallback();
             if (sshError) {
-              console.error(`ssh error: ${sshError.message}`);
+              // console.error(`ssh error: ${sshError.message}`);
               if (sshError.code) {
+                const errorMsg = sshError.message.replace(/Command failed: ssh .* "bash .*?"/, '')
+                const outPipe = (name: string, output: string) => output.trim() ? `${name}:\n\`\`\`${output}\n\`\`\`\n\n` : ''
                 resolve({
-                  content: `Exit code: ${sshError.code}` + '\n```\n' + `${stdout}\n${sshError.message}` + '\n```',
+                  content: `Exit code: ${sshError.code}\n\n${outPipe('stdout', stdout)}${outPipe('stderr', stderr)}${outPipe('error', errorMsg)}`,
                 });
               } else {
                 reject(sshError.message);
