@@ -243,6 +243,10 @@ function getInfoMessage(msg: Message.TextMessage, chatConfig: ConfigChatType) {
     lines.push(`Forget timeout: ${chatConfig.chatParams.forgetTimeout} sec`)
   }
 
+  if (chatConfig.chatParams?.memoryless) {
+    lines.push(`Chat is memoryless: it forget history after each tool usage.`)
+  }
+
   if (chatConfig.tools) {
     // f.module.call(chatConfig, thread).functions.toolSpecs - has descriptions too
     const tools = getToolsInfo(chatConfig.tools)
@@ -280,8 +284,8 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
     addToHistory({msg, answer});
 
     // forget after tool
-    if (thread.messages.find(m => m.role === 'tool')) {
-      forgetHistory(msg.chat.id); // TODO: smarter forget
+    if (thread.messages.find(m => m.role === 'tool') && chatConfig.chatParams.memoryless) {
+      forgetHistory(msg.chat.id);
     }
     return {content: answer}
   }

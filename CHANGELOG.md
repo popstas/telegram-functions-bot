@@ -1,4 +1,21 @@
-# [](https://github.com/popstas/telegram-functions-bot/compare/v2024.11.3...v) (2024-11-09)
+# [](https://github.com/popstas/telegram-functions-bot/compare/v2024.11.10...v) (2024-11-11)
+
+
+### Bug Fixes
+
+* add some defaults to default chat generated config ([e60a72e](https://github.com/popstas/telegram-functions-bot/commit/e60a72e08329f3efe5ef897e9b3e447e472bdaf8))
+* deleteToolAnswers: ms -> seconds ([622bbf1](https://github.com/popstas/telegram-functions-bot/commit/622bbf156b6b27a83bf5df9b13de7125a033492b))
+* early return from onMessage, don't log all messages in groups ([eb3755f](https://github.com/popstas/telegram-functions-bot/commit/eb3755fa431aa3e528ab7d6e16d58956554c5c28))
+* fix disable confirmations after first confirm ([74e72e4](https://github.com/popstas/telegram-functions-bot/commit/74e72e4af90854176c8c9545c04344d7ca2708b5))
+
+
+### Features
+
+* add buttonSync feature from popstas/telegram-chatgpt-bot ([7b0a75e](https://github.com/popstas/telegram-functions-bot/commit/7b0a75ee04ca2dbdb63e8edefd8d5d71c0f20a8f))
+
+
+
+## [2024.11.10](https://github.com/popstas/telegram-functions-bot/compare/v2024.11.3...v2024.11.10) (2024-11-09)
 
 
 ### Bug Fixes
@@ -28,7 +45,9 @@
 * **change_chat_settings:** adminUsers can change chatParams now ([704afc3](https://github.com/popstas/telegram-functions-bot/commit/704afc324c1c62516cb990aca75042d4c5e10892))
 * CONFIG env for multiple configs ([d3b0cce](https://github.com/popstas/telegram-functions-bot/commit/d3b0cceb3a69cc2c2729029de619f645b52d14ec))
 * **info:** describe enabled tools at /info ([7f698ed](https://github.com/popstas/telegram-functions-bot/commit/7f698ed12280fbe61e5c213b66cafc622894186c))
+* **logging:** add chat title to log ([4c8298d](https://github.com/popstas/telegram-functions-bot/commit/4c8298d8fce0f92c779d41bcd509f5fc0806dcef))
 * new function planfix_create_request_task ([07182fc](https://github.com/popstas/telegram-functions-bot/commit/07182fc42523938938c920f61b14b84e4e139c3f))
+* new tool: brainstorm, like gpt-o1 ([565cdba](https://github.com/popstas/telegram-functions-bot/commit/565cdba5eb2bc59a6c578ef1e94cbf0aa0a39edf))
 * tool systemMessage for ssh_command ([9b3cebe](https://github.com/popstas/telegram-functions-bot/commit/9b3cebe76967f9dd4e199f5d498fef62d1a6b4f1))
 
 

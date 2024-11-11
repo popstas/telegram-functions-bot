@@ -23,7 +23,7 @@ export type ChatParamsType = {
   confirmation?: boolean
   deleteToolAnswers?: boolean | number
   debug?: boolean // TODO: impl
-  memoryless?: boolean // TODO: impl
+  memoryless?: boolean
   forgetTimeout?: number // in seconds
   showToolMessages?: true | false | undefined | "headers"
 }
