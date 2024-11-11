@@ -53,11 +53,14 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
   const thread = threads[msg.chat.id || 0]
 
   // Check for 'confirm' or 'noconfirm' in the message to set confirmation
-  // TODO: remove from text
   if (msg.text.includes('noconfirm')) {
+    chatConfig = JSON.parse(JSON.stringify(chatConfig));
     chatConfig.chatParams.confirmation = false;
+    msg.text = msg.text.replace('noconfirm', '');
   } else if (msg.text.includes('confirm')) {
+    chatConfig = JSON.parse(JSON.stringify(chatConfig));
     chatConfig.chatParams.confirmation = true;
+    msg.text = msg.text.replace('confirm', '');
   }
 
   const uniqueId = Date.now().toString();
@@ -125,7 +128,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
     // Handle the callback query
     return new Promise(async (resolve) => {
       bot.action(`confirm_tool_${uniqueId}`, async () => {
-        const configConfirmed = {...chatConfig};
+        const configConfirmed = JSON.parse(JSON.stringify(chatConfig));;
         configConfirmed.chatParams.confirmation = false;
         const res = await callTools(toolCalls, chatTools, configConfirmed, msg);
         const chatTitle = (msg.chat as Chat.TitleChat).title
