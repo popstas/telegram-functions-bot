@@ -68,6 +68,11 @@ export function generateConfig(): ConfigType {
         }
       },
     }],
+    http: {
+      port: 7586,
+      user: 'telegram-bot',
+      password: 'your_http_password'
+    }
   }
 }
 
@@ -79,6 +84,10 @@ export function validateConfig(config: ConfigType) {
       log({msg: `No auth.${conf} in config`, logLevel: 'error'});
       valid = false
     }
+  }
+  if (!config.http || !config.http.port || !config.http.user || !config.http.password) {
+    log({msg: `Invalid http configuration in config`, logLevel: 'error'});
+    valid = false
   }
   return valid
 }
