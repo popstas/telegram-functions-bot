@@ -22,10 +22,11 @@ import {
 } from "./helpers/telegram.ts";
 import {buildMessages, callTools, getSystemMessage, getTokensCount} from "./helpers/gpt.ts";
 import {addToHistory, forgetHistory} from "./helpers/history.ts";
-import {log} from './helpers.ts';
+import {log, basicAuth} from './helpers.ts';
 import {readGoogleSheet} from "./helpers/readGoogleSheet.ts";
 import {OAuth2Client} from "google-auth-library/build/src/auth/oauth2client";
 import {GoogleAuth} from "google-auth-library";
+import express from 'express';
 
 export const threads = {} as { [key: number]: ThreadStateType }
 
@@ -89,6 +90,9 @@ async function start() {
     console.log('restart after 5 seconds...')
     setTimeout(start, 5000)
   }
+
+  // Initialize HTTP server
+  initHttp();
 }
 
 function watchConfigChanges() {
@@ -639,4 +643,46 @@ async function answerToMessage(ctx: Context & {
 
     return await sendTelegramMessage(msg.chat.id, `${error.message}${ctx.secondTry ? '\n\nПовторная отправка последнего сообщения...' : ''}`, extraMessageParams)
   }
+}
+
+function initHttp() {
+  // Validate HTTP configuration
+  if (!config.http || !config.http.port || !config.http.user || !config.http.password) {
+    log({msg: `Invalid http configuration in config, skip http server init`, logLevel: 'warn'});
+    return
+  }
+
+  // Set up express server
+  const app = express();
+  app.use(express.json());
+
+  // Implement basic auth middleware
+  app.use(basicAuth);
+
+  // Add route handler to create a virtual message and call onMessage
+  app.post('/telegram/:chatId', async (req, res) => {
+    const { chatId } = req.params;
+    const { text } = req.body;
+
+    if (!text) {
+      return res.status(400).send('Message text is required.');
+    }
+
+    const virtualMessage = {
+      chat: { id: parseInt(chatId) },
+      text,
+      from: { username: config.http.user },
+    };
+
+    try {
+      await onMessage({ message: virtualMessage } as any);
+      res.status(200).send('Message sent.');
+    } catch (error) {
+      res.status(500).send('Error sending message.');
+    }
+  });
+
+  app.listen(config.http.port, () => {
+    console.log(`Express server listening on port ${config.http.port}`);
+  });
 }
