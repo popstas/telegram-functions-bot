@@ -35,6 +35,7 @@ export let config: ConfigType
 export let bot: Telegraf<Context>
 export let api: OpenAI
 let globalTools: ChatToolType[] = []
+let lastCtx = {} as Context
 
 process.on('uncaughtException', (error, source) => {
   console.log('Uncaught Exception:', error)
@@ -86,13 +87,13 @@ async function start() {
     process.once('SIGINT', () => bot.stop('SIGINT'))
     process.once('SIGTERM', () => bot.stop('SIGTERM'))
     void bot.launch()
-  } catch (e) {
-    console.log('restart after 5 seconds...')
-    setTimeout(start, 5000)
-  }
 
-  // Initialize HTTP server
-  initHttp();
+    // Initialize HTTP server
+    initHttp();
+  } catch (e) {
+    console.log('restart after 10 seconds...')
+    setTimeout(start, 10000)
+  }
 }
 
 function watchConfigChanges() {
@@ -394,6 +395,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
 
 async function onMessage(ctx: Context & { secondTry?: boolean }) {
   // console.log("ctx:", ctx);
+  lastCtx = ctx
 
   const {msg, chat}: {
     msg: Message.TextMessage & { forward_origin?: any } | undefined;
@@ -410,7 +412,7 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
     if (msg.reply_to_message.from?.username !== config.bot_name) return
   }
 
-  const chatTitle = (ctx.chat as Chat.TitleChat).title
+  const chatTitle = (ctx.chat as Chat.TitleChat).title || ''
   const chatId = msg.chat.id
 
   if (!chat) {
@@ -441,7 +443,7 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
   log({msg: msg.text, logLevel: 'info', chatId, chatTitle, role: 'user', username: msg?.from?.username});
 
   // console.log('chat:', chat)
-  const extraMessageParams = {reply_to_message_id: ctx.message?.message_id}
+  const extraMessageParams = ctx.message?.message_id ? {reply_to_message_id: ctx.message?.message_id} : {}
 
   // add "Forwarded from" to message
   // TODO: getTelegramUser(msg)
@@ -670,15 +672,23 @@ function initHttp() {
   // Add route handler to create a virtual message and call onMessage
   // @ts-ignore
   app.post('/telegram/:chatId', telegramPostHandler);
+  // @ts-ignore
+  app.get('/telegram/test', telegramPostHandlerTest);
 
   app.listen(port, () => {
     console.log(`Express server listening on port ${port}`);
   });
 }
 
+async function telegramPostHandlerTest(req: express.Request, res: express.Response) {
+  req.params = {chatId: "-4534736935"}
+  req.body = {text: 'На сервере высокий load average. Проверь, есть ли необычное в процессах, скажи да или нет noconfirm'}
+  return telegramPostHandler(req, res)
+}
+
 async function telegramPostHandler(req: express.Request, res: express.Response) {
   const {chatId} = req.params;
-  const {text} = req.body;
+  const {text} = req.body || '';
 
   log({msg: `POST /telegram/${chatId}: ${text}`})
 
@@ -686,14 +696,29 @@ async function telegramPostHandler(req: express.Request, res: express.Response) 
     return res.status(400).send('Message text is required.');
   }
 
-  const virtualMessage = {
-    chat: {id: parseInt(chatId)},
-    text,
-    from: {username: config.http.telegram_from_username},
+  const chatConfig = config.chats.find(chat => chat.id === parseInt(chatId));
+  if (!chatConfig) {
+    log({msg: `http: Chat ${chatId} not found in config`, logLevel: 'warn'});
+    return res.status(400).send('Wrong chat_id')
+  }
+
+  const chat = {id: parseInt(chatId), title: chatConfig.name}
+  const from = {username: config.http.telegram_from_username}
+  const virtualCtx = {
+    chat,
+    update: {
+      message: {text, chat, from},
+    }
   };
 
+  const ctx = lastCtx as Context & { update: any, chat: any }
+  ctx.update.message = virtualCtx.update.message
+  ctx.chat.id = virtualCtx.chat.id
+  ctx.chat.title = virtualCtx.chat.title
+
   try {
-    await onMessage({message: virtualMessage} as any);
+    await onMessage(ctx as Context);
+    // await bot.telegram.sendMessage(chat.id, 'test - ' + text);
     res.status(200).send('Message sent.');
   } catch (error) {
     res.status(500).send('Error sending message.');
