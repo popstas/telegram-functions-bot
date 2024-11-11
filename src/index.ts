@@ -22,7 +22,7 @@ import {
 } from "./helpers/telegram.ts";
 import {buildMessages, callTools, getSystemMessage, getTokensCount} from "./helpers/gpt.ts";
 import {addToHistory, forgetHistory} from "./helpers/history.ts";
-import {log, basicAuth} from './helpers.ts';
+import {log} from './helpers.ts';
 import {readGoogleSheet} from "./helpers/readGoogleSheet.ts";
 import {OAuth2Client} from "google-auth-library/build/src/auth/oauth2client";
 import {GoogleAuth} from "google-auth-library";
@@ -529,7 +529,10 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
 
 async function syncButtons(chat: ConfigChatType, authClient: OAuth2Client | GoogleAuth) {
   // console.log("syncButtons...");
-  const syncConfig = chat.buttonsSync || {sheetId: '1TCtetO2kEsV7_yaLMej0GCR3lmDMg9nVRyRr82KT5EE', sheetName: 'gpt prompts all private chats'}
+  const syncConfig = chat.buttonsSync || {
+    sheetId: '1TCtetO2kEsV7_yaLMej0GCR3lmDMg9nVRyRr82KT5EE',
+    sheetName: 'gpt prompts all private chats'
+  }
   const buttons = await getGoogleButtons(syncConfig, authClient)
   // console.log("buttons:", buttons);
   if (!buttons) return
@@ -645,44 +648,54 @@ async function answerToMessage(ctx: Context & {
   }
 }
 
+
 function initHttp() {
   // Validate HTTP configuration
-  if (!config.http || !config.http.port || !config.http.user || !config.http.password) {
+  if (!config.http) {
     log({msg: `Invalid http configuration in config, skip http server init`, logLevel: 'warn'});
     return
   }
+
+  const port = config.http.port || 7586;
 
   // Set up express server
   const app = express();
   app.use(express.json());
 
-  // Implement basic auth middleware
-  app.use(basicAuth);
+  // Add /ping test route
+  app.get('/ping', (req, res) => {
+    res.send('pong');
+  });
 
   // Add route handler to create a virtual message and call onMessage
-  app.post('/telegram/:chatId', async (req, res) => {
-    const { chatId } = req.params;
-    const { text } = req.body;
+  // @ts-ignore
+  app.post('/telegram/:chatId', telegramPostHandler);
 
-    if (!text) {
-      return res.status(400).send('Message text is required.');
-    }
-
-    const virtualMessage = {
-      chat: { id: parseInt(chatId) },
-      text,
-      from: { username: config.http.user },
-    };
-
-    try {
-      await onMessage({ message: virtualMessage } as any);
-      res.status(200).send('Message sent.');
-    } catch (error) {
-      res.status(500).send('Error sending message.');
-    }
+  app.listen(port, () => {
+    console.log(`Express server listening on port ${port}`);
   });
+}
 
-  app.listen(config.http.port, () => {
-    console.log(`Express server listening on port ${config.http.port}`);
-  });
+async function telegramPostHandler(req: express.Request, res: express.Response) {
+  const {chatId} = req.params;
+  const {text} = req.body;
+
+  log({msg: `POST /telegram/${chatId}: ${text}`})
+
+  if (!text) {
+    return res.status(400).send('Message text is required.');
+  }
+
+  const virtualMessage = {
+    chat: {id: parseInt(chatId)},
+    text,
+    from: {username: config.http.telegram_from_username},
+  };
+
+  try {
+    await onMessage({message: virtualMessage} as any);
+    res.status(200).send('Message sent.');
+  } catch (error) {
+    res.status(500).send('Error sending message.');
+  }
 }

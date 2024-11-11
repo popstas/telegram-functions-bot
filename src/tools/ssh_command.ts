@@ -8,7 +8,6 @@ import {ConfigChatType, ConfigType, SshConfigType, ThreadStateType, ToolResponse
 import {exec} from "child_process";
 import {writeFileSync} from 'fs';
 import * as path from 'path';
-// @ts-ignore
 import * as tmp from 'tmp';
 
 type ToolArgsType = {

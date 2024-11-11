@@ -51,11 +51,17 @@ export type ConfigType = {
     }
     proxy_url?: string
   }
+  http: HttpConfigType
   adminUsers?: string[]
   privateUsers: string[]
   testUsers?: string[]
   chats: ConfigChatType[]
   logLevel?: 'debug' | 'info' | 'warn' | 'error'
+}
+
+export type HttpConfigType = {
+  port?: number
+  telegram_from_username?: string
 }
 
 export type ButtonsSyncConfigType = {

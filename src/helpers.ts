@@ -38,21 +38,3 @@ export function log({ msg, logLevel = 'info', chatId, chatTitle, username, role 
       console.log(logMessage);
   }
 }
-
-export function basicAuth(req, res, next) {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader) {
-    res.setHeader('WWW-Authenticate', 'Basic');
-    return res.status(401).send('Authentication required.');
-  }
-
-  const [username, password] = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':');
-
-  if (username === process.env.HTTP_USER && password === process.env.HTTP_PASSWORD) {
-    return next();
-  }
-
-  res.setHeader('WWW-Authenticate', 'Basic');
-  return res.status(401).send('Invalid credentials.');
-}
