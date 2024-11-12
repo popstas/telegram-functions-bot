@@ -401,7 +401,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
   return await onGptAnswer(msg, res);
 }
 
-async function onMessage(ctx: Context & { secondTry?: boolean }) {
+async function onMessage(ctx: Context & { secondTry?: boolean }, callback?: Function) {
   // console.log("ctx:", ctx);
   lastCtx = ctx
 
@@ -528,16 +528,16 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
   }
 
   const historyLength = thread.messages.length
-  return new Promise(async (resolve) => {
+  // return new Promise(async (resolve, reject) => {
     setTimeout(async () => {
       if (thread.messages.length !== historyLength) {
         // skip if new messages added
         return
       }
       const msgSent = await answerToMessage(ctx, msg, chat, extraMessageParams)
-      resolve(msgSent);
+      if (typeof callback === 'function') callback(msgSent)
     }, 500)
-  })
+  // })
 }
 
 async function syncButtons(chat: ConfigChatType, authClient: OAuth2Client | GoogleAuth) {
@@ -731,15 +731,15 @@ async function telegramPostHandler(req: express.Request, res: express.Response) 
 
   try {
     ctx.expressRes = res
-    const sentMsg = await onMessage(ctx as Context);
-    if (sentMsg) {
-      const text = (sentMsg as Message.TextMessage).text;
-      res.end(text);
-    } else {
-      res.status(500).send('Error sending message.');
-    }
-    // await bot.telegram.sendMessage(chat.id, 'test - ' + text);
-
+    await onMessage(ctx as Context, async (sentMsg: Message.TextMessage) => {
+      if (sentMsg) {
+        const text = (sentMsg as Message.TextMessage).text;
+        res.end(text);
+      } else {
+        res.status(500).send('Error sending message.');
+      }
+      // await bot.telegram.sendMessage(chat.id, 'test - ' + text);
+    });
   } catch (error) {
     res.status(500).send('Error sending message.');
   }
