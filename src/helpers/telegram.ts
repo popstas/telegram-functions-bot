@@ -47,7 +47,7 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
         response = await bot.telegram.sendMessage(chat_id, msg, params)
       } catch (e) {
         // const err = e as { message: string }
-        // log({msg: 'failover sendTelegramMessage without markdown', chatId: chat_id, logLevel: 'warn'})
+        // log({msg: `failover sendTelegramMessage without markdown: ${err.message.slice(512)}`, chatId: chat_id, logLevel: 'warn'})
         const failsafeParams = {reply_markup: params.reply_markup}
         response = await bot.telegram.sendMessage(chat_id, msg, failsafeParams)
         // await bot.telegram.sendMessage(chat_id, `${err.message}`, params)

@@ -84,7 +84,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
     if (toolParams && !chatConfig.chatParams?.confirmation && chatConfig.chatParams?.showToolMessages !== false) {
       // send message with tool call params
       log({ msg: toolParamsStr, chatId, chatTitle, role: 'assistant' });
-      void await sendTelegramMessage(msg.chat.id, toolParamsStr, {
+      void await sendTelegramMessage(chatId, toolParamsStr, {
         parse_mode: 'MarkdownV2',
         deleteAfter: chatConfig.chatParams?.deleteToolAnswers,
       });
