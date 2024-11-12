@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import {ChatToolType, ConfigChatType, ToolResponse} from "../types.ts";
-import {bot, config, threads} from "../index.ts";
+import {bot, threads, sendToHttp} from "../index.ts";
 import {getEncoding, TiktokenEncoding} from "js-tiktoken";
 import {sendTelegramMessage} from "./telegram.ts";
 import {Chat, Message} from "telegraf/types";
@@ -47,7 +47,7 @@ export function getTokensCount(chatConfig: ConfigChatType, text: string) {
   return tokenizer.encode(text).length
 }
 
-export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[], chatTools: ChatToolType[], chatConfig: ConfigChatType, msg: Message.TextMessage): Promise<ToolResponse[]> {
+export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[], chatTools: ChatToolType[], chatConfig: ConfigChatType, msg: Message.TextMessage, expressRes?: Express.Response): Promise<ToolResponse[]> {
   // toolCalls = groupToolCalls(toolCalls) // don't need to group anymore
 
   const thread = threads[msg.chat.id || 0]
@@ -84,6 +84,8 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
     if (toolParams && !chatConfig.chatParams?.confirmation && chatConfig.chatParams?.showToolMessages !== false) {
       // send message with tool call params
       log({ msg: toolParamsStr, chatId, chatTitle, role: 'assistant' });
+      // @ts-ignore
+      sendToHttp(expressRes, toolParamsStr);
       void await sendTelegramMessage(chatId, toolParamsStr, {
         parse_mode: 'MarkdownV2',
         deleteAfter: chatConfig.chatParams?.deleteToolAnswers,
@@ -99,6 +101,8 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
 
     // or send confirmation message with Yes/No buttons
     return new Promise(async (resolve) => {
+      // @ts-ignore
+      sendToHttp(expressRes, `${toolParamsStr}\nDo you want to proceed?`);
       await sendTelegramMessage(msg.chat.id, `${toolParamsStr}\nDo you want to proceed?`, {
         parse_mode: 'MarkdownV2',
         reply_markup: {
@@ -128,6 +132,8 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
     // Handle the callback query
     return new Promise(async (resolve) => {
       bot.action(`confirm_tool_${uniqueId}`, async () => {
+        // @ts-ignore
+        sendToHttp(expressRes, `Yes`);
         const configConfirmed = JSON.parse(JSON.stringify(chatConfig));;
         configConfirmed.chatParams.confirmation = false;
         const res = await callTools(toolCalls, chatTools, configConfirmed, msg);
@@ -136,6 +142,8 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
         return resolve(res);
       });
       bot.action(`cancel_tool_${uniqueId}`, async () => {
+        // @ts-ignore
+        sendToHttp(expressRes, `Tool execution canceled`);
         await sendTelegramMessage(msg.chat.id, 'Tool execution canceled.');
         return resolve([]);
       });

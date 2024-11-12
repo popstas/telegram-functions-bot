@@ -271,7 +271,14 @@ function getInfoMessage(msg: Message.TextMessage, chatConfig: ConfigChatType) {
   return lines.join('\n\n')
 }
 
-async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChatType) {
+export function sendToHttp(res: express.Response | undefined, text: string) {
+  if (!res) return
+  res.write(text + '\n')
+}
+
+async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChatType, ctx: Context & {
+  expressRes?: express.Response
+}) {
   if (!msg.text) return
 
   // async function onGptAnswer(msg: Message.TextMessage, res: OpenAI.ChatCompletionMessage) {
@@ -279,7 +286,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
     // console.log(`onGptAnswer, level ${level}`)
     const messageAgent = res.choices[0]?.message!
     if (messageAgent.tool_calls?.length) {
-      const tool_res = await callTools(messageAgent.tool_calls, chatTools, chatConfig, msg);
+      const tool_res = await callTools(messageAgent.tool_calls, chatTools, chatConfig, msg, ctx.expressRes);
       if (tool_res) {
         return processToolResponse(tool_res, messageAgent, level);
       }
@@ -309,6 +316,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
         const params = {parse_mode: 'MarkdownV2', deleteAfter: chatConfig.chatParams?.deleteToolAnswers};
         const toolResMessageLimit = 8000;
         const msgContentLimited = toolRes.content.length > toolResMessageLimit ? toolRes.content.slice(0, toolResMessageLimit) + '...' : toolRes.content;
+        sendToHttp(ctx.expressRes, msgContentLimited);
         void sendTelegramMessage(msg.chat.id, msgContentLimited, params);
       }
 
@@ -520,13 +528,16 @@ async function onMessage(ctx: Context & { secondTry?: boolean }) {
   }
 
   const historyLength = thread.messages.length
-  setTimeout(async () => {
-    if (thread.messages.length !== historyLength) {
-      // skip if new messages added
-      return
-    }
-    await answerToMessage(ctx, msg, chat, extraMessageParams)
-  }, 500)
+  return new Promise(async (resolve) => {
+    setTimeout(async () => {
+      if (thread.messages.length !== historyLength) {
+        // skip if new messages added
+        return
+      }
+      const msgSent = await answerToMessage(ctx, msg, chat, extraMessageParams)
+      resolve(msgSent);
+    }, 500)
+  })
 }
 
 async function syncButtons(chat: ConfigChatType, authClient: OAuth2Client | GoogleAuth) {
@@ -608,9 +619,10 @@ async function answerToMessage(ctx: Context & {
   }
 
   try {
+    let msgSent
     await ctx.persistentChatAction('typing', async () => {
       if (!msg) return
-      const res = await getChatgptAnswer(msg, chat)
+      const res = await getChatgptAnswer(msg, chat, ctx)
       let text = res?.content || 'бот не ответил'
       text = telegramifyMarkdown(`${text}`)
 
@@ -631,9 +643,10 @@ async function answerToMessage(ctx: Context & {
       log({msg: text, logLevel: 'info', chatId: msg.chat.id, chatTitle, role: 'system'});
 
 
-      const msgSent = await sendTelegramMessage(msg.chat.id, text, extraParams)
+      msgSent = await sendTelegramMessage(msg.chat.id, text, extraParams)
       if (msgSent?.chat.id) threads[msgSent.chat.id].msgs.push(msgSent)
     }) // all done, stops sending typing
+    return msgSent
   } catch (e) {
     const error = e as { message: string }
     console.log('error:', error)
@@ -711,15 +724,22 @@ async function telegramPostHandler(req: express.Request, res: express.Response) 
     }
   };
 
-  const ctx = lastCtx as Context & { update: any, chat: any }
+  const ctx = lastCtx as Context & { update: any, chat: any, expressRes?: Express.Response }
   ctx.update.message = virtualCtx.update.message
   ctx.chat.id = virtualCtx.chat.id
   ctx.chat.title = virtualCtx.chat.title
 
   try {
-    await onMessage(ctx as Context);
+    ctx.expressRes = res
+    const sentMsg = await onMessage(ctx as Context);
+    if (sentMsg) {
+      const text = (sentMsg as Message.TextMessage).text;
+      res.end(text);
+    } else {
+      res.status(500).send('Error sending message.');
+    }
     // await bot.telegram.sendMessage(chat.id, 'test - ' + text);
-    res.status(200).send('Message sent.');
+
   } catch (error) {
     res.status(500).send('Error sending message.');
   }
