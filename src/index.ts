@@ -27,7 +27,7 @@ import {readGoogleSheet} from "./helpers/readGoogleSheet.ts";
 import {OAuth2Client} from "google-auth-library/build/src/auth/oauth2client";
 import {GoogleAuth} from "google-auth-library";
 import express from 'express';
-import { app, BrowserWindow, Tray, Menu } from 'electron';
+import { app, Tray, Menu } from 'electron';
 import path from 'path';
 
 export const threads = {} as { [key: number]: ThreadStateType }
