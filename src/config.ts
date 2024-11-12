@@ -71,7 +71,8 @@ export function generateConfig(): ConfigType {
     http: {
       port: 7586,
       telegram_from_username: 'second_bot_name'
-    }
+    },
+    electron: false
   }
 }
 

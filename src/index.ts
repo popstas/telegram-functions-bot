@@ -27,6 +27,8 @@ import {readGoogleSheet} from "./helpers/readGoogleSheet.ts";
 import {OAuth2Client} from "google-auth-library/build/src/auth/oauth2client";
 import {GoogleAuth} from "google-auth-library";
 import express from 'express';
+import { app, BrowserWindow, Tray, Menu } from 'electron';
+import path from 'path';
 
 export const threads = {} as { [key: number]: ThreadStateType }
 
@@ -94,6 +96,54 @@ async function start() {
     console.log('restart after 10 seconds...')
     setTimeout(start, 10000)
   }
+
+  if (config.electron) {
+    app.on('ready', createWindow);
+    app.on('window-all-closed', () => {
+      if (process.platform !== 'darwin') {
+        app.quit();
+      }
+    });
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow();
+      }
+    });
+  }
+}
+
+function createWindow() {
+  const mainWindow = new BrowserWindow({
+    width: 800,
+    height: 600,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+  });
+
+  mainWindow.loadFile('index.html');
+
+  const tray = new Tray(path.join(__dirname, 'trayIcon.png'));
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'Show', click: () => mainWindow.show() },
+    { label: 'Quit', click: () => app.quit() },
+  ]);
+  tray.setToolTip('Telegram Functions Bot');
+  tray.setContextMenu(contextMenu);
+
+  mainWindow.on('minimize', (event) => {
+    event.preventDefault();
+    mainWindow.hide();
+  });
+
+  mainWindow.on('close', (event) => {
+    if (!app.isQuiting) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+    return false;
+  });
 }
 
 function watchConfigChanges() {
