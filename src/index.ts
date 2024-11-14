@@ -725,6 +725,11 @@ async function telegramPostHandler(req: express.Request, res: express.Response) 
   };
 
   const ctx = lastCtx as Context & { update: any, chat: any, expressRes?: Express.Response }
+  if (!ctx) {
+    log({msg: `http: lastCtx not found`, logLevel: 'warn', chatId: chat.id, chatTitle: chat.title});
+    return res.status(500).send('lastCtx not found.');
+  }
+
   ctx.update.message = virtualCtx.update.message
   ctx.chat.id = virtualCtx.chat.id
   ctx.chat.title = virtualCtx.chat.title
