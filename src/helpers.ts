@@ -10,7 +10,8 @@ interface LogParams {
 }
 
 export function log({ msg, logLevel = 'info', chatId, chatTitle, username, role }: LogParams) {
-  const timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  const tzoffset = (new Date()).getTimezoneOffset() * 60000; //offset in milliseconds
+  const timestamp = new Date(Date.now() - tzoffset).toISOString().slice(0, 19).replace('T', ' ');
   const chatIdStr = chatId ? `[${chatId}] ` : '';
   if (msg.includes('\n')) {
     msg = msg.replace(/\n/g, ' ');
