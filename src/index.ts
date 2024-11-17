@@ -230,6 +230,7 @@ async function commandAddTool(msg: Message.TextMessage) {
 
 function getToolsInfo(tools: string[]) {
   return tools
+    .filter(f => f !== 'change_chat_settings')
     .map(f => globalTools.find(g => g.name === f) as ChatToolType).filter(Boolean)
     .map(f => `- ${f.name}${f.module.description ? ` - ${f.module.description}` : ''}`)
 }
@@ -529,14 +530,14 @@ async function onMessage(ctx: Context & { secondTry?: boolean }, callback?: Func
 
   const historyLength = thread.messages.length
   // return new Promise(async (resolve, reject) => {
-    setTimeout(async () => {
-      if (thread.messages.length !== historyLength) {
-        // skip if new messages added
-        return
-      }
-      const msgSent = await answerToMessage(ctx, msg, chat, extraMessageParams)
-      if (typeof callback === 'function') callback(msgSent)
-    }, 500)
+  setTimeout(async () => {
+    if (thread.messages.length !== historyLength) {
+      // skip if new messages added
+      return
+    }
+    const msgSent = await answerToMessage(ctx, msg, chat, extraMessageParams)
+    if (typeof callback === 'function') callback(msgSent)
+  }, 500)
   // })
 }
 
