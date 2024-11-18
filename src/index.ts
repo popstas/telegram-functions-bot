@@ -245,6 +245,13 @@ function getInfoMessage(msg: Message.TextMessage, chatConfig: ConfigChatType) {
     `Model: ${chatConfig.completionParams.model}`
   ]
 
+  if (chatConfig.id) {
+    lines.push(`Config Chat ID: ${chatConfig.id}`)
+  }
+  if (chatConfig.username) {
+    lines.push(`Config is for user: ${chatConfig.username}`)
+  }
+
   if (chatConfig.chatParams?.forgetTimeout) {
     lines.push(`Forget timeout: ${chatConfig.chatParams.forgetTimeout} sec`)
   }
