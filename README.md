@@ -33,3 +33,13 @@ Empty `config.yml` should be generated. Fill it with your data:
 - bot_name
 - auth.token
 - auth.chatgpt_api_key
+
+## Running Tests
+
+To run the tests, use the following command:
+
+```bash
+npm test
+```
+
+This will execute all unit and integration tests in the `tests` directory using the `jest` framework.
