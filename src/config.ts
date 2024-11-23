@@ -82,7 +82,8 @@ export function validateConfig(config: ConfigType) {
   const gen = generateConfig()
   for (const conf of ['bot_token', 'chatgpt_api_key'] as const) {
     if (!config.auth[conf] || config.auth[conf] === gen.auth[conf]) {
-      log({msg: `No auth.${conf} in config`, logLevel: 'error'});
+      const msg = `No auth.${conf} in config`
+      log({msg, logLevel: 'error'});
       valid = false
     }
   }
