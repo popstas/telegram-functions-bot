@@ -27,27 +27,27 @@ describe('log', () => {
 
   it('should log info messages by default', () => {
     log({ msg: 'Test info message' });
-    expect(consoleOutput).toContain(expect.stringContaining('Test info message'));
+    expect(consoleOutput).toContainEqual(expect.stringContaining('Test info message'));
   });
 
   it('should log debug messages', () => {
     log({ msg: 'Test debug message', logLevel: 'debug' });
-    expect(consoleOutput).toContain(expect.stringContaining('Test debug message'));
+    expect(consoleOutput).toContainEqual(expect.stringContaining('Test debug message'));
   });
 
   it('should log error messages', () => {
     log({ msg: 'Test error message', logLevel: 'error' });
-    expect(consoleOutput).toContain(expect.stringContaining('Test error message'));
+    expect(consoleOutput).toContainEqual(expect.stringContaining('Test error message'));
   });
 
   it('should log warn messages', () => {
     log({ msg: 'Test warn message', logLevel: 'warn' });
-    expect(consoleOutput).toContain(expect.stringContaining('Test warn message'));
+    expect(consoleOutput).toContainEqual(expect.stringContaining('Test warn message'));
   });
 
   it('should log info messages', () => {
     log({ msg: 'Test info message', logLevel: 'info' });
-    expect(consoleOutput).toContain(expect.stringContaining('Test info message'));
+    expect(consoleOutput).toContainEqual(expect.stringContaining('Test info message'));
   });
 
   it('should log messages with chatId, chatTitle, username, and role', () => {
@@ -58,6 +58,6 @@ describe('log', () => {
       username: 'testuser',
       role: 'user',
     });
-    expect(consoleOutput).toContain(expect.stringContaining('[123] [Test Chat] [user] [testuser] Test message with details'));
+    expect(consoleOutput).toContainEqual(expect.stringContaining('[123] [Test Chat] [user] [testuser] Test message with details'));
   });
 });

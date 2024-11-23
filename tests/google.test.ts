@@ -3,6 +3,19 @@ import * as fs from 'fs';
 
 jest.mock('fs');
 
+const mockExit = jest.spyOn(process, 'exit').mockImplementation((code?: number) => {
+  console.log(`Mock exit with code: ${code}`);
+  return undefined as never;
+});
+
+beforeAll(() => {
+  mockExit.mockClear();
+});
+
+afterAll(() => {
+  mockExit.mockRestore();
+});
+
 describe('Google API Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
