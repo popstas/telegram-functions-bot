@@ -6,7 +6,6 @@ import {
 } from './types.ts'
 import {validateConfig, writeConfig, watchConfigChanges} from './config.ts'
 import {initCommands} from './commands.ts'
-import {HttpsProxyAgent} from "https-proxy-agent"
 import {log} from './helpers.ts';
 import express from 'express';
 import { useBot } from './bot';
