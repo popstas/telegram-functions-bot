@@ -1,26 +1,13 @@
 import { readConfig, writeConfig, generateConfig } from '../src/config.ts';
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
+import { mockConsole } from './testHelpers';
 
 jest.mock('fs');
 jest.mock('js-yaml');
 
 describe('readConfig', () => {
-  const originalConsole = { ...console };
-  
-  beforeAll(() => {
-    console.log = jest.fn();
-    console.error = jest.fn();
-    console.warn = jest.fn();
-    console.info = jest.fn();
-  });
-
-  afterAll(() => {
-    console.log = originalConsole.log;
-    console.error = originalConsole.error;
-    console.warn = originalConsole.warn;
-    console.info = originalConsole.info;
-  });
+  mockConsole();
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -55,21 +42,7 @@ describe('readConfig', () => {
 });
 
 describe('writeConfig', () => {
-  const originalConsole = { ...console };
-  
-  beforeAll(() => {
-    console.log = jest.fn();
-    console.error = jest.fn();
-    console.warn = jest.fn();
-    console.info = jest.fn();
-  });
-
-  afterAll(() => {
-    console.log = originalConsole.log;
-    console.error = originalConsole.error;
-    console.warn = originalConsole.warn;
-    console.info = originalConsole.info;
-  });
+  mockConsole();
 
   beforeEach(() => {
     jest.clearAllMocks();
