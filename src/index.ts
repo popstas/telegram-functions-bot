@@ -10,8 +10,8 @@ import {
   ConfigChatType,
   ThreadStateType,
   ConfigChatButtonType, ToolResponse, ChatToolType, ToolParamsType, ButtonsSyncConfigType,
-} from './types'
-import {generatePrivateChatConfig, logConfigChanges, readConfig, validateConfig, writeConfig} from './config'
+} from './types.ts'
+import {generatePrivateChatConfig, logConfigChanges, readConfig, validateConfig, writeConfig} from './config.ts'
 import {HttpsProxyAgent} from "https-proxy-agent"
 import {addOauthToThread, commandGoogleOauth, ensureAuth} from "./helpers/google.ts";
 import {

@@ -1,4 +1,4 @@
-import { log } from '../src/helpers';
+import { log } from '../src/helpers.ts';
 
 describe('log', () => {
   let consoleOutput: string[] = [];

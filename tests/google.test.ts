@@ -1,4 +1,4 @@
-import { getUserGoogleCreds, saveUserGoogleCreds, loadGoogleCreds } from '../src/helpers/google';
+import { getUserGoogleCreds, saveUserGoogleCreds, loadGoogleCreds } from '../src/helpers/google.ts';
 import * as fs from 'fs';
 import { readConfig } from '../src/config';
 
