@@ -125,10 +125,10 @@ function generateDiff(oldStr: string, newStr: string): string {
 
 let config = {} as ConfigType;
 export function useConfig(): ConfigType {
-  if (!config.bot_token) reloadConfig();
+  if (!config?.auth?.bot_token) reloadConfig();
   return config;
 }
 export function reloadConfig(): ConfigType {
   config = readConfig();
-  retkurn config;
+  return config;
 }

@@ -6,12 +6,10 @@ import OpenAI from 'openai'
 import debounce from 'lodash.debounce'
 import {watchFile, readdirSync} from 'fs'
 import {
-  ConfigType,
   ConfigChatType,
-  ThreadStateType,
   ConfigChatButtonType, ToolResponse, ChatToolType, ToolParamsType, ButtonsSyncConfigType,
 } from './types.ts'
-import {generatePrivateChatConfig, logConfigChanges, validateConfig, writeConfig} from './config.ts'
+import {generatePrivateChatConfig, logConfigChanges, reloadConfig, validateConfig, writeConfig} from './config.ts'
 import {HttpsProxyAgent} from "https-proxy-agent"
 import {addOauthToThread, commandGoogleOauth, ensureAuth} from "./helpers/google.ts";
 import {
@@ -301,14 +299,14 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
     addToHistory({msg, answer});
 
     // forget after tool
-    if (threads.messages.find(m => m.role === 'tool') && chatConfig.chatParams.memoryless) {
+    if (thread.messages.find(m => m.role === 'tool') && chatConfig.chatParams.memoryless) {
       forgetHistory(msg.chat.id);
     }
     return {content: answer}
   }
 
   async function processToolResponse(tool_res: ToolResponse[], messageAgent: OpenAI.ChatCompletionMessage, level: number): Promise<ToolResponse> {
-    threads.messages.push(messageAgent);
+    thread.messages.push(messageAgent);
     for (let i = 0; i < tool_res.length; i++) {
       const toolRes = tool_res[i];
       const toolCall = (messageAgent as {
@@ -333,17 +331,17 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
         tool_call_id: toolCall.id,
       } as OpenAI.ChatCompletionToolMessageParam
 
-      threads.messages.push(messageTool)
+      thread.messages.push(messageTool)
     }
 
-    messages = await buildMessages(systemMessage, threads.messages, chatTools, prompts);
+    messages = await buildMessages(systemMessage, thread.messages, chatTools, prompts);
 
     const isNoTool = level > 6 || !tools?.length;
 
     const res = await api.chat.completions.create({
       messages,
-      model: threads.completionParams?.model || 'gpt-4o-mini',
-      temperature: threads.completionParams?.temperature,
+      model: thread.completionParams?.model || 'gpt-4o-mini',
+      temperature: thread.completionParams?.temperature,
       // cannot use functions at 6+ level of chaining
       tools: isNoTool ? undefined : tools,
       tool_choice: isNoTool ? undefined : 'auto',
@@ -387,18 +385,18 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
   let systemMessage = getSystemMessage(chatConfig, systemMessages)
   const date = new Date().toISOString()
   systemMessage = systemMessage.replace(/\{date}/g, date)
-  if (threads.nextSystemMessage) {
-    systemMessage = threads.nextSystemMessage || ''
-    threads.nextSystemMessage = ''
+  if (thread.nextSystemMessage) {
+    systemMessage = thread.nextSystemMessage || ''
+    thread.nextSystemMessage = ''
   }
 
   // messages
-  let messages = await buildMessages(systemMessage, threads.messages, chatTools, prompts);
+  let messages = await buildMessages(systemMessage, thread.messages, chatTools, prompts);
 
   const res = await api.chat.completions.create({
     messages,
-    model: threads.completionParams?.model || 'gpt-4o-mini',
-    temperature: threads.completionParams?.temperature,
+    model: thread.completionParams?.model || 'gpt-4o-mini',
+    temperature: thread.completionParams?.temperature,
     // tool_choice: 'required',
     tools,
   });
@@ -528,16 +526,16 @@ async function onMessage(ctx: Context & { secondTry?: boolean }, callback?: Func
     // received text, send prompt with text in the end
     if (activeButton) {
       // forgetHistory(msg.chat.id)
-      threads.messages = threads.messages.slice(-1);
-      threads.nextSystemMessage = activeButton.prompt
+      thread.messages = thread.messages.slice(-1);
+      thread.nextSystemMessage = activeButton.prompt
       thread.activeButton = undefined
     }
   }
 
-  const historyLength = threads.messages.length
+  const historyLength = thread.messages.length
   // return new Promise(async (resolve, reject) => {
   setTimeout(async () => {
-    if (threads.messages.length !== historyLength) {
+    if (thread.messages.length !== historyLength) {
       // skip if new messages added
       return
     }
