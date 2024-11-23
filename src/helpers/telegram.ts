@@ -1,5 +1,6 @@
 import {Chat, Message, Update} from "telegraf/types";
-import {bot, config} from "../index.ts";
+import {useBot} from "../bot.ts";
+import {useConfig} from "../config.ts";
 import {ConfigChatButtonType, ConfigChatType} from "../types.ts";
 import {Context, Scenes} from "telegraf";
 import {User} from "@telegraf/types/manage";
@@ -44,13 +45,13 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
 
     for (const msg of msgs) {
       try {
-        response = await bot.telegram.sendMessage(chat_id, msg, params)
+        response = await useBot().telegram.sendMessage(chat_id, msg, params)
       } catch (e) {
         // const err = e as { message: string }
         // log({msg: `failover sendTelegramMessage without markdown: ${err.message.slice(512)}`, chatId: chat_id, logLevel: 'warn'})
         const failsafeParams = {reply_markup: params.reply_markup}
-        response = await bot.telegram.sendMessage(chat_id, msg, failsafeParams)
-        // await bot.telegram.sendMessage(chat_id, `${err.message}`, params)
+        response = await useBot().telegram.sendMessage(chat_id, msg, failsafeParams)
+        // await useBot().telegram.sendMessage(chat_id, `${err.message}`, params)
       }
     }
 
@@ -58,12 +59,12 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
     if (params.deleteAfter) {
       const deleteAfter = typeof params.deleteAfter === 'number' ? params.deleteAfter * 1000 : 10000;
       if (response) setTimeout(async () => {
-        await bot.telegram.deleteMessage(response.chat.id, response.message_id);
+        await useBot().telegram.deleteMessage(response.chat.id, response.message_id);
       }, deleteAfter);
     }
 
     if (forDelete) {
-      await bot.telegram.deleteMessage(forDelete.chat.id, forDelete.message_id);
+      await useBot().telegram.deleteMessage(forDelete.chat.id, forDelete.message_id);
       forDelete = undefined
     }
 
@@ -79,7 +80,7 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
 }
 
 export function isAdminUser(msg: Message.TextMessage) {
-  return config.adminUsers?.includes(msg.from?.username || '')
+  return useConfig().adminUsers?.includes(msg.from?.username || '')
 }
 
 export function buildButtonRows(buttons: ConfigChatButtonType[]) {
@@ -94,9 +95,9 @@ export function buildButtonRows(buttons: ConfigChatButtonType[]) {
 }
 
 function getChatConfig(ctxChat: Chat) {
-  let chat = config.chats.find(c => c.id == ctxChat?.id || c.ids?.includes(ctxChat?.id) || 0) || {} as ConfigChatType
+  let chat = useConfig().chats.find(c => c.id == ctxChat?.id || c.ids?.includes(ctxChat?.id) || 0) || {} as ConfigChatType
 
-  const defaultChat = config.chats.find(c => c.name === 'default')
+  const defaultChat = useConfig().chats.find(c => c.name === 'default')
 
   if (!chat.id) {
     // console.log("ctxChat:", ctxChat);
@@ -111,14 +112,14 @@ function getChatConfig(ctxChat: Chat) {
     if (ctxChat?.type === 'private') {
       const privateChat = ctxChat as Chat.PrivateChat
       const username = privateChat.username || 'without_username'
-      const isAllowed = config.privateUsers?.includes(username) ||
-        config.adminUsers?.includes(username)
+      const isAllowed = useConfig().privateUsers?.includes(username) ||
+        useConfig().adminUsers?.includes(username)
       if (!isAllowed) {
         return
       }
 
       // user chat, with username
-      const userChat = config.chats.find(c => c.username === privateChat.username || '')
+      const userChat = useConfig().chats.find(c => c.username === privateChat.username || '')
       if (userChat) chat = userChat
     }
   }
@@ -128,7 +129,7 @@ function getChatConfig(ctxChat: Chat) {
     to[name] = to[name] ? {...from[name], ...to[name]} : from[name]
   }
 
-  mergeConfigParam('completionParams', config, chat);
+  mergeConfigParam('completionParams', useConfig(), chat);
 
   if (chat && defaultChat) {
     chat = {...defaultChat, ...chat}

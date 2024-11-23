@@ -6,12 +6,10 @@ import OpenAI from 'openai'
 import debounce from 'lodash.debounce'
 import {watchFile, readdirSync} from 'fs'
 import {
-  ConfigType,
   ConfigChatType,
-  ThreadStateType,
   ConfigChatButtonType, ToolResponse, ChatToolType, ToolParamsType, ButtonsSyncConfigType,
 } from './types.ts'
-import {generatePrivateChatConfig, logConfigChanges, readConfig, validateConfig, writeConfig} from './config.ts'
+import {generatePrivateChatConfig, logConfigChanges, reloadConfig, validateConfig, writeConfig} from './config.ts'
 import {HttpsProxyAgent} from "https-proxy-agent"
 import {addOauthToThread, commandGoogleOauth, ensureAuth} from "./helpers/google.ts";
 import {
@@ -27,12 +25,11 @@ import {readGoogleSheet} from "./helpers/readGoogleSheet.ts";
 import {OAuth2Client} from "google-auth-library/build/src/auth/oauth2client";
 import {GoogleAuth} from "google-auth-library";
 import express from 'express';
-
-export const threads = {} as { [key: number]: ThreadStateType }
+import { useBot } from './bot';
+import { useConfig } from './config';
+import { useThreads } from './threads';
 
 const configPath = process.env.CONFIG || 'config.yml'
-export let config: ConfigType
-export let bot: Telegraf<Context>
 export let api: OpenAI
 let globalTools: ChatToolType[] = []
 let lastCtx = {} as Context
@@ -46,7 +43,7 @@ void start()
 
 async function start() {
   // global
-  config = readConfig(configPath);
+  const config = useConfig();
   if (!validateConfig(config)) {
     console.log('Invalid config, exiting...')
     process.exit(1)
@@ -63,7 +60,7 @@ async function start() {
       httpAgent,
     })
 
-    bot = new Telegraf(config.auth.bot_token)
+    const bot = useBot();
     log({msg: 'bot started'})
 
     bot.help(async ctx => ctx.reply('https://github.com/popstas/telegram-functions-bot'))
@@ -99,15 +96,15 @@ async function start() {
 function watchConfigChanges() {
   // global threads, config
   watchFile(configPath, debounce(() => {
-    const configOld = config
-    config = readConfig(configPath)
+    const configOld = useConfig();
+    const config = reloadConfig();
     logConfigChanges(configOld, config)
     // log({msg: `reload config, chats: ${configOld.chats.length} -> ${config.chats.length}`});
     // console.log('config:', config)
 
-    config.chats.filter(c => c.id && threads[c.id]).forEach((c) => {
+    config.chats.filter(c => c.id && useThreads()[c.id]).forEach((c) => {
       const id = c.id as number
-      threads[id].completionParams = c.completionParams
+      useThreads()[id].completionParams = c.completionParams
     })
   }, 2000))
 }
@@ -176,9 +173,10 @@ async function commandAddTool(msg: Message.TextMessage) {
   const tools = globalTools.filter(t => !excluded.includes(t.name)).map(t => t.name)
   const toolsInfo = getToolsInfo(tools)
   const text = `Available tools:\n\n${toolsInfo.join('\n\n')}\n\nSelect tool to add:`
+  const config = useConfig()
 
   for (const tool of globalTools) {
-    bot.action(`add_tool_${tool.name}`, async (ctx) => {
+    useBot().action(`add_tool_${tool.name}`, async (ctx) => {
       const chatId = ctx.chat?.id;
       if (!chatId) return;
 
@@ -284,6 +282,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
   expressRes?: express.Response
 }) {
   if (!msg.text) return
+  const threads = useThreads()
 
   // async function onGptAnswer(msg: Message.TextMessage, res: OpenAI.ChatCompletionMessage) {
   async function onGptAnswer(msg: Message.TextMessage, res: OpenAI.ChatCompletion, level: number = 1): Promise<ToolResponse> {
@@ -386,7 +385,7 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
   let systemMessage = getSystemMessage(chatConfig, systemMessages)
   const date = new Date().toISOString()
   systemMessage = systemMessage.replace(/\{date}/g, date)
-  if (thread?.nextSystemMessage) {
+  if (thread.nextSystemMessage) {
     systemMessage = thread.nextSystemMessage || ''
     thread.nextSystemMessage = ''
   }
@@ -406,6 +405,8 @@ async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChat
 }
 
 async function onMessage(ctx: Context & { secondTry?: boolean }, callback?: Function) {
+  const threads = useThreads()
+
   // console.log("ctx:", ctx);
   lastCtx = ctx
 
@@ -421,7 +422,7 @@ async function onMessage(ctx: Context & { secondTry?: boolean }, callback?: Func
 
   // skip replies to other people
   if (msg.reply_to_message && msg.from?.username !== msg.reply_to_message.from?.username) {
-    if (msg.reply_to_message.from?.username !== config.bot_name) return
+    if (msg.reply_to_message.from?.username !== useConfig().bot_name) return
   }
 
   const chatTitle = (ctx.chat as Chat.TitleChat).title || ''
@@ -461,7 +462,7 @@ async function onMessage(ctx: Context & { secondTry?: boolean }, callback?: Func
   // TODO: getTelegramUser(msg)
   const forwardOrigin = msg.forward_origin;
   const username = forwardOrigin?.sender_user?.username
-  const isOurUser = username && config.privateUsers?.includes(username)
+  const isOurUser = username && useConfig().privateUsers?.includes(username)
   if (forwardOrigin && !isOurUser) {
     const name = forwardOrigin.type === 'hidden_user' ?
       forwardOrigin.sender_user_name :
@@ -556,7 +557,7 @@ async function syncButtons(chat: ConfigChatType, authClient: OAuth2Client | Goog
 
   chat.buttonsSynced = buttons
 
-  config = readConfig(configPath)
+  const config = useConfig();
   const chatIndex = config.chats.findIndex(c => c.name === chat.name)
 
   config.chats[chatIndex] = chat
@@ -600,9 +601,9 @@ async function answerToMessage(ctx: Context & {
 }, msg: Message.TextMessage, chat: ConfigChatType, extraMessageParams: any) {
 
   // inject google oauth to thread
-  if (config.auth.oauth_google?.client_id || config.auth.google_service_account?.private_key) {
+  if (useConfig().auth.oauth_google?.client_id || useConfig().auth.google_service_account?.private_key) {
     const authClient = await ensureAuth(msg.from?.id || 0); // for add to threads
-    addOauthToThread(authClient, threads, msg);
+    addOauthToThread(authClient, useThreads(), msg);
 
     // sync buttons with Google sheet
     if (chat.buttonsSync && msg.text === 'sync' && msg) {
@@ -648,7 +649,7 @@ async function answerToMessage(ctx: Context & {
 
 
       msgSent = await sendTelegramMessage(msg.chat.id, text, extraParams)
-      if (msgSent?.chat.id) threads[msgSent.chat.id].msgs.push(msgSent)
+      if (msgSent?.chat.id) useThreads()[msgSent.chat.id].msgs.push(msgSent)
     }) // all done, stops sending typing
     return msgSent
   } catch (e) {
@@ -670,12 +671,12 @@ async function answerToMessage(ctx: Context & {
 
 function initHttp() {
   // Validate HTTP configuration
-  if (!config.http) {
+  if (!useConfig().http) {
     log({msg: `Invalid http configuration in config, skip http server init`, logLevel: 'warn'});
     return
   }
 
-  const port = config.http.port || 7586;
+  const port = useConfig().http.port || 7586;
 
   // Set up express server
   const app = express();
@@ -713,14 +714,14 @@ async function telegramPostHandler(req: express.Request, res: express.Response) 
     return res.status(400).send('Message text is required.');
   }
 
-  const chatConfig = config.chats.find(chat => chat.id === parseInt(chatId));
+  const chatConfig = useConfig().chats.find(chat => chat.id === parseInt(chatId));
   if (!chatConfig) {
     log({msg: `http: Chat ${chatId} not found in config`, logLevel: 'warn'});
     return res.status(400).send('Wrong chat_id')
   }
 
   const chat = {id: parseInt(chatId), title: chatConfig.name}
-  const from = {username: config.http.telegram_from_username}
+  const from = {username: useConfig().http.telegram_from_username}
   const virtualCtx = {
     chat,
     update: {
@@ -747,7 +748,7 @@ async function telegramPostHandler(req: express.Request, res: express.Response) 
       } else {
         res.status(500).send('Error sending message.');
       }
-      // await bot.telegram.sendMessage(chat.id, 'test - ' + text);
+      // await useBot().telegram.sendMessage(chat.id, 'test - ' + text);
     });
   } catch (error) {
     res.status(500).send('Error sending message.');

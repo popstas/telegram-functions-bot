@@ -1,7 +1,7 @@
 import {Message} from "telegraf/types";
 import {CompletionParamsType} from "../types.ts";
 import OpenAI from "openai";
-import {threads} from "../index.ts";
+import {useThreads} from "../threads.ts";
 
 export function addToHistory({msg, answer, completionParams}: {
   msg: Message.TextMessage;
@@ -9,6 +9,7 @@ export function addToHistory({msg, answer, completionParams}: {
   completionParams?: CompletionParamsType;
 }) {
   const key = msg.chat?.id || 0
+  const threads = useThreads();
   if (!threads[key]) {
     threads[key] = {
       id: key,
@@ -35,6 +36,7 @@ export function addToHistory({msg, answer, completionParams}: {
 }
 
 export function forgetHistory(chatId: number) {
+  const threads = useThreads();
   if (threads[chatId]) {
     threads[chatId].messages = [];
   }
