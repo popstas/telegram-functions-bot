@@ -1,7 +1,6 @@
 import {Context} from 'telegraf'
 import {message, editedMessage} from 'telegraf/filters'
 import {Message} from 'telegraf/types'
-import OpenAI from 'openai'
 import {
   ConfigChatType,
 } from './types.ts'
@@ -15,7 +14,6 @@ import { useConfig } from './config';
 import onMessage from "./helpers/onMessage.ts";
 import {useLastCtx} from "./helpers/lastCtx.ts";
 
-export let api: OpenAI
 
 process.on('uncaughtException', (error, source) => {
   console.log('Uncaught Exception:', error)
@@ -33,14 +31,7 @@ async function start() {
   }
   watchConfigChanges();
 
-  const httpAgent = config.auth.proxy_url ? new HttpsProxyAgent(`${config.auth.proxy_url}`) : undefined;
-
   try {
-    api = new OpenAI({
-      apiKey: config.auth.chatgpt_api_key,
-      httpAgent,
-    })
-
     const bot = useBot();
     log({msg: 'bot started'})
 
