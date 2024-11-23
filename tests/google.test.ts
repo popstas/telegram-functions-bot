@@ -3,7 +3,7 @@ import * as fs from 'fs';
 
 jest.mock('fs');
 
-const mockExit = jest.spyOn(process, 'exit').mockImplementation((code?: number) => {
+const mockExit = jest.spyOn(process, 'exit').mockImplementation((code?: string | number | null) => {
   console.log(`Mock exit with code: ${code}`);
   return undefined as never;
 });
