@@ -1,17 +1,43 @@
-# [](https://github.com/popstas/telegram-functions-bot/compare/v2024.11.10...v) (2024-11-11)
+# [](https://github.com/popstas/telegram-functions-bot/compare/v2024.11.17...v) (2024-11-23)
+
+
+### Bug Fixes
+
+* add chat id and username to /info ([9ea5a12](https://github.com/popstas/telegram-functions-bot/commit/9ea5a120b34d63b4d274231d0f8fab60f4176be4))
+
+
+### Features
+
+* Add commands module to project structure ([0829218](https://github.com/popstas/telegram-functions-bot/commit/082921815826e75a65bcfbcfdce2200253d8caeb))
+* Add tests ([#38](https://github.com/popstas/telegram-functions-bot/issues/38)) ([2d3ac83](https://github.com/popstas/telegram-functions-bot/commit/2d3ac83cfa7c785fe414aaab9b12ea1bd456b109)), closes [#37](https://github.com/popstas/telegram-functions-bot/issues/37)
+* Add useApi helper hook for API interactions ([f25bfae](https://github.com/popstas/telegram-functions-bot/commit/f25bfae166f6519fdcc9e923f543b8fe9c9460c8))
+
+
+
+## [2024.11.17](https://github.com/popstas/telegram-functions-bot/compare/v2024.11.10...v2024.11.17) (2024-11-17)
 
 
 ### Bug Fixes
 
 * add some defaults to default chat generated config ([e60a72e](https://github.com/popstas/telegram-functions-bot/commit/e60a72e08329f3efe5ef897e9b3e447e472bdaf8))
 * deleteToolAnswers: ms -> seconds ([622bbf1](https://github.com/popstas/telegram-functions-bot/commit/622bbf156b6b27a83bf5df9b13de7125a033492b))
+* disable failover sendTelegramMessage without markdown, too often ([e58035b](https://github.com/popstas/telegram-functions-bot/commit/e58035bd6414ef9b508724d613648d015148616e))
 * early return from onMessage, don't log all messages in groups ([eb3755f](https://github.com/popstas/telegram-functions-bot/commit/eb3755fa431aa3e528ab7d6e16d58956554c5c28))
+* filter out change_chat_settings from /info ([e61d370](https://github.com/popstas/telegram-functions-bot/commit/e61d370954fefbc2bdb75ebc78d32dbece9b4371))
 * fix disable confirmations after first confirm ([74e72e4](https://github.com/popstas/telegram-functions-bot/commit/74e72e4af90854176c8c9545c04344d7ca2708b5))
+* fix freezing after previous commit ([7059147](https://github.com/popstas/telegram-functions-bot/commit/70591470cb7b93bc9f0863babea4c9866dbd9fc8))
+* **http:** fix exception when http called before regular telegram message ([cb2c101](https://github.com/popstas/telegram-functions-bot/commit/cb2c10169fbf5985db98ad3885bdaa6fa6be8219))
+* **log:** time in local timezone ([6113cc0](https://github.com/popstas/telegram-functions-bot/commit/6113cc016b2ac01fc503bb070fbd73dbb0cf3af1))
+* **ssh:** better output when command returns exit code > 0 ([5890399](https://github.com/popstas/telegram-functions-bot/commit/5890399e0bd9df2c4f6f8ccd2db7de74b46c4c04))
+* **ssh:** working ssh in docker, mount your ssh key ([4511638](https://github.com/popstas/telegram-functions-bot/commit/45116382f86ac725079338bfca2abcd9e957cdb2))
 
 
 ### Features
 
 * add buttonSync feature from popstas/telegram-chatgpt-bot ([7b0a75e](https://github.com/popstas/telegram-functions-bot/commit/7b0a75ee04ca2dbdb63e8edefd8d5d71c0f20a8f))
+* http server for answer to virtual messages ([4684d43](https://github.com/popstas/telegram-functions-bot/commit/4684d43dfbd4860c8ce1c79a9c291210622f4db8))
+* memoryless chats: forget history after tool usage only for memoryless chats ([145401b](https://github.com/popstas/telegram-functions-bot/commit/145401b1e3fb48247deae36f08d234557f7d323e))
+* send dialog to http request ([d19ee68](https://github.com/popstas/telegram-functions-bot/commit/d19ee6898ea9e2036bcf1c483fe5d001c8bb4c67))
 
 
 
