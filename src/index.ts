@@ -13,7 +13,6 @@ import { useConfig } from './config';
 import onMessage from "./helpers/onMessage.ts";
 import {useLastCtx} from "./helpers/lastCtx.ts";
 
-
 process.on('uncaughtException', (error, source) => {
   console.log('Uncaught Exception:', error)
   console.log('source:', source)
@@ -24,6 +23,7 @@ void start()
 async function start() {
   // global
   const config = useConfig();
+
   if (!validateConfig(config)) {
     console.log('Invalid config, exiting...')
     process.exit(1)

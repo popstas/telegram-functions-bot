@@ -8,7 +8,7 @@ import {buildMessages, callTools, getSystemMessage} from "./gpt.ts";
 import {addToHistory, forgetHistory} from "./history.ts";
 import {sendToHttp} from "../helpers.ts";
 import {isAdminUser, sendTelegramMessage} from "./telegram.ts";
-import {api} from "../index.ts";
+import {useApi} from "./useApi.ts"
 import useTools from "./useTools.ts";
 
 export default async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChatType, ctx: Context & {
@@ -71,6 +71,7 @@ export default async function getChatgptAnswer(msg: Message.TextMessage, chatCon
 
     const isNoTool = level > 6 || !tools?.length;
 
+    const api = useApi();
     const res = await api.chat.completions.create({
       messages,
       model: thread.completionParams?.model || 'gpt-4o-mini',
@@ -127,6 +128,7 @@ export default async function getChatgptAnswer(msg: Message.TextMessage, chatCon
   // messages
   let messages = await buildMessages(systemMessage, thread.messages, chatTools, prompts);
 
+  const api = useApi();
   const res = await api.chat.completions.create({
     messages,
     model: thread.completionParams?.model || 'gpt-4o-mini',

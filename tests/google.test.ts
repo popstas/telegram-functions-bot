@@ -1,4 +1,4 @@
-import { getUserGoogleCreds, saveUserGoogleCreds, loadGoogleCreds } from '../src/helpers/google.ts';
+import { getUserGoogleCreds, saveUserGoogleCreds } from '../src/helpers/google.ts';
 import * as fs from 'fs';
 import { readConfig } from '../src/config.ts';
 
@@ -57,7 +57,7 @@ describe('Google API Integration Tests', () => {
       expect(creds).toBeUndefined();
     });
 
-/*    it('should return user credentials if user_id is provided', () => {
+    it('should return user credentials if user_id is provided', () => {
       const mockCreds = { 123: { access_token: 'mockToken' } };
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockCreds));
@@ -73,10 +73,10 @@ describe('Google API Integration Tests', () => {
 
       const creds = getUserGoogleCreds(456);
       expect(creds).toBeUndefined();
-    });*/
+    });
   });
 
-  /*describe('saveUserGoogleCreds', () => {
+  describe('saveUserGoogleCreds', () => {
     it('should save user credentials if user_id and creds are provided', () => {
       const mockCreds = { access_token: 'mockToken' };
       const mockExistingCreds = { 123: { access_token: 'existingToken' } };
@@ -110,5 +110,5 @@ describe('Google API Integration Tests', () => {
       expect(console.error).toHaveBeenCalledWith('No creds to save');
       expect(fs.writeFileSync).not.toHaveBeenCalled();
     });
-  });*/
+  });
 });

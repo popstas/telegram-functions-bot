@@ -4,9 +4,9 @@ import {
 } from '@agentic/core'
 import {z} from 'zod'
 import {readConfig} from '../config.ts'
-import {BrainstormParamsType, ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from "../types.ts";
-import {api} from "../index.ts";
+import {BrainstormParamsType, ConfigChatType, ConfigType, ThreadStateType} from "../types.ts";
 import {buildMessages} from "../helpers/gpt.ts";
+import {useApi} from "../helpers/useApi.ts";
 
 type ToolArgsType = {
   systemMessage: string
@@ -54,6 +54,7 @@ export class BrainstormClient extends AIFunctionsProvider {
     const thread = this.thread
     const messages = await buildMessages(systemMessage, thread.messages, [], []);
 
+    const api = useApi();
     const res = await api.chat.completions.create({
       messages,
       model: thread.completionParams?.model || 'gpt-4o-mini',
