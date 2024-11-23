@@ -1,8 +1,8 @@
 import {google} from "googleapis";
-import {threads} from "../index.ts";
+import {useThreads} from "../threads.ts";
 import {Credentials} from "google-auth-library/build/src/auth/credentials";
 import fs from "fs";
-import {readConfig} from "../config.ts";
+import {useConfig} from "../config.ts";
 import {OAuth2Client} from "google-auth-library/build/src/auth/oauth2client";
 import {Message} from "telegraf/types";
 import http from "http";
@@ -53,7 +53,7 @@ export function saveUserGoogleCreds(creds?: Credentials | null, user_id?: number
 
 export async function ensureAuth(user_id: number): Promise<OAuth2Client | GoogleAuth> {
   const creds = getUserGoogleCreds(user_id);
-  const config = readConfig();
+  const config = useConfig();
 
   // Check if the user has credentials
   if (creds && creds.expiry_date && creds.expiry_date > Date.now()) {
@@ -111,7 +111,7 @@ export function createAuthServer(oauth2Client: OAuth2Client, msg: Message.TextMe
           res.end('Authentication successful! You can close this window.');
           server.close();
 
-          addOauthToThread(oauth2Client, threads, msg);
+          addOauthToThread(oauth2Client, useThreads(), msg);
           void sendTelegramMessage(msg.chat.id, 'Google auth successful, you can use google functions');
         });
       } else {
@@ -162,6 +162,6 @@ export async function commandGoogleOauth(msg: Message.TextMessage) {
     return
   }
 
-  addOauthToThread(authClient, threads, msg);
+  addOauthToThread(authClient, useThreads(), msg);
   await sendTelegramMessage(msg.chat?.id, 'Google auth successful, now you can use google functions');
 }

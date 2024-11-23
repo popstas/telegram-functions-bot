@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import {ChatToolType, ConfigChatType, ToolResponse} from "../types.ts";
-import {bot, threads} from "../index.ts";
+import {useBot} from "../bot.ts";
+import {useThreads} from "../threads.ts";
 import {getEncoding, TiktokenEncoding} from "js-tiktoken";
 import {sendTelegramMessage} from "./telegram.ts";
 import {Chat, Message} from "telegraf/types";
@@ -50,7 +51,7 @@ export function getTokensCount(chatConfig: ConfigChatType, text: string) {
 export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[], chatTools: ChatToolType[], chatConfig: ConfigChatType, msg: Message.TextMessage, expressRes?: Express.Response): Promise<ToolResponse[]> {
   // toolCalls = groupToolCalls(toolCalls) // don't need to group anymore
 
-  const thread = threads[msg.chat.id || 0]
+  const thread = useThreads()[msg.chat.id || 0]
 
   // Check for 'confirm' or 'noconfirm' in the message to set confirmation
   if (msg.text.includes('noconfirm')) {
@@ -131,7 +132,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
   if (chatConfig.chatParams.confirmation) {
     // Handle the callback query
     return new Promise(async (resolve) => {
-      bot.action(`confirm_tool_${uniqueId}`, async () => {
+      useBot().action(`confirm_tool_${uniqueId}`, async () => {
         // @ts-ignore
         sendToHttp(expressRes, `Yes`);
         const configConfirmed = JSON.parse(JSON.stringify(chatConfig));;
@@ -141,7 +142,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
         log({ msg: 'tools called', logLevel: 'info', chatId: msg.chat.id, chatTitle, role: 'tool' });
         return resolve(res);
       });
-      bot.action(`cancel_tool_${uniqueId}`, async () => {
+      useBot().action(`cancel_tool_${uniqueId}`, async () => {
         // @ts-ignore
         sendToHttp(expressRes, `Tool execution canceled`);
         await sendTelegramMessage(msg.chat.id, 'Tool execution canceled.');

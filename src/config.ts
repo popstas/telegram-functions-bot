@@ -122,3 +122,13 @@ function generateDiff(oldStr: string, newStr: string): string {
 
   return diffLines.join('\n');
 }
+
+let config = {} as ConfigType;
+export function useConfig(): ConfigType {
+  if (!config.bot_token) reloadConfig();
+  return config;
+}
+export function reloadConfig(): ConfigType {
+  config = readConfig();
+  retkurn config;
+}
