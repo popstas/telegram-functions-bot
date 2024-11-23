@@ -1,34 +1,21 @@
-import {Telegraf, Context, Markup} from 'telegraf'
+import {Context} from 'telegraf'
 import {message, editedMessage} from 'telegraf/filters'
-import telegramifyMarkdown from 'telegramify-markdown'
-import {Chat, Message} from 'telegraf/types'
+import {Message} from 'telegraf/types'
 import OpenAI from 'openai'
-import {readdirSync} from 'fs'
 import {
   ConfigChatType,
-  ConfigChatButtonType, ToolResponse, ChatToolType, ToolParamsType,
 } from './types.ts'
-import {validateConfig, writeConfig, watchConfigChanges, syncButtons} from './config.ts'
-import {initTools, initCommands, getInfoMessage} from './commands.ts'
+import {validateConfig, writeConfig, watchConfigChanges} from './config.ts'
+import {initCommands} from './commands.ts'
 import {HttpsProxyAgent} from "https-proxy-agent"
-import {addOauthToThread, commandGoogleOauth, ensureAuth} from "./helpers/google.ts";
-import {
-  getActionUserMsg,
-  getCtxChatMsg,
-  isAdminUser,
-  sendTelegramMessage
-} from "./helpers/telegram.ts";
-import {buildMessages, callTools, getSystemMessage, getTokensCount} from "./helpers/gpt.ts";
-import {addToHistory, forgetHistory} from "./helpers/history.ts";
-import {log, sendToHttp} from './helpers.ts';
+import {log} from './helpers.ts';
 import express from 'express';
 import { useBot } from './bot';
 import { useConfig } from './config';
-import { useThreads } from './threads';
+import onMessage from "./helpers/onMessage.ts";
+import {useLastCtx} from "./helpers/lastCtx.ts";
 
 export let api: OpenAI
-let globalTools: ChatToolType[] = []
-let lastCtx = {} as Context
 
 process.on('uncaughtException', (error, source) => {
   console.log('Uncaught Exception:', error)
@@ -45,8 +32,6 @@ async function start() {
     process.exit(1)
   }
   watchConfigChanges();
-
-  await initTools()
 
   const httpAgent = config.auth.proxy_url ? new HttpsProxyAgent(`${config.auth.proxy_url}`) : undefined;
 
@@ -86,350 +71,6 @@ async function start() {
   } catch (e) {
     console.log('restart after 10 seconds...')
     setTimeout(start, 10000)
-  }
-}
-
-
-
-
-async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChatType, ctx: Context & {
-  expressRes?: express.Response
-}) {
-  if (!msg.text) return
-  const threads = useThreads()
-
-  // async function onGptAnswer(msg: Message.TextMessage, res: OpenAI.ChatCompletionMessage) {
-  async function onGptAnswer(msg: Message.TextMessage, res: OpenAI.ChatCompletion, level: number = 1): Promise<ToolResponse> {
-    // console.log(`onGptAnswer, level ${level}`)
-    const messageAgent = res.choices[0]?.message!
-    if (messageAgent.tool_calls?.length) {
-      const tool_res = await callTools(messageAgent.tool_calls, chatTools, chatConfig, msg, ctx.expressRes);
-      if (tool_res) {
-        return processToolResponse(tool_res, messageAgent, level);
-      }
-    }
-
-    const answer = res.choices[0]?.message.content || ''
-    addToHistory({msg, answer});
-
-    // forget after tool
-    if (thread.messages.find(m => m.role === 'tool') && chatConfig.chatParams.memoryless) {
-      forgetHistory(msg.chat.id);
-    }
-    return {content: answer}
-  }
-
-  async function processToolResponse(tool_res: ToolResponse[], messageAgent: OpenAI.ChatCompletionMessage, level: number): Promise<ToolResponse> {
-    thread.messages.push(messageAgent);
-    for (let i = 0; i < tool_res.length; i++) {
-      const toolRes = tool_res[i];
-      const toolCall = (messageAgent as {
-        tool_calls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]
-      }).tool_calls[i];
-      // console.log(`tool result:`, toolRes?.content);
-
-      // show answer message
-      if (chatConfig.chatParams?.showToolMessages === true || chatConfig.chatParams?.showToolMessages === undefined) {
-        const params = {parse_mode: 'MarkdownV2', deleteAfter: chatConfig.chatParams?.deleteToolAnswers};
-        const toolResMessageLimit = 8000;
-        const msgContentLimited = toolRes.content.length > toolResMessageLimit ? toolRes.content.slice(0, toolResMessageLimit) + '...' : toolRes.content;
-        sendToHttp(ctx.expressRes, msgContentLimited);
-        void sendTelegramMessage(msg.chat.id, msgContentLimited, params);
-      }
-
-      console.log('');
-
-      const messageTool = {
-        role: 'tool',
-        content: toolRes.content,
-        tool_call_id: toolCall.id,
-      } as OpenAI.ChatCompletionToolMessageParam
-
-      thread.messages.push(messageTool)
-    }
-
-    messages = await buildMessages(systemMessage, thread.messages, chatTools, prompts);
-
-    const isNoTool = level > 6 || !tools?.length;
-
-    const res = await api.chat.completions.create({
-      messages,
-      model: thread.completionParams?.model || 'gpt-4o-mini',
-      temperature: thread.completionParams?.temperature,
-      // cannot use functions at 6+ level of chaining
-      tools: isNoTool ? undefined : tools,
-      tool_choice: isNoTool ? undefined : 'auto',
-    });
-
-    return await onGptAnswer(msg, res, level + 1);
-  }
-
-
-  // begin answer, define thread
-  const thread = threads[msg.chat?.id || 0]
-
-  // tools change_chat_settings for private chats and admins
-  if (msg.chat.type === 'private' || isAdminUser(msg)) {
-    if (!chatConfig.tools) chatConfig.tools = []
-    chatConfig.tools.push('change_chat_settings')
-  }
-
-  // chatTools
-  const chatTools = chatConfig.tools ?
-    chatConfig.tools.map(f => globalTools.find(g => g.name === f) as ChatToolType).filter(Boolean) :
-    []
-  // prompts from tools, should be after tools
-  const prompts = await Promise.all(
-    chatTools
-      .filter(f => typeof f.module.call(chatConfig, thread).prompt_append === 'function')
-      .map(async f => await f.module.call(chatConfig, thread).prompt_append())
-      .filter(f => !!f)
-  )
-  // systemMessages from tools, should be after tools
-  const systemMessages = await Promise.all(
-    chatTools
-      .filter(f => typeof f.module.call(chatConfig, thread).systemMessage === 'function')
-      .map(async f => await f.module.call(chatConfig, thread).systemMessage())
-      .filter(f => !!f)
-  )
-  const isTools = chatTools.length > 0;
-  const tools = isTools ? chatTools.map(f => f.module.call(chatConfig, thread).functions.toolSpecs).flat() : undefined;
-
-  // systemMessage
-  let systemMessage = getSystemMessage(chatConfig, systemMessages)
-  const date = new Date().toISOString()
-  systemMessage = systemMessage.replace(/\{date}/g, date)
-  if (thread.nextSystemMessage) {
-    systemMessage = thread.nextSystemMessage || ''
-    thread.nextSystemMessage = ''
-  }
-
-  // messages
-  let messages = await buildMessages(systemMessage, thread.messages, chatTools, prompts);
-
-  const res = await api.chat.completions.create({
-    messages,
-    model: thread.completionParams?.model || 'gpt-4o-mini',
-    temperature: thread.completionParams?.temperature,
-    // tool_choice: 'required',
-    tools,
-  });
-
-  return await onGptAnswer(msg, res);
-}
-
-async function onMessage(ctx: Context & { secondTry?: boolean }, callback?: Function) {
-  const threads = useThreads()
-
-  // console.log("ctx:", ctx);
-  lastCtx = ctx
-
-  const {msg, chat}: {
-    msg: Message.TextMessage & { forward_origin?: any } | undefined;
-    chat: ConfigChatType | undefined
-  } = getCtxChatMsg(ctx);
-
-  if (!msg) {
-    console.log('no ctx message detected')
-    return
-  }
-
-  // skip replies to other people
-  if (msg.reply_to_message && msg.from?.username !== msg.reply_to_message.from?.username) {
-    if (msg.reply_to_message.from?.username !== useConfig().bot_name) return
-  }
-
-  const chatTitle = (ctx.chat as Chat.TitleChat).title || ''
-  const chatId = msg.chat.id
-
-  if (!chat) {
-    log({msg: `Not in whitelist, from: ${JSON.stringify(msg.from)}`, chatId, chatTitle, logLevel: 'warn'})
-    const text = msg.chat.type === 'private' ?
-      `You are not in whitelist. Your username: ${msg.from?.username}` :
-      `This chat is not in whitelist.\nYour username: ${msg.from?.username}, chat id: ${msg.chat.id}`
-    const params = isAdminUser(msg) ? {
-      reply_markup: {
-        inline_keyboard: [
-          [{text: 'Add', callback_data: 'add_chat'}]
-        ]
-      }
-    } : undefined
-    return await sendTelegramMessage(msg.chat.id, text, params)
-  }
-
-  // prefix (when defined): answer only to prefixed message
-  if (chat.prefix) {
-    const re = new RegExp(`^${chat.prefix}`, 'i')
-    const isBot = re.test(msg.text)
-    if (!isBot) {
-      // console.log("not to bot:", ctx.chat);
-      return
-    }
-  }
-
-  log({msg: msg.text, logLevel: 'info', chatId, chatTitle, role: 'user', username: msg?.from?.username});
-
-  // console.log('chat:', chat)
-  const extraMessageParams = ctx.message?.message_id ? {reply_to_message_id: ctx.message?.message_id} : {}
-
-  // add "Forwarded from" to message
-  // TODO: getTelegramUser(msg)
-  const forwardOrigin = msg.forward_origin;
-  const username = forwardOrigin?.sender_user?.username
-  const isOurUser = username && useConfig().privateUsers?.includes(username)
-  if (forwardOrigin && !isOurUser) {
-    const name = forwardOrigin.type === 'hidden_user' ?
-      forwardOrigin.sender_user_name :
-      `${forwardOrigin.sender_user.first_name ?? ''} ${forwardOrigin.sender_user.last_name ?? ''}`.trim()
-    const username = forwardOrigin?.sender_user?.username;
-    msg.text = `Переслано от: ${name}` +
-      `${username ? `, Telegram: @${username}` : ''}\n` + msg.text
-  }
-
-  // replace msg.text to button.prompt if match button.name
-  let matchedButton: ConfigChatButtonType | undefined = undefined
-
-  // replace msg.text to button.prompt
-  const msgTextOrig = msg.text || ''
-  const buttons = chat.buttonsSynced || chat.buttons
-  if (buttons) {
-    // message == button.name
-    matchedButton = buttons.find(b => b.name === msgTextOrig)
-    if (matchedButton) {
-      msg.text = matchedButton.prompt || ''
-    }
-  }
-
-  // console.log("ctx.message.text:", ctx.message?.text);
-  // addToHistory should be after replace msg.text
-  addToHistory({
-    msg,
-    completionParams: chat.completionParams,
-  })
-  // should be after addToHistory
-  const thread = threads[msg.chat.id]
-
-  // Check previous message time and forget history if time delta exceeds forgetTimeout
-  const forgetTimeout = chat.chatParams?.forgetTimeout;
-  if (forgetTimeout && thread.msgs.length > 1) {
-    const lastMessageTime = new Date(thread.msgs[thread.msgs.length - 2].date * 1000).getTime();
-    const currentTime = new Date().getTime();
-    const timeDelta = (currentTime - lastMessageTime) / 1000; // in seconds
-    if (timeDelta > forgetTimeout) {
-      forgetHistory(msg.chat.id);
-      addToHistory({
-        msg,
-        completionParams: chat.completionParams,
-      })
-    }
-  }
-
-  // activeButton, should be after const thread
-  const activeButton = thread?.activeButton
-  if (buttons) {
-    // message == button.name
-    matchedButton = buttons.find(b => b.name === msgTextOrig)
-    if (matchedButton) {
-      // send ask for text message
-      if (matchedButton.waitMessage) {
-        thread.activeButton = matchedButton
-        return await sendTelegramMessage(msg.chat.id, matchedButton.waitMessage, extraMessageParams)
-      }
-    }
-
-    // received text, send prompt with text in the end
-    if (activeButton) {
-      // forgetHistory(msg.chat.id)
-      thread.messages = thread.messages.slice(-1);
-      thread.nextSystemMessage = activeButton.prompt
-      thread.activeButton = undefined
-    }
-  }
-
-  const historyLength = thread.messages.length
-  // return new Promise(async (resolve, reject) => {
-  setTimeout(async () => {
-    if (thread.messages.length !== historyLength) {
-      // skip if new messages added
-      return
-    }
-    const msgSent = await answerToMessage(ctx, msg, chat, extraMessageParams)
-    if (typeof callback === 'function') callback(msgSent)
-  }, 500)
-  // })
-}
-
-
-// send request to chatgpt, answer to telegram
-async function answerToMessage(ctx: Context & {
-  secondTry?: boolean
-}, msg: Message.TextMessage, chat: ConfigChatType, extraMessageParams: any) {
-
-  // inject google oauth to thread
-  if (useConfig().auth.oauth_google?.client_id || useConfig().auth.google_service_account?.private_key) {
-    const authClient = await ensureAuth(msg.from?.id || 0); // for add to threads
-    addOauthToThread(authClient, useThreads(), msg);
-
-    // sync buttons with Google sheet
-    if (chat.buttonsSync && msg.text === 'sync' && msg) {
-      return await ctx.persistentChatAction('typing', async () => {
-        if (!msg) return
-        const buttons = await syncButtons(chat, authClient)
-        if (!buttons) {
-          return void sendTelegramMessage(msg.chat.id, 'Ошибка синхронизации')
-        }
-
-        // const buttonRows = buildButtonRows(buttons)
-        // const extraParams = {reply_markup: {keyboard: buttonRows, resize_keyboard: true}}
-        const extraParams = Markup.keyboard(buttons.map(b => b.name)).resize()
-        const answer = 'Готово: ' + buttons.map(b => b.name).join(', ')
-        return void sendTelegramMessage(msg.chat.id, answer, extraParams)
-      })
-    }
-  }
-
-  try {
-    let msgSent
-    await ctx.persistentChatAction('typing', async () => {
-      if (!msg) return
-      const res = await getChatgptAnswer(msg, chat, ctx)
-      let text = res?.content || 'бот не ответил'
-      text = telegramifyMarkdown(`${text}`)
-
-      const extraParams: any = {
-        ...extraMessageParams,
-        ...{parse_mode: 'MarkdownV2'}
-      }
-
-      const buttons = chat.buttonsSynced || chat.buttons
-      if (buttons) {
-        // const buttonRows = buildButtonRows(buttons)
-        // extraParams.reply_markup = {keyboard: buttonRows, resize_keyboard: true}
-        const extraParamsButtons = Markup.keyboard(buttons.map(b => b.name)).resize()
-        Object.assign(extraParams, extraParamsButtons);
-      }
-
-      const chatTitle = (msg.chat as Chat.TitleChat).title
-      log({msg: text, logLevel: 'info', chatId: msg.chat.id, chatTitle, role: 'system'});
-
-
-      msgSent = await sendTelegramMessage(msg.chat.id, text, extraParams)
-      if (msgSent?.chat.id) useThreads()[msgSent.chat.id].msgs.push(msgSent)
-    }) // all done, stops sending typing
-    return msgSent
-  } catch (e) {
-    const error = e as { message: string }
-    console.log('error:', error)
-
-    if (ctx.secondTry) return
-
-    if (!ctx.secondTry && error.message.includes('context_length_exceeded')) {
-      ctx.secondTry = true
-      forgetHistory(msg.chat.id)
-      void onMessage(ctx) // специально без await
-    }
-
-    return await sendTelegramMessage(msg.chat.id, `${error.message}${ctx.secondTry ? '\n\nПовторная отправка последнего сообщения...' : ''}`, extraMessageParams)
   }
 }
 
@@ -494,7 +135,7 @@ async function telegramPostHandler(req: express.Request, res: express.Response) 
     }
   };
 
-  const ctx = lastCtx as Context & { update: any, chat: any, expressRes?: Express.Response }
+  const ctx = useLastCtx() as Context & { update: any, chat: any, expressRes?: Express.Response }
   if (!ctx) {
     log({msg: `http: lastCtx not found`, logLevel: 'warn', chatId: chat.id, chatTitle: chat.title});
     return res.status(500).send('lastCtx not found.');

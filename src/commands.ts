@@ -1,28 +1,13 @@
-import {readdirSync} from 'fs'
 import {Telegraf} from 'telegraf'
 import {Message} from 'telegraf/types'
-import {ConfigChatType, ConfigChatButtonType, ChatToolType, ToolParamsType} from './types'
-import {useConfig} from './config'
+import {ConfigChatType, ChatToolType, ToolParamsType} from './types'
+import {generatePrivateChatConfig, useConfig, writeConfig} from './config'
 import {useBot} from './bot'
-import {getCtxChatMsg, isAdminUser, sendTelegramMessage} from './helpers/telegram'
+import {getActionUserMsg, getCtxChatMsg, sendTelegramMessage} from './helpers/telegram'
 import {getSystemMessage, getTokensCount} from './helpers/gpt'
-import {log} from './helpers'
-
-export async function initTools() {
-  const files = readdirSync('src/tools').filter(file => file.endsWith('.ts'))
-  const globalTools: ChatToolType[] = []
-  
-  for (const file of files) {
-    const name = file.replace('.ts', '')
-    const module = await import(`./tools/${name}`)
-    if (typeof module.call !== 'function') {
-      log({msg: `Function ${name} has no call() method`, logLevel: 'warn'})
-      continue
-    }
-    globalTools.push({name, module})
-  }
-  return globalTools
-}
+import {forgetHistory} from "./helpers/history.ts";
+import {commandGoogleOauth} from "./helpers/google.ts";
+import useTools from "./helpers/useTools.ts";
 
 export async function initCommands(bot: Telegraf) {
   bot.command('forget', async ctx => {
@@ -33,7 +18,7 @@ export async function initCommands(bot: Telegraf) {
   bot.command('info', async ctx => {
     const {msg, chat}: { msg?: Message.TextMessage, chat?: ConfigChatType } = getCtxChatMsg(ctx);
     if (!chat || !msg) return;
-    const answer = getInfoMessage(msg, chat)
+    const answer = await getInfoMessage(msg, chat)
     return sendTelegramMessage(ctx.chat.id, answer)
   })
 
@@ -72,8 +57,9 @@ export async function initCommands(bot: Telegraf) {
 // add tool to chat config
 export async function commandAddTool(msg: Message.TextMessage) {
   const excluded = ['change_chat_settings']
+  const globalTools = await useTools();
   const tools = globalTools.filter(t => !excluded.includes(t.name)).map(t => t.name)
-  const toolsInfo = getToolsInfo(tools)
+  const toolsInfo = await getToolsInfo(tools)
   const text = `Available tools:\n\n${toolsInfo.join('\n\n')}\n\nSelect tool to add:`
   const config = useConfig()
 
@@ -122,19 +108,20 @@ export async function commandAddTool(msg: Message.TextMessage) {
     });
   }
 
-  const buttons = tools.map(t => ([{text: t, callback_data: `add_tool_${t}`}]))
+  const buttons = tools.map((t: string) => ([{text: t, callback_data: `add_tool_${t}`}]))
   const params = {reply_markup: {inline_keyboard: buttons}}
   return await sendTelegramMessage(msg.chat.id, text, params)
 }
 
-export function getToolsInfo(tools: string[]) {
+export async function getToolsInfo(tools: string[]) {
+  const globalTools = await useTools();
   return tools
     .filter(f => f !== 'change_chat_settings')
     .map(f => globalTools.find(g => g.name === f) as ChatToolType).filter(Boolean)
     .map(f => `- ${f.name}${f.module.description ? ` - ${f.module.description}` : ''}`)
 }
 
-export function getInfoMessage(msg: Message.TextMessage, chatConfig: ConfigChatType) {
+export async function getInfoMessage(msg: Message.TextMessage, chatConfig: ConfigChatType) {
   const systemMessage = getSystemMessage(chatConfig, [])
   const tokens = getTokensCount(chatConfig, systemMessage)
 
@@ -160,7 +147,7 @@ export function getInfoMessage(msg: Message.TextMessage, chatConfig: ConfigChatT
   }
 
   if (chatConfig.tools) {
-    const tools = getToolsInfo(chatConfig.tools)
+    const tools = await getToolsInfo(chatConfig.tools)
     lines.push(`Tools:\n${tools.join('\n')}`)
   }
 
