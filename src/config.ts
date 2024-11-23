@@ -8,7 +8,9 @@ export function readConfig(path?: string): ConfigType {
   if (!existsSync(path)) {
     const config = generateConfig()
     writeConfig(path, config)
-    console.log('Generated config.yml file, please fill it with your data.')
+    if (process.env.NODE_ENV !== 'test') {
+      console.log('Generated config.yml file, please fill it with your data.')
+    }
     return config
   }
   const config = yaml.load(readFileSync(path, 'utf8')) as ConfigType
@@ -80,7 +82,8 @@ export function validateConfig(config: ConfigType) {
   const gen = generateConfig()
   for (const conf of ['bot_token', 'chatgpt_api_key'] as const) {
     if (!config.auth[conf] || config.auth[conf] === gen.auth[conf]) {
-      log({msg: `No auth.${conf} in config`, logLevel: 'error'});
+      const msg = `No auth.${conf} in config`
+      log({msg, logLevel: 'error'});
       valid = false
     }
   }

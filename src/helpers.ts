@@ -1,3 +1,5 @@
+import express from "express";
+
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 interface LogParams {
@@ -38,4 +40,9 @@ export function log({ msg, logLevel = 'info', chatId, chatTitle, username, role 
     default:
       console.log(logMessage);
   }
+}
+
+export function sendToHttp(res: express.Response | undefined, text: string) {
+  if (!res) return
+  res.write(text + '\n')
 }
