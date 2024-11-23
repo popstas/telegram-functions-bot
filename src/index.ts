@@ -48,7 +48,9 @@ async function start() {
   // global
   config = readConfig(configPath);
   if (!validateConfig(config)) {
-    console.log('Invalid config, exiting...')
+    if (process.env.NODE_ENV !== 'test') {
+      console.log('Invalid config, exiting...')
+    }
     process.exit(1)
   }
   watchConfigChanges();

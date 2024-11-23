@@ -8,7 +8,9 @@ export function readConfig(path?: string): ConfigType {
   if (!existsSync(path)) {
     const config = generateConfig()
     writeConfig(path, config)
-    console.log('Generated config.yml file, please fill it with your data.')
+    if (process.env.NODE_ENV !== 'test') {
+      console.log('Generated config.yml file, please fill it with your data.')
+    }
     return config
   }
   const config = yaml.load(readFileSync(path, 'utf8')) as ConfigType
