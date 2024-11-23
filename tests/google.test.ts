@@ -1,22 +1,48 @@
 import { getUserGoogleCreds, saveUserGoogleCreds, loadGoogleCreds } from '../src/helpers/google';
 import * as fs from 'fs';
+import { readConfig } from '../src/config';
 
 jest.mock('fs');
+jest.mock('../src/config', () => ({
+  readConfig: jest.fn().mockReturnValue({
+    auth: {
+      google_service_account: {
+        private_key: 'test-key'
+      }
+    }
+  })
+}));
 
-const mockExit = jest.spyOn(process, 'exit').mockImplementation((code?: string | number | null) => {
-  console.log(`Mock exit with code: ${code}`);
-  return undefined as never;
-});
+const originalConsole = { ...console };
+const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
 beforeAll(() => {
+  console.log = jest.fn();
+  console.error = jest.fn();
+  console.warn = jest.fn();
+  console.info = jest.fn();
   mockExit.mockClear();
 });
 
 afterAll(() => {
+  console.log = originalConsole.log;
+  console.error = originalConsole.error;
+  console.warn = originalConsole.warn;
+  console.info = originalConsole.info;
   mockExit.mockRestore();
 });
 
 describe('Google API Integration Tests', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (readConfig as jest.Mock).mockReturnValue({
+      auth: {
+        google_service_account: {
+          private_key: 'test-key'
+        }
+      }
+    });
+  });
   beforeEach(() => {
     jest.clearAllMocks();
   });
