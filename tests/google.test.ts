@@ -6,6 +6,8 @@ jest.mock('fs');
 jest.mock('../src/config', () => ({
   readConfig: jest.fn().mockReturnValue({
     auth: {
+      bot_token: 'test-bot-token',
+      chatgpt_api_key: 'test-api-key',
       google_service_account: {
         private_key: 'test-key'
       }
@@ -37,6 +39,8 @@ describe('Google API Integration Tests', () => {
     jest.clearAllMocks();
     (readConfig as jest.Mock).mockReturnValue({
       auth: {
+        bot_token: 'test-bot-token',
+        chatgpt_api_key: 'test-api-key',
         google_service_account: {
           private_key: 'test-key'
         }
