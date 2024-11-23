@@ -22,7 +22,7 @@ import {
 } from "./helpers/telegram.ts";
 import {buildMessages, callTools, getSystemMessage, getTokensCount} from "./helpers/gpt.ts";
 import {addToHistory, forgetHistory} from "./helpers/history.ts";
-import {log} from './helpers.ts';
+import {log, sendToHttp} from './helpers.ts';
 import {readGoogleSheet} from "./helpers/readGoogleSheet.ts";
 import {OAuth2Client} from "google-auth-library/build/src/auth/oauth2client";
 import {GoogleAuth} from "google-auth-library";
@@ -279,10 +279,6 @@ function getInfoMessage(msg: Message.TextMessage, chatConfig: ConfigChatType) {
   return lines.join('\n\n')
 }
 
-export function sendToHttp(res: express.Response | undefined, text: string) {
-  if (!res) return
-  res.write(text + '\n')
-}
 
 async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChatType, ctx: Context & {
   expressRes?: express.Response

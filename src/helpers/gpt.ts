@@ -1,10 +1,10 @@
 import OpenAI from "openai";
 import {ChatToolType, ConfigChatType, ToolResponse} from "../types.ts";
-import {bot, threads, sendToHttp} from "../index.ts";
+import {bot, threads} from "../index.ts";
 import {getEncoding, TiktokenEncoding} from "js-tiktoken";
 import {sendTelegramMessage} from "./telegram.ts";
 import {Chat, Message} from "telegraf/types";
-import { log } from '../helpers.ts';
+import {log, sendToHttp} from '../helpers.ts';
 
 export async function buildMessages(systemMessage: string, history: OpenAI.ChatCompletionMessageParam[], chatTools: {
   name: string,
