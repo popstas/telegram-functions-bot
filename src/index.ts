@@ -3,13 +3,12 @@ import {message, editedMessage} from 'telegraf/filters'
 import telegramifyMarkdown from 'telegramify-markdown'
 import {Chat, Message} from 'telegraf/types'
 import OpenAI from 'openai'
-import debounce from 'lodash.debounce'
-import {watchFile, readdirSync} from 'fs'
+import {readdirSync} from 'fs'
 import {
   ConfigChatType,
-  ConfigChatButtonType, ToolResponse, ChatToolType, ToolParamsType, ButtonsSyncConfigType,
+  ConfigChatButtonType, ToolResponse, ChatToolType, ToolParamsType,
 } from './types.ts'
-import {generatePrivateChatConfig, logConfigChanges, reloadConfig, validateConfig, writeConfig} from './config.ts'
+import {generatePrivateChatConfig, validateConfig, writeConfig, watchConfigChanges, syncButtons} from './config.ts'
 import {HttpsProxyAgent} from "https-proxy-agent"
 import {addOauthToThread, commandGoogleOauth, ensureAuth} from "./helpers/google.ts";
 import {
@@ -21,15 +20,11 @@ import {
 import {buildMessages, callTools, getSystemMessage, getTokensCount} from "./helpers/gpt.ts";
 import {addToHistory, forgetHistory} from "./helpers/history.ts";
 import {log, sendToHttp} from './helpers.ts';
-import {readGoogleSheet} from "./helpers/readGoogleSheet.ts";
-import {OAuth2Client} from "google-auth-library/build/src/auth/oauth2client";
-import {GoogleAuth} from "google-auth-library";
 import express from 'express';
 import { useBot } from './bot';
 import { useConfig } from './config';
 import { useThreads } from './threads';
 
-const configPath = process.env.CONFIG || 'config.yml'
 export let api: OpenAI
 let globalTools: ChatToolType[] = []
 let lastCtx = {} as Context
@@ -77,7 +72,7 @@ async function start() {
 
       const newChat = {name: chatName, id: chatId} as ConfigChatType;
       config.chats.push(newChat);
-      writeConfig(configPath, config);
+      writeConfig(undefined, config);
       await ctx.reply(`Chat added: ${chatName}`);
     });
 
@@ -93,21 +88,6 @@ async function start() {
   }
 }
 
-function watchConfigChanges() {
-  // global threads, config
-  watchFile(configPath, debounce(() => {
-    const configOld = useConfig();
-    const config = reloadConfig();
-    logConfigChanges(configOld, config)
-    // log({msg: `reload config, chats: ${configOld.chats.length} -> ${config.chats.length}`});
-    // console.log('config:', config)
-
-    config.chats.filter(c => c.id && useThreads()[c.id]).forEach((c) => {
-      const id = c.id as number
-      useThreads()[id].completionParams = c.completionParams
-    })
-  }, 2000))
-}
 
 async function initTools() {
   const files = readdirSync('src/tools').filter(file => file.endsWith('.ts'))
@@ -216,7 +196,7 @@ async function commandAddTool(msg: Message.TextMessage) {
           ...chatConfig.toolParams,
         }
       }
-      writeConfig(configPath, config);
+      writeConfig(undefined, config);
       await ctx.reply(`Tool added: ${tool.name}${tool.module.defaultParams ? `, with default config: ${JSON.stringify(tool.module.defaultParams)}` : ''}`);
     });
   }
@@ -545,55 +525,6 @@ async function onMessage(ctx: Context & { secondTry?: boolean }, callback?: Func
   // })
 }
 
-async function syncButtons(chat: ConfigChatType, authClient: OAuth2Client | GoogleAuth) {
-  // console.log("syncButtons...");
-  const syncConfig = chat.buttonsSync || {
-    sheetId: '1TCtetO2kEsV7_yaLMej0GCR3lmDMg9nVRyRr82KT5EE',
-    sheetName: 'gpt prompts all private chats'
-  }
-  const buttons = await getGoogleButtons(syncConfig, authClient)
-  // console.log("buttons:", buttons);
-  if (!buttons) return
-
-  chat.buttonsSynced = buttons
-
-  const config = useConfig();
-  const chatIndex = config.chats.findIndex(c => c.name === chat.name)
-
-  config.chats[chatIndex] = chat
-  writeConfig(configPath, config)
-
-  return buttons
-}
-
-async function getGoogleButtons(syncConfig: ButtonsSyncConfigType, authClient: OAuth2Client | GoogleAuth) {
-  const rows = await readGoogleSheet(syncConfig.sheetId, syncConfig.sheetName, authClient)
-  if (!rows) {
-    console.error(`Failed to load sheet "${syncConfig.sheetId}"`)
-    return
-  }
-
-  console.log("rows:", rows);
-  // const rows = await sheet.getRows()
-  const buttons: ConfigChatButtonType[] = []
-  for (let row of rows.slice(1)) {
-    // @ts-ignore
-    const button: ConfigChatButtonType = {
-      // @ts-ignore
-      name: row[0],
-      // @ts-ignore
-      prompt: row[1],
-      // @ts-ignore
-      row: row[2],
-      // @ts-ignore
-      waitMessage: row[3],
-    }
-    if (button.name.startsWith("#")) continue
-    buttons.push(button)
-  }
-  // console.log('buttons:', buttons)
-  return buttons
-}
 
 // send request to chatgpt, answer to telegram
 async function answerToMessage(ctx: Context & {

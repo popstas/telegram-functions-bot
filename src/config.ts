@@ -1,7 +1,12 @@
 import * as yaml from 'js-yaml'
-import {readFileSync, writeFileSync, existsSync} from 'fs'
-import {ChatParamsType, ConfigChatType, ConfigType, ToolParamsType} from './types.js'
-import {log} from "./helpers.ts";
+import {readFileSync, writeFileSync, existsSync, watchFile} from 'fs'
+import {ChatParamsType, ConfigChatType, ConfigType, ToolParamsType, ButtonsSyncConfigType, ConfigChatButtonType} from './types.js'
+import {log} from "./helpers.ts"
+import { readGoogleSheet } from "./helpers/readGoogleSheet"
+import { OAuth2Client } from "google-auth-library/build/src/auth/oauth2client"
+import { GoogleAuth } from "google-auth-library"
+import debounce from 'lodash.debounce'
+import { useThreads } from './threads'
 
 export function readConfig(path?: string): ConfigType {
   if (!path) path = process.env.CONFIG || 'config.yml';
@@ -23,7 +28,7 @@ export function readConfig(path?: string): ConfigType {
 }
 
 // TODO: write to config.compiled.yml, for preserve config.yml comments
-export function writeConfig(path: string = 'config.yml', config: ConfigType): ConfigType {
+export function writeConfig(path: string | undefined = 'config.yml', config: ConfigType): ConfigType {
   try {
     const yamlRaw = yaml.dump(config, {
       lineWidth: -1,
@@ -121,6 +126,64 @@ function generateDiff(oldStr: string, newStr: string): string {
   }
 
   return diffLines.join('\n');
+}
+
+let configPath = process.env.CONFIG || 'config.yml'
+export function setConfigPath(path: string) {
+  configPath = path
+}
+
+export async function syncButtons(chat: ConfigChatType, authClient: OAuth2Client | GoogleAuth) {
+  const syncConfig = chat.buttonsSync || {
+    sheetId: '1TCtetO2kEsV7_yaLMej0GCR3lmDMg9nVRyRr82KT5EE',
+    sheetName: 'gpt prompts all private chats'
+  }
+  const buttons = await getGoogleButtons(syncConfig, authClient)
+  if (!buttons) return
+
+  chat.buttonsSynced = buttons
+
+  const config = useConfig();
+  const chatIndex = config.chats.findIndex(c => c.name === chat.name)
+
+  config.chats[chatIndex] = chat
+  writeConfig(configPath, config)
+
+  return buttons
+}
+
+export async function getGoogleButtons(syncConfig: ButtonsSyncConfigType, authClient: OAuth2Client | GoogleAuth) {
+  const rows = await readGoogleSheet(syncConfig.sheetId, syncConfig.sheetName, authClient)
+  if (!rows) {
+    console.error(`Failed to load sheet "${syncConfig.sheetId}"`)
+    return
+  }
+
+  const buttons: ConfigChatButtonType[] = []
+  for (let row of rows.slice(1) as Array<[string, string, number?, string?]>) {
+    const button: ConfigChatButtonType = {
+      name: row[0],
+      prompt: row[1],
+      row: row[2],
+      waitMessage: row[3],
+    }
+    if (button.name.startsWith("#")) continue
+    buttons.push(button)
+  }
+  return buttons
+}
+
+export function watchConfigChanges() {
+  watchFile(configPath, debounce(() => {
+    const configOld = useConfig();
+    const config = reloadConfig();
+    logConfigChanges(configOld, config)
+
+    config.chats.filter(c => c.id && useThreads()[c.id]).forEach((c) => {
+      const id = c.id as number
+      useThreads()[id].completionParams = c.completionParams
+    })
+  }, 2000))
 }
 
 let config = {} as ConfigType;
