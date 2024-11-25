@@ -1,17 +1,19 @@
 import {Message} from "telegraf/types";
-import {ConfigChatType, ToolResponse} from "../types.ts";
+import {ConfigChatType, GptContextType, ToolResponse} from "../types.ts";
 import OpenAI from "openai";
 import {sendToHttp} from "../helpers.ts";
 import {sendTelegramMessage} from "./telegram.ts";
 import {buildMessages} from "./gpt.ts";
 import {useApi} from "./useApi.ts";
+import {Response} from "express";
+import {handleGptAnswer} from "./gptAnswerHandler.ts";
 
 export async function processToolResponse(
   tool_res: ToolResponse[],
   messageAgent: OpenAI.ChatCompletionMessage,
   chatConfig: ConfigChatType,
   msg: Message.TextMessage,
-  expressRes: express.Response | undefined,
+  expressRes: Response | undefined,
   gptContext: GptContextType,
   level: number
 ): Promise<ToolResponse> {
@@ -60,5 +62,5 @@ export async function processToolResponse(
     tool_choice: isNoTool ? undefined : 'auto',
   });
 
-  return await handleGptAnswer(msg, res, thread, chatConfig, expressRes, messages, systemMessage, chatTools, prompts, tools, level + 1);
+  return await handleGptAnswer(msg, res, chatConfig, expressRes, gptContext, level + 1);
 }

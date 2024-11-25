@@ -1,15 +1,16 @@
 import {Message} from "telegraf/types";
-import {ConfigChatType, ToolResponse} from "../types.ts";
+import {ConfigChatType, GptContextType, ToolResponse} from "../types.ts";
 import OpenAI from "openai";
 import {callTools} from "./gpt.ts";
 import {addToHistory, forgetHistory} from "./history.ts";
 import {processToolResponse} from "./toolResponseHandler.ts";
+import {Response} from "express";
 
 export async function handleGptAnswer(
   msg: Message.TextMessage,
   res: OpenAI.ChatCompletion,
   chatConfig: ConfigChatType,
-  expressRes: express.Response | undefined,
+  expressRes: Response | undefined,
   gptContext: GptContextType,
   level: number = 1
 ): Promise<ToolResponse> {
@@ -33,7 +34,7 @@ export async function handleGptAnswer(
   const answer = res.choices[0]?.message.content || '';
   addToHistory({msg, answer});
 
-  if (thread.messages.find(m => m.role === 'tool') && chatConfig.chatParams.memoryless) {
+  if (gptContext.thread.messages.find((m: OpenAI.ChatCompletionMessageParam) => m.role === 'tool') && chatConfig.chatParams.memoryless) {
     forgetHistory(msg.chat.id);
   }
   

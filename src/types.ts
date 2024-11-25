@@ -117,7 +117,7 @@ export type GptContextType = {
   systemMessage: string;
   chatTools: ChatToolType[];
   prompts: any[];
-  tools: OpenAI.ChatCompletionToolsParam[] | undefined;
+  tools: OpenAI.ChatCompletionTool[] | undefined;
 }
 
 export type ToolParamsType = {

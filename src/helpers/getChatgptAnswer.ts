@@ -1,5 +1,5 @@
 import {Message} from "telegraf/types";
-import {ChatToolType, ConfigChatType, ToolResponse} from "../types.ts";
+import {ChatToolType, ConfigChatType, GptContextType, ToolResponse} from "../types.ts";
 import {Context} from "telegraf";
 import express from "express";
 import {useThreads} from "../threads.ts";
