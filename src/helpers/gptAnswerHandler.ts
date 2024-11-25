@@ -28,7 +28,7 @@ export async function handleGptAnswer({
   if (messageAgent.tool_calls?.length) {
     const tool_res = await callTools(messageAgent.tool_calls, gptContext.chatTools, chatConfig, msg, expressRes);
     if (tool_res) {
-      return processToolResponse(
+      return processToolResponse({
         tool_res,
         messageAgent,
         chatConfig,
@@ -36,7 +36,7 @@ export async function handleGptAnswer({
         expressRes,
         gptContext,
         level
-      );
+      });
     }
   }
 
