@@ -42,7 +42,7 @@ async function start() {
 
     bot.action('add_chat', async (ctx) => {
       const chatId = ctx.chat?.id;
-      // @ts-ignore
+      // @ts-expect-error title may not exist on chat type
       const chatName = ctx.chat?.title || `Chat ${chatId}`;
       if (!chatId) return;
 
@@ -58,7 +58,8 @@ async function start() {
 
     // Initialize HTTP server
     initHttp();
-  } catch (e) {
+  } catch (error: unknown) {
+    console.error('Error during bot startup:', error);
     console.log('restart after 10 seconds...')
     setTimeout(start, 10000)
   }
@@ -84,9 +85,9 @@ function initHttp() {
   });
 
   // Add route handler to create a virtual message and call onMessage
-  // @ts-ignore
+  // @ts-expect-error express types need proper request/response typing
   app.post('/telegram/:chatId', telegramPostHandler);
-  // @ts-ignore
+  // @ts-expect-error express types need proper request/response typing
   app.get('/telegram/test', telegramPostHandlerTest);
 
   app.listen(port, () => {
@@ -123,9 +124,27 @@ async function telegramPostHandler(req: express.Request, res: express.Response) 
     update: {
       message: {text, chat, from},
     }
+  } as {
+    chat: { id: number; title: string };
+    update: {
+      message: {
+        text: string;
+        chat: { id: number; title: string };
+        from: { username: string | undefined };
+      };
+    };
   };
 
-  const ctx = useLastCtx() as Context & { update: any, chat: any, expressRes?: Express.Response }
+  const ctx = useLastCtx() as Context & { 
+    update: {
+      message: Message.TextMessage;
+    };
+    chat: {
+      id: number;
+      title: string;
+    };
+    expressRes?: Express.Response;
+  }
   if (!ctx) {
     log({msg: `http: lastCtx not found`, logLevel: 'warn', chatId: chat.id, chatTitle: chat.title});
     return res.status(500).send('lastCtx not found.');
@@ -146,7 +165,7 @@ async function telegramPostHandler(req: express.Request, res: express.Response) 
       }
       // await useBot().telegram.sendMessage(chat.id, 'test - ' + text);
     });
-  } catch (error) {
+  } catch {
     res.status(500).send('Error sending message.');
   }
 }
