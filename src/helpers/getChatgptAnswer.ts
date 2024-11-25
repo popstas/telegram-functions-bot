@@ -80,11 +80,11 @@ export default async function getChatgptAnswer(msg: Message.TextMessage, chatCon
     tools
   };
 
-  return await handleGptAnswer(
+  return await handleGptAnswer({
     msg,
     res,
     chatConfig,
-    ctx.expressRes,
+    expressRes: ctx.expressRes,
     gptContext
-  );
+  });
 }

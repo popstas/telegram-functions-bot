@@ -8,15 +8,25 @@ import {useApi} from "./useApi.ts";
 import {Response} from "express";
 import {handleGptAnswer} from "./gptAnswerHandler.ts";
 
-export async function processToolResponse(
-  tool_res: ToolResponse[],
-  messageAgent: OpenAI.ChatCompletionMessage,
-  chatConfig: ConfigChatType,
-  msg: Message.TextMessage,
-  expressRes: Response | undefined,
-  gptContext: GptContextType,
-  level: number
-): Promise<ToolResponse> {
+type ProcessToolResponseParams = {
+  tool_res: ToolResponse[];
+  messageAgent: OpenAI.ChatCompletionMessage;
+  chatConfig: ConfigChatType;
+  msg: Message.TextMessage;
+  expressRes: Response | undefined;
+  gptContext: GptContextType;
+  level: number;
+}
+
+export async function processToolResponse({
+  tool_res,
+  messageAgent,
+  chatConfig,
+  msg,
+  expressRes,
+  gptContext,
+  level
+}: ProcessToolResponseParams): Promise<ToolResponse> {
   gptContext.thread.messages.push(messageAgent);
   
   for (let i = 0; i < tool_res.length; i++) {
@@ -62,5 +72,12 @@ export async function processToolResponse(
     tool_choice: isNoTool ? undefined : 'auto',
   });
 
-  return await handleGptAnswer(msg, res, chatConfig, expressRes, gptContext, level + 1);
+  return await handleGptAnswer({
+    msg,
+    res,
+    chatConfig,
+    expressRes,
+    gptContext,
+    level: level + 1
+  });
 }

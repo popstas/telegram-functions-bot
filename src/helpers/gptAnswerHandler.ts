@@ -6,14 +6,23 @@ import {addToHistory, forgetHistory} from "./history.ts";
 import {processToolResponse} from "./toolResponseHandler.ts";
 import {Response} from "express";
 
-export async function handleGptAnswer(
-  msg: Message.TextMessage,
-  res: OpenAI.ChatCompletion,
-  chatConfig: ConfigChatType,
-  expressRes: Response | undefined,
-  gptContext: GptContextType,
-  level: number = 1
-): Promise<ToolResponse> {
+type HandleGptAnswerParams = {
+  msg: Message.TextMessage;
+  res: OpenAI.ChatCompletion;
+  chatConfig: ConfigChatType;
+  expressRes: Response | undefined;
+  gptContext: GptContextType;
+  level?: number;
+}
+
+export async function handleGptAnswer({
+  msg,
+  res,
+  chatConfig,
+  expressRes,
+  gptContext,
+  level = 1
+}: HandleGptAnswerParams): Promise<ToolResponse> {
   const messageAgent = res.choices[0]?.message!;
   
   if (messageAgent.tool_calls?.length) {
