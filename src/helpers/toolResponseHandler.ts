@@ -9,18 +9,13 @@ import {useApi} from "./useApi.ts";
 export async function processToolResponse(
   tool_res: ToolResponse[],
   messageAgent: OpenAI.ChatCompletionMessage,
-  thread: any,
   chatConfig: ConfigChatType,
   msg: Message.TextMessage,
-  expressRes: any,
-  messages: any,
-  systemMessage: string,
-  chatTools: any,
-  prompts: any,
-  tools: any,
+  expressRes: express.Response | undefined,
+  gptContext: GptContextType,
   level: number
 ): Promise<ToolResponse> {
-  thread.messages.push(messageAgent);
+  gptContext.thread.messages.push(messageAgent);
   
   for (let i = 0; i < tool_res.length; i++) {
     const toolRes = tool_res[i];
@@ -44,19 +39,24 @@ export async function processToolResponse(
       tool_call_id: toolCall.id,
     } as OpenAI.ChatCompletionToolMessageParam;
 
-    thread.messages.push(messageTool);
+    gptContext.thread.messages.push(messageTool);
   }
 
-  messages = await buildMessages(systemMessage, thread.messages, chatTools, prompts);
+  gptContext.messages = await buildMessages(
+    gptContext.systemMessage, 
+    gptContext.thread.messages, 
+    gptContext.chatTools, 
+    gptContext.prompts
+  );
 
-  const isNoTool = level > 6 || !tools?.length;
+  const isNoTool = level > 6 || !gptContext.tools?.length;
 
   const api = useApi();
   const res = await api.chat.completions.create({
-    messages,
-    model: thread.completionParams?.model || 'gpt-4o-mini',
-    temperature: thread.completionParams?.temperature,
-    tools: isNoTool ? undefined : tools,
+    messages: gptContext.messages,
+    model: gptContext.thread.completionParams?.model || 'gpt-4o-mini',
+    temperature: gptContext.thread.completionParams?.temperature,
+    tools: isNoTool ? undefined : gptContext.tools,
     tool_choice: isNoTool ? undefined : 'auto',
   });
 

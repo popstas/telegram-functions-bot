@@ -71,16 +71,20 @@ export default async function getChatgptAnswer(msg: Message.TextMessage, chatCon
     tools,
   });
 
-  return await handleGptAnswer(
-    msg, 
-    res, 
+  const gptContext: GptContextType = {
     thread,
-    chatConfig,
-    ctx.expressRes,
     messages,
     systemMessage,
     chatTools,
     prompts,
     tools
+  };
+
+  return await handleGptAnswer(
+    msg,
+    res,
+    chatConfig,
+    ctx.expressRes,
+    gptContext
   );
 }

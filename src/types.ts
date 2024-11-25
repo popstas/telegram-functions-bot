@@ -111,6 +111,15 @@ export type BrainstormParamsType = {
   promptAfter?: string
 }
 
+export type GptContextType = {
+  thread: ThreadStateType;
+  messages: OpenAI.ChatCompletionMessageParam[];
+  systemMessage: string;
+  chatTools: ChatToolType[];
+  prompts: any[];
+  tools: OpenAI.ChatCompletionToolsParam[] | undefined;
+}
+
 export type ToolParamsType = {
   brainstorm?: BrainstormParamsType
   obsidian?: ObsidianConfigType
