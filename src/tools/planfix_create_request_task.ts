@@ -92,7 +92,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
       referrer: z
         .string()
         .describe(
-          'Рекомендатель. Пример: "Иван Петров"'
+          'Реферал. Пример: "Иван Петров"'
         ),
       description: z
         .string()
@@ -113,7 +113,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
       ['Телефон', 'phone'],
       ['Email', 'email'],
       ['Telegram', 'telegram'],
-      ['Рекомендатель', 'referrer'],
+      ['Реферал', 'referrer'],
     ];
     const contacts = []
     for (const [label, key] of contactsMap) {
