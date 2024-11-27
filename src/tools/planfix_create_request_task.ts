@@ -108,17 +108,11 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
     }
 
     // add contacts to description
-    const contactsMap = [
-      ['Имя', 'clientName'],
-      ['Телефон', 'phone'],
-      ['Email', 'email'],
-      ['Telegram', 'telegram'],
-      ['Реферал', 'referrer'],
-    ];
+    const contactsMap = this.configChat.toolParams.planfix?.contactsMap || [];
     const contacts = []
-    for (const [label, key] of contactsMap) {
-      const value = options[key as keyof TaskArgsType]
-      if (value) contacts.push(`${label}: ${value}`)
+    for (const {title, field_name} of contactsMap) {
+      const value = options[field_name as keyof TaskArgsType]
+      if (value) contacts.push(`${title}: ${value}`)
     }
     options.description = contacts.join('\n') + '\n\n' + options.description
 
