@@ -120,29 +120,28 @@ async function telegramPostHandler(req: express.Request, res: express.Response) 
   const chat = {id: parseInt(chatId), title: chatConfig.name}
   const from = {username: useConfig().http.telegram_from_username}
   const virtualCtx = {
-    chat,
-    update: {
-      message: {text, chat, from},
-    }
-  } as {
-    chat: { id: number; title: string };
-    update: {
-      message: {
-        text: string;
-        chat: { id: number; title: string };
-        from: { username: string | undefined };
-      };
-    };
-  };
-
-  const ctx = useLastCtx() as Context & { 
-    update: {
-      message: Message.TextMessage;
-    };
     chat: {
-      id: number;
-      title: string;
-    };
+      id: chat.id,
+      title: chat.title,
+      type: 'supergroup' as const
+    },
+    update: {
+      update_id: Date.now(),
+      message: {
+        text, 
+        chat: {
+          id: chat.id,
+          title: chat.title,
+          type: 'supergroup' as const
+        },
+        from,
+        message_id: Date.now(),
+        date: Math.floor(Date.now() / 1000)
+      } as Message.TextMessage
+    }
+  } as unknown as Context;
+
+  const ctx = useLastCtx() as Context & {
     expressRes?: Express.Response;
   }
   if (!ctx) {
@@ -150,13 +149,18 @@ async function telegramPostHandler(req: express.Request, res: express.Response) 
     return res.status(500).send('lastCtx not found.');
   }
 
-  ctx.update.message = virtualCtx.update.message
-  ctx.chat.id = virtualCtx.chat.id
-  ctx.chat.title = virtualCtx.chat.title
+  // Create a new context object instead of modifying the readonly properties
+  const newCtx = {
+    ...ctx,
+    update: virtualCtx.update,
+    chat: virtualCtx.chat
+  } as Context & {
+    expressRes?: Express.Response;
+  };
 
   try {
-    ctx.expressRes = res
-    await onMessage(ctx as Context, async (sentMsg: Message.TextMessage) => {
+    newCtx.expressRes = res
+    await onMessage(newCtx as Context, async (sentMsg: Message.TextMessage) => {
       if (sentMsg) {
         const text = (sentMsg as Message.TextMessage).text;
         res.end(text);
