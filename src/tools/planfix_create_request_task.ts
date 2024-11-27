@@ -8,6 +8,7 @@ import {readConfig} from '../config.ts'
 import {ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from "../types.ts";
 import * as fs from "node:fs";
 import * as yaml from 'js-yaml'
+import {log} from "../helpers.ts";
 
 type TaskArgsType = {
   clientName: string,
@@ -108,7 +109,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
     }
 
     // add contacts to description
-    const contactsMap = this.configChat.toolParams.planfix?.contactsMap || [];
+    const contactsMap = this.configChat.toolParams.planfix_create_request_task?.contactsMap || [];
     const contacts = []
     for (const {title, field_name} of contactsMap) {
       const value = options[field_name as keyof TaskArgsType]
@@ -135,8 +136,12 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
       } : undefined
     } as TaskBodyType;
 
+    const dryRun = this.configChat.toolParams.planfix_create_request_task?.dryRun;
+    if (dryRun) {
+      log({msg: 'Dry run', logLevel: 'info'});
+    }
     // const res = this.createTestFileTask(postBody)
-    const res = this.createPlanfixTask(postBody)
+    const res = dryRun ? this.createTestFileTask(postBody) : this.createPlanfixTask(postBody);
     return res
   }
 
