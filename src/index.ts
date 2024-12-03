@@ -160,7 +160,7 @@ async function telegramPostHandler(req: express.Request, res: express.Response) 
 
   try {
     newCtx.expressRes = res
-    await onMessage(newCtx as Context, async (sentMsg: Message.TextMessage) => {
+    await onMessage(newCtx as Context, undefined, async (sentMsg: Message.TextMessage) => {
       if (sentMsg) {
         const text = (sentMsg as Message.TextMessage).text;
         res.end(text);

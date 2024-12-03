@@ -11,7 +11,7 @@ import {addOauthToThread, ensureAuth} from "./google.ts";
 import {getChatgptAnswer} from "./gpt.ts";
 import telegramifyMarkdown from "telegramify-markdown";
 
-export default async function onMessage(ctx: Context & { secondTry?: boolean }, callback?: Function) {
+export default async function onMessage(ctx: Context & { secondTry?: boolean }, next?: () => any, callback?: (msg: Message.TextMessage) => any) {
   const threads = useThreads()
 
   // console.log("ctx:", ctx);
@@ -138,7 +138,7 @@ export default async function onMessage(ctx: Context & { secondTry?: boolean }, 
       // skip if new messages added
       return
     }
-    const msgSent = await answerToMessage(ctx, msg, chat, extraMessageParams)
+    const msgSent = await answerToMessage(ctx, msg, chat, extraMessageParams) as Message.TextMessage;
     if (typeof callback === 'function') callback(msgSent)
   }, 500)
   // })
