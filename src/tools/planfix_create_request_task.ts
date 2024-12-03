@@ -12,10 +12,10 @@ import {log} from "../helpers.ts";
 
 type TaskArgsType = {
   clientName: string,
-  phone: string,
-  email: string,
-  telegram: string,
-  referrer: string,
+  phone?: string,
+  email?: string,
+  telegram?: string,
+  referrer?: string,
   description: string
 }
 
@@ -77,21 +77,25 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
         ),
       phone: z
         .string()
+        .optional()
         .describe(
           'Phone. Example: "+79222222222"'
         ),
       email: z
         .string()
+        .optional()
         .describe(
           'Email. Example: "me@gmail.com"'
         ),
       telegram: z
         .string()
+        .optional()
         .describe(
           'Telegram login. Example: "@maria"'
         ),
       referrer: z
         .string()
+        .optional()
         .describe(
           'Реферал. Пример: "Иван Петров"'
         ),
@@ -141,8 +145,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
       log({msg: 'Dry run', logLevel: 'info'});
     }
     // const res = this.createTestFileTask(postBody)
-    const res = dryRun ? this.createTestFileTask(postBody) : this.createPlanfixTask(postBody);
-    return res
+    return dryRun ? this.createTestFileTask(postBody) : this.createPlanfixTask(postBody);
   }
 
   replaceTemplaceVars(template: string, vars: Record<string, string>) {
