@@ -73,7 +73,7 @@ export default async function onMessage(ctx: Context & { secondTry?: boolean }, 
   if (forwardOrigin && !isOurUser) {
     const name = forwardOrigin.type === 'hidden_user' ?
       forwardOrigin.sender_user_name :
-      `${forwardOrigin.sender_user.first_name ?? ''} ${forwardOrigin.sender_user.last_name ?? ''}`.trim()
+      `${forwardOrigin.sender_user?.first_name ?? ''} ${forwardOrigin.sender_user?.last_name ?? ''}`.trim()
     const username = forwardOrigin?.sender_user?.username;
     msg.text = `Переслано от: ${name}` +
       `${username ? `, Telegram: @${username}` : ''}\n` + msg.text
