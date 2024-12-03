@@ -29,6 +29,21 @@ export function splitBigMessage(text: string) {
   return msgs
 }
 
+export function getTelegramForwardedUser(msg: Message.TextMessage & { forward_origin?: any }) {
+  const forwardOrigin = msg.forward_origin;
+  if (!forwardOrigin) return '';
+
+  const username = forwardOrigin?.sender_user?.username;
+  const isOurUser = username && useConfig().privateUsers?.includes(username);
+  if (isOurUser) return '';
+
+  const name = forwardOrigin.type === 'hidden_user' ?
+    forwardOrigin.sender_user_name :
+    `${forwardOrigin.sender_user?.first_name ?? ''} ${forwardOrigin.sender_user?.last_name ?? ''}`.trim();
+
+  return `${name}${username ? `, Telegram: @${username}` : ''}`;
+}
+
 export async function sendTelegramMessage(chat_id: number, text: string, extraMessageParams?: any): Promise<Message.TextMessage | undefined> {
   return new Promise(async (resolve) => {
 

@@ -2,7 +2,7 @@ import {Context, Markup} from "telegraf";
 import {useThreads} from "../threads.ts";
 import {Chat, Message} from "telegraf/types";
 import {ConfigChatButtonType, ConfigChatType} from "../types.ts";
-import {getCtxChatMsg, isAdminUser, sendTelegramMessage} from "./telegram.ts";
+import {getCtxChatMsg, getTelegramForwardedUser, isAdminUser, sendTelegramMessage} from "./telegram.ts";
 import {syncButtons, useConfig} from "../config.ts";
 import {log} from "../helpers.ts";
 import {addToHistory, forgetHistory} from "./history.ts";
@@ -66,17 +66,9 @@ export default async function onMessage(ctx: Context & { secondTry?: boolean }, 
   const extraMessageParams = ctx.message?.message_id ? {reply_to_message_id: ctx.message?.message_id} : {}
 
   // add "Forwarded from" to message
-  // TODO: getTelegramUser(msg)
-  const forwardOrigin = msg.forward_origin;
-  const username = forwardOrigin?.sender_user?.username
-  const isOurUser = username && useConfig().privateUsers?.includes(username)
-  if (forwardOrigin && !isOurUser) {
-    const name = forwardOrigin.type === 'hidden_user' ?
-      forwardOrigin.sender_user_name :
-      `${forwardOrigin.sender_user?.first_name ?? ''} ${forwardOrigin.sender_user?.last_name ?? ''}`.trim()
-    const username = forwardOrigin?.sender_user?.username;
-    msg.text = `Переслано от: ${name}` +
-      `${username ? `, Telegram: @${username}` : ''}\n` + msg.text
+  const forwardedName = getTelegramForwardedUser(msg);
+  if (forwardedName) {
+    msg.text = `Переслано от: ${forwardedName}\n` + msg.text;
   }
 
   // replace msg.text to button.prompt if match button.name
