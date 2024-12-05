@@ -140,6 +140,14 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
       } : undefined
     } as TaskBodyType;
 
+    // search for duplicates
+    const foundUrl = await this.searchPlanfixTask(postBody.name);
+    if (foundUrl) {
+      return {
+        content: `Задача уже существует:\n${foundUrl}`
+      }
+    }
+
     const dryRun = this.configChat.toolParams.planfix_create_request_task?.dryRun;
     if (dryRun) {
       log({msg: 'Dry run', logLevel: 'info'});
@@ -201,6 +209,46 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
       .map(([key, value]) => `${key}: ${value}`)
       .join(', ');
     return `**Create Planfix Task:** \`${optionsStr}\``
+  }
+
+  async searchPlanfixTask(taskName: string): Promise<String> {
+    let taskUrl = '';
+    const postBody = {
+      offset: 0,
+      pageSize: 100,
+      filters: [
+        {
+          type: 51, // filter by template
+          operator: 'equal',
+          value: this.configChat.toolParams.planfix_create_request_task?.templateId,
+        },
+        {
+          type: 12, // filter by created date
+          operator: 'equal',
+          value: {
+            dateType: 'last',
+            dateValue: 3, // last 3 days
+          },
+        },
+        {
+          type: 8, // filter by task name
+          operator: 'equal',
+          value: taskName,
+        },
+      ],
+      fields: 'id,name,description,template'
+    }
+    type PlanfixTasksResponse = {
+      result: string,
+      tasks: {
+        id: number,
+      }[],
+    }
+
+    const answer = await this.ky.post('task/list', {json: postBody}).json<PlanfixTasksResponse>() // json()<PlanfixResponse>
+    if (answer.tasks.length > 0) taskUrl = `https://${this.configChat.toolParams.planfix?.account}.planfix.com/task/${answer.tasks[0].id}`
+
+    return taskUrl;
   }
 }
 
