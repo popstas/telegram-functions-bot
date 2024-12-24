@@ -1,4 +1,6 @@
 import express from "express";
+import fs from 'fs';
+import path from 'path';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -9,9 +11,10 @@ interface LogParams {
   chatTitle?: string;
   username?: string;
   role?: 'system' | 'user' | 'assistant' | 'tool';
+  logPath?: string;
 }
 
-export function log({ msg, logLevel = 'info', chatId, chatTitle, username, role }: LogParams) {
+export function log({ msg, logLevel = 'info', chatId, chatTitle, username, role, logPath = 'data/messages.log' }: LogParams) {
   const tzoffset = (new Date()).getTimezoneOffset() * 60000; //offset in milliseconds
   const timestamp = new Date(Date.now() - tzoffset).toISOString().slice(0, 19).replace('T', ' ');
   const chatIdStr = chatId ? `[${chatId}] ` : '';
@@ -23,6 +26,11 @@ export function log({ msg, logLevel = 'info', chatId, chatTitle, username, role 
   const usernameStr = username ? `[${username}] ` : '';
   const logLevelStr = logLevel !== 'info' ? `[${logLevel.toUpperCase()}] ` : '';
   const logMessage = `[${timestamp}] ${chatIdStr}${logLevelStr}${chatTitleStr}${roleStr}${usernameStr}${msg}`;
+
+  // Write logMessage to the specified log file
+  if (logPath) {
+    fs.appendFileSync(path.resolve(logPath), logMessage + '\n');
+  }
 
   switch (logLevel) {
     case 'debug':
