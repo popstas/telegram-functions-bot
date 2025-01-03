@@ -196,7 +196,6 @@ async function answerToMessage(ctx: Context & {
       const chatTitle = (msg.chat as Chat.TitleChat).title
       log({msg: text, logLevel: 'info', chatId: msg.chat.id, chatTitle, role: 'system'});
 
-
       msgSent = await sendTelegramMessage(msg.chat.id, text, extraParams)
       if (msgSent?.chat.id) useThreads()[msgSent.chat.id].msgs.push(msgSent)
     }) // all done, stops sending typing
@@ -204,6 +203,9 @@ async function answerToMessage(ctx: Context & {
   } catch (e) {
     const error = e as { message: string }
     console.log('error:', error)
+
+    // Stop typing on error
+    await ctx.persistentChatAction('typing', async () => {})
 
     if (ctx.secondTry) return
 
