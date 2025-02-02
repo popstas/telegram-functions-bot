@@ -144,7 +144,7 @@ export async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: Con
   // tools change_chat_settings for private chats and admins
   if (msg.chat.type === 'private' || isAdminUser(msg)) {
     if (!chatConfig.tools) chatConfig.tools = []
-    chatConfig.tools.push('change_chat_settings')
+    if (!chatConfig.tools.includes('change_chat_settings')) chatConfig.tools.push('change_chat_settings')
   }
 
   // chatTools
