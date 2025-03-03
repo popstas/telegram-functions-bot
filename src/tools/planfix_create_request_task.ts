@@ -19,12 +19,35 @@ type TaskArgsType = {
   description: string
 }
 
+type UserDataType = {
+  name?: string,
+  phone?: string,
+  email?: string,
+  telegram?: string,
+}
+
 type TaskBodyType = {
   name: string,
   description: string,
   template?: {
     id: string
   }
+}
+
+type UsersListType = {
+  users: {
+    id: number,
+  }[]
+}
+
+type PlanfixContactType = {
+  id: number,
+  name: string,
+}
+
+type TaskResultType = {
+  id: number,
+  assignees: UsersListType,
 }
 
 export const description = 'Creates new task in CRM Planfix.'
@@ -55,6 +78,10 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
     this.config = readConfig();
     this.configChat = configChat
     this.thread = thread
+
+    // load contacts (agents)
+    // const cg = this.configChat.toolParams.planfix_create_request_task?.contactsGroups;
+    // const contactsAgents = this.getContactsGroupMap(cg?.agents || 0);
 
     this.ky = defaultKy.extend({
       prefixUrl: `https://${this.configChat.toolParams.planfix?.account}.planfix.com/rest/`,
@@ -111,6 +138,9 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
     if (!conf) return {
       content: 'No config'
     }
+    
+    let taskId: number | null = null;
+    let assignees: UsersListType = { users: [] };
 
     // add contacts to description
     const contactsMap = this.configChat.toolParams.planfix_create_request_task?.contactsMap || [];
@@ -132,6 +162,27 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
     const fromUsername = lastMessage.from?.username || '';
     options.description += `\n\nПолный текст:\n${fromUsername ? `От ${fromUsername}\n\n` : ''}${msgs}`
 
+    const userData = {
+      name: options.clientName,
+      phone: options.phone,
+      email: options.email,
+      telegram: options.telegram,
+    } as UserDataType;
+
+    // 1. search contact by userData
+    let clientId = await this.searchPlanfixContact(userData);
+    if (clientId) {
+      // search task by client
+      const result = await this.searchPlanfixTask({ clientId: clientId });
+      if (result) {
+        taskId = result.id;
+        assignees = result.assignees;
+      }
+    } else {
+      // создаём клиента
+      clientId = await this.createPlanfixContact(userData);
+    }
+    
     const postBody = {
       name: this.replaceTemplaceVars(conf.name, options),
       description: options.description,
@@ -141,10 +192,10 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
     } as TaskBodyType;
 
     // search for duplicates
-    const foundUrl = await this.searchPlanfixTask(postBody.name);
-    if (foundUrl) {
+    const result = await this.searchPlanfixTask({taskName: postBody.name});
+    if (result) {
       return {
-        content: `Задача уже существует:\n${foundUrl}`
+        content: `Задача уже существует:\n${this.getTaskUrl(result.id)}`
       }
     }
 
@@ -153,9 +204,17 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
       log({msg: 'Dry run', logLevel: 'info'});
     }
     // const res = this.createTestFileTask(postBody)
-    return dryRun ? this.createTestFileTask(postBody) : this.createPlanfixTask(postBody);
+    // return dryRun ? this.createTestFileTask(postBody) : this.createPlanfixTask(postBody);
+    return this.createPlanfixTask(postBody);
   }
 
+  getTaskUrl(id: number) {
+    return `https://${this.configChat.toolParams.planfix?.account}.planfix.com/task/${id}`
+  }
+
+  isDryRun() {
+    return this.configChat.toolParams.planfix_create_request_task?.dryRun;
+  }
   replaceTemplaceVars(template: string, vars: Record<string, string>) {
     for (const [key, value] of Object.entries(vars)) {
       template = template.replace(new RegExp(`{${key}}`, 'g'), value)
@@ -163,15 +222,190 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
     return template
   }
 
-  async createPlanfixTask(postBody: TaskBodyType): Promise<ToolResponse> {
-    postBody.description = postBody.description.replace(/\n/g, '<br>')
+  async searchPlanfixContact({ name, phone, email, telegram }: UserDataType) {
+    let contactId: number | null = null;
+    const postBody = {
+      offset: 0,
+      pageSize: 100,
+      filters: [] as object[],
+      fields: 'id,name',
+    };
+  
+    const filters = {
+      byName: {
+        type: 4001,
+        operator: 'equal',
+        value: name,
+      },
+      byPhone: {
+        type: 4003,
+        operator: 'equal',
+        value: phone,
+      },
+      byEmail: {
+        type: 4026,
+        operator: 'equal',
+        value: email,
+      },
+      byTelegram: {
+        type: 4101,
+        field: this.configChat.toolParams.planfix_create_request_task?.fieldIds?.telegram,
+        // operator: 'equal',
+        // value: '@' + telegram,
+        operator: 'have',
+        value: telegram,
+      },
+    };
+  
+    const searchWithFilter = async (filter: object, label: string): Promise<number | null> => {
+      console.log(`search contact with filter: ${label}`);
+      postBody.filters = [filter];
+      type PlanfixContactsListResponse = {
+        // ok: boolean,
+        // status: number,
+        result: string,
+        contacts: PlanfixContactType[],
+      }
+      try {
+        const answer = await this.ky.post('contact/list', {json: postBody}).json<PlanfixContactsListResponse>() // json()<PlanfixResponse>
+        /* const response = await fetch(`${baseUrl}contact/list`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(postBody)
+        }); */
+  
+        /* if (!answer.ok) {
+          throw new Error(`HTTP error! Status: ${answer.status}`);
+        } */
+  
+        if (answer.contacts && answer.contacts.length > 0) {
+          contactId = answer.contacts[0].id;
+          console.log(`Contact found by ${label}: ${contactId}`);
+        }
+        return contactId;
+      } catch (error) {
+        const err = error as Error;
+        console.error('Error searching for contacts:', err.message);
+        return null;
+      }
+    }
+
     try {
-      type PlanfixCreatedResponse = {
+      if (!contactId && email) {
+        contactId = await searchWithFilter(filters.byEmail, 'email');
+      }
+      if (!contactId && phone) {
+        contactId = await searchWithFilter(filters.byPhone, 'phone');
+      }
+      if (!contactId && name) {
+        contactId = await searchWithFilter(filters.byName, 'name');
+      }
+      if (!contactId && telegram) {
+        contactId = await searchWithFilter(filters.byTelegram, 'telegram');
+      }
+      return contactId;
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error searching for contacts:', err.message);
+      return null;
+    }
+  }
+
+  splitName(fullName?: string) {
+    if (!fullName || typeof fullName !== 'string') {
+      return { firstName: '', lastName: '' };
+    }
+  
+    const nameParts = fullName.trim().split(/\s+/);
+    if (nameParts.length === 1) {
+      return { firstName: nameParts[0], lastName: '' };
+    } else {
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(' ');
+      return { firstName, lastName };
+    }
+  }
+
+  async createPlanfixContact(userData: UserDataType): Promise<number | null> {
+    try {
+      console.log('Creating new contact');
+  
+      const { firstName, lastName } = this.splitName(userData.name);
+  
+      const postBody = {
+        template: {
+          id: this.configChat.toolParams.planfix_create_request_task?.contactTemplateId,
+        },
+        name: firstName,
+        lastname: lastName,
+        email: userData.email,
+        phones: [] as object[],
+        customFieldData: [] as object[],
+      };
+  
+      // Add phone if available
+      if (userData.phone) {
+        postBody.phones = [
+          {
+            number: userData.phone,
+            type: 1
+          }
+        ];
+      }
+  
+      // Add Telegram as custom field if available
+      if (userData.telegram) {
+        postBody.customFieldData = [
+          {
+            field: {
+              id: this.configChat.toolParams.planfix_create_request_task?.fieldIds?.telegram
+            },
+            value: '@' + userData.telegram
+          }
+        ];
+      }
+  
+      /* const response = await fetch(`${baseUrl}contact/`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(postBody)
+      });
+  
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! Status: ${response.status}, ${errorText}`);
+      }
+  
+      const result = await response.json(); */
+
+      type PlanfixCreatedContactResponse = {
         result: string,
         id: number,
       }
-      const answer = await this.ky.post('task/', {json: postBody}).json<PlanfixCreatedResponse>() // json()<PlanfixResponse>
-      const url = `https://${this.configChat.toolParams.planfix?.account}.planfix.com/task/${answer.id}`
+      const result = this.isDryRun() ?
+        {id: 123} :
+        await this.ky.post('contact/', {json: postBody}).json<PlanfixCreatedContactResponse>();
+      console.log(`Contact created with ID: ${result.id}`);
+      return result.id;
+  
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error creating contact:', err.message);
+      return null;
+    }
+  }
+
+  async createPlanfixTask(postBody: TaskBodyType): Promise<ToolResponse> {
+    postBody.description = postBody.description.replace(/\n/g, '<br>')
+    try {
+      type PlanfixCreatedTaskResponse = {
+        result: string,
+        id: number,
+      }
+      const answer = this.isDryRun() ?
+        {id: 234} :
+        await this.ky.post('task/', {json: postBody}).json<PlanfixCreatedTaskResponse>();
+      const url = this.getTaskUrl(answer.id);
 
       // console.log("answer:", JSON.stringify(answer, null, 2));
 
@@ -179,7 +413,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
         content: `Задача создана:\n${url}\n\n${postBody.description.replace(/<br>/g, '\n')}`
       }
     } catch (e) {
-      console.error(e);
+      console.error('Error creating Planfix task:', e);
     }
 
     return {
@@ -211,44 +445,166 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
     return `**Create Planfix Task:** \`${optionsStr}\``
   }
 
-  async searchPlanfixTask(taskName: string): Promise<String> {
-    let taskUrl = '';
+  async getContactsGroupMap(groupId: number) {
+    const items = await this.getContactGroupItemsRest(groupId);
+    const itemsMap = {};
+
+    items.map((item) => {
+      // @ts-ignore
+      itemsMap[item.name] = item.id;
+      // return field.value;
+    });
+    return itemsMap;
+  }
+
+
+  async getContactGroupItemsRest(groupId: number) {
+    type PlanfixContact = {
+      id: number,
+      name: string,
+      midname: string,
+      lastname: string,
+      group: number,
+    }
+    type PlanfixContactsResponse = {
+      data?: {
+        contacts: PlanfixContact[]
+      },
+    }
+    let isEnd = false;
+    let offset = 0;
+    const allItems = [];
+    try {
+      while (!isEnd) {
+        const params = {
+          offset,
+          pageSize: 100,
+          fields: 'id,name,midname,lastname,group',
+          filters: [
+            {
+              type: 4008,
+              operator: 'equal',
+              value: groupId
+            }
+          ],
+        };
+        const answer = await this.ky.post('contact/list', {json: params}).json<PlanfixContactsResponse>() // json()<PlanfixResponse>
+        // const res = await planfixRest('contact/list', params, 'post');
+        const items = answer?.data?.contacts || [];
+
+        if (items.length < params.pageSize) isEnd = true;
+        // if (!isEnd) log(`items.length: ${items.length}`, 'debug');
+
+        // remove archived
+        // items = items.filter(item => item.archived != '1');
+
+        allItems.push(...items);
+        offset += params.pageSize;
+      }
+    } catch (e) {
+      // @ts-ignore
+      log({msg: `getContactGroupItemsRest: ${e.message}`, logLevel: 'error'});
+    }
+
+    return allItems;
+  }
+
+  async searchPlanfixTask({taskName, clientId}: {taskName?: string; clientId?: number;}): Promise<TaskResultType | null> {
+    let taskId: number | null = null;
+    let assignees: UsersListType = { users: [] };
+
     const postBody = {
       offset: 0,
       pageSize: 100,
-      filters: [
-        {
-          type: 51, // filter by template
-          operator: 'equal',
-          value: this.configChat.toolParams.planfix_create_request_task?.templateId,
-        },
-        {
-          type: 12, // filter by created date
-          operator: 'equal',
-          value: {
-            dateType: 'last',
-            dateValue: 3, // last 3 days
-          },
-        },
-        {
-          type: 8, // filter by task name
-          operator: 'equal',
-          value: taskName,
-        },
-      ],
-      fields: 'id,name,description,template'
+      filters: [] as object[],
+      fields: 'id,name,description,template,assignees'
     }
+
     type PlanfixTasksResponse = {
       result: string,
-      tasks: {
-        id: number,
-      }[],
+      tasks: TaskResultType[],
     }
 
-    const answer = await this.ky.post('task/list', {json: postBody}).json<PlanfixTasksResponse>() // json()<PlanfixResponse>
+    const filtersDefault = [
+      {
+        type: 51, // filter by template
+        operator: 'equal',
+        value: this.configChat.toolParams.planfix_create_request_task?.templateId,
+      },
+      {
+        type: 12, // filter by created date
+        operator: 'equal',
+        value: {
+          dateType: 'last',
+          dateValue: this.configChat.toolParams.planfix_create_request_task?.daysToSearch, // last N days
+        },
+      },
+    ];
+  
+    const filters = {
+      byClient: {
+        type: 108,
+        field: this.configChat.toolParams.planfix_create_request_task?.fieldIds?.client,
+        operator: 'equal',
+        value: `contact:${clientId}`,
+      },
+      byName: {
+        type: 8,
+        operator: 'equal',
+        value: taskName,
+      },
+    };
+  
+    const searchWithFilter = async (filter: object, label: string): Promise<TaskResultType | null> => {
+      console.log(`search task with filter: ${label}`);
+      postBody.filters = [...filtersDefault, filter];
+      try {
+        const answer = await this.ky.post('task/list', {json: postBody}).json<PlanfixTasksResponse>() // json()<PlanfixResponse>
+        /* const response = await fetch(`${baseUrl}task/list`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(postBody)
+        }); */
+
+        if (answer.tasks && answer.tasks.length > 0) {
+          taskId = answer.tasks[0].id;
+          assignees = answer.tasks[0].assignees;
+          console.log(`Task found by ${label}: ${taskId}`);
+        }
+        return taskId ? {id: taskId, assignees} : null;
+      } catch (error) {
+        const err = error as Error;
+        console.error('Error searching for tasks:', err.message);
+        return null;
+      }
+    }
+  
+    try {
+      if (clientId) {
+        const result = await searchWithFilter(filters.byClient, 'client');
+        if (result) {
+          taskId = result.id;
+          assignees = result.assignees;
+        }
+      }
+      if (!taskId && taskName) {
+        const result = await searchWithFilter(filters.byName, 'name');
+        if (result) {
+          taskId = result.id;
+          assignees = result.assignees;
+        }
+      }
+      return taskId ? {id: taskId, assignees} : null;
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error searching for tasks:', err.message);
+      return null;
+    }
+  
+    /* const answer = await this.ky.post('task/list', {json: postBody}).json<PlanfixTasksResponse>() // json()<PlanfixResponse>
     if (answer.tasks.length > 0) taskUrl = `https://${this.configChat.toolParams.planfix?.account}.planfix.com/task/${answer.tasks[0].id}`
 
-    return taskUrl;
+    return taskUrl; */
   }
 }
 

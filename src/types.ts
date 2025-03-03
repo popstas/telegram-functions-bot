@@ -143,10 +143,19 @@ export type ToolParamsType = {
   planfix_create_request_task?: {
     name: string
     templateId?: number
+    contactTemplateId?: number
+    daysToSearch?: number
     contactsMap?: Array<{
       title: string
       field_name: string
     }>
+    fieldIds?: {
+      [key: string]: number
+    }
+    contactsGroups: {
+      agents: number
+      suppliers: number
+    }
     dryRun?: boolean
   }
 }
