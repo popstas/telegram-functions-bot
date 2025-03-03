@@ -29,6 +29,7 @@ export function log({ msg, logLevel = 'info', chatId, chatTitle, username, role,
 
   // Write logMessage to the specified log file
   if (logPath) {
+    ensureDirectoryExists(logPath);
     fs.appendFileSync(path.resolve(logPath), logMessage + '\n');
   }
 
@@ -47,6 +48,13 @@ export function log({ msg, logLevel = 'info', chatId, chatTitle, username, role,
       break;
     default:
       console.log(logMessage);
+  }
+}
+
+export function ensureDirectoryExists(filePath: string) {
+  const directory = path.dirname(filePath);
+  if (!fs.existsSync(directory)) {
+    fs.mkdirSync(directory, {recursive: true});
   }
 }
 
