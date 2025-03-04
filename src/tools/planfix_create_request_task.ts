@@ -50,6 +50,11 @@ type TaskResultType = {
   assignees: UsersListType,
 }
 
+type PlanfixCreatedContactResponse = {
+  result: string,
+  id: number,
+}
+
 export const description = 'Creates new task in CRM Planfix.'
 export const details = `- create contactsMap from clientName, phone, email, telegram, referrer in task description
 - add all thread messages to description
@@ -199,13 +204,24 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
       }
     }
 
-    const dryRun = this.configChat.toolParams.planfix_create_request_task?.dryRun;
-    if (dryRun) {
+    if (this.isDryRun()) {
       log({msg: 'Dry run', logLevel: 'info'});
     }
     // const res = this.createTestFileTask(postBody)
     // return dryRun ? this.createTestFileTask(postBody) : this.createPlanfixTask(postBody);
-    return this.createPlanfixTask(postBody);
+
+    if (!taskId) {
+      return this.createPlanfixTask(postBody);
+    } else {
+      const result = await this.createComment({
+        id: taskId,
+        description: options.description,
+        recipients: assignees,
+      });
+      return {
+        content: `Задача уже существует, в неё добавлен комментарий:\n${this.getTaskUrl(taskId)}`,
+      };
+    }
   }
 
   getTaskUrl(id: number) {
@@ -334,7 +350,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
   
       const postBody = {
         template: {
-          id: this.configChat.toolParams.planfix_create_request_task?.contactTemplateId,
+          id: this.configChat.toolParams.planfix_create_request_task?.contactsTemplates.contacts,
         },
         name: firstName,
         lastname: lastName,
@@ -365,23 +381,6 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
         ];
       }
   
-      /* const response = await fetch(`${baseUrl}contact/`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(postBody)
-      });
-  
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP error! Status: ${response.status}, ${errorText}`);
-      }
-  
-      const result = await response.json(); */
-
-      type PlanfixCreatedContactResponse = {
-        result: string,
-        id: number,
-      }
       const result = this.isDryRun() ?
         {id: 123} :
         await this.ky.post('contact/', {json: postBody}).json<PlanfixCreatedContactResponse>();
@@ -418,6 +417,33 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
 
     return {
       content: 'Не удалось создать задачу'
+    }
+  }
+
+  async createComment({ id, description, recipients }: { id: number, description: string, recipients: UsersListType }): Promise<number | null> {
+    try {
+      console.log(`Creating comment for task ${id}`);
+
+      const postBody = {
+        description: description.replace(/\n/g, '<br>'),
+        recipients: recipients,
+      };
+
+      type PlanfixCreatedCommentResponse = {
+        result: string,
+        id: number,
+      }
+
+      const answer = this.isDryRun() ?
+        {id: 345} :
+        await this.ky.post(`task/${id}/comments/`, {json: postBody}).json<PlanfixCreatedCommentResponse>();
+
+      console.log(`Comment created with ID: ${answer.id}`);
+      return answer.id;
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error creating comment:', err.message);
+      return null;
     }
   }
 

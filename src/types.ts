@@ -154,6 +154,12 @@ export type ToolParamsType = {
     }
     contactsGroups: {
       agents: number
+      contacts: number
+      suppliers: number
+    }
+    contactsTemplates: {
+      agents: number
+      contacts: number
       suppliers: number
     }
     dryRun?: boolean
