@@ -94,7 +94,8 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
         Authorization: `Bearer ${this.configChat.toolParams.planfix?.token}`,
         Accept: 'application/json',
         'Content-Type': 'application/json',
-      }
+      },
+      timeout: 30000 // Set timeout to 30 seconds
     })
   }
 
