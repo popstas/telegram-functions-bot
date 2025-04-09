@@ -27,6 +27,7 @@ type UserDataType = {
 }
 
 type TaskBodyType = {
+  customFieldData: any[];
   name: string,
   description: string,
   template?: {
@@ -76,6 +77,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
   protected readonly config: ConfigType
   protected readonly configChat: ConfigChatType
   protected readonly thread: ThreadStateType
+  protected lastError: string
 
   constructor(configChat: ConfigChatType, thread: ThreadStateType) {
     super()
@@ -83,6 +85,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
     this.config = readConfig();
     this.configChat = configChat
     this.thread = thread
+    this.lastError = '';
 
     // load contacts (agents)
     // const cg = this.configChat.toolParams.planfix_create_request_task?.contactsGroups;
@@ -147,6 +150,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
     
     let taskId: number | null = null;
     let assignees: UsersListType = { users: [] };
+    this.lastError = '';
 
     // add contacts to description
     const contactsMap = this.configChat.toolParams.planfix_create_request_task?.contactsMap || [];
@@ -194,8 +198,21 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
       description: options.description,
       template: conf.templateId ? {
         id: `${conf.templateId}`,
-      } : undefined
+      } : undefined,
+      customFieldData: [],
     } as TaskBodyType;
+
+    // Add clientId to customFieldData if available
+    if (clientId) {
+      postBody.customFieldData.push({
+        field: {
+          id: this.configChat.toolParams.planfix_create_request_task?.fieldIds?.client
+        },
+        value: {
+          id: clientId
+        }
+      });
+    }
 
     // search for duplicates
     const result = await this.searchPlanfixTask({taskName: postBody.name});
@@ -302,7 +319,8 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
         return contactId;
       } catch (error) {
         const err = error as Error;
-        console.error('Error searching for contacts:', err.message);
+        this.lastError = 'Error searching for contacts';
+        console.error(`${this.lastError}:`, err.message);
         return null;
       }
     }
@@ -377,7 +395,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
             field: {
               id: this.configChat.toolParams.planfix_create_request_task?.fieldIds?.telegram
             },
-            value: '@' + userData.telegram
+            value: '@' + userData.telegram.replace(/@/, '')
           }
         ];
       }
@@ -390,7 +408,8 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
   
     } catch (error) {
       const err = error as Error;
-      console.error('Error creating contact:', err.message);
+      this.lastError = 'Error searching for contacts';
+      console.error(`${this.lastError}:`, err.message);
       return null;
     }
   }
@@ -413,11 +432,12 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
         content: `Задача создана:\n${url}\n\n${postBody.description.replace(/<br>/g, '\n')}`
       }
     } catch (e) {
-      console.error('Error creating Planfix task:', e);
+      this.lastError = 'Error creating Planfix task';
+      console.error(`${this.lastError}:`, e);
     }
 
     return {
-      content: 'Не удалось создать задачу'
+      content: 'Не удалось создать задачу: ' + this.lastError
     }
   }
 
@@ -443,7 +463,8 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
       return answer.id;
     } catch (error) {
       const err = error as Error;
-      console.error('Error creating comment:', err.message);
+      this.lastError = 'Error creating comment';
+      console.error(`${this.lastError}:`, err.message);
       return null;
     }
   }
@@ -601,7 +622,8 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
         return taskId ? {id: taskId, assignees} : null;
       } catch (error) {
         const err = error as Error;
-        console.error('Error searching for tasks:', err.message);
+        this.lastError = 'Error searching for tasks';
+        console.error(`${this.lastError}:`, err.message);
         return null;
       }
     }
@@ -624,7 +646,8 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
       return taskId ? {id: taskId, assignees} : null;
     } catch (error) {
       const err = error as Error;
-      console.error('Error searching for tasks:', err.message);
+      this.lastError = 'Error searching for tasks';
+      console.error(`${this.lastError}:`, err.message);
       return null;
     }
   
