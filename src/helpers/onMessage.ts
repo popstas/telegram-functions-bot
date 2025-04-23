@@ -132,7 +132,8 @@ export default async function onMessage(ctx: Context & { secondTry?: boolean }, 
   }
 
   const historyLength = thread.messages.length
-  // return new Promise(async (resolve, reject) => {
+  // send typing callback immediately
+  await ctx.persistentChatAction('typing', async () => {})
   setTimeout(async () => {
     if (thread.messages.length !== historyLength) {
       // skip if new messages added
@@ -140,7 +141,7 @@ export default async function onMessage(ctx: Context & { secondTry?: boolean }, 
     }
     const msgSent = await answerToMessage(ctx, msg, chat, extraMessageParams) as Message.TextMessage;
     if (typeof callback === 'function') callback(msgSent)
-  }, 500)
+  }, 5000)
   // })
 }
 
