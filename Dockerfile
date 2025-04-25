@@ -1,24 +1,28 @@
+# Stage 1: application build
 FROM node:20-alpine AS builder
 
+# install dependencies and build
 WORKDIR /build
 COPY package*.json ./
-#RUN chown -R node:node .
-#USER node
 RUN npm install
 
-
-# stage 2
+# Stage 2: runtime image with uvx
 FROM node:20-alpine
-RUN apk update && apk add --no-cache openssh # for ssh_command tool
 
+# install ssh, Python and pip, then uv (includes uvx)
+#RUN apk update \
+#    && apk add --no-cache openssh python3 py3-pip \
+#    && python3 -m pip install --upgrade pip \
+#    && pip install uv
+
+# Install uvx
+RUN wget -qO- https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
+
+# copy application
 WORKDIR /app
 COPY --from=builder /build/node_modules ./node_modules
 COPY . .
 
-#USER node
-#RUN chown -R node:node /app/.nuxt
-
-#VOLUME ["/app/data"]
-#ENV NODE_ENV production
-
-CMD  ["npm", "run", "start"]
+# default command
+CMD ["npm", "run", "start"]
