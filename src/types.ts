@@ -6,6 +6,9 @@ import {CredentialBody} from "google-auth-library/build/src/auth/credentials";
 export type ConfigChatType = {
   name: string
   completionParams: CompletionParamsType
+  bot_token?: string
+  bot_name?: string
+  privateUsers?: string[]
   id?: number
   ids?: number[]
   username?: string

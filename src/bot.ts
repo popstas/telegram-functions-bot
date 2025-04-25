@@ -1,12 +1,14 @@
 import { Telegraf } from 'telegraf';
 import { useConfig } from './config.ts';
 
-let bot: Telegraf;
+const bots: Record<string, Telegraf> = {};
 
-export function useBot() {
-  if (!bot) {
-    const config = useConfig();
-    bot = new Telegraf(config.auth.bot_token);
+export function useBot(bot_token?: string) {
+  bot_token = bot_token || useConfig().auth.bot_token
+  if (!bots[bot_token]) {
+    bots[bot_token] = new Telegraf(bot_token);
+    process.once('SIGINT', () => bots[bot_token].stop('SIGINT'))
+    process.once('SIGTERM', () => bots[bot_token].stop('SIGTERM'))
   }
-  return bot;
+  return bots[bot_token];
 }

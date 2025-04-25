@@ -24,8 +24,8 @@ Telegram bot with functions tools.
 - `planfix_create_request_task` - Creates new task in CRM Planfix
 - `powershell` - exec PowerShell command, single server from config
 - `read_google_sheet` - read Google Sheet
-- `read_knowledge_google_sheet` - questions and ansers from Google Sheet
-- `read_knowledge_json` - questions and ansers from json file/url
+- `read_knowledge_google_sheet` - questions and answers from Google Sheet
+- `read_knowledge_json` - questions and answers from json file/url
 - `ssh_command` - exec ssh shell command, single server from config
 - ... and thousands of tools from MCP
 
@@ -34,6 +34,39 @@ Empty `config.yml` should be generated. Fill it with your data:
 - bot_name
 - auth.token
 - auth.chatgpt_api_key
+
+### Multiple Bots / Secondary bot_token
+
+You can run multiple Telegram bots from a single instance using the `bot_token` field in each chat config.
+
+#### Use cases
+- Run several bots with different tokens from the same codebase (e.g., main bot and test bot, or bots for different groups).
+- Per-chat bot tokens: assign a unique bot token to a specific chat, while others use the global token.
+
+#### How it works
+- The bot will launch an instance for every unique `bot_token` found in `config.chats` and for the global `auth.bot_token`.
+- If a chat does not specify its own `bot_token`, it will use the global `auth.bot_token`.
+- Only one instance per unique token is launched (deduplicated automatically).
+
+#### Example config
+```yaml
+auth:
+  bot_token: "123456:main-token"
+  chatgpt_api_key: "sk-..."
+chats:
+  - name: "Main Chat"
+    id: 123456789
+    # uses global auth.bot_token
+  - name: "Secondary Bot Chat"
+    id: 987654321
+    bot_token: "987654:secondary-token"
+    bot_name: "secondary_bot"
+```
+
+#### Notes
+- If you launch two bots with the same token, Telegram will throw a 409 Conflict error. The bot automatically avoids this by deduplication.
+- You must set `bot_name` in a chat config.
+- You can set `privateUsers` in a chat config for extended access control.
 
 ## MCP Integration
 

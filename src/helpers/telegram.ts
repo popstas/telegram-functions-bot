@@ -2,7 +2,7 @@ import {Chat, Message, Update} from "telegraf/types";
 import {useBot} from "../bot.ts";
 import {useConfig} from "../config.ts";
 import {ConfigChatButtonType, ConfigChatType} from "../types.ts";
-import {Context, Scenes} from "telegraf";
+import {Context} from "telegraf";
 import {User} from "@telegraf/types/manage";
 import {log} from "../helpers.ts";
 
@@ -44,8 +44,9 @@ export function getTelegramForwardedUser(msg: Message.TextMessage & { forward_or
   return `${name}${username ? `, Telegram: @${username}` : ''}`;
 }
 
-export async function sendTelegramMessage(chat_id: number, text: string, extraMessageParams?: any): Promise<Message.TextMessage | undefined> {
+export async function sendTelegramMessage(chat_id: number, text: string, extraMessageParams?: any, ctx?: Context, chatConfig?: ConfigChatType): Promise<Message.TextMessage | undefined> {
   return new Promise(async (resolve) => {
+    chatConfig = chatConfig || useConfig().chats.find(c => c.bot_name === ctx?.botInfo.username) || {} as ConfigChatType
 
     let response: Message.TextMessage | undefined;
     const msgs = splitBigMessage(text)
@@ -60,13 +61,13 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
 
     for (const msg of msgs) {
       try {
-        response = await useBot().telegram.sendMessage(chat_id, msg, params)
+        response = await useBot(chatConfig.bot_token).telegram.sendMessage(chat_id, msg, params)
       } catch (e) {
         // const err = e as { message: string }
         // log({msg: `failover sendTelegramMessage without markdown: ${err.message.slice(512)}`, chatId: chat_id, logLevel: 'warn'})
         const failsafeParams = {reply_markup: params.reply_markup}
-        response = await useBot().telegram.sendMessage(chat_id, msg, failsafeParams)
-        // await useBot().telegram.sendMessage(chat_id, `${err.message}`, params)
+        response = await useBot(chatConfig.bot_token).telegram.sendMessage(chat_id, msg, failsafeParams)
+        // await useBot(chatConfig.bot_token).telegram.sendMessage(chat_id, `${err.message}`, params)
       }
     }
 
@@ -74,12 +75,12 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
     if (params.deleteAfter) {
       const deleteAfter = typeof params.deleteAfter === 'number' ? params.deleteAfter * 1000 : 10000;
       if (response) setTimeout(async () => {
-        await useBot().telegram.deleteMessage(response.chat.id, response.message_id);
+        await useBot(chatConfig?.bot_token).telegram.deleteMessage(response.chat.id, response.message_id);
       }, deleteAfter);
     }
 
     if (forDelete) {
-      await useBot().telegram.deleteMessage(forDelete.chat.id, forDelete.message_id);
+      await useBot(chatConfig.bot_token).telegram.deleteMessage(forDelete.chat.id, forDelete.message_id);
       forDelete = undefined
     }
 
@@ -109,10 +110,28 @@ export function buildButtonRows(buttons: ConfigChatButtonType[]) {
   return buttonRows
 }
 
-function getChatConfig(ctxChat: Chat) {
+function getChatConfig(ctxChat: Chat, ctx: Context) {
+  // 1. by chat id
   let chat = useConfig().chats.find(c => c.id == ctxChat?.id || c.ids?.includes(ctxChat?.id) || 0) || {} as ConfigChatType
 
   const defaultChat = useConfig().chats.find(c => c.name === 'default')
+
+  // 2. by bot_name
+  if (!chat.id) {
+    chat = useConfig().chats.find(c => c.bot_name === ctx.botInfo.username) || {} as ConfigChatType
+
+    // check access to private chat
+    if (chat.id && ctxChat?.type === 'private') {
+      const privateChat = ctxChat as Chat.PrivateChat
+      const username = privateChat.username || 'without_username'
+      const isAllowed = [
+        ...(useConfig().privateUsers || []),
+        ...(chat.privateUsers || [])].includes(username) || useConfig().adminUsers?.includes(username)
+      if (!isAllowed) {
+        return
+      }
+    }
+  }
 
   if (!chat.id) {
     // console.log("ctxChat:", ctxChat);
@@ -124,8 +143,12 @@ function getChatConfig(ctxChat: Chat) {
 
     if (defaultChat) chat = defaultChat
 
+    // 2. by username
     if (ctxChat?.type === 'private') {
+      // user chat, with username
       const privateChat = ctxChat as Chat.PrivateChat
+
+      // check access
       const username = privateChat.username || 'without_username'
       const isAllowed = useConfig().privateUsers?.includes(username) ||
         useConfig().adminUsers?.includes(username)
@@ -133,7 +156,6 @@ function getChatConfig(ctxChat: Chat) {
         return
       }
 
-      // user chat, with username
       const userChat = useConfig().chats.find(c => c.username === privateChat.username || '')
       if (userChat) chat = userChat
     }
@@ -187,7 +209,7 @@ export function getCtxChatMsg(ctx: Context) {
     return {chat: undefined, msg: undefined}
   }
 
-  const chat = getChatConfig(ctxChat)
+  const chat = getChatConfig(ctxChat, ctx)
 
   return {chat, msg}
 }

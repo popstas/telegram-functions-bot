@@ -47,7 +47,7 @@ export default async function onMessage(ctx: Context & { secondTry?: boolean }, 
         ]
       }
     } : undefined
-    return await sendTelegramMessage(msg.chat.id, text, params)
+    return await sendTelegramMessage(msg.chat.id, text, params, ctx)
   }
 
   // prefix (when defined): answer only to prefixed message
@@ -118,7 +118,7 @@ export default async function onMessage(ctx: Context & { secondTry?: boolean }, 
       // send ask for text message
       if (matchedButton.waitMessage) {
         thread.activeButton = matchedButton
-        return await sendTelegramMessage(msg.chat.id, matchedButton.waitMessage, extraMessageParams)
+        return await sendTelegramMessage(msg.chat.id, matchedButton.waitMessage, extraMessageParams, ctx, chat)
       }
     }
 
@@ -161,14 +161,14 @@ async function answerToMessage(ctx: Context & {
         if (!msg) return
         const buttons = await syncButtons(chat, authClient)
         if (!buttons) {
-          return void sendTelegramMessage(msg.chat.id, 'Ошибка синхронизации')
+          return void sendTelegramMessage(msg.chat.id, 'Ошибка синхронизации', undefined, ctx, chat)
         }
 
         // const buttonRows = buildButtonRows(buttons)
         // const extraParams = {reply_markup: {keyboard: buttonRows, resize_keyboard: true}}
         const extraParams = Markup.keyboard(buttons.map(b => b.name)).resize()
         const answer = 'Готово: ' + buttons.map(b => b.name).join(', ')
-        return void sendTelegramMessage(msg.chat.id, answer, extraParams)
+        return void sendTelegramMessage(msg.chat.id, answer, extraParams, ctx, chat)
       })
     }
   }
@@ -197,7 +197,7 @@ async function answerToMessage(ctx: Context & {
       const chatTitle = (msg.chat as Chat.TitleChat).title
       log({msg: text, logLevel: 'info', chatId: msg.chat.id, chatTitle, role: 'system'});
 
-      msgSent = await sendTelegramMessage(msg.chat.id, text, extraParams)
+      msgSent = await sendTelegramMessage(msg.chat.id, text, extraParams, ctx, chat)
       if (msgSent?.chat.id) useThreads()[msgSent.chat.id].msgs.push(msgSent)
     }) // all done, stops sending typing
     return msgSent
@@ -216,6 +216,6 @@ async function answerToMessage(ctx: Context & {
       void onMessage(ctx) // специально без await
     }
 
-    return await sendTelegramMessage(msg.chat.id, `${error.message}${ctx.secondTry ? '\n\nПовторная отправка последнего сообщения...' : ''}`, extraMessageParams)
+    return await sendTelegramMessage(msg.chat.id, `${error.message}${ctx.secondTry ? '\n\nПовторная отправка последнего сообщения...' : ''}`, extraMessageParams, ctx, chat)
   }
 }

@@ -96,7 +96,7 @@ export async function processToolResponse({
         toolRes.content.slice(0, toolResMessageLimit) + '...' : 
         toolRes.content;
             sendToHttp(expressRes, msgContentLimited);
-      void sendTelegramMessage(msg.chat.id, msgContentLimited, params);
+      void sendTelegramMessage(msg.chat.id, msgContentLimited, params, undefined, chatConfig);
     }
 
     const messageTool = {
@@ -321,7 +321,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
         void await sendTelegramMessage(chatId, toolParamsStr, {
           parse_mode: 'MarkdownV2',
           deleteAfter: chatConfig.chatParams?.deleteToolAnswers,
-        });
+        }, undefined, chatConfig);
       }
     }
 
@@ -345,27 +345,27 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
             {text: 'No', callback_data: `cancel_tool_${uniqueId}`}
           ]
         ]
-      }
+      }, undefined, chatConfig
     });
   });
 
   if (chatConfig.chatParams.confirmation) {
     // Handle the callback query
     return new Promise((resolve) => {
-      useBot().action(`confirm_tool_${uniqueId}`, async () => {
+      useBot(chatConfig.bot_token!).action(`confirm_tool_${uniqueId}`, async () => {
         // @ts-expect-error - see below for explanation
         sendToHttp(expressRes, `Yes`);
-        const configConfirmed = JSON.parse(JSON.stringify(chatConfig));;
+        const configConfirmed = JSON.parse(JSON.stringify(chatConfig));
         configConfirmed.chatParams.confirmation = false;
         const res = await callTools(toolCalls, chatTools, configConfirmed, msg);
         const chatTitle = (msg.chat as Chat.TitleChat).title
         log({ msg: 'tools called', logLevel: 'info', chatId: msg.chat.id, chatTitle, role: 'tool' });
         return resolve(res);
       });
-      useBot().action(`cancel_tool_${uniqueId}`, async () => {
+      useBot(chatConfig.bot_token!).action(`cancel_tool_${uniqueId}`, async () => {
         // @ts-expect-error - see below for explanation
         sendToHttp(expressRes, `Tool execution canceled`);
-        await sendTelegramMessage(msg.chat.id, 'Tool execution canceled.');
+        await sendTelegramMessage(msg.chat.id, 'Tool execution canceled.', undefined, undefined, chatConfig);
         return resolve([]);
       });
     })

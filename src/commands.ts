@@ -12,14 +12,14 @@ import useTools from "./helpers/useTools.ts";
 export async function initCommands(bot: Telegraf) {
   bot.command('forget', async ctx => {
     forgetHistory(ctx.chat.id)
-    return await sendTelegramMessage(ctx.chat.id, 'OK')
+    return await sendTelegramMessage(ctx.chat.id, 'OK', undefined, ctx)
   })
 
   bot.command('info', async ctx => {
     const {msg, chat}: { msg?: Message.TextMessage, chat?: ConfigChatType } = getCtxChatMsg(ctx);
     if (!chat || !msg) return;
     const answer = await getInfoMessage(msg, chat)
-    return sendTelegramMessage(ctx.chat.id, answer)
+    return sendTelegramMessage(ctx.chat.id, answer, undefined, ctx)
   })
 
   bot.command('google_auth', async ctx => {
@@ -31,7 +31,7 @@ export async function initCommands(bot: Telegraf) {
   bot.command('add_tool', async ctx => {
     const {msg, chat}: { msg?: Message.TextMessage, chat?: ConfigChatType } = getCtxChatMsg(ctx);
     if (!chat || !msg) return;
-    await commandAddTool(msg)
+    await commandAddTool(msg, chat)
   });
 
   await bot.telegram.setMyCommands([
@@ -55,7 +55,7 @@ export async function initCommands(bot: Telegraf) {
 }
 
 // add tool to chat config
-export async function commandAddTool(msg: Message.TextMessage) {
+export async function commandAddTool(msg: Message.TextMessage, chatConfig: ConfigChatType) {
   const excluded = ['change_chat_settings']
   const globalTools = await useTools();
   const tools = globalTools.filter(t => !excluded.includes(t.name)).map(t => t.name)
@@ -64,7 +64,7 @@ export async function commandAddTool(msg: Message.TextMessage) {
   const config = useConfig()
 
   for (const tool of globalTools) {
-    useBot().action(`add_tool_${tool.name}`, async (ctx) => {
+    useBot(chatConfig.bot_token!).action(`add_tool_${tool.name}`, async (ctx) => {
       const chatId = ctx.chat?.id;
       if (!chatId) return;
 
@@ -110,7 +110,7 @@ export async function commandAddTool(msg: Message.TextMessage) {
 
   const buttons = tools.map((t: string) => ([{text: t, callback_data: `add_tool_${t}`}]))
   const params = {reply_markup: {inline_keyboard: buttons}}
-  return await sendTelegramMessage(msg.chat.id, text, params)
+  return await sendTelegramMessage(msg.chat.id, text, params, undefined, chatConfig)
 }
 
 export async function getToolsInfo(tools: string[]) {

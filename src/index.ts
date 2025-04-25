@@ -31,30 +31,11 @@ async function start() {
   watchConfigChanges();
 
   try {
-    const bot = useBot();
-    log({msg: 'bot started'})
+    await launchBot(config.auth.bot_token, config.bot_name);
+    // log({msg: 'bot started'});
 
-    bot.help(async ctx => ctx.reply('https://github.com/popstas/telegram-functions-bot'))
-
-    await initCommands(bot)
-
-    bot.on([message('text'), editedMessage('text')], onMessage)
-
-    bot.action('add_chat', async (ctx) => {
-      const chatId = ctx.chat?.id;
-      // @ts-expect-error title may not exist on chat type
-      const chatName = ctx.chat?.title || `Chat ${chatId}`;
-      if (!chatId) return;
-
-      const newChat = {name: chatName, id: chatId} as ConfigChatType;
-      config.chats.push(newChat);
-      writeConfig(undefined, config);
-      await ctx.reply(`Chat added: ${chatName}`);
-    });
-
-    process.once('SIGINT', () => bot.stop('SIGINT'))
-    process.once('SIGTERM', () => bot.stop('SIGTERM'))
-    void bot.launch()
+    const chatBots = config.chats.filter(c => c.bot_token && c.bot_name);
+    chatBots.forEach(c => launchBot(c.bot_token!, c.bot_name!));
 
     // Initialize HTTP server
     initHttp();
@@ -65,6 +46,29 @@ async function start() {
   }
 }
 
+async function launchBot(bot_token: string, bot_name: string) {
+  const config = useConfig();
+  const bot = useBot(bot_token);
+  bot.help(async ctx => ctx.reply('https://github.com/popstas/telegram-functions-bot'))
+  await initCommands(bot)
+  bot.on([message('text'), editedMessage('text')], onMessage)
+
+  bot.action('add_chat', async (ctx) => {
+    const chatId = ctx.chat?.id;
+    // @ts-expect-error title may not exist on chat type
+    const chatName = ctx.chat?.title || `Chat ${chatId}`;
+    if (!chatId) return;
+
+    const newChat = {name: chatName, id: chatId} as ConfigChatType;
+    config.chats.push(newChat);
+    writeConfig(undefined, config);
+    await ctx.reply(`Chat added: ${chatName}`);
+  });
+
+  void bot.launch();
+  log({msg: `bot started: ${bot_name}`});
+  return bot;
+}
 
 function initHttp() {
   // Validate HTTP configuration
