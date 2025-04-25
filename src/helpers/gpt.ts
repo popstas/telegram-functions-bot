@@ -302,7 +302,13 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
     if (!tool) return {content: `Tool not found! ${toolCall.function.name}`};
     const toolParams = toolCall.function.arguments
     const toolClient = chatTool.module.call(chatConfig, thread);
-    let toolParamsStr = '`' + toolCall.function.name + '()`:\n```\n' + toolParams + '\n```'
+    // let toolParamsStr = '`' + toolCall.function.name + '()`:\n```\n' + toolParams + '\n```'
+
+    let toolParamsStr = [
+      '`' + toolCall.function.name.replace(/[_-]/g, ' ') + ':`',
+      ...Object.entries(JSON.parse(toolParams)).map(([key, value]) => `\\- *${key.replace(/[_]/g, ' ')}*: ${value}`),
+    ].join('\n')
+
     if (typeof toolClient.options_string === 'function') {
       toolParamsStr = toolClient.options_string(toolParams)
     }
@@ -336,7 +342,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
     // Confirmation logic can be handled here without returning a new Promise
     // @ts-expect-error - see below for explanation
     sendToHttp(expressRes, `${toolParamsStr}\nDo you want to proceed?`);
-    return await sendTelegramMessage(msg.chat.id, `${toolParamsStr}\nDo you want to proceed?`, {
+    return await sendTelegramMessage(msg.chat.id, `${toolParamsStr}\n\nDo you want to proceed?`, {
       parse_mode: 'MarkdownV2',
       reply_markup: {
         inline_keyboard: [
