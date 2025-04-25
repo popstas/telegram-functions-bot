@@ -1,0 +1,28 @@
+Commands:
+- npm start
+- npm test
+- npm run typecheck
+- npm run lint
+- npm run lint:fix
+- npm run format
+- npm run format:check
+
+Scripts in package.json:
+```json
+{
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "changelog": "npx conventional-changelog-cli -p angular -i CHANGELOG.md -s -r 0",
+    "test": "jest && npm run typecheck",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "format": "prettier --write",
+    "format:check": "prettier --check"
+  }
+}
+```
+
+Rules:
+- Run `npm run lint:fix` to fix lint errors, then run `npm run lint` to check if there are no errors.
+- Run `npm run format:check` to check if there are no formatting errors. If there are, run `npm run format` to fix them.

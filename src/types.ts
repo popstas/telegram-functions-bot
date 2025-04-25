@@ -55,6 +55,7 @@ export type ConfigType = {
   adminUsers?: string[]
   privateUsers: string[]
   testUsers?: string[]
+  mcpServers?: Record<string, McpToolConfig>
   chats: ConfigChatType[]
   logLevel?: 'debug' | 'info' | 'warn' | 'error'
 }
@@ -99,7 +100,24 @@ export type ConfigChatButtonType = {
 
 export type ChatToolType = {
   name: string
-  module: any
+  module: {
+    call: (chatConfig: ConfigChatType, thread: ThreadStateType) => ModuleType
+    defaultParams?: ToolParamsType
+    description?: string
+  }
+}
+
+export type ModuleType = {
+  functions: {
+    get: (name: string) => (args: string) => Promise<ToolResponse>
+    toolSpecs: OpenAI.ChatCompletionTool
+  }
+  mcp?: boolean
+  options_string?: (args: string) => string
+  systemMessage?: () => string
+  prompt_append?: () => string
+  thread?: ThreadStateType
+  configChat?: ConfigChatType
 }
 
 export interface ToolResponse {
@@ -116,7 +134,7 @@ export type GptContextType = {
   messages: OpenAI.ChatCompletionMessageParam[];
   systemMessage: string;
   chatTools: ChatToolType[];
-  prompts: any[];
+  prompts: string[];
   tools: OpenAI.ChatCompletionTool[] | undefined;
 }
 
@@ -164,4 +182,11 @@ export type ToolParamsType = {
     }
     dryRun?: boolean
   }
+}
+
+// MCP tool configuration
+export interface McpToolConfig {
+  command: string;
+  args: string[];
+  env?: Record<string, string>;
 }

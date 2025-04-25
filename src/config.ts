@@ -55,13 +55,20 @@ export function generateConfig(): ConfigType {
     },
     adminUsers: ['your_telegram_username'],
     privateUsers: [],
+    mcpServers: {
+      fetch: {
+        command: 'uvx',
+        args: ['mcp-server-fetch'],
+      },
+
+    },
     chats: [{
       name: 'default',
       completionParams: {
         model: 'gpt-4o-mini',
       },
       systemMessage: 'You are using functions to answer the questions. Current date: {date}',
-      tools: ['javascript_interpreter', 'brainstorm'],
+      tools: ['javascript_interpreter', 'brainstorm', 'fetch'],
       chatParams: {
         forgetTimeout: 600,
         deleteToolAnswers: 60,
@@ -104,7 +111,7 @@ export function generatePrivateChatConfig(username: string) {
   } as ConfigChatType;
 }
 
-export function logConfigChanges(oldConfig: any, newConfig: any) {
+export function logConfigChanges(oldConfig: ConfigType, newConfig: ConfigType) {
   const oldConfigYaml = yaml.dump(oldConfig, {lineWidth: -1, noCompatMode: true, quotingType: '"'});
   const newConfigYaml = yaml.dump(newConfig, {lineWidth: -1, noCompatMode: true, quotingType: '"'});
   if (oldConfigYaml !== newConfigYaml) {
@@ -160,7 +167,7 @@ export async function getGoogleButtons(syncConfig: ButtonsSyncConfigType, authCl
   }
 
   const buttons: ConfigChatButtonType[] = []
-  for (let row of rows.slice(1) as Array<[string, string, number?, string?]>) {
+  for (const row of rows.slice(1) as Array<[string, string, number?, string?]>) {
     const button: ConfigChatButtonType = {
       name: row[0],
       prompt: row[1],

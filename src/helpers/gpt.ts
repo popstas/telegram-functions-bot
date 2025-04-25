@@ -40,7 +40,10 @@ export async function handleGptAnswer({
   gptContext,
   level = 1
 }: HandleGptAnswerParams): Promise<ToolResponse> {
-  const messageAgent = res.choices[0]?.message!;
+  const messageAgent = res.choices[0]?.message;
+  if (!messageAgent) {
+    throw new Error('No message found in OpenAI response');
+  }
   
   if (messageAgent.tool_calls?.length) {
     const tool_res = await callTools(messageAgent.tool_calls, gptContext.chatTools, chatConfig, msg, expressRes);
@@ -83,15 +86,16 @@ export async function processToolResponse({
     const toolCall = (messageAgent as {
       tool_calls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]
     }).tool_calls[i];
-
-    if (chatConfig.chatParams?.showToolMessages === true || chatConfig.chatParams?.showToolMessages === undefined) {
+    const chatTool = gptContext.chatTools.find(f => f.name === toolCall.function.name)
+    const isMcp = chatTool?.module.call(chatConfig, gptContext.thread).mcp;
+    const showMessages = chatConfig.chatParams?.showToolMessages !== false && !isMcp;
+    if (showMessages) {
       const params = {parse_mode: 'MarkdownV2', deleteAfter: chatConfig.chatParams?.deleteToolAnswers};
       const toolResMessageLimit = 8000;
       const msgContentLimited = toolRes.content.length > toolResMessageLimit ? 
         toolRes.content.slice(0, toolResMessageLimit) + '...' : 
         toolRes.content;
-      // @ts-ignore
-      sendToHttp(expressRes, msgContentLimited);
+            sendToHttp(expressRes, msgContentLimited);
       void sendTelegramMessage(msg.chat.id, msgContentLimited, params);
     }
 
@@ -147,27 +151,50 @@ export async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: Con
     if (!chatConfig.tools.includes('change_chat_settings')) chatConfig.tools.push('change_chat_settings')
   }
 
-  // chatTools
-  const globalTools = await useTools();
-  const chatTools = chatConfig.tools ?
-    chatConfig.tools.map(f => globalTools.find(g => g.name === f) as ChatToolType).filter(Boolean) :
-    []
+  // after loading normal tools, init MCP servers
+  const globalTools = await useTools()
+  // register MCP endpoint as tool
+  // const mcpTools = chatConfig.mcp
+    // ? await initMcp(chatConfig.mcp) : [];
+  // const tools = [...globalTools, ...mcpTools];
+  const chatTools = [
+    ...((chatConfig.tools ?? []).map(f => globalTools.find(g => g.name === f)).filter(Boolean) as ChatToolType[]),
+    // ...mcpTools
+  ].filter(Boolean)
+  // console.log('mcpTools', mcpTools)
+
   // prompts from tools, should be after tools
-  const prompts = await Promise.all(
+  const promptsPromises = await Promise.all(
     chatTools
-      .filter(f => typeof f.module.call(chatConfig, thread).prompt_append === 'function')
-      .map(async f => await f.module.call(chatConfig, thread).prompt_append())
+      .map(async f => {
+        const module = f.module.call(chatConfig, thread)
+        if (typeof module.prompt_append === 'function') {
+          return module.prompt_append()
+        }
+        return null
+      })
       .filter(f => !!f)
   )
+  const prompts = promptsPromises.filter(Boolean) as string[]
   // systemMessages from tools, should be after tools
-  const systemMessages = await Promise.all(
+  const systemMessagesPromises = await Promise.all(
     chatTools
-      .filter(f => typeof f.module.call(chatConfig, thread).systemMessage === 'function')
-      .map(async f => await f.module.call(chatConfig, thread).systemMessage())
-      .filter(f => !!f)
-  )
+      .map(async f => {
+        const module = f.module.call(chatConfig, thread)
+        if (typeof module.systemMessage === 'function') {
+          return module.systemMessage()
+        }
+        return null
+      })
+      .filter(Boolean)  
+  );
+  const systemMessages = systemMessagesPromises.filter(Boolean) as string[]
+
   const isTools = chatTools.length > 0;
-  const tools = isTools ? chatTools.map(f => f.module.call(chatConfig, thread).functions.toolSpecs).flat() : undefined;
+  const tools = isTools ? [
+    ...chatTools.map(f => f.module.call(chatConfig, thread).functions.toolSpecs).flat(),
+    // ...mcpTools,
+  ] : undefined;
 
   // systemMessage
   let systemMessage = getSystemMessage(chatConfig, systemMessages)
@@ -179,7 +206,7 @@ export async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: Con
   }
 
   // messages
-  let messages = await buildMessages(systemMessage, thread.messages, chatTools, prompts);
+  const messages = await buildMessages(systemMessage, thread.messages, chatTools, prompts);
 
   const api = useApi();
   const res = await api.chat.completions.create({
@@ -203,15 +230,14 @@ export async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: Con
     msg,
     res,
     chatConfig,
-    // @ts-ignore
-    expressRes: ctx.expressRes,
+        expressRes: ctx.expressRes,
     gptContext
   });
 }
 
 export async function buildMessages(systemMessage: string, history: OpenAI.ChatCompletionMessageParam[], chatTools: {
   name: string,
-  module: any
+  module: unknown // or specify the actual type if possible
 }[], prompts: string[]) {
   const limit = 7 // TODO: to config
   const messages: OpenAI.ChatCompletionMessageParam[] = [
@@ -274,25 +300,29 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
 
     const tool = chatTool.module.call(chatConfig, thread).functions.get(toolCall.function.name)
     if (!tool) return {content: `Tool not found! ${toolCall.function.name}`};
-    let toolParams = toolCall.function.arguments
+    const toolParams = toolCall.function.arguments
     const toolClient = chatTool.module.call(chatConfig, thread);
-    let toolParamsStr = toolCall.function.name + '()`:\n```\n' + toolParams + '\n```'
+    let toolParamsStr = '`' + toolCall.function.name + '()`:\n```\n' + toolParams + '\n```'
     if (typeof toolClient.options_string === 'function') {
       toolParamsStr = toolClient.options_string(toolParams)
     }
 
     const chatTitle = (msg.chat as Chat.TitleChat).title
     const chatId = msg.chat.id
+    // const isMcp = chatTool.module.call(chatConfig, thread).mcp;
+    const showMessages = chatConfig.chatParams?.showToolMessages !== false;
 
-    if (toolParams && !chatConfig.chatParams?.confirmation && chatConfig.chatParams?.showToolMessages !== false) {
+    if (toolParams && !chatConfig.chatParams?.confirmation) {
       // send message with tool call params
       log({ msg: toolParamsStr, chatId, chatTitle, role: 'assistant' });
-      // @ts-ignore
-      sendToHttp(expressRes, toolParamsStr);
-      void await sendTelegramMessage(chatId, toolParamsStr, {
-        parse_mode: 'MarkdownV2',
-        deleteAfter: chatConfig.chatParams?.deleteToolAnswers,
-      });
+      if (showMessages) {
+        // @ts-expect-error - see below for explanation
+        sendToHttp(expressRes, toolParamsStr);
+        void await sendTelegramMessage(chatId, toolParamsStr, {
+          parse_mode: 'MarkdownV2',
+          deleteAfter: chatConfig.chatParams?.deleteToolAnswers,
+        });
+      }
     }
 
     // Execute the tool without confirmation
@@ -303,39 +333,27 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
     }
 
     // or send confirmation message with Yes/No buttons
-    return new Promise(async (resolve) => {
-      // @ts-ignore
-      sendToHttp(expressRes, `${toolParamsStr}\nDo you want to proceed?`);
-      await sendTelegramMessage(msg.chat.id, `${toolParamsStr}\nDo you want to proceed?`, {
-        parse_mode: 'MarkdownV2',
-        reply_markup: {
-          inline_keyboard: [
-            [
-              {text: 'Yes', callback_data: `confirm_tool_${uniqueId}`},
-              {text: 'No', callback_data: `cancel_tool_${uniqueId}`}
-            ]
+    // Confirmation logic can be handled here without returning a new Promise
+    // @ts-expect-error - see below for explanation
+    sendToHttp(expressRes, `${toolParamsStr}\nDo you want to proceed?`);
+    return await sendTelegramMessage(msg.chat.id, `${toolParamsStr}\nDo you want to proceed?`, {
+      parse_mode: 'MarkdownV2',
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {text: 'Yes', callback_data: `confirm_tool_${uniqueId}`},
+            {text: 'No', callback_data: `cancel_tool_${uniqueId}`}
           ]
-        }
-      });
-
-      // Handle the callback query
-      /*bot.action(`confirm_tool_${uniqueId}`, async () => {
-        const res = await tool(toolParams); // Execute the tool
-        log({ msg: res.content, logLevel: 'info', chatId: msg.chat.id, role: 'tool' });
-        return resolve(res);
-      });
-      bot.action(`cancel_tool_${uniqueId}`, async () => {
-        await sendTelegramMessage(msg.chat.id, 'Tool execution canceled.');
-        return resolve({content: 'Tool execution canceled.'});
-      });*/
+        ]
+      }
     });
   });
 
   if (chatConfig.chatParams.confirmation) {
     // Handle the callback query
-    return new Promise(async (resolve) => {
+    return new Promise((resolve) => {
       useBot().action(`confirm_tool_${uniqueId}`, async () => {
-        // @ts-ignore
+        // @ts-expect-error - see below for explanation
         sendToHttp(expressRes, `Yes`);
         const configConfirmed = JSON.parse(JSON.stringify(chatConfig));;
         configConfirmed.chatParams.confirmation = false;
@@ -345,7 +363,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
         return resolve(res);
       });
       useBot().action(`cancel_tool_${uniqueId}`, async () => {
-        // @ts-ignore
+        // @ts-expect-error - see below for explanation
         sendToHttp(expressRes, `Tool execution canceled`);
         await sendTelegramMessage(msg.chat.id, 'Tool execution canceled.');
         return resolve([]);

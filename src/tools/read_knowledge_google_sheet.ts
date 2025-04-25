@@ -24,11 +24,11 @@ export const defaultParams = {
   }
 }
 
-let cache: { [sheetId: string]: Object[] } = {};
+const cache: { [sheetId: string]: object[] } = {};
 function getCache(sheetId: string) {
   return cache[sheetId];
 }
-function setCache(sheetId: string, data: Object[]) {
+function setCache(sheetId: string, data: object[]) {
   cache[sheetId] = data;
 }
 
@@ -74,7 +74,7 @@ export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
     if (!data.length) return {content: 'No data, auth with /google_auth'};
     const titleCol = this.configChat.toolParams?.knowledge_google_sheet?.titleCol || 'title';
     const textCol = this.configChat.toolParams?.knowledge_google_sheet?.textCol || 'text';
-    const found = data.find((row: any) => row[titleCol] === title);
+    const found = data.find((row: { [key: string]: string }) => row[titleCol] === title);
     const content = found ? found[textCol] : `No answer found for ${title}`;
     return {content};
   }
@@ -88,7 +88,8 @@ export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
   async prompt_append(): Promise<string | undefined> {
     const data = await this.read_sheet();
     const titleCol = this.configChat.toolParams?.knowledge_google_sheet?.titleCol || 'title';
-    const titles = data?.map((row: any) => row[titleCol]);
+    // @ts-expect-error: headers are dynamic
+    const titles = data?.map((row: { [key: string]: string }) => row[titleCol]);
     if (titles) return '## Google Sheet Knowledge base titles:\n' + titles.map(f => `- ${f}`).join('\n');
   }
 }

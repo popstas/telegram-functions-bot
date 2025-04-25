@@ -27,12 +27,60 @@ Telegram bot with functions tools.
 - `read_knowledge_google_sheet` - questions and ansers from Google Sheet
 - `read_knowledge_json` - questions and ansers from json file/url
 - `ssh_command` - exec ssh shell command, single server from config
+- ... and thousands of tools from MCP
 
 ## Config
 Empty `config.yml` should be generated. Fill it with your data:
 - bot_name
 - auth.token
 - auth.chatgpt_api_key
+
+## MCP Integration
+
+MCP (Model Context Protocol) provides external tools and services to the bot. MCP servers are defined in the `config.mcpServers` file, which lists available MCP endpoints used by all chats.
+
+### config.mcpServers Format
+- The format of `config.mcpServers` matches the structure used in Claude Desktop.
+- It is a list of MCP server configurations, each specifying the server address and connection details.
+- Example:
+  ```yaml
+  {
+  "mcpServers": {
+    "memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ]
+    }
+  }
+  ```
+
+### Server Sharing
+- All MCP servers listed in `config.mcpServers` are shared between all chats.
+- There is currently no per-chat isolation of MCP servers; every chat can access all configured MCP tools.
+
+### Chat Configuration (`tools`)
+- Each chat's configuration should specify a `tools` list.
+- The `tools` list should include the names of tools (from MCP) that are available to that chat.
+- Example chat config snippet:
+  ```yaml
+  - name: Memory MCP agent
+    id: -123123
+    tools:
+      - create_entities
+      - create_relations
+      - add_observations
+      - delete_entities
+      - delete_observations
+      - delete_relations
+      - read_graph
+      - search_nodes
+      - open_nodes
+  ```
+- The available tool names are fetched from the MCP servers listed in `config.mcpServers`.
+
+Refer to the MCP and Claude Desktop documentation for further details on server configuration and tool discovery.
 
 ## Running Tests
 

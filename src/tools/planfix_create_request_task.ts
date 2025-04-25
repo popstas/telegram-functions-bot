@@ -26,8 +26,15 @@ type UserDataType = {
   telegram?: string,
 }
 
+type CustomFieldDataType = {
+  field: {
+    id: number
+  },
+  value: string | { id: number }
+}
+
 type TaskBodyType = {
-  customFieldData: any[];
+  customFieldData: CustomFieldDataType[];
   name: string,
   description: string,
   template?: {
@@ -206,7 +213,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
     if (clientId) {
       postBody.customFieldData.push({
         field: {
-          id: this.configChat.toolParams.planfix_create_request_task?.fieldIds?.client
+          id: this.configChat.toolParams.planfix_create_request_task?.fieldIds?.client || 0
         },
         value: {
           id: clientId
@@ -231,7 +238,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
     if (!taskId) {
       return this.createPlanfixTask(postBody);
     } else {
-      const result = await this.createComment({
+      await this.createComment({
         id: taskId,
         description: options.description,
         recipients: assignees,
@@ -375,7 +382,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
         lastname: lastName,
         email: userData.email,
         phones: [] as object[],
-        customFieldData: [] as object[],
+        customFieldData: [] as CustomFieldDataType[],
       };
   
       // Add phone if available
@@ -393,7 +400,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
         postBody.customFieldData = [
           {
             field: {
-              id: this.configChat.toolParams.planfix_create_request_task?.fieldIds?.telegram
+              id: this.configChat.toolParams.planfix_create_request_task?.fieldIds?.telegram || 0
             },
             value: '@' + userData.telegram.replace(/@/, '')
           }
@@ -487,7 +494,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
     const options = JSON.parse(str) as TaskArgsType;
     if (!options) return str
     const optionsStr = Object.entries(options)
-      .filter(([key, value]) => value)
+      .filter(([, value]) => value)
       .map(([key, value]) => `${key}: ${value}`)
       .join(', ');
     return `**Create Planfix Task:** \`${optionsStr}\``
@@ -498,7 +505,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
     const itemsMap = {};
 
     items.map((item) => {
-      // @ts-ignore
+      // @ts-expect-error: item.name is dynamic and not in index signature
       itemsMap[item.name] = item.id;
       // return field.value;
     });
@@ -550,8 +557,8 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
         offset += params.pageSize;
       }
     } catch (e) {
-      // @ts-ignore
-      log({msg: `getContactGroupItemsRest: ${e.message}`, logLevel: 'error'});
+      const msg = e instanceof Error ? e.message : String(e);
+      log({msg: `getContactGroupItemsRest: ${msg}`, logLevel: 'error'});
     }
 
     return allItems;

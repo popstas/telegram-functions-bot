@@ -148,7 +148,7 @@ export async function getInfoMessage(msg: Message.TextMessage, chatConfig: Confi
 
   if (chatConfig.tools) {
     const tools = await getToolsInfo(chatConfig.tools)
-    lines.push(`Tools:\n${tools.join('\n')}`)
+    lines.push(`Tools:\n${tools.join('\n\n')}`)
   }
 
   if (msg.chat.type === 'private') {

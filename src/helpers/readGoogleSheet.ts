@@ -1,7 +1,7 @@
 import {google} from "googleapis";
 import {GoogleAuth, OAuth2Client} from 'google-auth-library';
 
-export async function readGoogleSheet(sheetId: string, sheetName?: string | null, auth?: OAuth2Client | GoogleAuth): Promise<Object[]> {
+export async function readGoogleSheet(sheetId: string, sheetName?: string | null, auth?: OAuth2Client | GoogleAuth): Promise<object[]> {
   const sheets = google.sheets({version: 'v4', auth});
   const firstSheet = await sheets.spreadsheets.get({spreadsheetId: sheetId});
   const sheetNames = firstSheet.data.sheets?.map((sheet) => sheet.properties?.title);
@@ -23,16 +23,16 @@ export async function readGoogleSheet(sheetId: string, sheetName?: string | null
   return rows;
 }
 
-export default async function readGoogleSheetToRows(sheetId: string, auth?: OAuth2Client | GoogleAuth): Promise<Object[]> {
+export default async function readGoogleSheetToRows(sheetId: string, auth?: OAuth2Client | GoogleAuth): Promise<object[]> {
   if (!auth) return [];
   const rows = await readGoogleSheet(sheetId, undefined, auth);
 
   const headers = rows[0];
-  // @ts-ignore
-  const data = rows.slice(1).map((row: any[]) => {
+  // @ts-expect-error: headers are dynamic
+  const data = rows.slice(1).map((row: string[]) => {
     const obj: { [key: string]: string } = {};
-    row.forEach((value: any, index: number) => {
-      // @ts-ignore
+    row.forEach((value: string, index: number) => {
+      // @ts-expect-error: headers are dynamic
       obj[headers[index]] = value;
     });
     return obj;

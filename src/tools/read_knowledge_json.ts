@@ -25,7 +25,7 @@ export const defaultParams = {
   }
 }
 
-let cache: { [path: string]: { data: Object[]; expiry: number } } = {};
+const cache: { [path: string]: { data: object[]; expiry: number } } = {};
 function getCache(path: string) {
   const cached = cache[path];
   if (cached && cached.expiry > Date.now()) {
@@ -33,7 +33,7 @@ function getCache(path: string) {
   }
   return null;
 }
-function setCache(path: string, data: Object[], cacheTime: number) {
+function setCache(path: string, data: object[], cacheTime: number) {
   cache[path] = {
     data,
     expiry: Date.now() + cacheTime * 1000,
