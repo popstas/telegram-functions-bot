@@ -304,9 +304,17 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
     const toolClient = chatTool.module.call(chatConfig, thread);
     // let toolParamsStr = '`' + toolCall.function.name + '()`:\n```\n' + toolParams + '\n```'
 
+    function prettifyKeyValue(key: string, value: string) {
+      key = key.replace(/[_-]/g, ' ');
+      // split camelCase
+      key = key.replace(/([a-z])([A-Z])/g, '$1 $2');
+      // uppercase first letter
+      key = key.charAt(0).toUpperCase() + key.slice(1);
+      return `\\- *${key}:* ${value}`
+    }
     let toolParamsStr = [
       '`' + toolCall.function.name.replace(/[_-]/g, ' ') + ':`',
-      ...Object.entries(JSON.parse(toolParams)).map(([key, value]) => `\\- *${key.replace(/[_]/g, ' ')}*: ${value}`),
+      ...Object.entries(JSON.parse(toolParams)).map(([key, value]) => prettifyKeyValue(key, `${value}`)),
     ].join('\n')
 
     if (typeof toolClient.options_string === 'function') {
