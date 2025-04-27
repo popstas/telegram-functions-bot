@@ -10,13 +10,17 @@ let lastResponse: Message.TextMessage | undefined
 let forDelete: Message.TextMessage | undefined
 
 // splits a big message into smaller messages to avoid Telegram API limits
+import telegramifyMarkdown from 'telegramify-markdown';
+// Используем telegramifyMarkdown.escapeMarkdownV2 и telegramifyMarkdown.escapeMarkdown для экранирования Markdown-текста
+
 export function splitBigMessage(text: string) {
   const msgs: string[] = []
   const sizeLimit = 4096
   let msg = ''
-  for (const line of text.split('\n')) {
-    if (msg.length + line.length > sizeLimit) {
-      // console.log("split msg:", msg);
+  for (const origLine of text.split('\n')) {
+    const line = origLine.trim()
+    if (!line) continue // skip empty or whitespace-only lines
+    if (msg.length + line.length + 1 > sizeLimit) { // +1 for the added '\n'
       if (msg.trim()) msgs.push(msg)
       msg = ''
     }
@@ -25,23 +29,8 @@ export function splitBigMessage(text: string) {
   if (msg.length > sizeLimit) {
     msg = msg.slice(0, sizeLimit - 3) + '...'
   }
-  msgs.push(msg)
+  if (msg.trim()) msgs.push(msg)
   return msgs
-}
-
-export function getTelegramForwardedUser(msg: Message.TextMessage & { forward_origin?: any }) {
-  const forwardOrigin = msg.forward_origin;
-  if (!forwardOrigin) return '';
-
-  const username = forwardOrigin?.sender_user?.username;
-  const isOurUser = username && useConfig().privateUsers?.includes(username);
-  if (isOurUser) return '';
-
-  const name = forwardOrigin.type === 'hidden_user' ?
-    forwardOrigin.sender_user_name :
-    `${forwardOrigin.sender_user?.first_name ?? ''} ${forwardOrigin.sender_user?.last_name ?? ''}`.trim();
-
-  return `${name}${username ? `, Telegram: @${username}` : ''}`;
 }
 
 export async function sendTelegramMessage(chat_id: number, text: string, extraMessageParams?: any, ctx?: Context, chatConfig?: ConfigChatType): Promise<Message.TextMessage | undefined> {
@@ -49,25 +38,66 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
     chatConfig = chatConfig || useConfig().chats.find(c => c.bot_name === ctx?.botInfo.username) || {} as ConfigChatType
 
     let response: Message.TextMessage | undefined;
-    const msgs = splitBigMessage(text)
-    // if (msgs.length > 1) console.log(`Split into ${msgs.length} messages`)
-
-    const params = {
+    const params: any = {
       ...extraMessageParams,
       // disable_web_page_preview: true,
       // disable_notification: true,
       // parse_mode: 'HTML'
+    };
+
+    // Автоматически определить режим разметки, если не задан явно
+    if (!params.parse_mode) {
+      if (text.trim().startsWith('<')) {
+        params.parse_mode = 'HTML';
+      } else {
+        params.parse_mode = 'MarkdownV2';
+      }
     }
+
+    // Очистка HTML, если требуется
+    function sanitizeTelegramHtml(html: string): string {
+      // Заменяем <p> и </p> на двойной перенос строки
+      let result = html.replace(/<p[^>]*>/gi, '').replace(/<\/p>/gi, '\n\n');
+      // Удаляем <span> и </span>
+      result = result.replace(/<span[^>]*>/gi, '').replace(/<\/span>/gi, '');
+      // Все варианты <br>, <br/>, <br /> заменяем на \n
+      result = result.replace(/<br\s*\/?>/gi, '\n');
+      // Telegram не поддерживает &nbsp; — заменяем на пробел
+      result = result.replace(/&nbsp;/gi, ' ');
+      // Удаляем лишние пустые строки
+      result = result.replace(/\n{3,}/g, '\n\n');
+      return result.trim();
+    }
+
+    let processedText = text;
+    if (params.parse_mode === 'HTML') {
+      processedText = sanitizeTelegramHtml(text);
+    } else if (params.parse_mode === 'MarkdownV2') {
+      // @ts-expect-error: telegramify-markdown типы не совпадают с реальным API
+      processedText = telegramifyMarkdown(text, { mode: 'v2' });
+    } else if (params.parse_mode === 'Markdown') {
+      // @ts-expect-error: telegramify-markdown типы не совпадают с реальным API
+      processedText = telegramifyMarkdown(text, { mode: 'classic' });
+    }
+    const msgs = splitBigMessage(processedText);
 
     for (const msg of msgs) {
       try {
-        response = await useBot(chatConfig.bot_token).telegram.sendMessage(chat_id, msg, params)
-      } catch (e) {
-        // const err = e as { message: string }
-        // log({msg: `failover sendTelegramMessage without markdown: ${err.message.slice(512)}`, chatId: chat_id, logLevel: 'warn'})
-        const failsafeParams = {reply_markup: params.reply_markup}
-        response = await useBot(chatConfig.bot_token).telegram.sendMessage(chat_id, msg, failsafeParams)
-        // await useBot(chatConfig.bot_token).telegram.sendMessage(chat_id, `${err.message}`, params)
+        response = await useBot(chatConfig.bot_token).telegram.sendMessage(chat_id, msg, params);
+      } catch (e: any) {
+        // Fallback: if error is 'bot was blocked by the user', handle gracefully
+        if (e?.response?.error_code === 403) {
+          // Telegram error 403: bot was blocked by the user
+          console.warn(`User ${chat_id} blocked the bot. Skipping message.`);
+          // Optionally: flag user in DB or take other action
+          continue;
+        }
+        // Fallback to failsafeParams for other errors
+        // Previous fallback code:
+        // const failsafeParams = { reply_markup: params.reply_markup };
+        // response = await useBot(chatConfig.bot_token).telegram.sendMessage(chat_id, msg, failsafeParams);
+        const failsafeParams = { reply_markup: params.reply_markup };
+        response = await useBot(chatConfig.bot_token).telegram.sendMessage(chat_id, msg, failsafeParams);
       }
     }
 
@@ -86,7 +116,6 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
 
     // deleteAfterNext message
     if (params.deleteAfterNext) {
-      // TODO: respect chat_id
       forDelete = response
     }
 
@@ -213,3 +242,19 @@ export function getCtxChatMsg(ctx: Context) {
 
   return {chat, msg}
 }
+
+export function getTelegramForwardedUser(msg: Message.TextMessage & { forward_origin?: any }) {
+  const forwardOrigin = msg.forward_origin;
+  if (!forwardOrigin) return '';
+
+  const username = forwardOrigin?.sender_user?.username;
+  const isOurUser = username && useConfig().privateUsers?.includes(username);
+  if (isOurUser) return '';
+
+  const name = forwardOrigin.type === 'hidden_user' ?
+    forwardOrigin.sender_user_name :
+    `${forwardOrigin.sender_user?.first_name ?? ''} ${forwardOrigin.sender_user?.last_name ?? ''}`.trim();
+
+  return `${name}${username ? `, Telegram: @${username}` : ''}`;
+}
+

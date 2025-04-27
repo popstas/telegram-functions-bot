@@ -178,12 +178,12 @@ async function answerToMessage(ctx: Context & {
     await ctx.persistentChatAction('typing', async () => {
       if (!msg) return
       const res = await getChatgptAnswer(msg, chat, ctx)
-      let text = res?.content || 'бот не ответил'
-      text = telegramifyMarkdown(`${text}`)
+      const text = res?.content || 'бот не ответил'
+      // text = telegramifyMarkdown(`${text}`)
 
       const extraParams: any = {
         ...extraMessageParams,
-        ...{parse_mode: 'MarkdownV2'}
+        // ...{parse_mode: 'MarkdownV2'}
       }
 
       const buttons = chat.buttonsSynced || chat.buttons

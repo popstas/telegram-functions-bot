@@ -90,7 +90,7 @@ export async function processToolResponse({
     const isMcp = chatTool?.module.call(chatConfig, gptContext.thread).mcp;
     const showMessages = chatConfig.chatParams?.showToolMessages !== false && !isMcp;
     if (showMessages) {
-      const params = {parse_mode: 'MarkdownV2', deleteAfter: chatConfig.chatParams?.deleteToolAnswers};
+      const params = {/*parse_mode: 'MarkdownV2',*/ deleteAfter: chatConfig.chatParams?.deleteToolAnswers};
       const toolResMessageLimit = 8000;
       const msgContentLimited = toolRes.content.length > toolResMessageLimit ? 
         toolRes.content.slice(0, toolResMessageLimit) + '...' : 
@@ -304,19 +304,101 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
     const toolClient = chatTool.module.call(chatConfig, thread);
     // let toolParamsStr = '`' + toolCall.function.name + '()`:\n```\n' + toolParams + '\n```'
 
-    function prettifyKeyValue(key: string, value: string) {
+    function joinWithOr(arr: string[]): string {
+      if (arr.length === 0) return '';
+      if (arr.length === 1) return arr[0];
+      return arr.slice(0, -1).join(', ') + ' or ' + arr[arr.length - 1];
+    }
+
+    function prettifyKey(key?: string): string {
+      if (!key) return '';
+      // replace _ or - with space
       key = key.replace(/[_-]/g, ' ');
       // split camelCase
       key = key.replace(/([a-z])([A-Z])/g, '$1 $2');
       // uppercase first letter
       key = key.charAt(0).toUpperCase() + key.slice(1);
-      return `\\- *${key}:* ${value}`
+      return key;
     }
-    let toolParamsStr = [
-      '`' + toolCall.function.name.replace(/[_-]/g, ' ') + ':`',
-      ...Object.entries(JSON.parse(toolParams)).map(([key, value]) => prettifyKeyValue(key, `${value}`)),
-    ].join('\n')
 
+    function prettifyExpertizemeSearchItems(params: Record<string, any>): string {
+      const lines: string[] = [
+        '`Поиск СМИ:`'
+      ];
+      // Render filters first, as flat list
+      if (Array.isArray(params.filters)) {
+        for (const filter of params.filters) {
+          if (typeof filter === 'object' && filter !== null) {
+            const field = prettifyKey(filter.field) || '';
+            const operator = filter.operator || '';
+            const value = filter.value;
+            let valueStr = '';
+            if (Array.isArray(value)) {
+              valueStr = joinWithOr(value);
+            } else {
+              valueStr = value !== undefined ? String(value) : '';
+            }
+            // Special case: if operator is 'not', output 'not Value', else 'Value'
+            const opStr = operator === 'not' ? 'not ' : '';
+            lines.push(`- **${field}**: ${opStr}${valueStr}`);
+          }
+        }
+      }
+      // Render other fields (skip filters, sortField, sortDirection, limit)
+      for (const [key, value] of Object.entries(params)) {
+        if (['filters', 'limit', 'sortField', 'sortDirection', 'groupBy'].includes(key)) continue;
+        if (Array.isArray(value)) {
+          lines.push(`- **${prettifyKey(key)}**: ${joinWithOr(value)}`);
+        } else {
+          lines.push(`- **${prettifyKey(key)}**: ${value}`);
+        }
+      }
+
+      // Special line for sortField/sortDirection
+      if (params.sortField) {
+        const sortLine = '- **Sort by** ' + prettifyKey(params.sortField) +
+          (params.sortDirection === 'desc' ? ' (descending)' : '');
+        lines.push(sortLine);
+      }
+      if(params.groupBy) {
+        const groupByLine = '- **Group by** ' + prettifyKey(params.groupBy);
+        lines.push(groupByLine);
+      }
+
+      return lines.join('\n');
+    }
+
+    function prettifyKeyValue(key: string, value: any, level = 0): string {
+      key = prettifyKey(key);
+      const prefix = '  '.repeat(level) + '-';
+      if (value !== null && typeof value === 'object') {
+        if (Array.isArray(value)) {
+          if (value.length === 0) return `${prefix} *${key}:* (empty)`;
+          return [
+            `${prefix} *${key}:*`,
+            ...value.map((v, i) => prettifyKeyValue(String(i), v, level + 1))
+          ].join('\n');
+        } else {
+          const entries = Object.entries(value);
+          if (entries.length === 0) return `${prefix} *${key}:* (empty)`;
+          return [
+            `${prefix} *${key}:*`,
+            ...entries.map(([k, v]) => prettifyKeyValue(k, v, level + 1))
+          ].join('\n');
+        }
+      }
+      return `${prefix} *${key}:* ${value}`;
+    }
+
+    let toolParamsStr: string;
+    if (chatTool.name === 'expertizeme_search_items') {
+      toolParamsStr = prettifyExpertizemeSearchItems(JSON.parse(toolParams));
+    } else {
+      toolParamsStr = [
+        '`' + toolCall.function.name.replace(/[_-]/g, ' ') + ':`',
+        ...Object.entries(JSON.parse(toolParams)).map(([key, value]) => prettifyKeyValue(key, value)),
+      ].join('\n');
+    }
     if (typeof toolClient.options_string === 'function') {
       toolParamsStr = toolClient.options_string(toolParams)
     }
@@ -328,12 +410,12 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
 
     if (toolParams && !chatConfig.chatParams?.confirmation) {
       // send message with tool call params
-      log({ msg: toolParamsStr, chatId, chatTitle, role: 'assistant' });
+      log({ msg: `${toolCall.function.name}: ${toolParams}`, chatId, chatTitle, role: 'assistant' });
       if (showMessages) {
         // @ts-expect-error - see below for explanation
         sendToHttp(expressRes, toolParamsStr);
         void await sendTelegramMessage(chatId, toolParamsStr, {
-          parse_mode: 'MarkdownV2',
+          // parse_mode: 'MarkdownV2',
           deleteAfter: chatConfig.chatParams?.deleteToolAnswers,
         }, undefined, chatConfig);
       }
@@ -351,7 +433,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
     // @ts-expect-error - see below for explanation
     sendToHttp(expressRes, `${toolParamsStr}\nDo you want to proceed?`);
     return await sendTelegramMessage(msg.chat.id, `${toolParamsStr}\n\nDo you want to proceed?`, {
-      parse_mode: 'MarkdownV2',
+      // parse_mode: 'MarkdownV2',
       reply_markup: {
         inline_keyboard: [
           [
