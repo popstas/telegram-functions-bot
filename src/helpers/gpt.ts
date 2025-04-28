@@ -143,7 +143,7 @@ export async function processToolResponse({
   };
 
   const {trace} = useLangfuse({
-    name: `${chatConfig.name}-${msg.message_id}`,
+    name: `${chatConfig.name}-${msg.from?.username}-${msg.message_id}`,
     sessionId: String(msg.chat.id),      // ← сюда
     userId: msg.from?.username ?? "anon", // или любой ваш идентификатор
     input: {                             // опционально: сразу прокинуть текст запроса
@@ -251,7 +251,7 @@ export async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: Con
     tools,
   };
   const {trace} = useLangfuse({
-    name: `${chatConfig.name}-${msg.message_id}`,
+    name: `${chatConfig.name}-${msg.from?.username}-${msg.message_id}`,
     sessionId: String(msg.chat.id),      // ← сюда
     userId: msg.from?.username ?? "anon", // или любой ваш идентификатор
     input: {                             // опционально: сразу прокинуть текст запроса
@@ -482,7 +482,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
     // Execute the tool without confirmation
     if (!chatConfig.chatParams?.confirmation) {
       const {trace} = useLangfuse({
-        name: `${chatConfig.name}-${msg.message_id}`,
+        name: `${chatConfig.name}-${msg.from?.username}-${msg.message_id}`,
         sessionId: String(msg.chat.id),      // ← сюда
         userId: msg.from?.username ?? "anon", // или любой ваш идентификатор
         input: {                             // опционально: сразу прокинуть текст запроса
