@@ -24,6 +24,7 @@
     "https-proxy-agent": "^7.0.2",
     "js-tiktoken": "^1.0.15",
     "js-yaml": "^4.1.0",
+    "langfuse": "^3.37.2",
     "lodash.debounce": "^4.0.8",
     "openai": "^4.67.2",
     "recursive-readdir": "^2.2.3",

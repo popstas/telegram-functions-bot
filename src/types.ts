@@ -61,6 +61,11 @@ export type ConfigType = {
   mcpServers?: Record<string, McpToolConfig>
   chats: ConfigChatType[]
   logLevel?: 'debug' | 'info' | 'warn' | 'error'
+  langfuse?: {
+    secretKey: string;
+    publicKey: string;
+    baseUrl: string;
+  }
 }
 
 export type HttpConfigType = {

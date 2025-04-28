@@ -8,6 +8,8 @@ Telegram bot with functions tools.
 - Bot can use tools to get answer
 - Better fallback answer when telegram markdown is wrong
 - Agent-like pipelines: bot can use several tools to get answer
+- MCP support: use external tools and services to get answer
+- Langfuse support: track chat history and tool usage
 
 ## Pipeline
 - Receive question
@@ -114,6 +116,18 @@ MCP (Model Context Protocol) provides external tools and services to the bot. MC
 - The available tool names are fetched from the MCP servers listed in `config.mcpServers`.
 
 Refer to the MCP and Claude Desktop documentation for further details on server configuration and tool discovery.
+
+## Langfuse Setup
+
+This bot supports [Langfuse](https://langfuse.com/) for tracing, analytics, and observability of chat and tool usage.
+
+Add your Langfuse credentials to your config (e.g., `config.yml`):
+```yaml
+langfuse:
+  secretKey: <your_secret_key>
+  publicKey: <your_public_key>
+  baseUrl: https://cloud.langfuse.com
+```
 
 ## Running Tests
 

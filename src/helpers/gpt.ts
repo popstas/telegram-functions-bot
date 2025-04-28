@@ -12,6 +12,8 @@ import {addToHistory, forgetHistory} from "./history.ts";
 import {isAdminUser} from "./telegram.ts";
 import {useApi} from "./useApi.ts";
 import useTools from "./useTools.ts";
+import useLangfuse from "./useLangfuse.ts";
+import {LangfuseTraceClient, observeOpenAI} from "langfuse";
 
 type HandleGptAnswerParams = {
   msg: Message.TextMessage;
@@ -20,6 +22,7 @@ type HandleGptAnswerParams = {
   expressRes: express.Response | undefined;
   gptContext: GptContextType;
   level?: number;
+  trace?: LangfuseTraceClient | null;
 }
 
 type ProcessToolResponseParams = {
@@ -38,7 +41,8 @@ export async function handleGptAnswer({
   chatConfig,
   expressRes,
   gptContext,
-  level = 1
+  level = 1,
+  trace,
 }: HandleGptAnswerParams): Promise<ToolResponse> {
   const messageAgent = res.choices[0]?.message;
   if (!messageAgent) {
@@ -62,6 +66,18 @@ export async function handleGptAnswer({
 
   const answer = res.choices[0]?.message.content || '';
   addToHistory({msg, answer});
+
+  if (trace) {
+    // trace.event({
+    //   name: "message_sent",
+    //   output: 
+    //   { text: answer },
+    // });
+    trace.update({
+      output: answer,
+    });
+  }
+
 
   if (gptContext.thread.messages.find((m: OpenAI.ChatCompletionMessageParam) => m.role === 'tool') && chatConfig.chatParams.memoryless) {
     forgetHistory(msg.chat.id);
@@ -118,13 +134,30 @@ export async function processToolResponse({
   const isNoTool = level > 6 || !gptContext.tools?.length;
 
   const api = useApi();
-  const res = await api.chat.completions.create({
+  const apiParams = {
     messages: gptContext.messages,
     model: gptContext.thread.completionParams?.model || 'gpt-4o-mini',
     temperature: gptContext.thread.completionParams?.temperature,
     tools: isNoTool ? undefined : gptContext.tools,
-    tool_choice: isNoTool ? undefined : 'auto',
+    tool_choice: isNoTool ? undefined : 'auto' as OpenAI.Chat.Completions.ChatCompletionToolChoiceOption,
+  };
+
+  const {trace} = useLangfuse({
+    name: `${chatConfig.name}-${msg.message_id}`,
+    sessionId: String(msg.chat.id),      // ← сюда
+    userId: msg.from?.username ?? "anon", // или любой ваш идентификатор
+    input: {                             // опционально: сразу прокинуть текст запроса
+      text: msg.text
+    }
   });
+  let apiFunc = api;
+  if (trace) {
+    apiFunc = observeOpenAI(api, {
+      generationName: 'after-tools',
+      parent: trace, 
+    }); 
+  }
+  const res = await apiFunc.chat.completions.create(apiParams);
 
   return await handleGptAnswer({
     msg,
@@ -132,7 +165,8 @@ export async function processToolResponse({
     chatConfig,
     expressRes,
     gptContext,
-    level: level + 1
+    level: level + 1,
+    trace,
   });
 }
 
@@ -209,29 +243,53 @@ export async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: Con
   const messages = await buildMessages(systemMessage, thread.messages, chatTools, prompts);
 
   const api = useApi();
-  const res = await api.chat.completions.create({
+  const apiParams = {
     messages,
     model: thread.completionParams?.model || 'gpt-4o-mini',
     temperature: thread.completionParams?.temperature,
     // tool_choice: 'required',
     tools,
+  };
+  const {trace} = useLangfuse({
+    name: `${chatConfig.name}-${msg.message_id}`,
+    sessionId: String(msg.chat.id),      // ← сюда
+    userId: msg.from?.username ?? "anon", // или любой ваш идентификатор
+    input: {                             // опционально: сразу прокинуть текст запроса
+      text: msg.text
+    }
   });
-
+  let apiFunc = api;
+  if (trace) {
+    apiFunc = observeOpenAI(api, {
+      generationName: 'first-call',
+      parent: trace, 
+    }); 
+  }
+  const res = await apiFunc.chat.completions.create(apiParams);
+  /*const generation = trace.generation({
+    name: 'chat-completion',
+    model: apiParams.model,
+    modelParameters: {
+      temperature: apiParams.temperature,
+    },
+    input: apiParams.messages,
+  });*/
   const gptContext: GptContextType = {
     thread,
     messages,
     systemMessage,
     chatTools,
     prompts,
-    tools
+    tools,
   };
 
   return await handleGptAnswer({
     msg,
     res,
     chatConfig,
-        expressRes: ctx.expressRes,
-    gptContext
+    expressRes: ctx.expressRes,
+    gptContext,
+    trace,
   });
 }
 
@@ -423,7 +481,27 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
 
     // Execute the tool without confirmation
     if (!chatConfig.chatParams?.confirmation) {
+      const {trace} = useLangfuse({
+        name: `${chatConfig.name}-${msg.message_id}`,
+        sessionId: String(msg.chat.id),      // ← сюда
+        userId: msg.from?.username ?? "anon", // или любой ваш идентификатор
+        input: {                             // опционально: сразу прокинуть текст запроса
+          text: msg.text
+        }
+      });
+      // Start trace span for the tool call
+      let span;
+      if (trace) {
+        span = trace.span({
+          name: `tool_call: ${toolCall.function.name}`,
+          metadata: { tool: toolCall.function.name },
+          input: JSON.parse(toolParams)
+        });
+      }
       const result = await tool(toolParams) as ToolResponse;
+      if (span) {
+        span.end({ output: result.content });
+      }
       log({ msg: result.content, chatId, chatTitle, role: 'tool' });
       return result;
     }
