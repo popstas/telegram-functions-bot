@@ -18,11 +18,12 @@ export default function useLangfuse(msg: Message.TextMessage) {
       baseUrl: config.langfuse?.baseUrl,
     });
   }
-  const name = getChatTraceName(msg);
+  const sessionId = getChatSessionName(msg);
+  const name = `${sessionId} ${msg.message_id}`;
   if (!langfuses[name]) {
     const params = {
       name,
-      sessionId: String(msg.chat.id),
+      sessionId,
       userId: msg.from?.username ?? "anon",
       input: msg.text,
     }
@@ -33,8 +34,8 @@ export default function useLangfuse(msg: Message.TextMessage) {
 
 // return [chat name] [username] [message id]
 // "private [username]" for private chats
-function getChatTraceName(msg: Message.TextMessage) {
-  if (msg.chat.type === 'private') return `private ${msg.from?.username} ${msg.message_id}`
-  if (msg.chat.type === 'group') return `${msg.chat.title} ${msg.from?.username} ${msg.message_id}`
-  return `${msg.chat.title} ${msg.from?.username} ${msg.message_id}`
+function getChatSessionName(msg: Message.TextMessage) {
+  if (msg.chat.type === 'private') return `private ${msg.from?.username}`
+  if (msg.chat.type === 'group') return `${msg.chat.title} ${msg.from?.username}`
+  return `${msg.chat.title} ${msg.from?.username}`
 }
