@@ -142,14 +142,7 @@ export async function processToolResponse({
     tool_choice: isNoTool ? undefined : 'auto' as OpenAI.Chat.Completions.ChatCompletionToolChoiceOption,
   };
 
-  const {trace} = useLangfuse({
-    name: `${chatConfig.name}-${msg.from?.username}-${msg.message_id}`,
-    sessionId: String(msg.chat.id),      // ← сюда
-    userId: msg.from?.username ?? "anon", // или любой ваш идентификатор
-    input: {                             // опционально: сразу прокинуть текст запроса
-      text: msg.text
-    }
-  });
+  const {trace} = useLangfuse(msg);
   let apiFunc = api;
   if (trace) {
     apiFunc = observeOpenAI(api, {
@@ -250,18 +243,11 @@ export async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: Con
     // tool_choice: 'required',
     tools,
   };
-  const {trace} = useLangfuse({
-    name: `${chatConfig.name}-${msg.from?.username}-${msg.message_id}`,
-    sessionId: String(msg.chat.id),      // ← сюда
-    userId: msg.from?.username ?? "anon", // или любой ваш идентификатор
-    input: {                             // опционально: сразу прокинуть текст запроса
-      text: msg.text
-    }
-  });
+  const {trace} = useLangfuse(msg);
   let apiFunc = api;
   if (trace) {
     apiFunc = observeOpenAI(api, {
-      generationName: 'first-call',
+      generationName: 'llm-call',
       parent: trace, 
     }); 
   }
@@ -481,14 +467,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
 
     // Execute the tool without confirmation
     if (!chatConfig.chatParams?.confirmation) {
-      const {trace} = useLangfuse({
-        name: `${chatConfig.name}-${msg.from?.username}-${msg.message_id}`,
-        sessionId: String(msg.chat.id),      // ← сюда
-        userId: msg.from?.username ?? "anon", // или любой ваш идентификатор
-        input: {                             // опционально: сразу прокинуть текст запроса
-          text: msg.text
-        }
-      });
+      const {trace} = useLangfuse(msg);
       // Start trace span for the tool call
       let span;
       if (trace) {
