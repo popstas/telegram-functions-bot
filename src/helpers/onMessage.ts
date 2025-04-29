@@ -2,7 +2,7 @@ import {Context, Markup} from "telegraf";
 import {useThreads} from "../threads.ts";
 import {Chat, Message} from "telegraf/types";
 import {ConfigChatButtonType, ConfigChatType} from "../types.ts";
-import {getCtxChatMsg, getTelegramForwardedUser, isAdminUser, sendTelegramMessage} from "./telegram.ts";
+import {getCtxChatMsg, isAdminUser, sendTelegramMessage} from "./telegram.ts";
 import {syncButtons, useConfig} from "../config.ts";
 import {log} from "../helpers.ts";
 import {addToHistory, forgetHistory} from "./history.ts";
@@ -63,12 +63,6 @@ export default async function onMessage(ctx: Context & { secondTry?: boolean }, 
 
   // console.log('chat:', chat)
   const extraMessageParams = ctx.message?.message_id ? {reply_to_message_id: ctx.message?.message_id} : {}
-
-  // add "Forwarded from" to message
-  const forwardedName = getTelegramForwardedUser(msg);
-  if (forwardedName) {
-    msg.text = `Переслано от: ${forwardedName}\n` + msg.text;
-  }
 
   // replace msg.text to button.prompt if match button.name
   let matchedButton: ConfigChatButtonType | undefined = undefined

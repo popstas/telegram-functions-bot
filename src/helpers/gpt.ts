@@ -3,7 +3,7 @@ import {ChatToolType, ConfigChatType, GptContextType, ToolResponse, ThreadStateT
 import {useBot} from "../bot.ts";
 import {useThreads} from "../threads.ts";
 import {getEncoding, TiktokenEncoding} from "js-tiktoken";
-import {sendTelegramMessage} from "./telegram.ts";
+import {sendTelegramMessage, getTelegramForwardedUser} from "./telegram.ts";
 import {Chat, Message} from "telegraf/types";
 import {log, sendToHttp} from '../helpers.ts';
 import {Context} from "telegraf";
@@ -251,6 +251,12 @@ export async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: Con
 }) {
   if (!msg.text) return
   const threads = useThreads()
+
+  // add "Forwarded from" to message
+  const forwardedName = getTelegramForwardedUser(msg);
+  if (forwardedName) {
+    msg.text = `Переслано от: ${forwardedName}\n` + msg.text;
+  }
 
   // begin answer, define thread
   let thread = threads[msg.chat?.id || 0]
