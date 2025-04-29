@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import {ChatToolType, ConfigChatType, GptContextType, ToolResponse} from "../types.ts";
+import {ChatToolType, ConfigChatType, GptContextType, ToolResponse, ThreadStateType, ToolBotType, ModuleType} from "../types.ts";
 import {useBot} from "../bot.ts";
 import {useThreads} from "../threads.ts";
 import {getEncoding, TiktokenEncoding} from "js-tiktoken";
@@ -14,6 +14,89 @@ import {useApi} from "./useApi.ts";
 import useTools from "./useTools.ts";
 import useLangfuse from "./useLangfuse.ts";
 import {LangfuseTraceClient, observeOpenAI} from "langfuse";
+import { useConfig } from "../config.ts";
+
+/**
+ * Creates a ChatToolType that proxies tool calls to another bot by bot_name.
+ * The internal tool call will use the chat config of the target bot.
+ */
+export function chatAsTool({ bot_name, name, description, msg }: ToolBotType & { msg: Message.TextMessage }): ChatToolType {
+  return {
+    name,
+    module: {
+      description,
+      call: (configChat: ConfigChatType, thread: ThreadStateType) => {
+        // Find the chat config for the bot_name
+        const targetChat = useConfig().chats.find(c => c.bot_name === bot_name);
+        if (!targetChat) throw new Error(`Bot with bot_name '${bot_name}' not found`);
+        // Proxy to the target bot's tool call (assuming the bot is set up as a tool provider)
+        // This assumes the target bot exposes a compatible tool interface
+        // You may want to customize this logic for your specific bot integration
+        return {
+          agent: true,
+          functions: {
+            get: (toolName: string) => async (args: string) => {
+              try {
+                // Parse args as message text or object
+                let parsedArgs: any;
+                try {
+                  parsedArgs = typeof args === 'string' ? JSON.parse(args) : args;
+                } catch (err) {
+                  parsedArgs = { text: args };
+                }
+                // Build a synthetic Message.TextMessage for the proxy call
+                // const msg: Message.TextMessage = {
+                //   message_id: Date.now(),
+                //   date: Math.floor(Date.now() / 1000),
+                //   chat: targetChat,
+                //   from: { id: 0, is_bot: true, first_name: 'ToolProxy', username: 'tool_proxy' },
+                //   text: parsedArgs.input || parsedArgs.text || args,
+                //   ...parsedArgs,
+                // };
+                // Minimal synthetic context for getChatgptAnswer
+                // const ctx: Partial<Context> = {
+                //   botInfo: { username: targetChat.bot_name },
+                //   chat: targetChat,
+                // };
+
+                msg.text = parsedArgs.input || parsedArgs.text || args;
+
+                const agentStartMsg = `Получил ваше сообщение: ${msg.text}`;
+                sendTelegramMessage(msg.chat.id, agentStartMsg, undefined, undefined, targetChat);
+
+                const res = await getChatgptAnswer(msg, targetChat);
+                const answer = res?.content || '';
+                sendTelegramMessage(msg.chat.id, answer, undefined, undefined, targetChat);
+                return { content: answer };
+              } catch (err: any) {
+                return { content: `Proxy tool error for bot '${bot_name}': ${err?.message || err}` };
+              }
+            },
+            toolSpecs: {
+              type: "function",
+              function: {
+                name,
+                description: description || `Proxy tool for bot ${bot_name}`,
+                parameters: {
+                  type: "object",
+                  properties: {
+                    input: {
+                      type: "string",
+                      description: "Input text for the tool (task, query, etc.)"
+                    }
+                  },
+                  required: ["input"]
+                },
+              },
+            },
+          },
+          configChat: targetChat,
+          thread,
+        } as ModuleType;
+      },
+    },
+  };
+}
 
 type HandleGptAnswerParams = {
   msg: Message.TextMessage;
@@ -79,7 +162,7 @@ export async function handleGptAnswer({
   }
 
 
-  if (gptContext.thread.messages.find((m: OpenAI.ChatCompletionMessageParam) => m.role === 'tool') && chatConfig.chatParams.memoryless) {
+  if (gptContext.thread.messages.find((m: OpenAI.ChatCompletionMessageParam) => m.role === 'tool') && chatConfig.chatParams?.memoryless) {
     forgetHistory(msg.chat.id);
   }
   
@@ -142,7 +225,7 @@ export async function processToolResponse({
     tool_choice: isNoTool ? undefined : 'auto' as OpenAI.Chat.Completions.ChatCompletionToolChoiceOption,
   };
 
-  const {trace} = useLangfuse(msg);
+  const {trace} = useLangfuse(msg, chatConfig);
   let apiFunc = api;
   if (trace) {
     apiFunc = observeOpenAI(api, {
@@ -163,14 +246,25 @@ export async function processToolResponse({
   });
 }
 
-export async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChatType, ctx: Context & {
+export async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: ConfigChatType, ctx?: Context & {
   expressRes?: express.Response
 }) {
   if (!msg.text) return
   const threads = useThreads()
 
   // begin answer, define thread
-  const thread = threads[msg.chat?.id || 0]
+  let thread = threads[msg.chat?.id || 0]
+
+  // add virtual thread for agentAsTool
+  if (!thread) {
+    // TODO: remove
+    thread = threads[msg.chat?.id] = {
+      id: msg.chat?.id,
+      msgs: [],
+      messages: [],
+      completionParams: chatConfig.completionParams,
+    }
+  }
 
   // tools change_chat_settings for private chats and admins
   if (msg.chat.type === 'private' || isAdminUser(msg)) {
@@ -178,17 +272,21 @@ export async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: Con
     if (!chatConfig.tools.includes('change_chat_settings')) chatConfig.tools.push('change_chat_settings')
   }
 
-  // after loading normal tools, init MCP servers
+  // add chatAsTool for each bot_name in chatConfig.tools if tool is ToolBotType
+  let agentTools: ChatToolType[] = [];
+  if (chatConfig.tools) {
+    const agentsToolsConfigs = chatConfig.tools.filter(t => typeof t === 'object' && 'bot_name' in t) as ToolBotType[]
+    agentTools = agentsToolsConfigs.map(t => chatAsTool({...t, msg}))
+  }
+      
+    
+  
+  // init MCP servers into useTools
   const globalTools = await useTools()
-  // register MCP endpoint as tool
-  // const mcpTools = chatConfig.mcp
-    // ? await initMcp(chatConfig.mcp) : [];
-  // const tools = [...globalTools, ...mcpTools];
   const chatTools = [
     ...((chatConfig.tools ?? []).map(f => globalTools.find(g => g.name === f)).filter(Boolean) as ChatToolType[]),
-    // ...mcpTools
+    ...agentTools
   ].filter(Boolean)
-  // console.log('mcpTools', mcpTools)
 
   // prompts from tools, should be after tools
   const promptsPromises = await Promise.all(
@@ -220,8 +318,7 @@ export async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: Con
   const isTools = chatTools.length > 0;
   const tools = isTools ? [
     ...chatTools.map(f => f.module.call(chatConfig, thread).functions.toolSpecs).flat(),
-    // ...mcpTools,
-  ] : undefined;
+  ] as OpenAI.Chat.Completions.ChatCompletionTool[] : undefined;
 
   // systemMessage
   let systemMessage = getSystemMessage(chatConfig, systemMessages)
@@ -243,7 +340,7 @@ export async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: Con
     // tool_choice: 'required',
     tools,
   };
-  const {trace} = useLangfuse(msg);
+  const {trace} = useLangfuse(msg, chatConfig);
   let apiFunc = api;
   if (trace) {
     apiFunc = observeOpenAI(api, {
@@ -273,7 +370,7 @@ export async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: Con
     msg,
     res,
     chatConfig,
-    expressRes: ctx.expressRes,
+    expressRes: ctx?.expressRes,
     gptContext,
     trace,
   });
@@ -439,7 +536,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
       toolParamsStr = prettifyExpertizemeSearchItems(JSON.parse(toolParams));
     } else {
       toolParamsStr = [
-        '`' + toolCall.function.name.replace(/[_-]/g, ' ') + ':`',
+        '`' + (toolClient.agent ? 'Agent: ' : '') + toolCall.function.name.replace(/[_-]/g, ' ') + ':`',
         ...Object.entries(JSON.parse(toolParams)).map(([key, value]) => prettifyKeyValue(key, value)),
       ].join('\n');
     }
@@ -472,7 +569,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
       let span;
       if (trace) {
         span = trace.span({
-          name: `tool_call: ${toolCall.function.name}`,
+          name: toolClient.agent ? `agent_call: ${toolCall.function.name}` : `tool_call: ${toolCall.function.name}`,
           metadata: { tool: toolCall.function.name },
           input: JSON.parse(toolParams)
         });
@@ -502,7 +599,7 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
     });
   });
 
-  if (chatConfig.chatParams.confirmation) {
+  if (chatConfig.chatParams?.confirmation) {
     // Handle the callback query
     return new Promise((resolve) => {
       useBot(chatConfig.bot_token!).action(`confirm_tool_${uniqueId}`, async () => {

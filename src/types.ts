@@ -3,6 +3,12 @@ import OpenAI from "openai";
 import {GoogleAuth, OAuth2Client} from 'google-auth-library';
 import {CredentialBody} from "google-auth-library/build/src/auth/credentials";
 
+export type ToolBotType = {
+  bot_name: string;
+  name: string;
+  description?: string;
+};
+
 export type ConfigChatType = {
   name: string
   completionParams: CompletionParamsType
@@ -17,7 +23,7 @@ export type ConfigChatType = {
   buttons?: ConfigChatButtonType[]
   buttonsSync?: ButtonsSyncConfigType
   buttonsSynced?: ConfigChatButtonType[]
-  tools?: string[]
+  tools?: (string | ToolBotType)[]
   chatParams: ChatParamsType
   toolParams: ToolParamsType
 }
@@ -121,6 +127,7 @@ export type ModuleType = {
     toolSpecs: OpenAI.ChatCompletionTool
   }
   mcp?: boolean
+  agent?: boolean
   options_string?: (args: string) => string
   systemMessage?: () => string
   prompt_append?: () => string

@@ -1,10 +1,10 @@
 import {Telegraf} from 'telegraf'
 import {Message} from 'telegraf/types'
-import {ConfigChatType, ChatToolType, ToolParamsType} from './types'
+import {ConfigChatType, ChatToolType, ToolParamsType, ToolBotType} from './types'
 import {generatePrivateChatConfig, useConfig, writeConfig} from './config'
 import {useBot} from './bot'
-import {getActionUserMsg, getCtxChatMsg, sendTelegramMessage} from './helpers/telegram'
-import {getSystemMessage, getTokensCount} from './helpers/gpt'
+import {getActionUserMsg, getCtxChatMsg, sendTelegramMessage} from './helpers/telegram.ts'
+import {getSystemMessage, getTokensCount, chatAsTool} from './helpers/gpt.ts'
 import {forgetHistory} from "./helpers/history.ts";
 import {commandGoogleOauth} from "./helpers/google.ts";
 import useTools from "./helpers/useTools.ts";
@@ -94,7 +94,7 @@ export async function commandAddTool(msg: Message.TextMessage, chatConfig: Confi
       if (!chatConfig.tools.includes(tool.name)) {
         chatConfig.tools.push(tool.name)
       }
-      chatConfig.tools = chatConfig.tools.filter(t => !excluded.includes(t))
+      chatConfig.tools = chatConfig.tools.filter(t => (typeof t === 'object' && 'bot_name' in t) || !excluded.includes(t))
 
       if (!chatConfig.toolParams) chatConfig.toolParams = {} as ToolParamsType
       if (tool.module.defaultParams) {
@@ -113,14 +113,18 @@ export async function commandAddTool(msg: Message.TextMessage, chatConfig: Confi
   return await sendTelegramMessage(msg.chat.id, text, params, undefined, chatConfig)
 }
 
-export async function getToolsInfo(tools: string[]) {
+export async function getToolsInfo(tools: (string | ToolBotType)[]) {
   const globalTools = await useTools();
+  const agentTools = tools.filter(f => (typeof f === 'object' && 'bot_name' in f)).map((f: ToolBotType) => {
+    return `- ${f.name}${f.description ? ` - ${f.description}` : ''}`;
+  });
   return tools
     .filter(f => f !== 'change_chat_settings')
     .map(f => globalTools.find(g => g.name === f) as ChatToolType).filter(Boolean)
     .map(f => `- ${f.name}${f.module.description ? ` - ${f.module.description}` : ''}`)
-}
+    .concat(agentTools)
 
+}
 export async function getInfoMessage(msg: Message.TextMessage, chatConfig: ConfigChatType) {
   const systemMessage = getSystemMessage(chatConfig, [])
   const tokens = getTokensCount(chatConfig, systemMessage)

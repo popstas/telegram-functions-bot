@@ -10,6 +10,7 @@ Telegram bot with functions tools.
 - Agent-like pipelines: bot can use several tools to get answer
 - MCP support: use external tools and services to get answer
 - Langfuse support: track chat history and tool usage
+- Use agents as tools
 
 ## Pipeline
 - Receive question
@@ -69,6 +70,44 @@ chats:
 - If you launch two bots with the same token, Telegram will throw a 409 Conflict error. The bot automatically avoids this by deduplication.
 - You must set `bot_name` in a chat config.
 - You can set `privateUsers` in a chat config for extended access control.
+
+## Use agents as tools
+You can use one bot as a tool (agent) inside another bot. This allows you to compose complex workflows, delegate tasks, or chain multiple bots together.
+
+### How it works
+
+- In your chat config, add a tool entry with `bot_name`, `name`, and `description`.
+- The main bot will expose this agent as a tool function. When called, it will internally send the request to the specified bot, as if a user messaged it.
+- The agent bot processes the request and returns the result to the main bot, which includes it in the final answer.
+
+### Example config
+
+```yaml
+chats:
+  - name: Main Bot
+    id: 10001
+    tools:
+      - bot_name: tool_bot
+        name: add_task
+        description: "Adds a task to the task list."
+  - name: Bot as tool
+    id: 10002
+    bot_name: tool_bot
+    bot_token: "987654:tool-token"
+    systemMessage: "You accept a task text and return a structured task."
+```
+
+### Example usage
+
+- The main bot exposes the `add_task` tool.
+- When the tool is called (e.g., by function-calling or via a button), the main bot sends the input text to `tool_bot`.
+- The result (e.g., task created or error) is sent back and included in the main bot’s response.
+
+### Notes
+- The agent bot must be configured in `config.yml` with a unique `bot_name`.
+- The tool interface expects an `input` argument (the text to send to the agent).
+- You can chain multiple agents and tools for advanced workflows.
+
 
 ## MCP Integration
 

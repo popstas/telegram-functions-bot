@@ -9,7 +9,6 @@ import {addToHistory, forgetHistory} from "./history.ts";
 import {setLastCtx} from "./lastCtx.ts";
 import {addOauthToThread, ensureAuth} from "./google.ts";
 import {getChatgptAnswer} from "./gpt.ts";
-import telegramifyMarkdown from "telegramify-markdown";
 
 export default async function onMessage(ctx: Context & { secondTry?: boolean }, next?: () => any, callback?: (msg: Message.TextMessage) => any) {
   const threads = useThreads()

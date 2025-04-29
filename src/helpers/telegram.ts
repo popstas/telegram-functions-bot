@@ -5,13 +5,10 @@ import {ConfigChatButtonType, ConfigChatType} from "../types.ts";
 import {Context} from "telegraf";
 import {User} from "@telegraf/types/manage";
 import {log} from "../helpers.ts";
+import telegramifyMarkdown from 'telegramify-markdown';
 
 let lastResponse: Message.TextMessage | undefined
 let forDelete: Message.TextMessage | undefined
-
-// splits a big message into smaller messages to avoid Telegram API limits
-import telegramifyMarkdown from 'telegramify-markdown';
-// Используем telegramifyMarkdown.escapeMarkdownV2 и telegramifyMarkdown.escapeMarkdown для экранирования Markdown-текста
 
 export function splitBigMessage(text: string) {
   const msgs: string[] = []
@@ -73,11 +70,12 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
     if (params.parse_mode === 'HTML') {
       processedText = sanitizeTelegramHtml(text);
     } else if (params.parse_mode === 'MarkdownV2') {
-      // @ts-expect-error: telegramify-markdown типы не совпадают с реальным API
-      processedText = telegramifyMarkdown(text, { mode: 'v2' });
+      // const replacedNewlines = text.replace(/\n/g, '#n');
+      // const ZWSP = '\u200B';
+      processedText = telegramifyMarkdown(processedText, 'keep');
+      // processedText = processedText.replace(/\\#n/g, `\n${ZWSP}`);
     } else if (params.parse_mode === 'Markdown') {
-      // @ts-expect-error: telegramify-markdown типы не совпадают с реальным API
-      processedText = telegramifyMarkdown(text, { mode: 'classic' });
+      processedText = telegramifyMarkdown(text, 'keep');
     }
     const msgs = splitBigMessage(processedText);
 
@@ -88,7 +86,7 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
         // Fallback: if error is 'bot was blocked by the user', handle gracefully
         if (e?.response?.error_code === 403) {
           // Telegram error 403: bot was blocked by the user
-          console.warn(`User ${chat_id} blocked the bot. Skipping message.`);
+          log({msg: `User ${chat_id} blocked the bot. Skipping message.`, chatId: chat_id, logLevel: 'warn'});
           // Optionally: flag user in DB or take other action
           continue;
         }

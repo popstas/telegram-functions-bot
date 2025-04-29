@@ -1,6 +1,7 @@
 import {ChatToolType, ConfigChatType, ToolResponse, ModuleType, ThreadStateType} from "../types.ts";
 import {readdirSync} from "fs";
 import {log} from "../helpers.ts";
+import {OpenAI} from "openai";
 
 let globalTools: ChatToolType[] = []
 
@@ -52,7 +53,7 @@ export async function initTools() {
                 description,
                 parameters: properties,
               }
-            },
+            } as OpenAI.Chat.Completions.ChatCompletionTool,
           },
         } as ModuleType;
         function newMcp(configChat: ConfigChatType, thread: ThreadStateType): ModuleType {
