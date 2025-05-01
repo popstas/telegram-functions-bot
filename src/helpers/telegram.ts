@@ -137,6 +137,13 @@ export function buildButtonRows(buttons: ConfigChatButtonType[]) {
   return buttonRows
 }
 
+function isAccessAllowed(chatConfig: ConfigChatType, ctxChat: Chat) {
+  const privateChat = ctxChat as Chat.PrivateChat
+  const allowedUsers = [...(chatConfig.privateUsers ?? useConfig().privateUsers), ...(useConfig().adminUsers ?? [])]
+  const username = privateChat.username || 'without_username'
+  return allowedUsers.includes(username)
+}
+
 function getChatConfig(ctxChat: Chat, ctx: Context) {
   // 1. by chat id
   let chat = useConfig().chats.find(c => c.id == ctxChat?.id || c.ids?.includes(ctxChat?.id) || 0) || {} as ConfigChatType
@@ -149,12 +156,7 @@ function getChatConfig(ctxChat: Chat, ctx: Context) {
 
     // check access to private chat
     if (chat.id && ctxChat?.type === 'private') {
-      const privateChat = ctxChat as Chat.PrivateChat
-      const username = privateChat.username || 'without_username'
-      const isAllowed = [
-        ...(useConfig().privateUsers || []),
-        ...(chat.privateUsers || [])].includes(username) || useConfig().adminUsers?.includes(username)
-      if (!isAllowed) {
+      if (!isAccessAllowed(chat, ctxChat)) {
         return
       }
     }
@@ -176,10 +178,7 @@ function getChatConfig(ctxChat: Chat, ctx: Context) {
       const privateChat = ctxChat as Chat.PrivateChat
 
       // check access
-      const username = privateChat.username || 'without_username'
-      const isAllowed = useConfig().privateUsers?.includes(username) ||
-        useConfig().adminUsers?.includes(username)
-      if (!isAllowed) {
+      if (!isAccessAllowed(chat, ctxChat)) {
         return
       }
 
@@ -241,12 +240,12 @@ export function getCtxChatMsg(ctx: Context) {
   return {chat, msg}
 }
 
-export function getTelegramForwardedUser(msg: Message.TextMessage & { forward_origin?: any }) {
+export function getTelegramForwardedUser(msg: Message.TextMessage & { forward_origin?: any }, chatConfig: ConfigChatType) {
   const forwardOrigin = msg.forward_origin;
   if (!forwardOrigin) return '';
 
   const username = forwardOrigin?.sender_user?.username;
-  const isOurUser = username && useConfig().privateUsers?.includes(username);
+  const isOurUser = username && [chatConfig.privateUsers, useConfig().privateUsers].flat().includes(username);
   if (isOurUser) return '';
 
   const name = forwardOrigin.type === 'hidden_user' ?

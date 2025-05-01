@@ -20,15 +20,15 @@ import { useConfig } from "../config.ts";
  * Creates a ChatToolType that proxies tool calls to another bot by bot_name.
  * The internal tool call will use the chat config of the target bot.
  */
-export function chatAsTool({ bot_name, name, description, msg }: ToolBotType & { msg: Message.TextMessage }): ChatToolType {
+export function chatAsTool({ bot_name, name, description, tool_use_behavior, prompt_append, msg }: ToolBotType & { msg: Message.TextMessage }): ChatToolType {
   return {
     name,
     module: {
       description,
       call: (configChat: ConfigChatType, thread: ThreadStateType) => {
         // Find the chat config for the bot_name
-        const targetChat = useConfig().chats.find(c => c.bot_name === bot_name);
-        if (!targetChat) throw new Error(`Bot with bot_name '${bot_name}' not found`);
+        const agentChatConfig = useConfig().chats.find(c => c.bot_name === bot_name);
+        if (!agentChatConfig) throw new Error(`Bot with bot_name '${bot_name}' not found`);
         // Proxy to the target bot's tool call (assuming the bot is set up as a tool provider)
         // This assumes the target bot exposes a compatible tool interface
         // You may want to customize this logic for your specific bot integration
@@ -41,33 +41,38 @@ export function chatAsTool({ bot_name, name, description, msg }: ToolBotType & {
                 let parsedArgs: any;
                 try {
                   parsedArgs = typeof args === 'string' ? JSON.parse(args) : args;
-                } catch (err) {
+                } catch {
                   parsedArgs = { text: args };
                 }
                 // Build a synthetic Message.TextMessage for the proxy call
                 // const msg: Message.TextMessage = {
                 //   message_id: Date.now(),
                 //   date: Math.floor(Date.now() / 1000),
-                //   chat: targetChat,
+                //   chat: agentChatConfig,
                 //   from: { id: 0, is_bot: true, first_name: 'ToolProxy', username: 'tool_proxy' },
                 //   text: parsedArgs.input || parsedArgs.text || args,
                 //   ...parsedArgs,
                 // };
                 // Minimal synthetic context for getChatgptAnswer
                 // const ctx: Partial<Context> = {
-                //   botInfo: { username: targetChat.bot_name },
-                //   chat: targetChat,
+                //   botInfo: { username: agentChatConfig.bot_name },
+                //   chat: agentChatConfig,
                 // };
 
                 msg.text = parsedArgs.input || parsedArgs.text || args;
 
                 const agentStartMsg = `Получил ваше сообщение: ${msg.text}`;
-                sendTelegramMessage(msg.chat.id, agentStartMsg, undefined, undefined, targetChat);
+                sendTelegramMessage(msg.chat.id, agentStartMsg, undefined, undefined, agentChatConfig);
 
-                const res = await getChatgptAnswer(msg, targetChat);
+                const res = await getChatgptAnswer(msg, agentChatConfig);
                 const answer = res?.content || '';
-                sendTelegramMessage(msg.chat.id, answer, undefined, undefined, targetChat);
-                return { content: answer };
+                sendTelegramMessage(msg.chat.id, answer, undefined, undefined, agentChatConfig);
+                if (tool_use_behavior === 'stop_on_first_tool') {
+                  // agent make final answer
+                  sendTelegramMessage(msg.chat.id, answer, undefined, undefined, configChat);
+                  return { content: ''};
+                }
+                return {content: answer};
               } catch (err: any) {
                 return { content: `Proxy tool error for bot '${bot_name}': ${err?.message || err}` };
               }
@@ -90,7 +95,10 @@ export function chatAsTool({ bot_name, name, description, msg }: ToolBotType & {
               },
             },
           },
-          configChat: targetChat,
+          prompt_append() {
+            return prompt_append;
+          },
+          configChat: agentChatConfig,
           thread,
         } as ModuleType;
       },
@@ -194,7 +202,7 @@ export async function processToolResponse({
       const msgContentLimited = toolRes.content.length > toolResMessageLimit ? 
         toolRes.content.slice(0, toolResMessageLimit) + '...' : 
         toolRes.content;
-            sendToHttp(expressRes, msgContentLimited);
+      sendToHttp(expressRes, msgContentLimited);
       void sendTelegramMessage(msg.chat.id, msgContentLimited, params, undefined, chatConfig);
     }
 
@@ -210,8 +218,6 @@ export async function processToolResponse({
   gptContext.messages = await buildMessages(
     gptContext.systemMessage, 
     gptContext.thread.messages, 
-    gptContext.chatTools, 
-    gptContext.prompts
   );
 
   const isNoTool = level > 6 || !gptContext.tools?.length;
@@ -253,7 +259,7 @@ export async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: Con
   const threads = useThreads()
 
   // add "Forwarded from" to message
-  const forwardedName = getTelegramForwardedUser(msg);
+  const forwardedName = getTelegramForwardedUser(msg, chatConfig);
   if (forwardedName) {
     msg.text = `Переслано от: ${forwardedName}\n` + msg.text;
   }
@@ -272,54 +278,11 @@ export async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: Con
     }
   }
 
-  // tools change_chat_settings for private chats and admins
-  if (msg.chat.type === 'private' || isAdminUser(msg)) {
-    if (!chatConfig.tools) chatConfig.tools = []
-    if (!chatConfig.tools.includes('change_chat_settings')) chatConfig.tools.push('change_chat_settings')
-  }
 
-  // add chatAsTool for each bot_name in chatConfig.tools if tool is ToolBotType
-  let agentTools: ChatToolType[] = [];
-  if (chatConfig.tools) {
-    const agentsToolsConfigs = chatConfig.tools.filter(t => typeof t === 'object' && 'bot_name' in t) as ToolBotType[]
-    agentTools = agentsToolsConfigs.map(t => chatAsTool({...t, msg}))
-  }
-      
-    
-  
-  // init MCP servers into useTools
-  const globalTools = await useTools()
-  const chatTools = [
-    ...((chatConfig.tools ?? []).map(f => globalTools.find(g => g.name === f)).filter(Boolean) as ChatToolType[]),
-    ...agentTools
-  ].filter(Boolean)
+  const chatTools = await getChatTools(msg, chatConfig)
 
   // prompts from tools, should be after tools
-  const promptsPromises = await Promise.all(
-    chatTools
-      .map(async f => {
-        const module = f.module.call(chatConfig, thread)
-        if (typeof module.prompt_append === 'function') {
-          return module.prompt_append()
-        }
-        return null
-      })
-      .filter(f => !!f)
-  )
-  const prompts = promptsPromises.filter(Boolean) as string[]
-  // systemMessages from tools, should be after tools
-  const systemMessagesPromises = await Promise.all(
-    chatTools
-      .map(async f => {
-        const module = f.module.call(chatConfig, thread)
-        if (typeof module.systemMessage === 'function') {
-          return module.systemMessage()
-        }
-        return null
-      })
-      .filter(Boolean)  
-  );
-  const systemMessages = systemMessagesPromises.filter(Boolean) as string[]
+  const prompts = await getToolsPrompts(chatTools, chatConfig, thread);
 
   const isTools = chatTools.length > 0;
   const tools = isTools ? [
@@ -327,7 +290,7 @@ export async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: Con
   ] as OpenAI.Chat.Completions.ChatCompletionTool[] : undefined;
 
   // systemMessage
-  let systemMessage = getSystemMessage(chatConfig, systemMessages)
+  let systemMessage = await getSystemMessage(chatConfig, chatTools)
   const date = new Date().toISOString()
   systemMessage = systemMessage.replace(/\{date}/g, date)
   if (thread.nextSystemMessage) {
@@ -336,7 +299,7 @@ export async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: Con
   }
 
   // messages
-  const messages = await buildMessages(systemMessage, thread.messages, chatTools, prompts);
+  const messages = await buildMessages(systemMessage, thread.messages);
 
   const api = useApi();
   const apiParams = {
@@ -382,10 +345,7 @@ export async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: Con
   });
 }
 
-export async function buildMessages(systemMessage: string, history: OpenAI.ChatCompletionMessageParam[], chatTools: {
-  name: string,
-  module: unknown // or specify the actual type if possible
-}[], prompts: string[]) {
+export async function buildMessages(systemMessage: string, history: OpenAI.ChatCompletionMessageParam[]) {
   const limit = 7 // TODO: to config
   const messages: OpenAI.ChatCompletionMessageParam[] = [
     {
@@ -404,17 +364,14 @@ export async function buildMessages(systemMessage: string, history: OpenAI.ChatC
 
   messages.push(...history)
 
-  if (prompts.length) {
-    messages.push({role: 'system', content: prompts.join('\n\n')})
-  }
-
   return messages
 }
 
-export function getSystemMessage(chatConfig: ConfigChatType, systemMessages: string[]): string {
-  if (chatConfig.systemMessage) return chatConfig.systemMessage
-  if (systemMessages.length > 0) return systemMessages[0]
-  return 'You are using functions to answer the questions. Current date: {date}'
+export async function getSystemMessage(chatConfig: ConfigChatType, chatTools: ChatToolType[]): Promise<string> {
+  const systemMessages = await getToolsSystemMessages(chatTools, chatConfig, {} as ThreadStateType);
+  const system = chatConfig.systemMessage || systemMessages[0] || 'You are using functions to answer the questions. Current date: {date}'
+  const prompts = await getToolsPrompts(chatTools, chatConfig, {} as ThreadStateType);
+  return system + (prompts.length ? `\n\n${prompts.join('\n\n')}` : '')
 }
 
 export function getTokensCount(chatConfig: ConfigChatType, text: string) {
@@ -630,6 +587,78 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
   return Promise.all(toolPromises) as Promise<ToolResponse[]>
 }
 
+export async function getChatTools(msg: Message.TextMessage, chatConfig: ConfigChatType) {
+    // tools change_chat_settings for private chats and admins
+    if (msg.chat.type === 'private' || isAdminUser(msg)) {
+      if (!chatConfig.tools) chatConfig.tools = []
+      if (!chatConfig.tools.includes('change_chat_settings')) chatConfig.tools.push('change_chat_settings')
+    }
+  
+    // add chatAsTool for each bot_name in chatConfig.tools if tool is ToolBotType
+    let agentTools: ChatToolType[] = [];
+    if (chatConfig.tools) {
+      const agentsToolsConfigs = chatConfig.tools.filter(t => {
+        const isAgent = typeof t === 'object' && 'bot_name' in t
+        if (!isAgent) return false
+        const agentConfig = useConfig().chats.find(c => c.bot_name === t.bot_name)
+        if (!agentConfig) return false
+        
+        // check access when privateUsers is set
+        if (agentConfig.privateUsers) {
+          const isPrivateUser = agentConfig.privateUsers.includes(msg.from?.username || 'without_username')
+          if (!isPrivateUser) return false
+        }
+        
+        return true
+      }) as ToolBotType[]
+      agentTools = agentsToolsConfigs.map(t => chatAsTool({...t, msg}))
+    }
+        
+      
+    
+    // init MCP servers into useTools
+    const globalTools = await useTools()
+    const chatTools = [
+      ...((chatConfig.tools ?? []).map(f => globalTools.find(g => g.name === f)).filter(Boolean) as ChatToolType[]),
+      ...agentTools
+    ].filter(Boolean)
+
+    return chatTools
+}
+
+// Get prompts from tools
+async function getToolsPrompts(chatTools: ChatToolType[], chatConfig: ConfigChatType, thread: ThreadStateType): Promise<string[]> {
+  const promptsPromises = await Promise.all(
+    chatTools
+      .map(async f => {
+        const module = f.module.call(chatConfig, thread)
+        if (typeof module.prompt_append === 'function') {
+          return module.prompt_append()
+        }
+        return null
+      })
+      .filter(f => !!f)
+  )
+  const prompts = promptsPromises.filter(Boolean) as string[]
+  return prompts || []
+}
+
+async function getToolsSystemMessages(chatTools: ChatToolType[], chatConfig: ConfigChatType, thread: ThreadStateType) {
+  // systemMessages from tools, should be after tools
+  const systemMessagesPromises = await Promise.all(
+    chatTools
+      .map(async f => {
+        const module = f.module.call(chatConfig, thread)
+        if (typeof module.systemMessage === 'function') {
+          return module.systemMessage()
+        }
+        return null
+      })
+      .filter(Boolean)
+  );
+  const systemMessages = systemMessagesPromises.filter(Boolean) as string[]
+  return systemMessages
+}
 // join "arguments.command" values with \n when same name, return array unique by name
 /*export function groupToolCalls(toolCalls: OpenAI.ChatCompletionMessageToolCall[]) {
   const grouped = {} as { [key: string]: OpenAI.ChatCompletionMessageToolCall[] };

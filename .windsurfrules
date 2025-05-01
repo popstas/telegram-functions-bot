@@ -26,3 +26,4 @@ Scripts in package.json:
 Rules:
 - Run `npm run lint:fix` to fix lint errors, then run `npm run lint` to check if there are no errors.
 - Run `npm run format:check` to check if there are no formatting errors. If there are, run `npm run format` to fix them.
+- Use path to file as `format` and `format:check` commands

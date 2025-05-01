@@ -7,6 +7,8 @@ export type ToolBotType = {
   bot_name: string;
   name: string;
   description?: string;
+  tool_use_behavior?: 'run_llm_again' | 'stop_on_first_tool';
+  prompt_append?: string;
 };
 
 export type ConfigChatType = {

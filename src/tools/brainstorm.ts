@@ -52,7 +52,7 @@ export class BrainstormClient extends AIFunctionsProvider {
     const systemMessage = options.systemMessage + (prompt ? `\n\n${prompt}` : '');
 
     const thread = this.thread
-    const messages = await buildMessages(systemMessage, thread.messages, [], []);
+    const messages = await buildMessages(systemMessage, thread.messages);
 
     const api = useApi();
     const res = await api.chat.completions.create({

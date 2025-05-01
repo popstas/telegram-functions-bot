@@ -4,7 +4,7 @@ import {ConfigChatType, ChatToolType, ToolParamsType, ToolBotType} from './types
 import {generatePrivateChatConfig, useConfig, writeConfig} from './config'
 import {useBot} from './bot'
 import {getActionUserMsg, getCtxChatMsg, sendTelegramMessage} from './helpers/telegram.ts'
-import {getSystemMessage, getTokensCount, chatAsTool} from './helpers/gpt.ts'
+import {getSystemMessage, getTokensCount, getChatTools} from './helpers/gpt.ts'
 import {forgetHistory} from "./helpers/history.ts";
 import {commandGoogleOauth} from "./helpers/google.ts";
 import useTools from "./helpers/useTools.ts";
@@ -59,7 +59,7 @@ export async function commandAddTool(msg: Message.TextMessage, chatConfig: Confi
   const excluded = ['change_chat_settings']
   const globalTools = await useTools();
   const tools = globalTools.filter(t => !excluded.includes(t.name)).map(t => t.name)
-  const toolsInfo = await getToolsInfo(tools)
+  const toolsInfo = await getToolsInfo(tools, msg)
   const text = `Available tools:\n\n${toolsInfo.join('\n\n')}\n\nSelect tool to add:`
   const config = useConfig()
 
@@ -113,9 +113,23 @@ export async function commandAddTool(msg: Message.TextMessage, chatConfig: Confi
   return await sendTelegramMessage(msg.chat.id, text, params, undefined, chatConfig)
 }
 
-export async function getToolsInfo(tools: (string | ToolBotType)[]) {
+export async function getToolsInfo(tools: (string | ToolBotType)[], msg: Message.TextMessage) {
   const globalTools = await useTools();
-  const agentTools = tools.filter(f => (typeof f === 'object' && 'bot_name' in f)).map((f: ToolBotType) => {
+  const agentsToolsConfigs = tools.filter(t => {
+    const isAgent = typeof t === 'object' && 'bot_name' in t
+    if (!isAgent) return false
+    const agentConfig = useConfig().chats.find(c => c.bot_name === t.bot_name)
+    if (!agentConfig) return false
+    
+    // check access when privateUsers is set
+    if (agentConfig.privateUsers) {
+      const isPrivateUser = agentConfig.privateUsers.includes(msg.from?.username || 'without_username')
+      if (!isPrivateUser) return false
+    }
+    
+    return true
+  }) as ToolBotType[]
+  const agentTools = agentsToolsConfigs.map((f: ToolBotType) => {
     return `- ${f.name}${f.description ? ` - ${f.description}` : ''}`;
   });
   return tools
@@ -126,7 +140,8 @@ export async function getToolsInfo(tools: (string | ToolBotType)[]) {
 
 }
 export async function getInfoMessage(msg: Message.TextMessage, chatConfig: ConfigChatType) {
-  const systemMessage = getSystemMessage(chatConfig, [])
+  const chatTools = await getChatTools(msg, chatConfig)
+  const systemMessage = await getSystemMessage(chatConfig, chatTools)
   const tokens = getTokensCount(chatConfig, systemMessage)
 
   const lines = [
@@ -151,7 +166,7 @@ export async function getInfoMessage(msg: Message.TextMessage, chatConfig: Confi
   }
 
   if (chatConfig.tools) {
-    const tools = await getToolsInfo(chatConfig.tools)
+    const tools = await getToolsInfo(chatConfig.tools, msg)
     lines.push(`Tools:\n${tools.join('\n\n')}`)
   }
 
