@@ -117,6 +117,8 @@ export function logConfigChanges(oldConfig: ConfigType, newConfig: ConfigType) {
   if (oldConfigYaml !== newConfigYaml) {
     const diff = generateDiff(oldConfigYaml, newConfigYaml);
     log({msg: `Config changes:\n${diff}`});
+    writeFileSync('data/last-config-change.diff', diff);
+
   }
 }
 
