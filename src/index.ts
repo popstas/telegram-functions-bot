@@ -157,7 +157,12 @@ async function telegramPostHandler(req: express.Request, res: express.Response) 
   const newCtx = {
     ...ctx,
     update: virtualCtx.update,
-    chat: virtualCtx.chat
+    chat: virtualCtx.chat,
+    // replace to fake action
+    persistentChatAction: async (action: string, callback: () => Promise<void>) => {
+      log({msg: `persistentChatAction stub`});
+      return await callback();
+    },
   } as Context & {
     expressRes?: Express.Response;
   };
