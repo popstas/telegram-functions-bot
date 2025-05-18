@@ -10,8 +10,9 @@ RUN npm install
 FROM node:20-alpine
 
 # install ssh, Python and pip, then uv (includes uvx)
-#RUN apk update \
-#    && apk add --no-cache openssh python3 py3-pip \
+RUN apk update \
+   && apk add --no-cache openssh
+#   python3 py3-pip \
 #    && python3 -m pip install --upgrade pip \
 #    && pip install uv
 

@@ -7,13 +7,14 @@ import {User} from "@telegraf/types/manage";
 import {log} from "../helpers.ts";
 import telegramifyMarkdown from 'telegramify-markdown';
 
-let lastResponse: Message.TextMessage | undefined
+// let lastResponse: Message.TextMessage | undefined
 let forDelete: Message.TextMessage | undefined
 
 export function splitBigMessage(text: string) {
   const msgs: string[] = []
   const sizeLimit = 4096
   let msg = ''
+
   for (const origLine of text.split('\n')) {
     const line = origLine.trim()
     if (!line) continue // skip empty or whitespace-only lines
@@ -42,9 +43,29 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
       // parse_mode: 'HTML'
     };
 
+    // strip <final_answer> tags, preserve content
+    text = text.replace(/<final_answer>(.*?)<\/final_answer>/ms, '$1');
+
+    // Если начинается на <think>, то выделять текст внутри <think></think> и отправлять отдельным сообщением
+    if (text.trim().startsWith('<think>')) {
+      let thinkBody = text.trim();
+      thinkBody = thinkBody.slice('<think>'.length);
+      thinkBody = thinkBody.replace(/<\/think>.*/ms, '');
+      const thinkText = '`think:`\n' + thinkBody.trim();
+      text = text.replace(/<think>.*?<\/think>/ms, '').trim();
+      if (!params.parse_mode) {
+        if (text.trim().startsWith('<') && !text.trim().startsWith('<think>')) {
+          params.parse_mode = 'HTML';
+        } else {
+          params.parse_mode = 'MarkdownV2';
+        }
+      }
+      await sendTelegramMessage(chat_id, thinkText, params, ctx, chatConfig);
+    }
+
     // Автоматически определить режим разметки, если не задан явно
     if (!params.parse_mode) {
-      if (text.trim().startsWith('<')) {
+      if (text.trim().startsWith('<') && !text.trim().startsWith('<think>')) {
         params.parse_mode = 'HTML';
       } else {
         params.parse_mode = 'MarkdownV2';
@@ -77,6 +98,7 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
     } else if (params.parse_mode === 'Markdown') {
       processedText = telegramifyMarkdown(text, 'keep');
     }
+
     const msgs = splitBigMessage(processedText);
 
     for (const msg of msgs) {
@@ -117,7 +139,7 @@ export async function sendTelegramMessage(chat_id: number, text: string, extraMe
       forDelete = response
     }
 
-    lastResponse = response
+    // lastResponse = response
     resolve(response)
   })
 }

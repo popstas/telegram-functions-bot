@@ -34,11 +34,11 @@ export class ChangeChatSettingsClient extends AIFunctionsProvider {
     description,
     inputSchema: z.object({
       confirmation: z.boolean().optional().describe('Whether to ask for confirmation before running a tool'),
-      deleteToolAnswers: z.union([z.boolean(), z.number()]).optional().describe('Whether to delete tool answers after a certain time'),
+      deleteToolAnswers: z.number().optional().describe('Whether to delete tool answers after a certain time'),
       debug: z.boolean().optional(),
       memoryless: z.boolean().optional().describe('Whether to forget the context after each message'),
       forgetTimeout: z.number().optional().describe('Time in seconds to forget the context after'),
-      showToolMessages: z.union([z.boolean(), z.literal('headers')]).optional().describe('Whether to show tool messages, "headers" means only tool calls'),
+      showToolMessages: z.union([z.boolean(), z.literal('headers')]).optional().describe('Whether to show tool messages, headers means only tool calls'),
     }),
   })
   async change_chat_settings(settings: ToolArgsType) {

@@ -139,6 +139,25 @@ export async function handleGptAnswer({
   if (!messageAgent) {
     throw new Error('No message found in OpenAI response');
   }
+
+  // Extract legacy <tool_call> blocks if tool_calls is absent or empty
+  if (!messageAgent.tool_calls || messageAgent.tool_calls.length === 0) {
+    const toolCallMatches = messageAgent.content?.matchAll(/<tool_call>([\s\S]*?)<\/tool_call>/g);
+    if (toolCallMatches) {
+      const tool_calls = [];
+      for (const match of toolCallMatches) {
+        try {
+          const toolCallObj = JSON.parse(match[1]);
+          tool_calls.push(toolCallObj);
+        } catch {
+          // Optionally handle JSON parse errors
+        }
+      }
+      if (tool_calls.length > 0) {
+        messageAgent.tool_calls = tool_calls;
+      }
+    }
+  }
   
   if (messageAgent.tool_calls?.length) {
     const tool_res = await callTools(messageAgent.tool_calls, gptContext.chatTools, chatConfig, msg, expressRes);
@@ -222,10 +241,12 @@ export async function processToolResponse({
 
   const isNoTool = level > 6 || !gptContext.tools?.length;
 
-  const api = useApi();
+  const api = useApi(chatConfig.model);
+  const modelExternal = chatConfig.model ? useConfig().models.find((m) => m.name === chatConfig.model) : undefined;
+  const model = modelExternal ? modelExternal.model : gptContext.thread.completionParams?.model || 'gpt-4.1-mini';
   const apiParams = {
     messages: gptContext.messages,
-    model: gptContext.thread.completionParams?.model || 'gpt-4o-mini',
+    model,
     temperature: gptContext.thread.completionParams?.temperature,
     tools: isNoTool ? undefined : gptContext.tools,
     tool_choice: isNoTool ? undefined : 'auto' as OpenAI.Chat.Completions.ChatCompletionToolChoiceOption,
@@ -301,10 +322,12 @@ export async function getChatgptAnswer(msg: Message.TextMessage, chatConfig: Con
   // messages
   const messages = await buildMessages(systemMessage, thread.messages);
 
-  const api = useApi();
+  const api = useApi(chatConfig.model);
+  const modelExternal = chatConfig.model ? useConfig().models.find((m) => m.name === chatConfig.model) : undefined;
+  const model = modelExternal ? modelExternal.model : thread.completionParams?.model || 'gpt-4.1-mini';
   const apiParams = {
     messages,
-    model: thread.completionParams?.model || 'gpt-4o-mini',
+    model,
     temperature: thread.completionParams?.temperature,
     // tool_choice: 'required',
     tools,

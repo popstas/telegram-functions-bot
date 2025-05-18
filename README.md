@@ -109,6 +109,23 @@ chats:
 - You can chain multiple agents and tools for advanced workflows.
 
 
+## ollama models
+Add to config.yml model, use ollama url and model name, then define `model` in the chat settings:
+```
+models:
+  - name: qwen3:4b
+    model: qwen3:4b
+    url: http://192.168.1.1:11434
+chats:
+  - id: 123
+    name: Chat with qwen
+    model: qwen3:4b
+```
+
+`/info` should return actual using model.
+
+
+
 ## MCP Integration
 
 MCP (Model Context Protocol) provides external tools and services to the bot. MCP servers are defined in the `config.mcpServers` file, which lists available MCP endpoints used by all chats.

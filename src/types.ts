@@ -13,6 +13,7 @@ export type ToolBotType = {
 
 export type ConfigChatType = {
   name: string
+  model?: string
   completionParams: CompletionParamsType
   bot_token?: string
   bot_name?: string
@@ -32,7 +33,7 @@ export type ConfigChatType = {
 
 export type ChatParamsType = {
   confirmation?: boolean
-  deleteToolAnswers?: boolean | number
+  deleteToolAnswers?: number
   debug?: boolean // TODO: impl
   memoryless?: boolean
   forgetTimeout?: number // in seconds
@@ -62,6 +63,11 @@ export type ConfigType = {
     }
     proxy_url?: string
   }
+  models: {
+    name: string
+    url: string
+    model: string
+  }[]
   http: HttpConfigType
   adminUsers?: string[]
   privateUsers: string[]
@@ -203,7 +209,7 @@ export type ToolParamsType = {
 
 // MCP tool configuration
 export interface McpToolConfig {
-  command: string;
-  args: string[];
+  command?: string;
+  args?: string[];
   env?: Record<string, string>;
 }

@@ -147,7 +147,7 @@ export async function getInfoMessage(msg: Message.TextMessage, chatConfig: Confi
   const lines = [
     `System: ${systemMessage.trim()}`,
     `Tokens: ${tokens}`,
-    `Model: ${chatConfig.completionParams.model}`
+    `Model: ${chatConfig.model || chatConfig.completionParams.model}`
   ]
 
   if (chatConfig.id) {
