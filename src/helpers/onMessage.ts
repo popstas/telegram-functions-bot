@@ -17,9 +17,12 @@ export default async function onMessage(ctx: Context & { secondTry?: boolean }, 
   setLastCtx(ctx);
 
   const {msg, chat}: {
-    msg: Message.TextMessage & { forward_origin?: any } | undefined;
+    msg: Message.TextMessage & { forward_origin?: any } | undefined
     chat: ConfigChatType | undefined
-  } = getCtxChatMsg(ctx);
+  } = getCtxChatMsg(ctx)
+
+  const botName = chat?.bot_name || useConfig().bot_name
+  let mentioned = false
 
   if (!msg) {
     console.log('no ctx message detected')
@@ -28,7 +31,8 @@ export default async function onMessage(ctx: Context & { secondTry?: boolean }, 
 
   // skip replies to other people
   if (msg.reply_to_message && msg.from?.username !== msg.reply_to_message.from?.username) {
-    if (msg.reply_to_message.from?.username !== useConfig().bot_name) return
+    if (msg.reply_to_message.from?.username !== botName) return
+    mentioned = true;
   }
 
   const chatTitle = (ctx.chat as Chat.TitleChat).title || ''
@@ -50,12 +54,17 @@ export default async function onMessage(ctx: Context & { secondTry?: boolean }, 
   }
 
   // prefix (when defined): answer only to prefixed message
-  if (chat.prefix) {
+  if (chat.prefix && !mentioned) {
     const re = new RegExp(`^${chat.prefix}`, 'i')
     const isBot = re.test(msg.text)
     if (!isBot) {
       // console.log("not to bot:", ctx.chat);
-      return
+      const mention = new RegExp(`@${botName}`, 'i')
+      mentioned = mention.test(msg.text)
+      if (!mentioned) {
+        log({msg: `Not mentioned, text: ${msg.text}`, logLevel: 'debug', chatId, chatTitle, role: 'user', username: msg?.from?.username})
+        return;
+      }
     }
   }
 
