@@ -212,4 +212,5 @@ export interface McpToolConfig {
   command?: string;
   args?: string[];
   env?: Record<string, string>;
+  serverUrl?: string;
 }
