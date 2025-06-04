@@ -37,10 +37,11 @@ export default async function onMessage(ctx: Context & { secondTry?: boolean }, 
 
   const chatTitle = (ctx.chat as Chat.TitleChat).title || ''
   const chatId = msg.chat.id
+  const isPrivate = msg.chat.type === 'private'
 
   if (!chat) {
-    log({msg: `Not in whitelist, from: ${JSON.stringify(msg.from)}`, chatId, chatTitle, logLevel: 'warn'})
-    const text = msg.chat.type === 'private' ?
+    log({msg: `Not in whitelist, from: ${JSON.stringify(msg.from)}, text: ${msg.text}`, chatId, chatTitle, logLevel: 'warn'})
+    const text = isPrivate ?
       `You are not in whitelist. Your username: ${msg.from?.username}` :
       `This chat is not in whitelist.\nYour username: ${msg.from?.username}, chat id: ${msg.chat.id}`
     const params = isAdminUser(msg) ? {
@@ -54,7 +55,7 @@ export default async function onMessage(ctx: Context & { secondTry?: boolean }, 
   }
 
   // prefix (when defined): answer only to prefixed message
-  if (chat.prefix && !mentioned) {
+  if (chat.prefix && !mentioned && !isPrivate) {
     const re = new RegExp(`^${chat.prefix}`, 'i')
     const isBot = re.test(msg.text)
     if (!isBot) {
