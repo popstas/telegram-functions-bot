@@ -427,9 +427,6 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
 
     const tool = chatTool.module.call(chatConfig, thread).functions.get(toolCall.function.name)
     if (!tool) return {content: `Tool not found! ${toolCall.function.name}`};
-    const toolParams = toolCall.function.arguments
-    const toolClient = chatTool.module.call(chatConfig, thread);
-    // let toolParamsStr = '`' + toolCall.function.name + '()`:\n```\n' + toolParams + '\n```'
 
     function joinWithOr(arr: string[]): string {
       if (arr.length === 0) return '';
@@ -517,6 +514,28 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
       return `${prefix} *${key}:* ${value}`;
     }
 
+    let toolParams = toolCall.function.arguments
+    const toolClient = chatTool.module.call(chatConfig, thread);
+    // let toolParamsStr = '`' + toolCall.function.name + '()`:\n```\n' + toolParams + '\n```'
+
+    // when tool === 'planfix_add_to_lead_task', parse toolParams, append to description: options.description += `\n\nПолный текст:\n${fromUsername ? `От ${fromUsername}\n\n` : ''}${msgs}`
+    if (toolCall.function.name === 'planfix_add_to_lead_task') {
+      const lastMessage = thread.msgs[thread.msgs.length - 1]
+      const fromUsername = lastMessage.from?.username || '';
+      const msgs = thread.messages
+        .filter(msg => ['user', 'system'].includes(msg.role))
+        .map(msg => msg.content)
+        .join('\n\n');
+      const toolParamsParsed = JSON.parse(toolParams) as {
+        message: string,
+      }
+      if (!toolParamsParsed.message) {
+        toolParamsParsed.message = '';
+      }
+      toolParamsParsed.message += `\n\nПолный текст:\n${fromUsername ? `От ${fromUsername}\n\n` : ''}${msgs}`
+      toolParams = JSON.stringify(toolParamsParsed)
+    }
+
     let toolParamsStr: string;
     if (chatTool.name === 'expertizeme_search_items') {
       toolParamsStr = prettifyExpertizemeSearchItems(JSON.parse(toolParams));
@@ -560,7 +579,30 @@ export async function callTools(toolCalls: OpenAI.ChatCompletionMessageToolCall[
           input: JSON.parse(toolParams)
         });
       }
-      const result = await tool(toolParams) as ToolResponse;
+      
+      // Function to execute the tool with retry logic
+      const executeTool = async (attempt = 0): Promise<ToolResponse> => {
+        try {
+          return await tool(toolParams) as ToolResponse;
+        } catch (error: unknown) {
+          const err = error as { status?: number; message?: string };
+          // Only retry on 400 errors and only once
+          if (err.status === 400 && err.message?.includes('Invalid parameter') && attempt === 0) {
+            log({ 
+              msg: `Retrying tool ${toolCall.function.name} after 400 error`, 
+              chatId: msg.chat.id, 
+              chatTitle: (msg.chat as Chat.TitleChat).title, 
+              role: 'tool',
+              logLevel: 'warn'
+            });
+            return executeTool(attempt + 1);
+          }
+          throw error; // Re-throw if not a 400 error or already retried
+        }
+      };
+      
+      const result = await executeTool();
+      
       if (span) {
         span.end({ output: result.content });
       }

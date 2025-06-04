@@ -171,6 +171,7 @@ export async function callMcp(
     } else {
       message = String(err);
     }
+    // TODO: Error after this: 400 Invalid parameter: messages with role 'tool' must be a response to a preceeding message with 'tool_calls'
     return { content: `MCP call error: ${message}` };
   }
 }
