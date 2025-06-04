@@ -30,21 +30,21 @@ export class ForgetClient extends AIFunctionsProvider {
     try {
       forgetHistory(this.thread.id);
       log({ 
-        msg: `Cleared conversation history for chat ${this.thread.id}`,
+        msg: `Forgot history for chat ${this.thread.id}`,
         logLevel: 'info',
         chatId: this.thread.id,
         role: 'system'
       });
-      return { content: 'Conversation history has been cleared.' };
+      return { content: 'Forgot history' };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       log({ 
-        msg: `Failed to clear history: ${errorMessage}`,
+        msg: `Failed to forget history: ${errorMessage}`,
         logLevel: 'error',
         chatId: this.thread.id,
         role: 'system'
       });
-      return { content: `Failed to clear history: ${errorMessage}` };
+      return { content: `Failed to forget history: ${errorMessage}` };
     }
   }
 
