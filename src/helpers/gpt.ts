@@ -207,6 +207,8 @@ export async function processToolResponse({
 }: ProcessToolResponseParams): Promise<ToolResponse> {
   gptContext.thread.messages.push(messageAgent);
   
+  let isForget = false;
+
   for (let i = 0; i < tool_res.length; i++) {
     const toolRes = tool_res[i];
     const toolCall = (messageAgent as {
@@ -231,7 +233,16 @@ export async function processToolResponse({
       tool_call_id: toolCall.id,
     } as OpenAI.ChatCompletionToolMessageParam;
 
+    if (toolCall.function.name === 'forget') {
+      isForget = true;
+    }
+
     gptContext.thread.messages.push(messageTool);
+  }
+
+  if (isForget) {
+    forgetHistory(msg.chat.id);
+    return {content: 'Forgot history, task completed.'};
   }
 
   gptContext.messages = await buildMessages(
