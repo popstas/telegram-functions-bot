@@ -1,3 +1,8 @@
+import { jest } from '@jest/globals';
+import { callTools } from '../../src/helpers/gpt';
+import { ConfigChatType } from '../../src/types';
+import { Message } from 'telegraf/types';
+
 // Mock the entire module to avoid ESM issues
 jest.mock('../../src/helpers/gpt', () => {
   const originalModule = jest.requireActual('../../src/helpers/gpt');
@@ -6,10 +11,6 @@ jest.mock('../../src/helpers/gpt', () => {
     callTools: jest.fn()
   };
 });
-
-import { callTools } from '../../src/helpers/gpt';
-import { ConfigChatType } from '../../src/types';
-import { Message } from 'telegraf/types';
 
 describe('callTools', () => {
   // Mock data

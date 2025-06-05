@@ -6,7 +6,7 @@
   "scripts": {
     "start": "tsx src/index.ts",
     "changelog": "npx conventional-changelog-cli -p angular -i CHANGELOG.md -s -r 0",
-    "test": "jest && npm run typecheck",
+    "test": "node --no-warnings=ExperimentalWarning --experimental-vm-modules node_modules/jest/bin/jest.js && npm run typecheck",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
@@ -36,6 +36,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
+    "@jest/globals": "^30.0.0-beta.3",
     "@tsconfig/recommended": "^1.0.2",
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",

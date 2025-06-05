@@ -1,3 +1,5 @@
+import { jest, beforeAll, afterAll } from '@jest/globals';
+
 export const mockConsole = () => {
   const originalConsole = { ...console };
   

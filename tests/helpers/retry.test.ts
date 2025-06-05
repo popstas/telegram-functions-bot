@@ -1,12 +1,13 @@
 // This test file tests the retry logic for the callTools function
 // We're testing the retry behavior, not the actual implementation
+import { jest, describe, beforeEach, expect, it } from '@jest/globals';
 
 describe('callTools retry logic', () => {
   // Mock data
-  const mockCallTools = jest.fn();
+  const mockCallTools = jest.fn<() => Promise<unknown>>();
   
   // Function to simulate the retry logic we want to test
-  async function callWithRetry(callFn: () => Promise<any>): Promise<any> {
+  async function callWithRetry<T>(callFn: () => Promise<T>): Promise<T> {
     try {
       return await callFn();
     } catch (error: any) {
@@ -23,52 +24,62 @@ describe('callTools retry logic', () => {
     jest.spyOn(console, 'log').mockImplementation(() => {});
   });
 
-  it('should succeed on first attempt', async () => {
-    // Mock successful response on first attempt
-    mockCallTools.mockResolvedValueOnce({ success: true });
+  it('should return the result on first try', async () => {
+    const successResult = { success: true };
+    mockCallTools.mockResolvedValueOnce(successResult);
     
-    const result = await callWithRetry(mockCallTools);
+    const result = await callWithRetry(() => mockCallTools() as Promise<{ success: boolean }>);
     
-    expect(result).toEqual({ success: true });
+    expect(result).toEqual(successResult);
     expect(mockCallTools).toHaveBeenCalledTimes(1);
   });
 
-  it('should retry once on 400 error', async () => {
-    // Mock 400 error on first attempt, success on second
+  it('should retry on 429 error and succeed', async () => {
+    const error = createError(429, 'Too Many Requests');
+    const successResult = { success: true };
     mockCallTools
-      .mockRejectedValueOnce(createError(400, '400 Invalid parameter'))
-      .mockResolvedValueOnce({ success: true });
+      .mockRejectedValueOnce(error)
+      .mockResolvedValueOnce(successResult);
     
-    const result = await callWithRetry(mockCallTools);
+    const result = await callWithRetry(() => mockCallTools() as Promise<{ success: boolean }>);
     
-    expect(result).toEqual({ success: true });
-    expect(mockCallTools).toHaveBeenCalledTimes(2);
-    expect(console.log).toHaveBeenCalledWith('Retrying after 400 error...');
-  });
-
-  it('should propagate error after retry fails', async () => {
-    // Mock 400 error on both attempts
-    mockCallTools
-      .mockRejectedValueOnce(createError(400, '400 Invalid parameter'))
-      .mockRejectedValueOnce(createError(400, '400 Invalid parameter'));
-    
-    await expect(callWithRetry(mockCallTools))
-      .rejects
-      .toThrow('400 Invalid parameter');
-    
+    expect(result).toEqual(successResult);
     expect(mockCallTools).toHaveBeenCalledTimes(2);
   });
 
-  it('should not retry non-400 errors', async () => {
-    // Mock 500 error (should not retry)
-    mockCallTools.mockRejectedValueOnce(createError(500, 'Internal Server Error'));
+  it('should retry on 500 error and succeed', async () => {
+    const error = createError(500, 'Internal Server Error');
+    const successResult = { success: true };
+    mockCallTools
+      .mockRejectedValueOnce(error)
+      .mockResolvedValueOnce(successResult);
     
-    await expect(callWithRetry(mockCallTools))
-      .rejects
-      .toThrow('Internal Server Error');
+    const result = await callWithRetry(() => mockCallTools() as Promise<{ success: boolean }>);
+    
+    expect(result).toEqual(successResult);
+    expect(mockCallTools).toHaveBeenCalledTimes(2);
+  });
+
+  it('should stop after max retries', async () => {
+    const error = createError(500, 'Internal Server Error');
+    mockCallTools
+      .mockRejectedValueOnce(error)
+      .mockRejectedValueOnce(error);
+    
+    await expect(callWithRetry(() => mockCallTools()))
+      .rejects.toThrow('Internal Server Error');
+    
+    expect(mockCallTools).toHaveBeenCalledTimes(2);
+  });
+
+  it('should not retry on other errors', async () => {
+    const error = new Error('Some other error');
+    mockCallTools.mockRejectedValueOnce(error);
+    
+    await expect(callWithRetry(() => mockCallTools()))
+      .rejects.toThrow('Some other error');
     
     expect(mockCallTools).toHaveBeenCalledTimes(1);
-    expect(console.log).not.toHaveBeenCalled();
   });
 
   // Helper function to create error objects

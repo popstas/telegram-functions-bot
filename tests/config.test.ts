@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { readConfig, writeConfig, generateConfig } from '../src/config.ts';
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';

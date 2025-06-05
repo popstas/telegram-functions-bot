@@ -1,0 +1,34 @@
+bot_name: replace_to_your_bot
+auth:
+  bot_token: replace_to_your_bot_token
+  chatgpt_api_key: replace_to_your_chatgpt_api_key
+  proxy_url: http://user:pass@host:port
+adminUsers:
+  - your_telegram_username
+privateUsers: []
+mcpServers:
+  fetch:
+    command: uvx
+    args:
+      - mcp-server-fetch
+chats:
+  - name: default
+    completionParams:
+      model: gpt-4o-mini
+    systemMessage: "You are using functions to answer the questions. Current date: {date}"
+    tools:
+      - javascript_interpreter
+      - brainstorm
+      - fetch
+    chatParams:
+      forgetTimeout: 600
+      deleteToolAnswers: 60
+      confirmation: false
+      showToolMessages: true
+    toolParams:
+      brainstorm:
+        promptBefore: Составь только краткий план действий.
+        promptAfter: "Выше написан краткий план действий. Полный ответ:"
+http:
+  port: 7586
+  telegram_from_username: second_bot_name

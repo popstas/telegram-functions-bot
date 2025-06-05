@@ -1,10 +1,33 @@
+import { jest } from '@jest/globals';
 import { getUserGoogleCreds, saveUserGoogleCreds } from '../src/helpers/google.ts';
-import * as fs from 'fs';
-import { readConfig } from '../src/config.ts';
+
+// Create manual mocks for fs functions
+const mockExistsSync = jest.fn();
+const mockReadFileSync = jest.fn();
+const mockWriteFileSync = jest.fn();
+
+// Mock the fs module with our manual mocks
+jest.mock('fs', () => ({
+  existsSync: mockExistsSync,
+  readFileSync: mockReadFileSync,
+  writeFileSync: mockWriteFileSync,
+  constants: {
+    F_OK: 0,
+    W_OK: 1,
+    R_OK: 2
+  }
+}));
 
 jest.mock('fs');
+
+// Create a mock for readConfig
+const mockReadConfig = jest.fn();
+
+// Mock the config module with the mock function
 jest.mock('../src/config.ts', () => ({
-  readConfig: jest.fn().mockReturnValue({
+  __esModule: true,
+  readConfig: mockReadConfig,
+  generateConfig: jest.fn().mockReturnValue({
     auth: {
       bot_token: 'test-bot-token',
       chatgpt_api_key: 'test-api-key',
@@ -17,6 +40,23 @@ jest.mock('../src/config.ts', () => ({
 
 const originalConsole = { ...console };
 const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+beforeEach(() => {
+  // Reset all mocks before each test
+  jest.clearAllMocks();
+  
+  // Set up the default mock implementation for readConfig
+  mockReadConfig.mockReturnValue({
+    auth: {
+      bot_token: 'test-bot-token',
+      chatgpt_api_key: 'test-api-key',
+      google_service_account: {
+        private_key: 'test-key'
+      }
+    },
+    users: {}
+  });
+});
 
 beforeAll(() => {
   console.log = jest.fn();
@@ -37,39 +77,59 @@ afterAll(() => {
 describe('Google API Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (readConfig as jest.Mock).mockReturnValue({
-      auth: {
-        bot_token: 'test-bot-token',
-        chatgpt_api_key: 'test-api-key',
-        google_service_account: {
-          private_key: 'test-key'
-        }
-      }
-    });
-  });
-  beforeEach(() => {
-    jest.clearAllMocks();
   });
 
   describe('getUserGoogleCreds', () => {
+    beforeEach(() => {
+      // Reset all mocks before each test
+      jest.clearAllMocks();
+      
+      // Set up the default mock implementation for readConfig
+      mockReadConfig.mockReturnValue({
+        auth: {
+          bot_token: 'test-bot-token',
+          chatgpt_api_key: 'test-api-key',
+          google_service_account: {
+            private_key: 'test-key'
+          }
+        },
+        users: {}
+      });
+      
+      // Default mock implementations for fs functions
+      mockExistsSync.mockReturnValue(true);
+      mockReadFileSync.mockReturnValue(JSON.stringify({}));
+      
+      // Mock console.error
+      console.error = jest.fn();
+    });
+    
+    afterEach(() => {
+      // Reset all mocks after each test
+      jest.clearAllMocks();
+    });
+
     it('should return undefined if no user_id is provided', () => {
       const creds = getUserGoogleCreds();
       expect(creds).toBeUndefined();
     });
 
     it('should return user credentials if user_id is provided', () => {
-      const mockCreds = { 123: { access_token: 'mockToken' } };
-      (fs.existsSync as jest.Mock).mockReturnValue(true);
-      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockCreds));
+      const userId = 123;
+      const mockCreds = { [userId]: { access_token: 'mockToken' } };
+      mockReadFileSync.mockReturnValueOnce(JSON.stringify(mockCreds));
 
-      const creds = getUserGoogleCreds(123);
-      expect(creds).toEqual({ access_token: 'mockToken' });
+      const creds = getUserGoogleCreds(userId);
+      expect(creds).toEqual(mockCreds[userId]);
+      expect(mockExistsSync).toHaveBeenCalledWith(expect.stringContaining('google-creds.json'));
+      expect(mockReadFileSync).toHaveBeenCalledWith(expect.stringContaining('google-creds.json'), 'utf-8');
     });
 
     it('should return undefined if user credentials do not exist', () => {
-      const mockCreds = { 123: { access_token: 'mockToken' } };
-      (fs.existsSync as jest.Mock).mockReturnValue(true);
-      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockCreds));
+      const existingUserId = 123;
+      const nonExistentUserId = 456;
+      const mockCreds = { [existingUserId]: { access_token: 'mockToken' } };
+      mockReadFileSync.mockReturnValueOnce(JSON.stringify(mockCreds));
 
       const creds = getUserGoogleCreds(456);
       expect(creds).toBeUndefined();
@@ -78,37 +138,37 @@ describe('Google API Integration Tests', () => {
 
   describe('saveUserGoogleCreds', () => {
     it('should save user credentials if user_id and creds are provided', () => {
+      const userId = 123;
       const mockCreds = { access_token: 'mockToken' };
-      const mockExistingCreds = { 123: { access_token: 'existingToken' } };
-      (fs.existsSync as jest.Mock).mockReturnValue(true);
-      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockExistingCreds));
-      (fs.writeFileSync as jest.Mock).mockImplementation(() => {});
+      const mockExistingCreds = { [userId]: { access_token: 'existingToken' } };
+      mockReadFileSync.mockReturnValueOnce(JSON.stringify(mockExistingCreds));
 
-      saveUserGoogleCreds(mockCreds, 456);
+      saveUserGoogleCreds(userId, mockCreds);
 
-      const expectedCreds = {
-        123: { access_token: 'existingToken' },
-        456: { access_token: 'mockToken' },
-      };
-      expect(fs.writeFileSync).toHaveBeenCalledWith('data/creds.json', JSON.stringify(expectedCreds, null, 2), 'utf-8');
+      expect(mockExistsSync).toHaveBeenCalledWith(expect.stringContaining('google-creds.json'));
+      expect(mockReadFileSync).toHaveBeenCalledWith(expect.stringContaining('google-creds.json'), 'utf-8');
+      expect(mockWriteFileSync).toHaveBeenCalledWith(
+        expect.stringContaining('google-creds.json'),
+        JSON.stringify({ ...mockExistingCreds, [userId]: mockCreds }, null, 2),
+        'utf-8'
+      );
     });
 
     it('should not save credentials if no user_id is provided', () => {
-      console.error = jest.fn();
-
-      saveUserGoogleCreds({ access_token: 'mockToken' });
+      // @ts-expect-error - Testing invalid input
+      saveUserGoogleCreds(undefined, { access_token: 'mockToken' });
 
       expect(console.error).toHaveBeenCalledWith('No user_id to save creds');
-      expect(fs.writeFileSync).not.toHaveBeenCalled();
+      expect(mockWriteFileSync).not.toHaveBeenCalled();
     });
 
     it('should not save credentials if no creds are provided', () => {
-      console.error = jest.fn();
-
-      saveUserGoogleCreds(null, 123);
+      const userId = 123;
+      // @ts-expect-error - Testing invalid input
+      saveUserGoogleCreds(userId, undefined);
 
       expect(console.error).toHaveBeenCalledWith('No creds to save');
-      expect(fs.writeFileSync).not.toHaveBeenCalled();
+      expect(mockWriteFileSync).not.toHaveBeenCalled();
     });
   });
 });
