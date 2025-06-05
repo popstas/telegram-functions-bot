@@ -323,16 +323,7 @@ export async function processToolResponse({
 
   if (isForget) {
     forgetHistory(msg.chat.id);
-    if (forgetMessage) {
-      void sendTelegramMessage(
-        msg.chat.id,
-        forgetMessage,
-        undefined,
-        undefined,
-        chatConfig,
-      );
-    }
-    return { content: "Forgot history, task completed." };
+    return { content: forgetMessage || "Forgot history, task completed." };
   }
 
   gptContext.messages = await buildMessages(
