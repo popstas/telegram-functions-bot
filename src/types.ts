@@ -74,6 +74,12 @@ export type ConfigType = {
   privateUsers: string[];
   testUsers?: string[];
   mcpServers?: Record<string, McpToolConfig>;
+  stt?: {
+    whisperBaseUrl?: string;
+  };
+  vision?: {
+    model: string;
+  };
   chats: ConfigChatType[];
   logLevel?: "debug" | "info" | "warn" | "error";
   langfuse?: {
@@ -81,10 +87,7 @@ export type ConfigType = {
     publicKey: string;
     baseUrl: string;
   };
-  vision?: {
-    model: string;
-  };
-}
+};
 
 export type HttpConfigType = {
   port?: number;

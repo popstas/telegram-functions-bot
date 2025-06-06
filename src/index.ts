@@ -14,6 +14,7 @@ import express from "express";
 import { useBot } from "./bot";
 import onMessage from "./helpers/onMessage.ts";
 import onPhoto from "./helpers/onPhoto.ts";
+import onAudio from "./helpers/onAudio.ts";
 import onUnsupported from "./helpers/onUnsupported.ts";
 import { useLastCtx } from "./helpers/lastCtx.ts";
 
@@ -59,8 +60,13 @@ async function launchBot(bot_token: string, bot_name: string) {
   await initCommands(bot);
   bot.on([message("text"), editedMessage("text")], onMessage);
   bot.on(message("photo"), onPhoto);
-  bot.on(message("voice"), onUnsupported);
-  bot.on(message("audio"), onUnsupported);
+  bot.on(message("voice"), onAudio);
+  bot.on(message("audio"), onAudio);
+  bot.on(message("sticker"), onUnsupported);
+  bot.on(message("video"), onUnsupported);
+  bot.on(message("video_note"), onUnsupported);
+  bot.on(message("document"), onUnsupported);
+  
 
   bot.action("add_chat", async (ctx) => {
     const chatId = ctx.chat?.id;
