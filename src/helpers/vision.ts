@@ -13,6 +13,9 @@ export async function recognizeImageText(
   const model = config?.vision?.model || "";
   if (!model) return "";
 
+  let prompt = "Извлеки текст с изображения. Ответь только текстом.";
+  if (msg.caption) prompt = msg.caption;
+
   try {
     const res = await api.chat.completions.create({
       model,
@@ -22,7 +25,7 @@ export async function recognizeImageText(
           content: [
             {
               type: "text",
-              text: "Извлеки текст с изображения. Ответь только текстом.",
+              text: prompt,
             },
             { type: "image_url", image_url: { url: link.toString() } },
           ],
