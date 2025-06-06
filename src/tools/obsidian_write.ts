@@ -5,7 +5,6 @@ import {
   ConfigChatType,
   ConfigType,
   ObsidianConfigType,
-  ThreadStateType,
   ToolResponse,
 } from "../types.ts";
 import { readConfig } from "../config.ts";
@@ -19,6 +18,7 @@ type ToolArgsType = {
 export const description = "Append markdown text to file";
 export const details = `- Just append markdown text to file
 - default: gpt.md`;
+
 export const defaultParams = {
   obsidian: {
     root_path: "/path/to/obsidian",
@@ -29,11 +29,13 @@ export const defaultParams = {
 export class ObsidianWriteClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;
   protected readonly configChat: ConfigChatType;
+  protected readonly details: string;
 
   constructor(configChat: ConfigChatType) {
     super();
     this.config = readConfig();
     this.configChat = configChat;
+    this.details = details;
   }
 
   @aiFunction({
@@ -73,6 +75,6 @@ export class ObsidianWriteClient extends AIFunctionsProvider {
   }
 }
 
-export function call(configChat: ConfigChatType, thread: ThreadStateType) {
+export function call(configChat: ConfigChatType) {
   return new ObsidianWriteClient(configChat);
 }

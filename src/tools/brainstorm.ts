@@ -15,8 +15,7 @@ type ToolArgsType = {
 };
 
 export const description = "Useful tool for brainstorming and planning task";
-export const details = `- try to make something like Copilot Workspace
-`;
+
 // export const configFields = ['user', 'host']
 export const defaultParams = {
   brainstorm: {

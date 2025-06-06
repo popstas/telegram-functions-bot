@@ -1,12 +1,7 @@
 import { aiFunction, AIFunctionsProvider } from "@agentic/core";
 import { z } from "zod";
 import { readConfig } from "../config.ts";
-import {
-  ConfigChatType,
-  ConfigType,
-  ThreadStateType,
-  ToolResponse,
-} from "../types.ts";
+import { ConfigType, ToolResponse } from "../types.ts";
 
 type ToolArgsType = {
   startOffDate: string;
@@ -21,10 +16,12 @@ export const details = `- Calculate the next offday from the start off date
 
 export class NextOffdayClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;
+  protected readonly details: string;
 
   constructor() {
     super();
     this.config = readConfig();
+    this.details = details;
   }
 
   @aiFunction({
@@ -38,8 +35,7 @@ export class NextOffdayClient extends AIFunctionsProvider {
   async get_next_offday({ startOffDate, currentDate }: ToolArgsType) {
     const startDate = new Date(startOffDate);
     const current = new Date(currentDate);
-    // @ts-ignore
-    const diffTime = Math.abs(current - startDate);
+    const diffTime = Math.abs(current.getTime() - startDate.getTime());
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     const cycleLength = 4;
     const daysSinceLastOff = diffDays % cycleLength;
@@ -58,6 +54,6 @@ export class NextOffdayClient extends AIFunctionsProvider {
   }
 }
 
-export function call(configChat: ConfigChatType, thread: ThreadStateType) {
+export function call() {
   return new NextOffdayClient();
 }

@@ -12,21 +12,16 @@ import { getChatgptAnswer } from "./gpt.ts";
 
 export default async function onMessage(
   ctx: Context & { secondTry?: boolean },
-  next?: () => any,
-  callback?: (msg: Message.TextMessage) => any,
+  next?: () => Promise<void> | void,
+  callback?: (msg: Message.TextMessage) => Promise<void> | void,
 ) {
   const threads = useThreads();
 
   // console.log("ctx:", ctx);
   setLastCtx(ctx);
 
-  const {
-    msg,
-    chat,
-  }: {
-    msg: (Message.TextMessage & { forward_origin?: any }) | undefined;
-    chat: ConfigChatType | undefined;
-  } = getCtxChatMsg(ctx);
+  // get msg and chat (config)
+  const { msg, chat } = getCtxChatMsg(ctx);
 
   const botName = chat?.bot_name || useConfig().bot_name;
   let mentioned = false;
@@ -49,6 +44,7 @@ export default async function onMessage(
   const chatId = msg.chat.id;
   const isPrivate = msg.chat.type === "private";
 
+  // when no config
   if (!chat) {
     log({
       msg: `Not in whitelist, from: ${JSON.stringify(msg.from)}, text: ${msg.text}`,
@@ -101,13 +97,9 @@ export default async function onMessage(
   });
 
   // console.log('chat:', chat)
-  const extraMessageParams = ctx.message?.message_id
-    ? { reply_to_message_id: ctx.message?.message_id }
-    : {};
 
   // replace msg.text to button.prompt if match button.name
   let matchedButton: ConfigChatButtonType | undefined = undefined;
-
   // replace msg.text to button.prompt
   const msgTextOrig = msg.text || "";
   const buttons = chat.buttonsSynced || chat.buttons;
@@ -147,6 +139,10 @@ export default async function onMessage(
     }
   }
 
+  const extraMessageParams = ctx.message?.message_id
+    ? { reply_to_message_id: ctx.message?.message_id }
+    : {};
+
   // activeButton, should be after const thread
   const activeButton = thread?.activeButton;
   if (buttons) {
@@ -183,13 +179,10 @@ export default async function onMessage(
       // skip if new messages added
       return;
     }
-    const msgSent = (await answerToMessage(
-      ctx,
-      msg,
-      chat,
-      extraMessageParams,
-    )) as Message.TextMessage;
-    if (typeof callback === "function") callback(msgSent);
+    const msgSent = await answerToMessage(ctx, msg, chat, extraMessageParams);
+    if (msgSent && typeof callback === "function") {
+      await callback(msgSent);
+    }
   }, 5000);
   // })
 }
@@ -201,8 +194,8 @@ async function answerToMessage(
   },
   msg: Message.TextMessage,
   chat: ConfigChatType,
-  extraMessageParams: any,
-) {
+  extraMessageParams: Record<string, unknown>,
+): Promise<Message.TextMessage | undefined> {
   // inject google oauth to thread
   if (
     useConfig().auth.oauth_google?.client_id ||
@@ -213,17 +206,19 @@ async function answerToMessage(
 
     // sync buttons with Google sheet
     if (chat.buttonsSync && msg.text === "sync" && msg) {
-      return await ctx.persistentChatAction("typing", async () => {
+      let syncResult: Message.TextMessage | undefined;
+      await ctx.persistentChatAction("typing", async () => {
         if (!msg) return;
         const buttons = await syncButtons(chat, authClient);
         if (!buttons) {
-          return void sendTelegramMessage(
+          syncResult = await sendTelegramMessage(
             msg.chat.id,
             "Ошибка синхронизации",
             undefined,
             ctx,
             chat,
           );
+          return;
         }
 
         // const buttonRows = buildButtonRows(buttons)
@@ -231,8 +226,8 @@ async function answerToMessage(
         const extraParams = Markup.keyboard(
           buttons.map((b) => b.name),
         ).resize();
-        const answer = "Готово: " + buttons.map((b) => b.name).join(", ");
-        return void sendTelegramMessage(
+        const answer = `Готово: ${buttons.map((b) => b.name).join(", ")}`;
+        syncResult = await sendTelegramMessage(
           msg.chat.id,
           answer,
           extraParams,
@@ -240,6 +235,7 @@ async function answerToMessage(
           chat,
         );
       });
+      return syncResult;
     }
   }
 
@@ -249,13 +245,14 @@ async function answerToMessage(
       if (!msg) return;
       const res = await getChatgptAnswer(msg, chat, ctx);
       const text = res?.content || "бот не ответил";
-      // text = telegramifyMarkdown(`${text}`)
 
-      const extraParams: any = {
+      // Prepare extra parameters
+      const extraParams: Record<string, unknown> = {
         ...extraMessageParams,
         // ...{parse_mode: 'MarkdownV2'}
       };
 
+      // Add buttons if available
       const buttons = chat.buttonsSynced || chat.buttons;
       if (buttons) {
         // const buttonRows = buildButtonRows(buttons)
@@ -266,6 +263,7 @@ async function answerToMessage(
         Object.assign(extraParams, extraParamsButtons);
       }
 
+      // Log the response
       const chatTitle = (msg.chat as Chat.TitleChat).title;
       log({
         msg: text,

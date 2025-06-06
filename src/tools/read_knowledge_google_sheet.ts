@@ -21,6 +21,7 @@ export const details = `- read titles and includes it to prompt
 - sheetId: toolParams.knowledge_google_sheet.sheetId
 - titleCol: toolParams.knowledge_google_sheet.titleCol
 - textCol: toolParams.knowledge_google_sheet.textCol`;
+
 export const defaultParams = {
   knowledge_google_sheet: {
     sheetId: "sheet_id",
@@ -41,6 +42,7 @@ export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;
   protected readonly configChat: ConfigChatType;
   private readonly authClient?: OAuth2Client | GoogleAuth;
+  protected readonly details: string;
 
   constructor(
     configChat: ConfigChatType,
@@ -50,6 +52,7 @@ export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
     this.config = readConfig();
     this.configChat = configChat;
     this.authClient = authClient;
+    this.details = details;
   }
 
   async read_sheet() {

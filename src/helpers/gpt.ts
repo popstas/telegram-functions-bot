@@ -57,32 +57,27 @@ export function chatAsTool({
         return {
           agent: true,
           functions: {
-            get: (toolName: string) => async (args: string) => {
+            get: () => async (args: string) => {
               try {
                 // Parse args as message text or object
-                let parsedArgs: any;
+                interface ParsedArgs {
+                  input?: string;
+                  text?: string;
+                  [key: string]: unknown;
+                }
+
+                let parsedArgs: ParsedArgs;
                 try {
-                  parsedArgs =
-                    typeof args === "string" ? JSON.parse(args) : args;
+                  parsedArgs = JSON.parse(args);
                 } catch {
                   parsedArgs = { text: args };
                 }
-                // Build a synthetic Message.TextMessage for the proxy call
-                // const msg: Message.TextMessage = {
-                //   message_id: Date.now(),
-                //   date: Math.floor(Date.now() / 1000),
-                //   chat: agentChatConfig,
-                //   from: { id: 0, is_bot: true, first_name: 'ToolProxy', username: 'tool_proxy' },
-                //   text: parsedArgs.input || parsedArgs.text || args,
-                //   ...parsedArgs,
-                // };
-                // Minimal synthetic context for getChatgptAnswer
-                // const ctx: Partial<Context> = {
-                //   botInfo: { username: agentChatConfig.bot_name },
-                //   chat: agentChatConfig,
-                // };
 
-                msg.text = parsedArgs.input || parsedArgs.text || args;
+                // Set the message text from parsed args or fallback to original args
+                msg.text =
+                  typeof parsedArgs === "object" && parsedArgs !== null
+                    ? parsedArgs.input || parsedArgs.text || args
+                    : String(args);
 
                 const agentStartMsg = `Получил ваше сообщение: ${msg.text}`;
                 sendTelegramMessage(
@@ -114,9 +109,11 @@ export function chatAsTool({
                   return { content: "" };
                 }
                 return { content: answer };
-              } catch (err: any) {
+              } catch (err: unknown) {
+                const errorMessage =
+                  err instanceof Error ? err.message : String(err);
                 return {
-                  content: `Proxy tool error for bot '${bot_name}': ${err?.message || err}`,
+                  content: `Proxy tool error for bot '${bot_name}': ${errorMessage}`,
                 };
               }
             },
@@ -588,9 +585,19 @@ export async function callTools(
       return key;
     }
 
-    function prettifyExpertizemeSearchItems(
-      params: Record<string, any>,
-    ): string {
+    interface FilterType {
+      field?: string;
+      operator?: string;
+      value?: unknown;
+    }
+
+    interface SearchParams {
+      filters?: FilterType[];
+      query?: string;
+      [key: string]: unknown;
+    }
+
+    function prettifyExpertizemeSearchItems(params: SearchParams): string {
       const lines: string[] = ["`Поиск СМИ:`"];
       // Render filters first, as flat list
       if (Array.isArray(params.filters)) {
@@ -631,14 +638,14 @@ export async function callTools(
       }
 
       // Special line for sortField/sortDirection
-      if (params.sortField) {
+      if (params.sortField && typeof params.sortField === "string") {
         const sortLine =
           "- **Sort by** " +
           prettifyKey(params.sortField) +
           (params.sortDirection === "desc" ? " (descending)" : "");
         lines.push(sortLine);
       }
-      if (params.groupBy) {
+      if (params.groupBy && typeof params.groupBy === "string") {
         const groupByLine = "- **Group by** " + prettifyKey(params.groupBy);
         lines.push(groupByLine);
       }
@@ -646,7 +653,7 @@ export async function callTools(
       return lines.join("\n");
     }
 
-    function prettifyKeyValue(key: string, value: any, level = 0): string {
+    function prettifyKeyValue(key: string, value: unknown, level = 0): string {
       key = prettifyKey(key);
       const prefix = "  ".repeat(level) + "-";
       if (value !== null && typeof value === "object") {
@@ -899,14 +906,12 @@ export async function getChatTools(
 
   // init MCP servers into useTools
   const globalTools = await useTools();
-  const chatTools = [
+  return [
     ...((chatConfig.tools ?? [])
       .map((f) => globalTools.find((g) => g.name === f))
       .filter(Boolean) as ChatToolType[]),
     ...agentTools,
   ].filter(Boolean);
-
-  return chatTools;
 }
 
 // Get prompts from tools
@@ -947,8 +952,7 @@ async function getToolsSystemMessages(
       })
       .filter(Boolean),
   );
-  const systemMessages = systemMessagesPromises.filter(Boolean) as string[];
-  return systemMessages;
+  return systemMessagesPromises.filter(Boolean) as string[];
 }
 // join "arguments.command" values with \n when same name, return array unique by name
 /*export function groupToolCalls(toolCalls: OpenAI.ChatCompletionMessageToolCall[]) {

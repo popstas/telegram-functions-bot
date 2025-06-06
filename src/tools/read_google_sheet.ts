@@ -20,14 +20,17 @@ export const details = `- read using google api
 - using bot-shared google service account by default
 - able to auth with /google_auth with your own account in chat scope
 - convert sheet to json`;
+
 export class GoogleSheetClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;
   private readonly authClient?: OAuth2Client | GoogleAuth;
+  protected readonly details: string;
 
   constructor(authClient?: OAuth2Client | GoogleAuth) {
     super();
     this.config = readConfig();
     this.authClient = authClient;
+    this.details = details;
   }
 
   @aiFunction({

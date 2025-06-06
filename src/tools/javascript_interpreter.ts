@@ -1,12 +1,7 @@
 import { aiFunction, AIFunctionsProvider } from "@agentic/core";
 import { z } from "zod";
 import { readConfig } from "../config.ts";
-import {
-  ConfigChatType,
-  ConfigType,
-  ThreadStateType,
-  ToolResponse,
-} from "../types.ts";
+import { ConfigType, ToolResponse } from "../types.ts";
 import vm from "vm";
 
 type ToolArgsType = {
@@ -16,12 +11,15 @@ type ToolArgsType = {
 export const description = "Run JavaScript code in sandbox";
 export const details = `- Use nodejs vm.Script to run code in sandbox
 - return result of the code execution or error message`;
+
 export class JavascriptInterpreterClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;
+  protected readonly details: string;
 
   constructor() {
     super();
     this.config = readConfig();
+    this.details = details;
   }
 
   @aiFunction({
@@ -44,9 +42,10 @@ export class JavascriptInterpreterClient extends AIFunctionsProvider {
     try {
       // Run the script in the context
       result = script.runInContext(context);
-    } catch (error) {
-      // @ts-ignore
-      result = `Error: ${error.message}`;
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      result = `Error: ${errorMessage}`;
     }
 
     return { content: `${result}` } as ToolResponse;
@@ -95,6 +94,6 @@ export class JavascriptInterpreterClient extends AIFunctionsProvider {
   }
 }
 
-export function call(configChat: ConfigChatType, thread: ThreadStateType) {
+export function call() {
   return new JavascriptInterpreterClient();
 }

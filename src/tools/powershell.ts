@@ -1,12 +1,7 @@
 import { aiFunction, AIFunctionsProvider } from "@agentic/core";
 import { z } from "zod";
 import { readConfig } from "../config.ts";
-import {
-  ConfigChatType,
-  ConfigType,
-  ThreadStateType,
-  ToolResponse,
-} from "../types.ts";
+import { ConfigType, ToolResponse } from "../types.ts";
 import { exec } from "child_process";
 
 type ToolArgsType = {
@@ -20,10 +15,12 @@ export const details = `- convert question to command
 
 export class PowershellCommandClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;
+  protected readonly details: string;
 
   constructor() {
     super();
     this.config = readConfig();
+    this.details = details;
   }
 
   @aiFunction({
@@ -71,6 +68,6 @@ export class PowershellCommandClient extends AIFunctionsProvider {
   }
 }
 
-export function call(configChat: ConfigChatType, thread: ThreadStateType) {
+export function call() {
   return new PowershellCommandClient();
 }

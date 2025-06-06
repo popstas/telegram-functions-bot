@@ -5,7 +5,6 @@ import {
   ConfigChatType,
   ConfigType,
   SshConfigType,
-  ThreadStateType,
   ToolResponse,
 } from "../types.ts";
 import { exec } from "child_process";
@@ -24,7 +23,7 @@ export const details = `- convert question to command
 - answer with command output
 - user: toolParams.ssh_command.user
 - host: toolParams.ssh_command.host`;
-// export const configFields = ['user', 'host']
+
 export const defaultParams = {
   ssh_command: {
     user: "root",
@@ -35,11 +34,13 @@ export const defaultParams = {
 export class SshCommandClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;
   protected readonly configChat: ConfigChatType;
+  protected readonly details: string;
 
   constructor(configChat: ConfigChatType) {
     super();
     this.config = readConfig();
     this.configChat = configChat;
+    this.details = details;
   }
 
   @aiFunction({
@@ -136,6 +137,6 @@ export class SshCommandClient extends AIFunctionsProvider {
   }
 }
 
-export function call(configChat: ConfigChatType, thread: ThreadStateType) {
+export function call(configChat: ConfigChatType) {
   return new SshCommandClient(configChat);
 }

@@ -70,6 +70,7 @@ export const details = `- create contactsMap from clientName, phone, email, tele
 - add all thread messages to description
 - add from username to description
 - create task in Planfix`;
+
 export const defaultParams = {
   planfix: {
     account: "your_account",
@@ -90,6 +91,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
   protected readonly configChat: ConfigChatType;
   protected readonly thread: ThreadStateType;
   protected lastError: string;
+  protected readonly details: string;
 
   constructor(configChat: ConfigChatType, thread: ThreadStateType) {
     super();
@@ -98,6 +100,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
     this.configChat = configChat;
     this.thread = thread;
     this.lastError = "";
+    this.details = details;
 
     // load contacts (agents)
     // const cg = this.configChat.toolParams.planfix_create_request_task?.contactsGroups;
@@ -335,7 +338,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
     };
 
     try {
-      if (!contactId && email) {
+      if (email) {
         contactId = await searchWithFilter(filters.byEmail, "email");
       }
       if (!contactId && phone) {
@@ -356,7 +359,7 @@ export class PlanfixCreateTaskClient extends AIFunctionsProvider {
   }
 
   splitName(fullName?: string) {
-    if (!fullName || typeof fullName !== "string") {
+    if (!fullName) {
       return { firstName: "", lastName: "" };
     }
 

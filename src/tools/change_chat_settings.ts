@@ -21,12 +21,14 @@ export class ChangeChatSettingsClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;
   protected readonly configChat: ConfigChatType;
   protected readonly thread: ThreadStateType;
+  protected readonly details: string;
 
   constructor(configChat: ConfigChatType, thread: ThreadStateType) {
     super();
     this.config = readConfig();
     this.configChat = configChat;
     this.thread = thread;
+    this.details = details;
   }
 
   @aiFunction({

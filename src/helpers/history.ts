@@ -10,7 +10,7 @@ export function addToHistory({
   completionParams,
   showTelegramNames,
 }: {
-  msg: Message.TextMessage & { forward_origin?: any };
+  msg: Message.TextMessage;
   answer?: string;
   completionParams?: CompletionParamsType;
   showTelegramNames?: boolean;

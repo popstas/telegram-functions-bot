@@ -1,10 +1,32 @@
 import { Chat, Message, Update } from "telegraf/types";
 import { useBot } from "../bot.ts";
 import { useConfig } from "../config.ts";
-import { ConfigChatButtonType, ConfigChatType } from "../types.ts";
-import { Context } from "telegraf";
+import {
+  CompletionParamsType,
+  ConfigChatButtonType,
+  ConfigChatType,
+} from "../types.ts";
+import { Context, Markup } from "telegraf";
 import { User } from "@telegraf/types/manage";
+import {
+  InlineKeyboardMarkup,
+  ReplyKeyboardMarkup,
+  ReplyKeyboardRemove,
+  ForceReply,
+} from "telegraf/typings/core/types/typegram";
 import { log } from "../helpers.ts";
+
+interface TelegramError extends Error {
+  response?: {
+    error_code: number;
+    description: string;
+  };
+}
+type ForwardOrigin = {
+  type: "user" | "hidden_user";
+  sender_user?: User;
+  sender_user_name?: string;
+};
 import telegramifyMarkdown from "telegramify-markdown";
 
 // let lastResponse: Message.TextMessage | undefined
@@ -32,48 +54,52 @@ export function splitBigMessage(text: string) {
   return msgs;
 }
 
+function sanitizeTelegramHtml(html: string): string {
+  // Заменяем <p> и </p> на двойной перенос строки
+  let result = html.replace(/<p[^>]*>/gi, "").replace(/<\/p>/gi, "\n\n");
+  // Удаляем <span> и </span>
+  result = result.replace(/<span[^>]*>/gi, "").replace(/<\/span>/gi, "");
+  // Все варианты <br>, <br/>, <br /> заменяем на \n
+  result = result.replace(/<br\s*\/?>/gi, "\n");
+  // Telegram не поддерживает &nbsp; — заменяем на пробел
+  result = result.replace(/&nbsp;/gi, " ");
+  // Удаляем лишние пустые строки
+  result = result.replace(/\n{3,}/g, "\n\n");
+  return result.trim();
+}
+
 export async function sendTelegramMessage(
   chat_id: number,
   text: string,
-  extraMessageParams?: any,
+  extraMessageParams?:
+    | Record<string, unknown>
+    | Markup.Markup<ReplyKeyboardMarkup>,
   ctx?: Context,
   chatConfig?: ConfigChatType,
 ): Promise<Message.TextMessage | undefined> {
-  return new Promise(async (resolve) => {
-    chatConfig =
-      chatConfig ||
-      useConfig().chats.find((c) => c.bot_name === ctx?.botInfo.username) ||
-      ({} as ConfigChatType);
+  chatConfig =
+    chatConfig ||
+    useConfig().chats.find((c) => c.bot_name === ctx?.botInfo.username) ||
+    ({} as ConfigChatType);
 
-    let response: Message.TextMessage | undefined;
-    const params: any = {
-      ...extraMessageParams,
-      // disable_web_page_preview: true,
-      // disable_notification: true,
-      // parse_mode: 'HTML'
-    };
+  let response: Message.TextMessage | undefined;
+  const params: Record<string, unknown> = {
+    ...extraMessageParams,
+    // disable_web_page_preview: true,
+    // disable_notification: true,
+    // parse_mode: 'HTML'
+  };
 
-    // strip <final_answer> tags, preserve content
-    text = text.replace(/<final_answer>(.*?)<\/final_answer>/ms, "$1");
+  // strip <final_answer> tags, preserve content
+  text = text.replace(/<final_answer>(.*?)<\/final_answer>/ms, "$1");
 
-    // Если начинается на <think>, то выделять текст внутри <think></think> и отправлять отдельным сообщением
-    if (text.trim().startsWith("<think>")) {
-      let thinkBody = text.trim();
-      thinkBody = thinkBody.slice("<think>".length);
-      thinkBody = thinkBody.replace(/<\/think>.*/ms, "");
-      const thinkText = "`think:`\n" + thinkBody.trim();
-      text = text.replace(/<think>.*?<\/think>/ms, "").trim();
-      if (!params.parse_mode) {
-        if (text.trim().startsWith("<") && !text.trim().startsWith("<think>")) {
-          params.parse_mode = "HTML";
-        } else {
-          params.parse_mode = "MarkdownV2";
-        }
-      }
-      await sendTelegramMessage(chat_id, thinkText, params, ctx, chatConfig);
-    }
-
-    // Автоматически определить режим разметки, если не задан явно
+  // Если начинается на <think>, то выделять текст внутри <think></think> и отправлять отдельным сообщением
+  if (text.trim().startsWith("<think>")) {
+    let thinkBody = text.trim();
+    thinkBody = thinkBody.slice("<think>".length);
+    thinkBody = thinkBody.replace(/<\/think>.*/ms, "");
+    const thinkText = "`think:`\n" + thinkBody.trim();
+    text = text.replace(/<think>.*?<\/think>/ms, "").trim();
     if (!params.parse_mode) {
       if (text.trim().startsWith("<") && !text.trim().startsWith("<think>")) {
         params.parse_mode = "HTML";
@@ -81,103 +107,110 @@ export async function sendTelegramMessage(
         params.parse_mode = "MarkdownV2";
       }
     }
+    await sendTelegramMessage(chat_id, thinkText, params, ctx, chatConfig);
+  }
 
-    // Очистка HTML, если требуется
-    function sanitizeTelegramHtml(html: string): string {
-      // Заменяем <p> и </p> на двойной перенос строки
-      let result = html.replace(/<p[^>]*>/gi, "").replace(/<\/p>/gi, "\n\n");
-      // Удаляем <span> и </span>
-      result = result.replace(/<span[^>]*>/gi, "").replace(/<\/span>/gi, "");
-      // Все варианты <br>, <br/>, <br /> заменяем на \n
-      result = result.replace(/<br\s*\/?>/gi, "\n");
-      // Telegram не поддерживает &nbsp; — заменяем на пробел
-      result = result.replace(/&nbsp;/gi, " ");
-      // Удаляем лишние пустые строки
-      result = result.replace(/\n{3,}/g, "\n\n");
-      return result.trim();
+  // Автоматически определить режим разметки, если не задан явно
+  if (!params.parse_mode) {
+    if (text.trim().startsWith("<") && !text.trim().startsWith("<think>")) {
+      params.parse_mode = "HTML";
+    } else {
+      params.parse_mode = "MarkdownV2";
     }
+  }
 
-    let processedText = text;
-    if (params.parse_mode === "HTML") {
-      processedText = sanitizeTelegramHtml(text);
-    } else if (params.parse_mode === "MarkdownV2") {
-      // const replacedNewlines = text.replace(/\n/g, '#n');
-      // const ZWSP = '\u200B';
-      processedText = telegramifyMarkdown(processedText, "keep");
-      // processedText = processedText.replace(/\\#n/g, `\n${ZWSP}`);
-    } else if (params.parse_mode === "Markdown") {
-      processedText = telegramifyMarkdown(text, "keep");
-    }
+  let processedText = text;
 
-    const msgs = splitBigMessage(processedText);
+  // Process the text based on parse_mode
+  if (params.parse_mode === "HTML") {
+    processedText = sanitizeTelegramHtml(text);
+  } else if (params.parse_mode === "MarkdownV2") {
+    // const replacedNewlines = text.replace(/\n/g, '#n');
+    // const ZWSP = '\u200B';
+    processedText = telegramifyMarkdown(processedText, "keep");
+    // processedText = processedText.replace(/\\#n/g, `\n${ZWSP}`);
+  } else if (params.parse_mode === "Markdown") {
+    processedText = telegramifyMarkdown(text, "keep");
+  }
 
-    for (const msg of msgs) {
-      try {
-        response = await useBot(chatConfig.bot_token).telegram.sendMessage(
-          chat_id,
-          msg,
-          params,
-        );
-      } catch (e: any) {
-        // Fallback: if error is 'bot was blocked by the user', handle gracefully
-        if (e?.response?.error_code === 403) {
-          // Telegram error 403: bot was blocked by the user
-          log({
-            msg: `User ${chat_id} blocked the bot. Skipping message.`,
-            chatId: chat_id,
-            logLevel: "warn",
-          });
-          // Optionally: flag user in DB or take other action
-          continue;
-        }
-        // Fallback to failsafeParams for other errors
-        // Previous fallback code:
-        // const failsafeParams = { reply_markup: params.reply_markup };
-        // response = await useBot(chatConfig.bot_token).telegram.sendMessage(chat_id, msg, failsafeParams);
-        const failsafeParams = { reply_markup: params.reply_markup };
-        response = await useBot(chatConfig.bot_token).telegram.sendMessage(
-          chat_id,
-          msg,
-          failsafeParams,
-        );
-      }
-    }
+  const msgs = splitBigMessage(processedText);
 
-    // deleteAfter timeout
-    if (params.deleteAfter) {
-      const deleteAfter =
-        typeof params.deleteAfter === "number"
-          ? params.deleteAfter * 1000
-          : 10000;
-      if (response)
-        setTimeout(async () => {
-          await useBot(chatConfig?.bot_token).telegram.deleteMessage(
-            response.chat.id,
-            response.message_id,
-          );
-        }, deleteAfter);
-    }
-
-    if (forDelete) {
-      await useBot(chatConfig.bot_token).telegram.deleteMessage(
-        forDelete.chat.id,
-        forDelete.message_id,
+  for (const msg of msgs) {
+    try {
+      response = await useBot(chatConfig.bot_token).telegram.sendMessage(
+        chat_id,
+        msg,
+        params,
       );
-      forDelete = undefined;
+    } catch (e: unknown) {
+      const error = e as TelegramError;
+      // Fallback: if error is 'bot was blocked by the user', handle gracefully
+      if (error?.response?.error_code === 403) {
+        // Telegram error 403: bot was blocked by the user
+        log({
+          msg: `User ${chat_id} blocked the bot. Error: ${error.response?.description || "Unknown error"}`,
+          chatId: chat_id,
+          logLevel: "warn",
+        });
+        // Optionally: flag user in DB or take other action
+        continue;
+      }
+      // Fallback to failsafeParams for other errors
+      // Previous fallback code:
+      // const failsafeParams = { reply_markup: params.reply_markup };
+      // response = await useBot(chatConfig.bot_token).telegram.sendMessage(chat_id, msg, failsafeParams);
+      const failsafeParams = {
+        reply_markup: params.reply_markup as
+          | InlineKeyboardMarkup
+          | ReplyKeyboardMarkup
+          | ReplyKeyboardRemove
+          | ForceReply
+          | undefined,
+      };
+      response = await useBot(chatConfig.bot_token).telegram.sendMessage(
+        chat_id,
+        msg,
+        failsafeParams,
+      );
     }
+  }
 
-    // deleteAfterNext message
-    if (params.deleteAfterNext) {
-      forDelete = response;
-    }
+  // deleteAfter timeout
+  if (params.deleteAfter) {
+    const deleteAfter =
+      typeof params.deleteAfter === "number"
+        ? params.deleteAfter * 1000
+        : 10000;
+    if (response)
+      setTimeout(async () => {
+        await useBot(chatConfig?.bot_token).telegram.deleteMessage(
+          response.chat.id,
+          response.message_id,
+        );
+      }, deleteAfter);
+  }
 
-    // lastResponse = response
-    resolve(response);
-  });
+  if (forDelete) {
+    await useBot(chatConfig.bot_token).telegram.deleteMessage(
+      forDelete.chat.id,
+      forDelete.message_id,
+    );
+    forDelete = undefined;
+  }
+
+  // deleteAfterNext message
+  if (params.deleteAfterNext) {
+    forDelete = response;
+  }
+
+  // lastResponse = response
+  return response;
 }
 
-export function isAdminUser(msg: Message.TextMessage) {
-  return useConfig().adminUsers?.includes(msg.from?.username || "");
+// Check if the user is an admin
+export function isAdminUser(msg: Message.TextMessage): boolean {
+  if (!msg.from?.username) return false;
+  return (useConfig().adminUsers || []).includes(msg.from.username);
 }
 
 export function buildButtonRows(buttons: ConfigChatButtonType[]) {
@@ -191,16 +224,26 @@ export function buildButtonRows(buttons: ConfigChatButtonType[]) {
   return buttonRows;
 }
 
-export function getFullName(msg: { from?: User; forward_origin?: any }) {
-  const forwardOrigin = (msg as any).forward_origin;
+export function getFullName(msg: {
+  from?: User;
+  forward_origin?: ForwardOrigin;
+}) {
+  const forwardOrigin = msg.forward_origin;
   if (forwardOrigin) {
     if (forwardOrigin.type === "hidden_user") {
-      return forwardOrigin.sender_user_name;
+      return forwardOrigin.sender_user_name || "";
     }
     const user = forwardOrigin.sender_user;
-    return `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim();
+    if (user) {
+      return [user.first_name, user.last_name].filter(Boolean).join(" ").trim();
+    }
   }
-  return `${msg.from?.first_name || ""} ${msg.from?.last_name || ""}`.trim();
+  if (msg.from) {
+    return [msg.from.first_name, msg.from.last_name]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+  }
 }
 
 function isAccessAllowed(chatConfig: ConfigChatType, ctxChat: Chat) {
@@ -213,7 +256,10 @@ function isAccessAllowed(chatConfig: ConfigChatType, ctxChat: Chat) {
   return allowedUsers.includes(username);
 }
 
-function getChatConfig(ctxChat: Chat, ctx: Context) {
+function getChatConfig(
+  ctxChat: Chat,
+  ctx: Context,
+): ConfigChatType | undefined {
   // 1. by chat id
   let chat =
     useConfig().chats.find(
@@ -268,16 +314,33 @@ function getChatConfig(ctxChat: Chat, ctx: Context) {
     }
   }
 
-  function mergeConfigParam(name: string, from: any, to: any) {
-    if (!from || !from[name]) return;
-    to[name] = to[name] ? { ...from[name], ...to[name] } : from[name];
+  function mergeConfigParam<T extends Record<string, unknown>>(
+    name: keyof T,
+    from: Partial<T> | undefined,
+    to: T | undefined,
+  ) {
+    if (!from || !from[name] || !to) return;
+    to[name] = to[name]
+      ? ({
+          ...(from[name] as object),
+          ...(to[name] as object),
+        } as T[typeof name])
+      : from[name];
   }
 
-  mergeConfigParam("completionParams", useConfig(), chat);
+  mergeConfigParam<{ completionParams: CompletionParamsType }>(
+    "completionParams",
+    useConfig() as Partial<{ completionParams: CompletionParamsType }>,
+    chat,
+  );
 
   if (chat && defaultChat) {
     chat = { ...defaultChat, ...chat };
-    mergeConfigParam("completionParams", defaultChat, chat);
+    mergeConfigParam<{ completionParams: CompletionParamsType }>(
+      "completionParams",
+      defaultChat,
+      chat,
+    );
   }
 
   return chat;
@@ -285,7 +348,7 @@ function getChatConfig(ctxChat: Chat, ctx: Context) {
 
 export function getActionUserMsg(ctx: Context): { user?: User; msg?: Message } {
   // edited message
-  if (ctx.hasOwnProperty("update")) {
+  if (Object.prototype.hasOwnProperty.call(ctx, "update")) {
     const updateQuery = ctx.update as Update.CallbackQueryUpdate;
     const user = updateQuery.callback_query.from;
     const msg = updateQuery.callback_query.message;
@@ -295,12 +358,15 @@ export function getActionUserMsg(ctx: Context): { user?: User; msg?: Message } {
 }
 
 // return {chat, msg}
-export function getCtxChatMsg(ctx: Context) {
+export function getCtxChatMsg(ctx: Context): {
+  chat: ConfigChatType | undefined;
+  msg: Message.TextMessage | undefined;
+} {
   let ctxChat: Chat | undefined;
-  let msg: (Message.TextMessage & { forward_origin?: any }) | undefined;
+  let msg: Message.TextMessage | undefined;
 
   // edited message
-  if (ctx.hasOwnProperty("update")) {
+  if (Object.prototype.hasOwnProperty.call(ctx, "update")) {
     // console.log("ctx.update:", ctx.update);
     const updateEdited = ctx.update as Update.EditedMessageUpdate; //{ edited_message: Message.TextMessage, chat: Chat };
     const updateNew = ctx.update as Update.MessageUpdate;
@@ -323,7 +389,7 @@ export function getCtxChatMsg(ctx: Context) {
 }
 
 export function getTelegramForwardedUser(
-  msg: Message.TextMessage & { forward_origin?: any },
+  msg: Message.TextMessage & { forward_origin?: ForwardOrigin },
   chatConfig: ConfigChatType,
 ) {
   const forwardOrigin = msg.forward_origin;

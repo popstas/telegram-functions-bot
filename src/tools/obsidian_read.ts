@@ -5,12 +5,11 @@ import {
   ConfigChatType,
   ConfigType,
   ObsidianConfigType,
-  ThreadStateType,
   ToolResponse,
 } from "../types.ts";
 import { readConfig } from "../config.ts";
 import path from "node:path";
-// @ts-ignore
+// @ts-expect-error - No type definitions available for recursive-readdir
 import recursiveReaddir from "recursive-readdir";
 
 type ToolArgsType = {
@@ -23,6 +22,7 @@ export const details = `- read all obsidian file tree and includes it to prompt
 - when answer, read the content from file(s) by path
 - root_path: toolParams.obsidian.root_path
 - out_file: toolParams.obsidian.out_file`;
+
 export const defaultParams = {
   obsidian: {
     root_path: "/path/to/obsidian",
@@ -33,11 +33,13 @@ export const defaultParams = {
 export class ObsidianReadClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;
   protected readonly configChat: ConfigChatType;
+  protected readonly details: string;
 
   constructor(configChat: ConfigChatType) {
     super();
     this.config = readConfig();
     this.configChat = configChat;
+    this.details = details;
   }
 
   @aiFunction({
@@ -100,6 +102,6 @@ export class ObsidianReadClient extends AIFunctionsProvider {
   }
 }
 
-export function call(configChat: ConfigChatType, thread: ThreadStateType) {
+export function call(configChat: ConfigChatType) {
   return new ObsidianReadClient(configChat);
 }

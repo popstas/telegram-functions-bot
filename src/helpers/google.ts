@@ -12,6 +12,10 @@ import { GoogleAuth } from "google-auth-library";
 import { ThreadStateType } from "../types.ts";
 import { sendTelegramMessage } from "./telegram.ts";
 
+interface GoogleCredsMap {
+  [key: number]: Credentials;
+}
+
 const credsFilePath = "data/creds.json";
 
 export function getUserGoogleCreds(user_id?: number): Credentials | undefined {
@@ -21,13 +25,12 @@ export function getUserGoogleCreds(user_id?: number): Credentials | undefined {
 }
 
 // load/save data/creds.json, key is msg.from.id
-export function loadGoogleCreds() {
-  let existingCreds: { [key: number]: Credentials } = {};
-  if (fs.existsSync(credsFilePath)) {
-    const credsData = fs.readFileSync(credsFilePath, "utf-8");
-    existingCreds = JSON.parse(credsData);
+export function loadGoogleCreds(): GoogleCredsMap {
+  if (!fs.existsSync(credsFilePath)) {
+    return {};
   }
-  return existingCreds;
+  const data = fs.readFileSync(credsFilePath, "utf8");
+  return JSON.parse(data);
 }
 
 export function saveUserGoogleCreds(
@@ -47,7 +50,6 @@ export function saveUserGoogleCreds(
   const existingCreds = loadGoogleCreds();
 
   // Add or replace the user's credentials
-  // @ts-ignore
   existingCreds[user_id] = creds;
 
   // Save the updated credentials back to the file
