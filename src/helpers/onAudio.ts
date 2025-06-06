@@ -48,7 +48,7 @@ async function processAudio(
     await fs.promises.writeFile(oggPath, Buffer.from(arrayBuffer));
 
     mp3Path = await convertToMp3(oggPath);
-    const res = await sendAudioWhisper({ mp3Path }) as WhisperResponse;
+    const res = (await sendAudioWhisper({ mp3Path })) as WhisperResponse;
 
     if (res.error) {
       await sendTelegramMessage(
@@ -59,16 +59,20 @@ async function processAudio(
       );
       return;
     }
-    
+
     const text =
       res.text ||
-      res.segments?.map(segment => {
-        if (Array.isArray(segment)) {
-          return segment[4];
-        } else {
-          return segment.text;
-        }
-      }).filter(Boolean).join(" ") || '';
+      res.segments
+        ?.map((segment) => {
+          if (Array.isArray(segment)) {
+            return segment[4];
+          } else {
+            return segment.text;
+          }
+        })
+        .filter(Boolean)
+        .join(" ") ||
+      "";
 
     if (!text) {
       await sendTelegramMessage(
@@ -94,10 +98,10 @@ async function processAudio(
     }) as Context & { secondTry?: boolean };
     await onMessage(newCtx);
   } catch (error) {
-    console.error('Error processing audio:', error);
+    console.error("Error processing audio:", error);
     await sendTelegramMessage(
       chatId,
-      'Произошла ошибка при обработке аудио. Пожалуйста, попробуйте еще раз.',
+      "Произошла ошибка при обработке аудио. Пожалуйста, попробуйте еще раз.",
       undefined,
       ctx,
     );
@@ -106,7 +110,7 @@ async function processAudio(
       if (fs.existsSync(oggPath)) fs.unlinkSync(oggPath);
       if (mp3Path && fs.existsSync(mp3Path)) fs.unlinkSync(mp3Path);
     } catch (cleanupError) {
-      console.error('Error cleaning up temporary files:', cleanupError);
+      console.error("Error cleaning up temporary files:", cleanupError);
     }
   }
 }
@@ -126,7 +130,8 @@ export default async function onAudio(ctx: Context & { secondTry?: boolean }) {
 
   const msg = ctx.message as Message.AudioMessage | Message.VoiceMessage;
   const chatTitle = "title" in msg.chat ? msg.chat.title : "private_chat";
-  const voice = (msg as Message.VoiceMessage).voice || (msg as Message.AudioMessage).audio;
+  const voice =
+    (msg as Message.VoiceMessage).voice || (msg as Message.AudioMessage).audio;
   if (!voice) return;
 
   log({
@@ -136,8 +141,7 @@ export default async function onAudio(ctx: Context & { secondTry?: boolean }) {
     role: "user",
   });
 
-  await ctx.persistentChatAction("typing", async () => 
-    processAudio(ctx, voice, chatId)
+  await ctx.persistentChatAction("typing", async () =>
+    processAudio(ctx, voice, chatId),
   );
-
 }

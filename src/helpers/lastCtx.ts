@@ -1,11 +1,11 @@
-import {Context} from "telegraf";
+import { Context } from "telegraf";
 
-let lastCtx = {} as Context
+let lastCtx = {} as Context;
 
 export function setLastCtx(ctx: Context) {
-  lastCtx = ctx
+  lastCtx = ctx;
 }
 
 export function useLastCtx() {
-  return lastCtx
+  return lastCtx;
 }

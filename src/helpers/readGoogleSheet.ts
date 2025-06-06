@@ -1,18 +1,27 @@
-import {google} from "googleapis";
-import {GoogleAuth, OAuth2Client} from 'google-auth-library';
+import { google } from "googleapis";
+import { GoogleAuth, OAuth2Client } from "google-auth-library";
 
-export async function readGoogleSheet(sheetId: string, sheetName?: string | null, auth?: OAuth2Client | GoogleAuth): Promise<object[]> {
-  const sheets = google.sheets({version: 'v4', auth});
-  const firstSheet = await sheets.spreadsheets.get({spreadsheetId: sheetId});
-  const sheetNames = firstSheet.data.sheets?.map((sheet) => sheet.properties?.title);
+export async function readGoogleSheet(
+  sheetId: string,
+  sheetName?: string | null,
+  auth?: OAuth2Client | GoogleAuth,
+): Promise<object[]> {
+  const sheets = google.sheets({ version: "v4", auth });
+  const firstSheet = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
+  const sheetNames = firstSheet.data.sheets?.map(
+    (sheet) => sheet.properties?.title,
+  );
   if (!sheetNames || sheetNames.length === 0) return [];
   if (!sheetName || !sheetNames.includes(sheetName)) {
-    sheetName = sheetNames[0]
+    sheetName = sheetNames[0];
   }
   const sheetInd = sheetNames.indexOf(sheetName);
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: firstSheet.data.sheets?.[sheetInd].properties?.title || sheetName || 'Sheet1',
+    range:
+      firstSheet.data.sheets?.[sheetInd].properties?.title ||
+      sheetName ||
+      "Sheet1",
   });
 
   const rows = response.data.values;
@@ -23,7 +32,10 @@ export async function readGoogleSheet(sheetId: string, sheetName?: string | null
   return rows;
 }
 
-export default async function readGoogleSheetToRows(sheetId: string, auth?: OAuth2Client | GoogleAuth): Promise<object[]> {
+export default async function readGoogleSheetToRows(
+  sheetId: string,
+  auth?: OAuth2Client | GoogleAuth,
+): Promise<object[]> {
   if (!auth) return [];
   const rows = await readGoogleSheet(sheetId, undefined, auth);
 

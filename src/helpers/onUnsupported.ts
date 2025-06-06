@@ -2,7 +2,7 @@ import { Context } from "telegraf";
 import { Message } from "telegraf/types";
 import { sendTelegramMessage } from "./telegram.ts";
 
-type SupportedMediaMessage = 
+type SupportedMediaMessage =
   | Message.VideoMessage
   | Message.VideoNoteMessage
   | Message.DocumentMessage
@@ -10,7 +10,7 @@ type SupportedMediaMessage =
 
 export default async function onUnsupported(ctx: Context) {
   if (!ctx.message) return;
-  
+
   const message = ctx.message as SupportedMediaMessage;
   const messageTypes = {
     video: "видео",

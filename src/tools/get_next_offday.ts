@@ -1,47 +1,41 @@
+import { aiFunction, AIFunctionsProvider } from "@agentic/core";
+import { z } from "zod";
+import { readConfig } from "../config.ts";
 import {
-  aiFunction,
-  AIFunctionsProvider,
-} from '@agentic/core'
-import {z} from 'zod'
-import {readConfig} from '../config.ts'
-import {ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from "../types.ts";
+  ConfigChatType,
+  ConfigType,
+  ThreadStateType,
+  ToolResponse,
+} from "../types.ts";
 
 type ToolArgsType = {
-  startOffDate: string,
-  currentDate: string
-}
+  startOffDate: string;
+  currentDate: string;
+};
 
-export const description = 'Get the next offday from the start off date'
+export const description = "Get the next offday from the start off date";
 export const details = `- Calculate the next offday from the start off date
 - cycle length is 4 days
 - startOffDate: YYYY-MM-DD
-- currentDate: YYYY-MM-DD`
+- currentDate: YYYY-MM-DD`;
 
 export class NextOffdayClient extends AIFunctionsProvider {
-  protected readonly config: ConfigType
+  protected readonly config: ConfigType;
 
   constructor() {
-    super()
+    super();
     this.config = readConfig();
   }
 
   @aiFunction({
-    name: 'get_next_offday',
+    name: "get_next_offday",
     description,
     inputSchema: z.object({
-      startOffDate: z
-        .string()
-        .describe(
-          'Start off date, YYYY-MM-DD'
-        ),
-      currentDate: z
-        .string()
-        .describe(
-          'Current date, YYYY-MM-DD'
-        ),
-    })
+      startOffDate: z.string().describe("Start off date, YYYY-MM-DD"),
+      currentDate: z.string().describe("Current date, YYYY-MM-DD"),
+    }),
   })
-  async get_next_offday({startOffDate, currentDate}: ToolArgsType) {
+  async get_next_offday({ startOffDate, currentDate }: ToolArgsType) {
     const startDate = new Date(startOffDate);
     const current = new Date(currentDate);
     // @ts-ignore
@@ -52,15 +46,15 @@ export class NextOffdayClient extends AIFunctionsProvider {
     const nextOffInDays = (cycleLength - daysSinceLastOff) % cycleLength;
     const nextOffDate = new Date(current);
     nextOffDate.setDate(current.getDate() + nextOffInDays);
-    const content = nextOffDate.toISOString().split('T')[0];
+    const content = nextOffDate.toISOString().split("T")[0];
 
-    return {content} as ToolResponse
+    return { content } as ToolResponse;
   }
 
   options_string(str: string) {
-    const {startOffDate, currentDate} = JSON.parse(str) as ToolArgsType;
-    if (!startOffDate || !currentDate) return str
-    return `\`get_next_offday(${startOffDate}, ${currentDate})\``
+    const { startOffDate, currentDate } = JSON.parse(str) as ToolArgsType;
+    if (!startOffDate || !currentDate) return str;
+    return `\`get_next_offday(${startOffDate}, ${currentDate})\``;
   }
 }
 

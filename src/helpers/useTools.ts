@@ -1,30 +1,36 @@
-import {ChatToolType, ConfigChatType, ToolResponse, ModuleType, ThreadStateType} from "../types.ts";
-import {readdirSync} from "fs";
-import {log} from "../helpers.ts";
-import {OpenAI} from "openai";
+import {
+  ChatToolType,
+  ConfigChatType,
+  ToolResponse,
+  ModuleType,
+  ThreadStateType,
+} from "../types.ts";
+import { readdirSync } from "fs";
+import { log } from "../helpers.ts";
+import { OpenAI } from "openai";
 
-let globalTools: ChatToolType[] = []
+let globalTools: ChatToolType[] = [];
 
 export default async function useTools(): Promise<ChatToolType[]> {
   if (!globalTools.length) await initTools();
   return globalTools;
 }
 
-import { readConfig } from '../config.ts';
-import { init as initMcp, callMcp } from '../mcp.ts';
+import { readConfig } from "../config.ts";
+import { init as initMcp, callMcp } from "../mcp.ts";
 
 export async function initTools() {
   globalTools = [];
-  const files = readdirSync('src/tools').filter(file => file.endsWith('.ts'));
+  const files = readdirSync("src/tools").filter((file) => file.endsWith(".ts"));
 
   for (const file of files) {
-    const name = file.replace('.ts', '');
+    const name = file.replace(".ts", "");
     const module = await import(`../tools/${name}`);
-    if (typeof module.call !== 'function') {
-      log({msg: `Function ${name} has no call() method`, logLevel: 'warn'});
+    if (typeof module.call !== "function") {
+      log({ msg: `Function ${name} has no call() method`, logLevel: "warn" });
       continue;
     }
-    globalTools.push({name, module});
+    globalTools.push({ name, module });
   }
 
   // --- Add MCP tools ---
@@ -43,20 +49,23 @@ export async function initTools() {
             get(name: string): (args: string) => Promise<ToolResponse> {
               return (args: string) => {
                 return callMcp(model, name, args);
-              }
+              };
             },
             // openai api format
             toolSpecs: {
-              type: 'function',
+              type: "function",
               function: {
                 name,
                 description,
                 parameters: properties,
-              }
+              },
             } as OpenAI.Chat.Completions.ChatCompletionTool,
           },
         } as ModuleType;
-        function newMcp(configChat: ConfigChatType, thread: ThreadStateType): ModuleType {
+        function newMcp(
+          configChat: ConfigChatType,
+          thread: ThreadStateType,
+        ): ModuleType {
           const threadMcp = {
             ...mcp,
             thread,
@@ -71,17 +80,16 @@ export async function initTools() {
             description,
             call: (configChat: ConfigChatType, thread: ThreadStateType) => {
               return newMcp(configChat, thread);
-            }
-          }
+            },
+          },
         } as ChatToolType;
         globalTools.push(chatTool);
       }
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    log({msg: `MCP tools loading error: ${msg}`});
+    log({ msg: `MCP tools loading error: ${msg}` });
   }
 
   return globalTools;
 }
-

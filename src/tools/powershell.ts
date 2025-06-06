@@ -1,39 +1,37 @@
+import { aiFunction, AIFunctionsProvider } from "@agentic/core";
+import { z } from "zod";
+import { readConfig } from "../config.ts";
 import {
-  aiFunction,
-  AIFunctionsProvider,
-} from '@agentic/core'
-import {z} from 'zod'
-import {readConfig} from '../config.ts'
-import {ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from "../types.ts";
-import {exec} from "child_process";
+  ConfigChatType,
+  ConfigType,
+  ThreadStateType,
+  ToolResponse,
+} from "../types.ts";
+import { exec } from "child_process";
 
 type ToolArgsType = {
-  command: string
-}
+  command: string;
+};
 
-export const description = 'Run PowerShell code'
+export const description = "Run PowerShell code";
 export const details = `- convert question to command
 - exec PowerShell from your machine, with your user PowerShell access
-- answer with command output`
+- answer with command output`;
 
 export class PowershellCommandClient extends AIFunctionsProvider {
-  protected readonly config: ConfigType
+  protected readonly config: ConfigType;
 
   constructor() {
-    super()
+    super();
     this.config = readConfig();
   }
 
   @aiFunction({
-    name: 'powershell',
+    name: "powershell",
     description,
     inputSchema: z.object({
-      command: z
-        .string()
-        .describe(
-          'PowerShell command'
-        ),
-    })
+      command: z.string().describe("PowerShell command"),
+    }),
   })
   async powershell(options: ToolArgsType) {
     const cmd = options.command;
@@ -46,7 +44,7 @@ export class PowershellCommandClient extends AIFunctionsProvider {
         if (error) {
           console.error(`error: ${error.message}`);
           if (error.code) {
-            resolve({content: `Exit code: ${error.code}`});
+            resolve({ content: `Exit code: ${error.code}` });
           } else {
             reject(error.message);
           }
@@ -56,20 +54,20 @@ export class PowershellCommandClient extends AIFunctionsProvider {
           reject(stderr);
         }
         if (!stdout) {
-          resolve({content: 'Exit code: 0'});
-          return
+          resolve({ content: "Exit code: 0" });
+          return;
         } else {
-          resolve({content: '```\n' + stdout + '\n```'});
+          resolve({ content: "```\n" + stdout + "\n```" });
         }
       });
     });
-    return res as ToolResponse
+    return res as ToolResponse;
   }
 
   options_string(str: string) {
-    const {command} = JSON.parse(str) as ToolArgsType;
-    if (!command) return str
-    return `\`Powershell:\`\n\`\`\`powershell\n${command}\n\`\`\``
+    const { command } = JSON.parse(str) as ToolArgsType;
+    if (!command) return str;
+    return `\`Powershell:\`\n\`\`\`powershell\n${command}\n\`\`\``;
   }
 }
 

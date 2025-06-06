@@ -1,18 +1,18 @@
-import {google} from "googleapis";
-import {useThreads} from "../threads.ts";
-import {Credentials} from "google-auth-library/build/src/auth/credentials";
+import { google } from "googleapis";
+import { useThreads } from "../threads.ts";
+import { Credentials } from "google-auth-library/build/src/auth/credentials";
 import fs from "fs";
-import {useConfig} from "../config.ts";
-import {OAuth2Client} from "google-auth-library/build/src/auth/oauth2client";
-import {Message} from "telegraf/types";
+import { useConfig } from "../config.ts";
+import { OAuth2Client } from "google-auth-library/build/src/auth/oauth2client";
+import { Message } from "telegraf/types";
 import http from "http";
 import url from "url";
-import {GaxiosError} from "gaxios";
-import {GoogleAuth} from "google-auth-library";
-import {ThreadStateType} from "../types.ts";
-import {sendTelegramMessage} from "./telegram.ts";
+import { GaxiosError } from "gaxios";
+import { GoogleAuth } from "google-auth-library";
+import { ThreadStateType } from "../types.ts";
+import { sendTelegramMessage } from "./telegram.ts";
 
-const credsFilePath = 'data/creds.json';
+const credsFilePath = "data/creds.json";
 
 export function getUserGoogleCreds(user_id?: number): Credentials | undefined {
   if (!user_id) return;
@@ -24,19 +24,22 @@ export function getUserGoogleCreds(user_id?: number): Credentials | undefined {
 export function loadGoogleCreds() {
   let existingCreds: { [key: number]: Credentials } = {};
   if (fs.existsSync(credsFilePath)) {
-    const credsData = fs.readFileSync(credsFilePath, 'utf-8');
+    const credsData = fs.readFileSync(credsFilePath, "utf-8");
     existingCreds = JSON.parse(credsData);
   }
   return existingCreds;
 }
 
-export function saveUserGoogleCreds(creds?: Credentials | null, user_id?: number) {
+export function saveUserGoogleCreds(
+  creds?: Credentials | null,
+  user_id?: number,
+) {
   if (!user_id) {
-    console.error('No user_id to save creds')
+    console.error("No user_id to save creds");
     return;
   }
   if (!creds) {
-    console.error('No creds to save')
+    console.error("No creds to save");
     return;
   }
   // save to data/creds.json
@@ -48,10 +51,16 @@ export function saveUserGoogleCreds(creds?: Credentials | null, user_id?: number
   existingCreds[user_id] = creds;
 
   // Save the updated credentials back to the file
-  fs.writeFileSync(credsFilePath, JSON.stringify(existingCreds, null, 2), 'utf-8');
+  fs.writeFileSync(
+    credsFilePath,
+    JSON.stringify(existingCreds, null, 2),
+    "utf-8",
+  );
 }
 
-export async function ensureAuth(user_id: number): Promise<OAuth2Client | GoogleAuth> {
+export async function ensureAuth(
+  user_id: number,
+): Promise<OAuth2Client | GoogleAuth> {
   const creds = getUserGoogleCreds(user_id);
   const config = useConfig();
 
@@ -61,7 +70,7 @@ export async function ensureAuth(user_id: number): Promise<OAuth2Client | Google
     oauth2Client.setCredentials(creds);
 
     // handling token refresh
-    oauth2Client.on('tokens', (tokens) => {
+    oauth2Client.on("tokens", (tokens) => {
       if (tokens.refresh_token) {
         // store the refresh_token in my database!
         // console.log(tokens.refresh_token);
@@ -77,7 +86,7 @@ export async function ensureAuth(user_id: number): Promise<OAuth2Client | Google
   if (config.auth.google_service_account?.private_key) {
     return new google.auth.GoogleAuth({
       credentials: config.auth.google_service_account,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets']
+      scopes: ["https://www.googleapis.com/auth/spreadsheets"],
     });
   }
 
@@ -85,64 +94,77 @@ export async function ensureAuth(user_id: number): Promise<OAuth2Client | Google
   return new google.auth.OAuth2(
     config.auth.oauth_google?.client_id,
     config.auth.oauth_google?.client_secret,
-    config.auth.oauth_google?.redirect_uri
+    config.auth.oauth_google?.redirect_uri,
   );
 }
 
-export function createAuthServer(oauth2Client: OAuth2Client, msg: Message.TextMessage) {
+export function createAuthServer(
+  oauth2Client: OAuth2Client,
+  msg: Message.TextMessage,
+) {
   const server = http.createServer((req, res) => {
     if (req.url) {
-      const qs = new url.URL(req.url, 'http://localhost:3000').searchParams;
-      const code = qs.get('code');
+      const qs = new url.URL(req.url, "http://localhost:3000").searchParams;
+      const code = qs.get("code");
       if (code) {
         // Exchange code for tokens
-        oauth2Client.getToken(code, (err: GaxiosError | null, creds: Credentials | null | undefined) => {
-          if (err) {
-            console.error('Error retrieving access creds', err);
-            res.end('Error retrieving access creds');
+        oauth2Client.getToken(
+          code,
+          (err: GaxiosError | null, creds: Credentials | null | undefined) => {
+            if (err) {
+              console.error("Error retrieving access creds", err);
+              res.end("Error retrieving access creds");
+              server.close();
+              return;
+            }
+            oauth2Client.setCredentials(creds!);
+            console.log("Token acquired:");
+            // console.log(creds);
+            void saveUserGoogleCreds(creds, msg?.from?.id);
+
+            res.end("Authentication successful! You can close this window.");
             server.close();
-            return;
-          }
-          oauth2Client.setCredentials(creds!);
-          console.log('Token acquired:');
-          // console.log(creds);
-          void saveUserGoogleCreds(creds, msg?.from?.id);
 
-          res.end('Authentication successful! You can close this window.');
-          server.close();
-
-          addOauthToThread(oauth2Client, useThreads(), msg);
-          void sendTelegramMessage(msg.chat.id, 'Google auth successful, you can use google functions');
-        });
+            addOauthToThread(oauth2Client, useThreads(), msg);
+            void sendTelegramMessage(
+              msg.chat.id,
+              "Google auth successful, you can use google functions",
+            );
+          },
+        );
       } else {
-        res.end('No code found in the query string.');
+        res.end("No code found in the query string.");
       }
     } else {
-      res.end('No query string found.');
+      res.end("No query string found.");
     }
   });
 
   server.listen(3000, () => {
-    console.log('Listening on port 3000 for OAuth callback...');
+    console.log("Listening on port 3000 for OAuth callback...");
   });
 
   return server;
 }
 
-export function addOauthToThread(authClient: OAuth2Client | GoogleAuth, threads: {
-  [key: number]: ThreadStateType
-}, msg: Message.TextMessage) {
+export function addOauthToThread(
+  authClient: OAuth2Client | GoogleAuth,
+  threads: {
+    [key: number]: ThreadStateType;
+  },
+  msg: Message.TextMessage,
+) {
   // global threads
-  const key = msg.chat?.id
-  if (!key) return
+  const key = msg.chat?.id;
+  if (!key) return;
   if (!threads[key]) {
     threads[key] = {
       id: key,
       msgs: [],
       messages: [],
-    }
+    };
   }
-  threads[key].authClient = authClient
+  threads[key].authClient = authClient;
 }
 
 export async function commandGoogleOauth(msg: Message.TextMessage) {
@@ -152,16 +174,22 @@ export async function commandGoogleOauth(msg: Message.TextMessage) {
   const oAuth2Client = authClient as OAuth2Client;
   if (oAuth2Client.credentials && !oAuth2Client.credentials?.access_token) {
     const authUrl = oAuth2Client.generateAuthUrl({
-      access_type: 'offline',
-      scope: ['https://www.googleapis.com/auth/spreadsheets.readonly']
+      access_type: "offline",
+      scope: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
     });
 
-    await sendTelegramMessage(msg?.chat?.id, `Please authenticate with Google: ${authUrl}`);
+    await sendTelegramMessage(
+      msg?.chat?.id,
+      `Please authenticate with Google: ${authUrl}`,
+    );
 
     createAuthServer(oAuth2Client, msg);
-    return
+    return;
   }
 
   addOauthToThread(authClient, useThreads(), msg);
-  await sendTelegramMessage(msg.chat?.id, 'Google auth successful, now you can use google functions');
+  await sendTelegramMessage(
+    msg.chat?.id,
+    "Google auth successful, now you can use google functions",
+  );
 }

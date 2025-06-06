@@ -1,37 +1,35 @@
+import { aiFunction, AIFunctionsProvider } from "@agentic/core";
+import { z } from "zod";
+import { readConfig } from "../config.ts";
 import {
-  aiFunction,
-  AIFunctionsProvider,
-} from '@agentic/core'
-import {z} from 'zod'
-import {readConfig} from '../config.ts'
-import {ConfigChatType, ConfigType, ThreadStateType, ToolResponse} from "../types.ts";
-import vm from 'vm';
+  ConfigChatType,
+  ConfigType,
+  ThreadStateType,
+  ToolResponse,
+} from "../types.ts";
+import vm from "vm";
 
 type ToolArgsType = {
-  code: string
-}
+  code: string;
+};
 
-export const description = 'Run JavaScript code in sandbox'
+export const description = "Run JavaScript code in sandbox";
 export const details = `- Use nodejs vm.Script to run code in sandbox
-- return result of the code execution or error message`
+- return result of the code execution or error message`;
 export class JavascriptInterpreterClient extends AIFunctionsProvider {
-  protected readonly config: ConfigType
+  protected readonly config: ConfigType;
 
   constructor() {
-    super()
+    super();
     this.config = readConfig();
   }
 
   @aiFunction({
-    name: 'javascript_interpreter',
+    name: "javascript_interpreter",
     description,
     inputSchema: z.object({
-      code: z
-        .string()
-        .describe(
-          'Javascript code'
-        ),
-    })
+      code: z.string().describe("Javascript code"),
+    }),
   })
   async javascript_interpreter(options: ToolArgsType) {
     const code = options.code;
@@ -51,7 +49,7 @@ export class JavascriptInterpreterClient extends AIFunctionsProvider {
       result = `Error: ${error.message}`;
     }
 
-    return {content: `${result}`} as ToolResponse;
+    return { content: `${result}` } as ToolResponse;
   }
 
   // version with exec
@@ -91,9 +89,9 @@ export class JavascriptInterpreterClient extends AIFunctionsProvider {
   }*/
 
   options_string(str: string) {
-    const {code} = JSON.parse(str) as ToolArgsType;
-    if (!code) return str
-    return `\`Javascript:\`\n\`\`\`js\n${code}\n\`\`\``
+    const { code } = JSON.parse(str) as ToolArgsType;
+    if (!code) return str;
+    return `\`Javascript:\`\n\`\`\`js\n${code}\n\`\`\``;
   }
 }
 

@@ -1,54 +1,79 @@
-import {aiFunction, AIFunctionsProvider} from '@agentic/core';
-import {z} from 'zod';
-import {generatePrivateChatConfig, readConfig, writeConfig} from '../config';
+import { aiFunction, AIFunctionsProvider } from "@agentic/core";
+import { z } from "zod";
+import { generatePrivateChatConfig, readConfig, writeConfig } from "../config";
 import {
   ConfigChatType,
   ConfigType,
   ChatParamsType,
   ToolResponse,
-  ThreadStateType
-} from '../types';
+  ThreadStateType,
+} from "../types";
 
 type ToolArgsType = ChatParamsType;
 
-const description = 'Change chat settings in config.yml'
+const description = "Change chat settings in config.yml";
 const details = `- Change chat settings in config.yml
 - Change any chatParams settings
 - If private chat not found, create new chat with settings
-- If group chat not found, ignore`
+- If group chat not found, ignore`;
 
 export class ChangeChatSettingsClient extends AIFunctionsProvider {
   protected readonly config: ConfigType;
   protected readonly configChat: ConfigChatType;
-  protected readonly thread: ThreadStateType
+  protected readonly thread: ThreadStateType;
 
   constructor(configChat: ConfigChatType, thread: ThreadStateType) {
     super();
     this.config = readConfig();
     this.configChat = configChat;
-    this.thread = thread
+    this.thread = thread;
   }
 
   @aiFunction({
-    name: 'change_chat_settings',
+    name: "change_chat_settings",
     description,
     inputSchema: z.object({
-      confirmation: z.boolean().optional().describe('Whether to ask for confirmation before running a tool'),
-      deleteToolAnswers: z.number().optional().describe('Whether to delete tool answers after a certain time'),
+      confirmation: z
+        .boolean()
+        .optional()
+        .describe("Whether to ask for confirmation before running a tool"),
+      deleteToolAnswers: z
+        .number()
+        .optional()
+        .describe("Whether to delete tool answers after a certain time"),
       debug: z.boolean().optional(),
-      memoryless: z.boolean().optional().describe('Whether to forget the context after each message'),
-      forgetTimeout: z.number().optional().describe('Time in seconds to forget the context after'),
-      showToolMessages: z.union([z.boolean(), z.literal('headers')]).optional().describe('Whether to show tool messages, headers means only tool calls'),
+      memoryless: z
+        .boolean()
+        .optional()
+        .describe("Whether to forget the context after each message"),
+      forgetTimeout: z
+        .number()
+        .optional()
+        .describe("Time in seconds to forget the context after"),
+      showToolMessages: z
+        .union([z.boolean(), z.literal("headers")])
+        .optional()
+        .describe(
+          "Whether to show tool messages, headers means only tool calls",
+        ),
     }),
   })
   async change_chat_settings(settings: ToolArgsType) {
     const config = readConfig();
-    const privateChatConfig = config.chats.find(chat => this.configChat.username && chat.username === this.configChat.username);
-    const groupChatConfig = config.chats.find(chat => chat.id === this.thread.id || chat.ids?.includes(this.thread.id));
+    const privateChatConfig = config.chats.find(
+      (chat) =>
+        this.configChat.username && chat.username === this.configChat.username,
+    );
+    const groupChatConfig = config.chats.find(
+      (chat) =>
+        chat.id === this.thread.id || chat.ids?.includes(this.thread.id),
+    );
     const chatConfig = groupChatConfig || privateChatConfig;
 
     if (!chatConfig) {
-      const newChatConfig = generatePrivateChatConfig(this.configChat.username || 'without_username');
+      const newChatConfig = generatePrivateChatConfig(
+        this.configChat.username || "without_username",
+      );
       newChatConfig.chatParams = settings;
       config.chats.push(newChatConfig);
     } else {
@@ -56,16 +81,18 @@ export class ChangeChatSettingsClient extends AIFunctionsProvider {
       Object.assign(chatConfig.chatParams, settings);
     }
 
-    writeConfig('config.yml', config);
+    writeConfig("config.yml", config);
 
-    return {content: 'Chat settings updated successfully'} as ToolResponse;
+    return { content: "Chat settings updated successfully" } as ToolResponse;
   }
 
   options_string(str: string) {
     const settings = JSON.parse(str) as ToolArgsType;
-    if (!settings) return str
-    const settingsStr = Object.entries(settings).map(([key, value]) => `${key}: ${value}`).join(', ');
-    return `**Change settings:** \`${settingsStr}\``
+    if (!settings) return str;
+    const settingsStr = Object.entries(settings)
+      .map(([key, value]) => `${key}: ${value}`)
+      .join(", ");
+    return `**Change settings:** \`${settingsStr}\``;
   }
 }
 

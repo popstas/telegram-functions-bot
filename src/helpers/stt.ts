@@ -22,52 +22,54 @@ export async function convertToMp3(inputPath: string): Promise<string> {
 export async function detectAudioFileLanguage(mp3Path: string) {
   const baseUrl = useConfig().stt?.whisperBaseUrl;
   if (!baseUrl) throw new Error("whisperBaseUrl not defined");
-  
+
   try {
     // Verify file exists and is readable
     await fs.promises.access(mp3Path, fs.constants.R_OK);
     const fileBuffer = await fs.promises.readFile(mp3Path);
     const formData = new FormData();
-    formData.append('audio_file', fileBuffer, {
-      filename: 'audio.mp3',
-      contentType: 'audio/mpeg',
-      knownLength: fileBuffer.length
+    formData.append("audio_file", fileBuffer, {
+      filename: "audio.mp3",
+      contentType: "audio/mpeg",
+      knownLength: fileBuffer.length,
     });
 
     const headers = {
       ...formData.getHeaders(),
-      'Accept': 'application/json'
+      Accept: "application/json",
     };
-    
+
     const response = await fetch(`${baseUrl}/detect-language`, {
-      method: 'POST',
+      method: "POST",
       body: formData.getBuffer(),
-      headers: headers as Record<string, string>
+      headers: headers as Record<string, string>,
     });
-    
+
     const responseText = await response.text();
-    
+
     if (!response.ok) {
-      console.error('Error response:', {
+      console.error("Error response:", {
         status: response.status,
         statusText: response.statusText,
         headers: Object.fromEntries(response.headers.entries()),
-        body: responseText
+        body: responseText,
       });
-      throw new Error(`HTTP error! status: ${response.status}, body: ${responseText}`);
+      throw new Error(
+        `HTTP error! status: ${response.status}, body: ${responseText}`,
+      );
     }
-    
+
     try {
       return JSON.parse(responseText);
     } catch {
-      console.error('Failed to parse JSON response:', responseText);
+      console.error("Failed to parse JSON response:", responseText);
       throw new Error(`Invalid JSON response: ${responseText}`);
     }
   } catch (error) {
     if (error instanceof Error) {
-      if (error.message.includes('ENOENT')) {
+      if (error.message.includes("ENOENT")) {
         throw new Error(`Audio file not found: ${mp3Path}`);
-      } else if (error.message.includes('EACCES')) {
+      } else if (error.message.includes("EACCES")) {
         throw new Error(`No permission to read audio file: ${mp3Path}`);
       }
     }
@@ -85,35 +87,37 @@ export async function sendAudioWhisper({
   const baseUrl = useConfig().stt?.whisperBaseUrl;
   if (!baseUrl) throw new Error("whisperBaseUrl not defined");
 
-  const languageData = await detectAudioFileLanguage(mp3Path) as LanguageData;
+  const languageData = (await detectAudioFileLanguage(mp3Path)) as LanguageData;
   const fileBuffer = await fs.promises.readFile(mp3Path);
-  
+
   const formData = new FormData();
-  formData.append('audio_file', fileBuffer, {
-    filename: 'audio.mp3',
-    contentType: 'audio/mpeg',
-    knownLength: fileBuffer.length
+  formData.append("audio_file", fileBuffer, {
+    filename: "audio.mp3",
+    contentType: "audio/mpeg",
+    knownLength: fileBuffer.length,
   });
-  formData.append('task', 'transcribe');
-  formData.append('language', languageData.detected_language);
-  
+  formData.append("task", "transcribe");
+  formData.append("language", languageData.detected_language);
+
   const headers = {
     ...formData.getHeaders(),
-    'Accept': 'application/json'
+    Accept: "application/json",
   };
-  
+
   const url = `${baseUrl}/asr?output=json&word_timestamps=true&vad_filter=1&initial_prompt=${encodeURIComponent(prompt)}`;
-  
+
   const response = await fetch(url, {
-    method: 'POST',
+    method: "POST",
     body: formData.getBuffer(),
-    headers: headers as Record<string, string>
+    headers: headers as Record<string, string>,
   });
-  
+
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+    throw new Error(
+      `HTTP error! status: ${response.status}, body: ${errorText}`,
+    );
   }
-  
+
   return await response.json();
 }

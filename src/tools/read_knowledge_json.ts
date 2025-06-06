@@ -1,29 +1,35 @@
-import { aiFunction, AIFunctionsProvider } from '@agentic/core';
-import { z } from 'zod';
-import { ConfigChatType, ConfigType, ThreadStateType, ToolResponse } from '../types';
-import { readConfig } from '../config';
-import { readFileSync } from 'fs';
+import { aiFunction, AIFunctionsProvider } from "@agentic/core";
+import { z } from "zod";
+import {
+  ConfigChatType,
+  ConfigType,
+  ThreadStateType,
+  ToolResponse,
+} from "../types";
+import { readConfig } from "../config";
+import { readFileSync } from "fs";
 
 type ToolArgsType = {
   title: string;
 };
 
-export const description = 'Read the contents of a JSON file from a URL or local file by titles list'
+export const description =
+  "Read the contents of a JSON file from a URL or local file by titles list";
 export const details = `- read titles and includes it to prompt
 - when answer, read the text by title
 - jsonPath: toolParams.knowledge_json.jsonPath - local file
 - jsonUrl: toolParams.knowledge_json.jsonUrl - or url, cached for 1 hour
 - titleCol: toolParams.knowledge_json.titleCol
 - textCol: toolParams.knowledge_json.textCol
-- cacheTime: toolParams.knowledge_json.cacheTime - seconds`
+- cacheTime: toolParams.knowledge_json.cacheTime - seconds`;
 export const defaultParams = {
   knowledge_json: {
-    jsonPath: '/path/to/json',
-    jsonUrl: 'or url',
-    titleCol: 'title',
-    textCol: 'text',
-  }
-}
+    jsonPath: "/path/to/json",
+    jsonUrl: "or url",
+    titleCol: "title",
+    textCol: "text",
+  },
+};
 
 const cache: { [path: string]: { data: object[]; expiry: number } } = {};
 function getCache(path: string) {
@@ -63,11 +69,11 @@ export class KnowledgeJsonClient extends AIFunctionsProvider {
     if (cachedData) return cachedData;
 
     let data;
-    if (path.startsWith('http://') || path.startsWith('https://')) {
+    if (path.startsWith("http://") || path.startsWith("https://")) {
       const response = await fetch(path);
       data = await response.json();
     } else {
-      const fileContent = readFileSync(path, 'utf-8');
+      const fileContent = readFileSync(path, "utf-8");
       data = JSON.parse(fileContent);
     }
 
@@ -76,21 +82,21 @@ export class KnowledgeJsonClient extends AIFunctionsProvider {
   }
 
   @aiFunction({
-    name: 'read_knowledge_json',
+    name: "read_knowledge_json",
     description,
     inputSchema: z.object({
-      title: z.string().describe('Title of the question'),
+      title: z.string().describe("Title of the question"),
     }),
   })
   async read_knowledge_json(options: ToolArgsType): Promise<ToolResponse> {
     const title = options.title;
 
     const data = await this.read_json();
-    if (!data) return { content: 'No data available' };
+    if (!data) return { content: "No data available" };
     const opts = this?.configChat?.toolParams?.knowledge_json;
-    if (!opts) return { content: 'No config' };
-    const titleCol = opts.titleCol || 'title';
-    const textCol = opts.textCol || 'text';
+    if (!opts) return { content: "No config" };
+    const titleCol = opts.titleCol || "title";
+    const textCol = opts.textCol || "text";
     const found = data?.find((row: any) => row[titleCol] === title);
     const content = found ? found[textCol] : `No answer found for ${title}`;
     return { content };
@@ -104,9 +110,14 @@ export class KnowledgeJsonClient extends AIFunctionsProvider {
 
   async prompt_append(): Promise<string | undefined> {
     const data = await this.read_json();
-    const titleCol = this.configChat.toolParams?.knowledge_json?.titleCol || 'title';
+    const titleCol =
+      this.configChat.toolParams?.knowledge_json?.titleCol || "title";
     const titles = data?.map((row: any) => row[titleCol]);
-    if (titles) return '## JSON Knowledge base titles:\n' + titles.map((f: string) => `- ${f}`).join('\n');
+    if (titles)
+      return (
+        "## JSON Knowledge base titles:\n" +
+        titles.map((f: string) => `- ${f}`).join("\n")
+      );
   }
 }
 

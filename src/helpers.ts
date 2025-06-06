@@ -1,8 +1,8 @@
 import express from "express";
-import fs from 'fs';
-import path from 'path';
+import fs from "fs";
+import path from "path";
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+type LogLevel = "debug" | "info" | "warn" | "error";
 
 interface LogParams {
   msg: string;
@@ -10,40 +10,51 @@ interface LogParams {
   chatId?: number;
   chatTitle?: string;
   username?: string;
-  role?: 'system' | 'user' | 'assistant' | 'tool';
+  role?: "system" | "user" | "assistant" | "tool";
   logPath?: string;
 }
 
-export function log({ msg, logLevel = 'info', chatId, chatTitle, username, role, logPath = 'data/messages.log' }: LogParams) {
-  const tzoffset = (new Date()).getTimezoneOffset() * 60000; //offset in milliseconds
-  const timestamp = new Date(Date.now() - tzoffset).toISOString().slice(0, 19).replace('T', ' ');
-  const chatIdStr = chatId ? `[${chatId}] ` : '';
-  if (msg.includes('\n')) {
-    msg = msg.replace(/\n/g, ' ');
+export function log({
+  msg,
+  logLevel = "info",
+  chatId,
+  chatTitle,
+  username,
+  role,
+  logPath = "data/messages.log",
+}: LogParams) {
+  const tzoffset = new Date().getTimezoneOffset() * 60000; //offset in milliseconds
+  const timestamp = new Date(Date.now() - tzoffset)
+    .toISOString()
+    .slice(0, 19)
+    .replace("T", " ");
+  const chatIdStr = chatId ? `[${chatId}] ` : "";
+  if (msg.includes("\n")) {
+    msg = msg.replace(/\n/g, " ");
   }
-  const roleStr = role ? `[${role}] ` : '';
-  const chatTitleStr = chatTitle ? `[${chatTitle}] ` : '';
-  const usernameStr = username ? `[${username}] ` : '';
-  const logLevelStr = logLevel !== 'info' ? `[${logLevel.toUpperCase()}] ` : '';
+  const roleStr = role ? `[${role}] ` : "";
+  const chatTitleStr = chatTitle ? `[${chatTitle}] ` : "";
+  const usernameStr = username ? `[${username}] ` : "";
+  const logLevelStr = logLevel !== "info" ? `[${logLevel.toUpperCase()}] ` : "";
   const logMessage = `[${timestamp}] ${chatIdStr}${logLevelStr}${chatTitleStr}${roleStr}${usernameStr}${msg}`;
 
   // Write logMessage to the specified log file
   if (logPath) {
     ensureDirectoryExists(logPath);
-    fs.appendFileSync(path.resolve(logPath), logMessage + '\n');
+    fs.appendFileSync(path.resolve(logPath), logMessage + "\n");
   }
 
   switch (logLevel) {
-    case 'debug':
+    case "debug":
       console.debug(logMessage);
       break;
-    case 'info':
+    case "info":
       console.info(logMessage);
       break;
-    case 'warn':
+    case "warn":
       console.warn(logMessage);
       break;
-    case 'error':
+    case "error":
       console.error(logMessage);
       break;
     default:
@@ -54,11 +65,11 @@ export function log({ msg, logLevel = 'info', chatId, chatTitle, username, role,
 export function ensureDirectoryExists(filePath: string) {
   const directory = path.dirname(filePath);
   if (!fs.existsSync(directory)) {
-    fs.mkdirSync(directory, {recursive: true});
+    fs.mkdirSync(directory, { recursive: true });
   }
 }
 
 export function sendToHttp(res: express.Response | undefined, text: string) {
-  if (!res) return
-  res.write(text + '\n')
+  if (!res) return;
+  res.write(text + "\n");
 }
