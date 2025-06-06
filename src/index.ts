@@ -15,6 +15,7 @@ import { useBot } from "./bot";
 import onMessage from "./helpers/onMessage.ts";
 import onPhoto from "./helpers/onPhoto.ts";
 import onAudio from "./helpers/onAudio.ts";
+import onUnsupported from "./helpers/onUnsupported.ts";
 import { useLastCtx } from "./helpers/lastCtx.ts";
 
 process.on("uncaughtException", (error, source) => {

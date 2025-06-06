@@ -81,7 +81,7 @@ export function generateConfig(): ConfigType {
       {
         name: "default",
         completionParams: {
-          model: "gpt-4o-mini",
+        model: "gpt-4.1-mini",
         },
         systemMessage:
           "You are using functions to answer the questions. Current date: {date}",
