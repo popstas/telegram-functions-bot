@@ -1,156 +1,159 @@
-import {Message} from 'telegraf/types'
+import { Message } from "telegraf/types";
 import OpenAI from "openai";
-import {GoogleAuth, OAuth2Client} from 'google-auth-library';
-import {CredentialBody} from "google-auth-library/build/src/auth/credentials";
+import { GoogleAuth, OAuth2Client } from "google-auth-library";
+import { CredentialBody } from "google-auth-library/build/src/auth/credentials";
 
 export type ToolBotType = {
   bot_name: string;
   name: string;
   description?: string;
-  tool_use_behavior?: 'run_llm_again' | 'stop_on_first_tool';
+  tool_use_behavior?: "run_llm_again" | "stop_on_first_tool";
   prompt_append?: string;
 };
 
 export type ConfigChatType = {
-  name: string
-  model?: string
-  completionParams: CompletionParamsType
-  bot_token?: string
-  bot_name?: string
-  privateUsers?: string[]
-  id?: number
-  ids?: number[]
-  username?: string
-  prefix?: string
-  systemMessage?: string
-  buttons?: ConfigChatButtonType[]
-  buttonsSync?: ButtonsSyncConfigType
-  buttonsSynced?: ConfigChatButtonType[]
-  tools?: (string | ToolBotType)[]
-  chatParams: ChatParamsType
-  toolParams: ToolParamsType
-}
+  name: string;
+  model?: string;
+  completionParams: CompletionParamsType;
+  bot_token?: string;
+  bot_name?: string;
+  privateUsers?: string[];
+  id?: number;
+  ids?: number[];
+  username?: string;
+  prefix?: string;
+  systemMessage?: string;
+  buttons?: ConfigChatButtonType[];
+  buttonsSync?: ButtonsSyncConfigType;
+  buttonsSynced?: ConfigChatButtonType[];
+  tools?: (string | ToolBotType)[];
+  chatParams: ChatParamsType;
+  toolParams: ToolParamsType;
+};
 
 export type ChatParamsType = {
-  confirmation?: boolean
-  deleteToolAnswers?: number
-  debug?: boolean // TODO: impl
-  memoryless?: boolean
-  forgetTimeout?: number // in seconds
-  showToolMessages?: true | false | undefined | "headers"
-}
+  confirmation?: boolean;
+  deleteToolAnswers?: number;
+  debug?: boolean; // TODO: impl
+  memoryless?: boolean;
+  forgetTimeout?: number; // in seconds
+  showToolMessages?: true | false | undefined | "headers";
+};
 
 export type CompletionParamsType = {
-  model: string
-  temperature?: number
-  top_p?: number
-  presence_penalty?: number
-  max_tokens?: number
-}
+  model: string;
+  temperature?: number;
+  top_p?: number;
+  presence_penalty?: number;
+  max_tokens?: number;
+};
 
 export type ConfigType = {
-  bot_name: string // TODO: use ctx.botInfo.username
-  debug?: boolean
-  isTest?: boolean
+  bot_name: string; // TODO: use ctx.botInfo.username
+  debug?: boolean;
+  isTest?: boolean;
   auth: {
-    bot_token: string
-    chatgpt_api_key: string
-    google_service_account?: CredentialBody
+    bot_token: string;
+    chatgpt_api_key: string;
+    google_service_account?: CredentialBody;
     oauth_google?: {
-      client_id: string
-      client_secret: string
-      redirect_uri: string
-    }
-    proxy_url?: string
-  }
+      client_id: string;
+      client_secret: string;
+      redirect_uri: string;
+    };
+    proxy_url?: string;
+  };
   models: {
-    name: string
-    url: string
-    model: string
-  }[]
-  http: HttpConfigType
-  adminUsers?: string[]
-  privateUsers: string[]
-  testUsers?: string[]
-  mcpServers?: Record<string, McpToolConfig>
-  chats: ConfigChatType[]
-  logLevel?: 'debug' | 'info' | 'warn' | 'error'
+    name: string;
+    url: string;
+    model: string;
+  }[];
+  http: HttpConfigType;
+  adminUsers?: string[];
+  privateUsers: string[];
+  testUsers?: string[];
+  mcpServers?: Record<string, McpToolConfig>;
+  stt?: {
+    whisperBaseUrl?: string;
+  };
+  chats: ConfigChatType[];
+  logLevel?: "debug" | "info" | "warn" | "error";
   langfuse?: {
     secretKey: string;
     publicKey: string;
     baseUrl: string;
-  }
-}
+  };
+};
 
 export type HttpConfigType = {
-  port?: number
-  telegram_from_username?: string
-}
+  port?: number;
+  telegram_from_username?: string;
+};
 
 export type ButtonsSyncConfigType = {
-  sheetId: string
-  sheetName: string
-}
+  sheetId: string;
+  sheetName: string;
+};
 
 export type SshConfigType = {
-  host: string
-  user: string
-  strictHostKeyChecking?: boolean
-}
+  host: string;
+  user: string;
+  strictHostKeyChecking?: boolean;
+};
 
 export type ObsidianConfigType = {
-  root_path: string
-  out_file: string
-}
+  root_path: string;
+  out_file: string;
+};
 
 export type ThreadStateType = {
-  id: number,
-  msgs: Message.TextMessage[]
-  messages: OpenAI.ChatCompletionMessageParam[]
-  completionParams?: CompletionParamsType
-  activeButton?: ConfigChatButtonType
-  nextSystemMessage?: string
-  authClient?: OAuth2Client | GoogleAuth
-}
+  id: number;
+  msgs: Message.TextMessage[];
+  messages: OpenAI.ChatCompletionMessageParam[];
+  completionParams?: CompletionParamsType;
+  activeButton?: ConfigChatButtonType;
+  nextSystemMessage?: string;
+  authClient?: OAuth2Client | GoogleAuth;
+};
 
 export type ConfigChatButtonType = {
-  name: string
-  prompt: string
-  row?: number
-  waitMessage?: string
-}
+  name: string;
+  prompt: string;
+  row?: number;
+  waitMessage?: string;
+};
 
 export type ChatToolType = {
-  name: string
+  name: string;
   module: {
-    call: (chatConfig: ConfigChatType, thread: ThreadStateType) => ModuleType
-    defaultParams?: ToolParamsType
-    description?: string
-  }
-}
+    call: (chatConfig: ConfigChatType, thread: ThreadStateType) => ModuleType;
+    defaultParams?: ToolParamsType;
+    description?: string;
+  };
+};
 
 export type ModuleType = {
   functions: {
-    get: (name: string) => (args: string) => Promise<ToolResponse>
-    toolSpecs: OpenAI.ChatCompletionTool
-  }
-  mcp?: boolean
-  agent?: boolean
-  options_string?: (args: string) => string
-  systemMessage?: () => string
-  prompt_append?: () => string
-  thread?: ThreadStateType
-  configChat?: ConfigChatType
-}
+    get: (name: string) => (args: string) => Promise<ToolResponse>;
+    toolSpecs: OpenAI.ChatCompletionTool;
+  };
+  mcp?: boolean;
+  agent?: boolean;
+  options_string?: (args: string) => string;
+  systemMessage?: () => string;
+  prompt_append?: () => string;
+  thread?: ThreadStateType;
+  configChat?: ConfigChatType;
+};
 
 export interface ToolResponse {
-  content: string
+  content: string;
 }
 
 export type BrainstormParamsType = {
-  promptBefore?: string
-  promptAfter?: string
-}
+  promptBefore?: string;
+  promptAfter?: string;
+};
 
 export type GptContextType = {
   thread: ThreadStateType;
@@ -159,53 +162,53 @@ export type GptContextType = {
   chatTools: ChatToolType[];
   prompts: string[];
   tools: OpenAI.ChatCompletionTool[] | undefined;
-}
+};
 
 export type ToolParamsType = {
-  brainstorm?: BrainstormParamsType
-  obsidian?: ObsidianConfigType
-  ssh_command?: SshConfigType
+  brainstorm?: BrainstormParamsType;
+  obsidian?: ObsidianConfigType;
+  ssh_command?: SshConfigType;
   knowledge_google_sheet?: {
-    sheetId: string
-    titleCol: string
-    textCol: string
-  }
+    sheetId: string;
+    titleCol: string;
+    textCol: string;
+  };
   knowledge_json?: {
-    jsonPath: string
-    jsonUrl: string
-    titleCol: string
-    textCol: string
-    cacheTime: number
-  }
+    jsonPath: string;
+    jsonUrl: string;
+    titleCol: string;
+    textCol: string;
+    cacheTime: number;
+  };
   planfix?: {
-    account: string
-    token: string
-  }
+    account: string;
+    token: string;
+  };
   planfix_create_request_task?: {
-    name: string
-    templateId?: number
-    contactTemplateId?: number
-    daysToSearch?: number
+    name: string;
+    templateId?: number;
+    contactTemplateId?: number;
+    daysToSearch?: number;
     contactsMap?: Array<{
-      title: string
-      field_name: string
-    }>
+      title: string;
+      field_name: string;
+    }>;
     fieldIds?: {
-      [key: string]: number
-    }
+      [key: string]: number;
+    };
     contactsGroups: {
-      agents: number
-      contacts: number
-      suppliers: number
-    }
+      agents: number;
+      contacts: number;
+      suppliers: number;
+    };
     contactsTemplates: {
-      agents: number
-      contacts: number
-      suppliers: number
-    }
-    dryRun?: boolean
-  }
-}
+      agents: number;
+      contacts: number;
+      suppliers: number;
+    };
+    dryRun?: boolean;
+  };
+};
 
 // MCP tool configuration
 export interface McpToolConfig {

@@ -3,6 +3,7 @@ Telegram bot with functions tools.
 [CHANGELOG.md](CHANGELOG.md)
 
 ## Features
+
 - In comparsion with [popstas/telegram-chatgpt-bot](https://github.com/popstas/telegram-chatgpt-bot)
 - Single answer to several forwarded messages to bot
 - Bot can use tools to get answer
@@ -11,13 +12,16 @@ Telegram bot with functions tools.
 - MCP support: use external tools and services to get answer
 - Langfuse support: track chat history and tool usage
 - Use agents as tools
+- Incoming audio transcription using Whisper service
 
 ## Pipeline
+
 - Receive question
 - Use tool to get answer, send tool usage to user
 - Read tool answer, answer user
 
 ## Tools
+
 - `brainstorm` - Useful tool for brainstorming and planning task
 - `change_chat_settings` - Change chat settings in config.yml
 - `get_next_offday` - count 4-days cycle: day, night, sleep, offday
@@ -33,25 +37,31 @@ Telegram bot with functions tools.
 - ... and thousands of tools from MCP
 
 ## Config
+
 Empty `config.yml` should be generated. Fill it with your data:
+
 - bot_name
 - auth.token
 - auth.chatgpt_api_key
+- stt.whisperBaseUrl
 
 ### Multiple Bots / Secondary bot_token
 
 You can run multiple Telegram bots from a single instance using the `bot_token` field in each chat config.
 
 #### Use cases
+
 - Run several bots with different tokens from the same codebase (e.g., main bot and test bot, or bots for different groups).
 - Per-chat bot tokens: assign a unique bot token to a specific chat, while others use the global token.
 
 #### How it works
+
 - The bot will launch an instance for every unique `bot_token` found in `config.chats` and for the global `auth.bot_token`.
 - If a chat does not specify its own `bot_token`, it will use the global `auth.bot_token`.
 - Only one instance per unique token is launched (deduplicated automatically).
 
 #### Example config
+
 ```yaml
 auth:
   bot_token: "123456:main-token"
@@ -67,11 +77,13 @@ chats:
 ```
 
 #### Notes
+
 - If you launch two bots with the same token, Telegram will throw a 409 Conflict error. The bot automatically avoids this by deduplication.
 - You must set `bot_name` in a chat config.
 - You can set `privateUsers` in a chat config for extended access control.
 
 ## Use agents as tools
+
 You can use one bot as a tool (agent) inside another bot. This allows you to compose complex workflows, delegate tasks, or chain multiple bots together.
 
 ### How it works
@@ -104,13 +116,15 @@ chats:
 - The result (e.g., task created or error) is sent back and included in the main bot’s response.
 
 ### Notes
+
 - The agent bot must be configured in `config.yml` with a unique `bot_name`.
 - The tool interface expects an `input` argument (the text to send to the agent).
 - You can chain multiple agents and tools for advanced workflows.
 
-
 ## ollama models
+
 Add to config.yml model, use ollama url and model name, then define `model` in the chat settings:
+
 ```
 models:
   - name: qwen3:4b
@@ -124,13 +138,12 @@ chats:
 
 `/info` should return actual using model.
 
-
-
 ## MCP Integration
 
 MCP (Model Context Protocol) provides external tools and services to the bot. MCP servers are defined in the `config.mcpServers` file, which lists available MCP endpoints used by all chats.
 
 ### config.mcpServers Format
+
 - The format of `config.mcpServers` matches the structure used in Claude Desktop.
 - It is a list of MCP server configurations, each specifying the server address and connection details.
 - Example:
@@ -148,10 +161,12 @@ MCP (Model Context Protocol) provides external tools and services to the bot. MC
   ```
 
 ### Server Sharing
+
 - All MCP servers listed in `config.mcpServers` are shared between all chats.
 - There is currently no per-chat isolation of MCP servers; every chat can access all configured MCP tools.
 
 ### Chat Configuration (`tools`)
+
 - Each chat's configuration should specify a `tools` list.
 - The `tools` list should include the names of tools (from MCP) that are available to that chat.
 - Example chat config snippet:
@@ -178,6 +193,7 @@ Refer to the MCP and Claude Desktop documentation for further details on server 
 This bot supports [Langfuse](https://langfuse.com/) for tracing, analytics, and observability of chat and tool usage.
 
 Add your Langfuse credentials to your config (e.g., `config.yml`):
+
 ```yaml
 langfuse:
   secretKey: <your_secret_key>
@@ -196,4 +212,5 @@ npm test
 This will execute all unit and integration tests in the `tests` directory using the `jest` framework.
 
 ## TODO
+
 - [ ] Tool change_access_settings, for add/remove users to/from adminUsers, privateUsers

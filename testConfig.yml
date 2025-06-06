@@ -11,6 +11,8 @@ mcpServers:
     command: uvx
     args:
       - mcp-server-fetch
+stt:
+  whisperBaseUrl: ""
 chats:
   - name: default
     completionParams:
