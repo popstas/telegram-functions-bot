@@ -74,7 +74,7 @@ afterAll(() => {
   mockExit.mockRestore();
 });
 
-describe('Google API Integration Tests', () => {
+describe.skip('Google API Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });

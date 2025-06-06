@@ -1,11 +1,42 @@
 import { jest } from '@jest/globals';
-import { readConfig, writeConfig, generateConfig } from '../src/config.ts';
-import * as fs from 'fs';
-import * as yaml from 'js-yaml';
 import { mockConsole } from './testHelpers';
 
-jest.mock('fs');
-jest.mock('js-yaml');
+// Mock the modules using jest.requireMock
+const mockExistsSync = jest.fn();
+const mockReadFileSync = jest.fn();
+const mockWriteFileSync = jest.fn();
+const mockWatchFile = jest.fn();
+const mockDump = jest.fn();
+const mockLoad = jest.fn();
+
+// Mock the modules before importing the module under test
+jest.unstable_mockModule('fs', () => ({
+  __esModule: true,
+  default: {
+    existsSync: mockExistsSync,
+    readFileSync: mockReadFileSync,
+    writeFileSync: mockWriteFileSync,
+    watchFile: mockWatchFile,
+  },
+  existsSync: mockExistsSync,
+  readFileSync: mockReadFileSync,
+  writeFileSync: mockWriteFileSync,
+  watchFile: mockWatchFile,
+}));
+
+jest.unstable_mockModule('js-yaml', () => ({
+  __esModule: true,
+  default: {
+    dump: mockDump,
+    load: mockLoad,
+  },
+  dump: mockDump,
+  load: mockLoad,
+}));
+
+// Import the module under test after setting up mocks
+const { readConfig, writeConfig, generateConfig } = await import('../src/config.ts');
+
 
 describe('readConfig', () => {
   mockConsole();
@@ -14,30 +45,30 @@ describe('readConfig', () => {
   });
 
   it('should generate and write a new config if the file does not exist', () => {
-    (fs.existsSync as jest.Mock).mockReturnValue(false);
+    mockExistsSync.mockReturnValue(false);
     const mockConfig = generateConfig();
-    (yaml.dump as jest.Mock).mockReturnValue('mockYaml');
-    (fs.writeFileSync as jest.Mock).mockImplementation(() => {});
+    mockDump.mockReturnValue('mockYaml');
+    mockWriteFileSync.mockImplementation(() => {});
 
     const config = readConfig('testConfig.yml');
 
-    expect(fs.existsSync).toHaveBeenCalledWith('testConfig.yml');
-    expect(yaml.dump).toHaveBeenCalledWith(mockConfig, expect.any(Object));
-    expect(fs.writeFileSync).toHaveBeenCalledWith('testConfig.yml', 'mockYaml');
+    expect(mockExistsSync).toHaveBeenCalledWith('testConfig.yml');
+    expect(mockDump).toHaveBeenCalledWith(mockConfig, expect.any(Object));
+    expect(mockWriteFileSync).toHaveBeenCalledWith('testConfig.yml', 'mockYaml');
     expect(config).toEqual(mockConfig);
   });
 
   it('should read and return the config if the file exists', () => {
-    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    mockExistsSync.mockReturnValue(true);
     const mockConfig = generateConfig();
-    (fs.readFileSync as jest.Mock).mockReturnValue('mockYaml');
-    (yaml.load as jest.Mock).mockReturnValue(mockConfig);
+    mockReadFileSync.mockReturnValue('mockYaml');
+    mockLoad.mockReturnValue(mockConfig);
 
     const config = readConfig('testConfig.yml');
 
-    expect(fs.existsSync).toHaveBeenCalledWith('testConfig.yml');
-    expect(fs.readFileSync).toHaveBeenCalledWith('testConfig.yml', 'utf8');
-    expect(yaml.load).toHaveBeenCalledWith('mockYaml');
+    expect(mockExistsSync).toHaveBeenCalledWith('testConfig.yml');
+    expect(mockReadFileSync).toHaveBeenCalledWith('testConfig.yml', 'utf8');
+    expect(mockLoad).toHaveBeenCalledWith('mockYaml');
     expect(config).toEqual(mockConfig);
   });
 });
@@ -51,28 +82,31 @@ describe('writeConfig', () => {
 
   it('should write the config to the specified file', () => {
     const mockConfig = generateConfig();
-    (yaml.dump as jest.Mock).mockReturnValue('mockYaml');
-    (fs.writeFileSync as jest.Mock).mockImplementation(() => {});
+    mockDump.mockReturnValue('mockYaml');
+    mockWriteFileSync.mockImplementation(() => {});
 
     const config = writeConfig('testConfig.yml', mockConfig);
 
-    expect(yaml.dump).toHaveBeenCalledWith(mockConfig, expect.any(Object));
-    expect(fs.writeFileSync).toHaveBeenCalledWith('testConfig.yml', 'mockYaml');
+    expect(mockDump).toHaveBeenCalledWith(mockConfig, expect.any(Object));
+    expect(mockWriteFileSync).toHaveBeenCalledWith('testConfig.yml', 'mockYaml');
     expect(config).toEqual(mockConfig);
   });
 
   it('should handle errors during writing', () => {
     const mockConfig = generateConfig();
     const mockError = new Error('mockError');
-    (yaml.dump as jest.Mock).mockImplementation(() => {
+    mockDump.mockImplementation(() => {
       throw mockError;
     });
-    console.error = jest.fn();
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
     const config = writeConfig('testConfig.yml', mockConfig);
 
-    expect(yaml.dump).toHaveBeenCalledWith(mockConfig, expect.any(Object));
-    expect(console.error).toHaveBeenCalledWith('Error in writeConfig(): ', mockError);
+    expect(mockDump).toHaveBeenCalledWith(mockConfig, expect.any(Object));
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Error in writeConfig(): ', mockError);
     expect(config).toEqual(mockConfig);
+    
+    // Clean up
+    consoleErrorSpy.mockRestore();
   });
 });

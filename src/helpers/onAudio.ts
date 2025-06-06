@@ -34,8 +34,6 @@ async function processAudio(
   ctx: Context & { secondTry?: boolean },
   voice: { file_id: string },
   chatId: number,
-  chatTitle: string,
-  msg: { caption?: string }
 ) {
   const link = await ctx.telegram.getFileLink(voice.file_id);
   const oggPath = tmp.tmpNameSync({ postfix: ".ogg" });
@@ -139,7 +137,7 @@ export default async function onAudio(ctx: Context & { secondTry?: boolean }) {
   });
 
   await ctx.persistentChatAction("typing", async () => 
-    processAudio(ctx, voice, chatId, chatTitle, msg)
+    processAudio(ctx, voice, chatId)
   );
 
 }

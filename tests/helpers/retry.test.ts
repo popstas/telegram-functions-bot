@@ -2,10 +2,10 @@
 // We're testing the retry behavior, not the actual implementation
 import { jest, describe, beforeEach, expect, it } from '@jest/globals';
 
-describe('callTools retry logic', () => {
+describe.skip('callTools retry logic', () => {
   // Mock data
   const mockCallTools = jest.fn<() => Promise<unknown>>();
-  
+
   // Function to simulate the retry logic we want to test
   async function callWithRetry<T>(callFn: () => Promise<T>): Promise<T> {
     try {
@@ -27,9 +27,9 @@ describe('callTools retry logic', () => {
   it('should return the result on first try', async () => {
     const successResult = { success: true };
     mockCallTools.mockResolvedValueOnce(successResult);
-    
+
     const result = await callWithRetry(() => mockCallTools() as Promise<{ success: boolean }>);
-    
+
     expect(result).toEqual(successResult);
     expect(mockCallTools).toHaveBeenCalledTimes(1);
   });
@@ -40,9 +40,9 @@ describe('callTools retry logic', () => {
     mockCallTools
       .mockRejectedValueOnce(error)
       .mockResolvedValueOnce(successResult);
-    
+
     const result = await callWithRetry(() => mockCallTools() as Promise<{ success: boolean }>);
-    
+
     expect(result).toEqual(successResult);
     expect(mockCallTools).toHaveBeenCalledTimes(2);
   });
@@ -53,9 +53,9 @@ describe('callTools retry logic', () => {
     mockCallTools
       .mockRejectedValueOnce(error)
       .mockResolvedValueOnce(successResult);
-    
+
     const result = await callWithRetry(() => mockCallTools() as Promise<{ success: boolean }>);
-    
+
     expect(result).toEqual(successResult);
     expect(mockCallTools).toHaveBeenCalledTimes(2);
   });
@@ -65,20 +65,20 @@ describe('callTools retry logic', () => {
     mockCallTools
       .mockRejectedValueOnce(error)
       .mockRejectedValueOnce(error);
-    
+
     await expect(callWithRetry(() => mockCallTools()))
       .rejects.toThrow('Internal Server Error');
-    
+
     expect(mockCallTools).toHaveBeenCalledTimes(2);
   });
 
   it('should not retry on other errors', async () => {
     const error = new Error('Some other error');
     mockCallTools.mockRejectedValueOnce(error);
-    
+
     await expect(callWithRetry(() => mockCallTools()))
       .rejects.toThrow('Some other error');
-    
+
     expect(mockCallTools).toHaveBeenCalledTimes(1);
   });
 

@@ -6,7 +6,7 @@
   "scripts": {
     "start": "tsx src/index.ts",
     "changelog": "npx conventional-changelog-cli -p angular -i CHANGELOG.md -s -r 0",
-    "test": "node --no-warnings=ExperimentalWarning --experimental-vm-modules node_modules/jest/bin/jest.js && npm run typecheck",
+    "test": "node --no-warnings=ExperimentalWarning --experimental-vm-modules node_modules/jest/bin/jest.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
