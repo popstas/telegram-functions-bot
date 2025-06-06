@@ -12,7 +12,7 @@ import { initCommands } from "./commands.ts";
 import { log } from "./helpers.ts";
 import express from "express";
 import { useBot } from "./bot";
-import onMessage from "./helpers/onMessage.ts";
+import onTextMessage from "./helpers/onTextMessage.ts";
 import onPhoto from "./helpers/onPhoto.ts";
 import onAudio from "./helpers/onAudio.ts";
 import onUnsupported from "./helpers/onUnsupported.ts";
@@ -58,7 +58,7 @@ async function launchBot(bot_token: string, bot_name: string) {
     ctx.reply("https://github.com/popstas/telegram-functions-bot"),
   );
   await initCommands(bot);
-  bot.on([message("text"), editedMessage("text")], onMessage);
+  bot.on([message("text"), editedMessage("text")], onTextMessage);
   bot.on(message("photo"), onPhoto);
   bot.on(message("voice"), onAudio);
   bot.on(message("audio"), onAudio);
@@ -204,7 +204,7 @@ async function telegramPostHandler(
 
   try {
     newCtx.expressRes = res;
-    await onMessage(
+    await onTextMessage(
       newCtx as Context,
       undefined,
       async (sentMsg: Message.TextMessage) => {

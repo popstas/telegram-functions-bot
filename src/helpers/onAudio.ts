@@ -2,7 +2,8 @@ import { Context } from "telegraf";
 import fs from "fs";
 
 import tmp from "tmp";
-import onMessage from "./onMessage.ts";
+import onTextMessage from "./onTextMessage.ts";
+import checkAccessLevel from "./checkAccessLevel.ts";
 import { sendTelegramMessage } from "./telegram.ts";
 import { convertToMp3, sendAudioWhisper } from "./stt.ts";
 import { useConfig } from "../config.ts";
@@ -96,7 +97,7 @@ async function processAudio(
         configurable: true,
       },
     }) as Context & { secondTry?: boolean };
-    await onMessage(newCtx);
+    await onTextMessage(newCtx);
   } catch (error) {
     console.error("Error processing audio:", error);
     await sendTelegramMessage(
@@ -118,6 +119,10 @@ async function processAudio(
 export default async function onAudio(ctx: Context & { secondTry?: boolean }) {
   const chatId = ctx.chat?.id;
   if (!chatId) return;
+
+  const access = await checkAccessLevel(ctx);
+  if (!access) return;
+
   if (!useConfig().stt?.whisperBaseUrl) {
     await sendTelegramMessage(
       chatId,
