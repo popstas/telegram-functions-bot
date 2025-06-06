@@ -12,7 +12,7 @@ export async function recognizeImageText(
   const config = useConfig();
   const model = config?.vision?.model || "";
   if (!model) return "";
-    
+
   try {
     const res = await api.chat.completions.create({
       model,

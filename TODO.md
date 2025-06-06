@@ -1,2 +1,2 @@
 - [ ] Сделать миграцию на новый `npm install openai`. Инструкция по миграции - https://github.com/openai/openai-node/blob/master/MIGRATION.md
-- [ ] 
+- [ ]

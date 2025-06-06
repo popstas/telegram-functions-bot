@@ -8,22 +8,29 @@ import { sendTelegramMessage } from "./telegram";
 
 // Type guard to check if update has a message
 function isMessageUpdate(update: Update): update is Update.MessageUpdate {
-  return 'message' in update;
+  return "message" in update;
 }
 
 export default async function onPhoto(ctx: Context) {
-  if (!('message' in ctx.update) || !isMessageUpdate(ctx.update)) {
+  if (!("message" in ctx.update) || !isMessageUpdate(ctx.update)) {
     return; // Not a message update
   }
 
   const msg = ctx.update.message as Message.PhotoMessage;
   if (!msg.photo?.length) return;
-  const chatTitle = 'title' in msg.chat ? msg.chat.title : 'private_chat';
-  log({msg: `[photo] ${msg.caption || ''}`, logLevel: 'info', chatId: msg.chat.id, chatTitle, role: 'user'});
-  
+  const chatTitle = "title" in msg.chat ? msg.chat.title : "private_chat";
+  log({
+    msg: `[photo] ${msg.caption || ""}`,
+    logLevel: "info",
+    chatId: msg.chat.id,
+    chatTitle,
+    role: "user",
+  });
+
   const config = useConfig();
   const model = config?.vision?.model || "";
-  if (!model) return await sendTelegramMessage(
+  if (!model)
+    return await sendTelegramMessage(
       msg.chat.id,
       "Извините, обработка изображений не поддерживается",
     );
@@ -32,30 +39,36 @@ export default async function onPhoto(ctx: Context) {
   const processPhoto = async () => {
     const text = await recognizeImageText(msg);
     const caption = msg.caption ? `${msg.caption}\n` : "";
-    
-    log({msg: text, logLevel: 'info', chatId: msg.chat.id, chatTitle, role: 'user'});
-    
+
+    log({
+      msg: text,
+      logLevel: "info",
+      chatId: msg.chat.id,
+      chatTitle,
+      role: "user",
+    });
+
     // Create a new message object with the recognized text
     const newMsg = {
       ...msg,
       text: caption + text,
-      entities: []
+      entities: [],
     } as const;
-    
+
     // Create a new context by extending the original context
     const contextWithNewMessage = Object.create(Object.getPrototypeOf(ctx), {
       ...Object.getOwnPropertyDescriptors(ctx),
       message: { value: newMsg, writable: true, configurable: true },
-      update: { 
+      update: {
         value: { ...ctx.update, message: newMsg },
         writable: true,
-        configurable: true
-      }
+        configurable: true,
+      },
     });
-    
+
     await onMessage(contextWithNewMessage);
   };
-  
+
   // Use the original context for persistentChatAction
-  await ctx.persistentChatAction('upload_photo', processPhoto);
+  await ctx.persistentChatAction("upload_photo", processPhoto);
 }

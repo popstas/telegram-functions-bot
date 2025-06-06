@@ -2,7 +2,12 @@ import { Context } from "telegraf";
 import { message, editedMessage } from "telegraf/filters";
 import { Message } from "telegraf/types";
 import { ConfigChatType } from "./types.ts";
-import { useConfig, validateConfig, writeConfig, watchConfigChanges } from "./config.ts";
+import {
+  useConfig,
+  validateConfig,
+  writeConfig,
+  watchConfigChanges,
+} from "./config.ts";
 import { initCommands } from "./commands.ts";
 import { log } from "./helpers.ts";
 import express from "express";
