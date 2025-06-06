@@ -62,6 +62,11 @@ async function launchBot(bot_token: string, bot_name: string) {
   bot.on(message("photo"), onPhoto);
   bot.on(message("voice"), onAudio);
   bot.on(message("audio"), onAudio);
+  bot.on(message("sticker"), onUnsupported);
+  bot.on(message("video"), onUnsupported);
+  bot.on(message("video_note"), onUnsupported);
+  bot.on(message("document"), onUnsupported);
+  
 
   bot.action("add_chat", async (ctx) => {
     const chatId = ctx.chat?.id;
