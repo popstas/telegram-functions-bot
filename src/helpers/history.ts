@@ -18,13 +18,18 @@ export function addToHistory({msg, answer, completionParams}: {
       completionParams,
     }
   }
-  const messageItem = {} as OpenAI.ChatCompletionMessageParam;
+  let messageItem: OpenAI.ChatCompletionMessageParam;
   if (answer) {
-    messageItem.role = 'system'
-    messageItem.content = answer
+    messageItem = {
+      role: 'system',
+      content: answer
+    };
   } else {
-    messageItem.role = 'user'
-    messageItem.content = msg.text || ''
+    messageItem = {
+      role: 'user',
+      content: msg.text || '',
+      name: msg.from?.first_name
+    };
   }
   threads[key].messages.push(messageItem)
 
