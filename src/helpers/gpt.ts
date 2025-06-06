@@ -11,7 +11,11 @@ import {
 import { useBot } from "../bot.ts";
 import { useThreads } from "../threads.ts";
 import { getEncoding, TiktokenEncoding } from "js-tiktoken";
-import { sendTelegramMessage, getTelegramForwardedUser } from "./telegram.ts";
+import {
+  sendTelegramMessage,
+  getTelegramForwardedUser,
+  getFullName,
+} from "./telegram.ts";
 import { Chat, Message } from "telegraf/types";
 import { log, sendToHttp } from "../helpers.ts";
 import { Context } from "telegraf";
@@ -673,7 +677,7 @@ export async function callTools(
       const lastMessage = thread.msgs[thread.msgs.length - 1];
       const from = lastMessage.from;
       const fromUsername = from?.username || "";
-      const fullName = `${from?.first_name || ""} ${from?.last_name || ""}`.trim();
+      const fullName = getFullName(lastMessage);
       const msgs = thread.messages
         .filter((msg) => ["user", "system"].includes(msg.role))
         .map((msg) => msg.content)
@@ -684,7 +688,9 @@ export async function callTools(
       if (!toolParamsParsed.message) {
         toolParamsParsed.message = "";
       }
-      const fromStr = fromUsername ? `От ${fromUsername}${fullName ? `, ${fullName}` : ""}` : "";
+      const fromStr = fromUsername
+        ? `От ${fromUsername}${fullName ? `, ${fullName}` : ""}`
+        : "";
       toolParamsParsed.message += `\n\nПолный текст:\n${fromStr}\n\n${msgs}`;
       toolParams = JSON.stringify(toolParamsParsed);
     }
