@@ -1,6 +1,7 @@
 import { Context } from "telegraf";
 import { Message, Update } from "telegraf/types";
-import onMessage from "./onMessage";
+import onTextMessage from "./onTextMessage";
+import checkAccessLevel from "./checkAccessLevel.ts";
 import { recognizeImageText } from "./vision";
 import { log } from "../helpers";
 import { useConfig } from "../config.ts";
@@ -15,6 +16,9 @@ export default async function onPhoto(ctx: Context) {
   if (!("message" in ctx.update) || !isMessageUpdate(ctx.update)) {
     return; // Not a message update
   }
+
+  const access = await checkAccessLevel(ctx);
+  if (!access) return;
 
   const msg = ctx.update.message as Message.PhotoMessage;
   if (!msg.photo?.length) return;
@@ -66,7 +70,7 @@ export default async function onPhoto(ctx: Context) {
       },
     });
 
-    await onMessage(contextWithNewMessage);
+    await onTextMessage(contextWithNewMessage);
   };
 
   // Use the original context for persistentChatAction
