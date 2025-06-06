@@ -70,11 +70,15 @@ export function generateConfig(): ConfigType {
         args: ["mcp-server-fetch"],
       },
     },
+    vision: {
+      model: "gpt-4.1-mini",
+    },
+    models: [],
     chats: [
       {
         name: "default",
         completionParams: {
-          model: "gpt-4o-mini",
+        model: "gpt-4.1-mini",
         },
         systemMessage:
           "You are using functions to answer the questions. Current date: {date}",
