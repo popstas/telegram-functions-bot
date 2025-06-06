@@ -2,7 +2,7 @@ import { Context, Markup } from "telegraf";
 import { Chat, Message } from "telegraf/types";
 import { useThreads } from "../threads.ts";
 import { ConfigChatType } from "../types.ts";
-import { useConfig } from "../config.ts";
+import { syncButtons, useConfig } from "../config.ts";
 import { log } from "../helpers.ts";
 import { addToHistory, forgetHistory } from "./history.ts";
 import { setLastCtx } from "./lastCtx.ts";
@@ -10,6 +10,7 @@ import { addOauthToThread, ensureAuth } from "./google.ts";
 import { getChatgptAnswer } from "./gpt.ts";
 import checkAccessLevel from "./checkAccessLevel.ts";
 import resolveChatButtons from "./resolveChatButtons.ts";
+import { sendTelegramMessage } from "./telegram.ts";
 
 export default async function onTextMessage(
   ctx: Context & { secondTry?: boolean },
