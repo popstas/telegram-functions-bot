@@ -35,7 +35,7 @@ export default async function onMessage(ctx: Context & { secondTry?: boolean }, 
     mentioned = true;
   }
 
-  const chatTitle = (ctx.chat as Chat.TitleChat).title || ''
+  const chatTitle = (ctx.message?.chat as Chat.TitleChat).title || ''
   const chatId = msg.chat.id
   const isPrivate = msg.chat.type === 'private'
 

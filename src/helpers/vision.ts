@@ -1,6 +1,7 @@
 import { Message } from "telegraf/types";
 import { useBot } from "../bot.ts";
 import { useApi } from "./useApi.ts";
+import { useConfig } from "../config.ts";
 
 export async function recognizeImageText(
   msg: Message.PhotoMessage,
@@ -8,9 +9,13 @@ export async function recognizeImageText(
   const photo = msg.photo[msg.photo.length - 1];
   const link = await useBot().telegram.getFileLink(photo.file_id);
   const api = useApi();
+  const config = useConfig();
+  const model = config?.vision?.model || "";
+  if (!model) return "";
+    
   try {
     const res = await api.chat.completions.create({
-      model: "gpt-4-vision-preview",
+      model,
       messages: [
         {
           role: "user",
