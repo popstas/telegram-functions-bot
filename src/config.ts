@@ -70,6 +70,10 @@ export function generateConfig(): ConfigType {
         args: ["mcp-server-fetch"],
       },
     },
+    vision: {
+      model: "gpt-4.1-mini",
+    },
+    models: [],
     chats: [
       {
         name: "default",

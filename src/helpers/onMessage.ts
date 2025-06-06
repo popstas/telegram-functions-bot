@@ -45,7 +45,7 @@ export default async function onMessage(
     mentioned = true;
   }
 
-  const chatTitle = (ctx.chat as Chat.TitleChat).title || "";
+  const chatTitle = (ctx.message?.chat as Chat.TitleChat).title || "";
   const chatId = msg.chat.id;
   const isPrivate = msg.chat.type === "private";
 

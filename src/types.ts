@@ -81,6 +81,9 @@ export type ConfigType = {
     publicKey: string;
     baseUrl: string;
   };
+  vision?: {
+    model: string;
+  };
 };
 
 export type HttpConfigType = {
