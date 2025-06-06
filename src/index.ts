@@ -2,13 +2,18 @@ import { Context } from "telegraf";
 import { message, editedMessage } from "telegraf/filters";
 import { Message } from "telegraf/types";
 import { ConfigChatType } from "./types.ts";
-import { validateConfig, writeConfig, watchConfigChanges } from "./config.ts";
+import {
+  useConfig,
+  validateConfig,
+  writeConfig,
+  watchConfigChanges,
+} from "./config.ts";
 import { initCommands } from "./commands.ts";
 import { log } from "./helpers.ts";
 import express from "express";
 import { useBot } from "./bot";
-import { useConfig } from "./config";
 import onMessage from "./helpers/onMessage.ts";
+import onPhoto from "./helpers/onPhoto.ts";
 import onAudio from "./helpers/onAudio.ts";
 import { useLastCtx } from "./helpers/lastCtx.ts";
 
@@ -53,6 +58,7 @@ async function launchBot(bot_token: string, bot_name: string) {
   );
   await initCommands(bot);
   bot.on([message("text"), editedMessage("text")], onMessage);
+  bot.on(message("photo"), onPhoto);
   bot.on(message("voice"), onAudio);
   bot.on(message("audio"), onAudio);
 

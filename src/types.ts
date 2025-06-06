@@ -38,6 +38,7 @@ export type ChatParamsType = {
   memoryless?: boolean;
   forgetTimeout?: number; // in seconds
   showToolMessages?: true | false | undefined | "headers";
+  showTelegramNames?: boolean;
 };
 
 export type CompletionParamsType = {
@@ -75,6 +76,9 @@ export type ConfigType = {
   mcpServers?: Record<string, McpToolConfig>;
   stt?: {
     whisperBaseUrl?: string;
+  };
+  vision?: {
+    model: string;
   };
   chats: ConfigChatType[];
   logLevel?: "debug" | "info" | "warn" | "error";

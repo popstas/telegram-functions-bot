@@ -1,14 +1,21 @@
-import {Message} from "telegraf/types";
-import {CompletionParamsType} from "../types.ts";
+import { Message } from "telegraf/types";
+import { CompletionParamsType } from "../types.ts";
+import { getFullName } from "./telegram.ts";
 import OpenAI from "openai";
-import {useThreads} from "../threads.ts";
+import { useThreads } from "../threads.ts";
 
-export function addToHistory({msg, answer, completionParams}: {
-  msg: Message.TextMessage;
-  answer?: string,
+export function addToHistory({
+  msg,
+  answer,
+  completionParams,
+  showTelegramNames,
+}: {
+  msg: Message.TextMessage & { forward_origin?: any };
+  answer?: string;
   completionParams?: CompletionParamsType;
+  showTelegramNames?: boolean;
 }) {
-  const key = msg.chat?.id || 0
+  const key = msg.chat?.id || 0;
   const threads = useThreads();
   if (!threads[key]) {
     threads[key] = {
@@ -16,22 +23,34 @@ export function addToHistory({msg, answer, completionParams}: {
       msgs: [],
       messages: [],
       completionParams,
-    }
+    };
   }
-  const messageItem = {} as OpenAI.ChatCompletionMessageParam;
+  let messageItem: OpenAI.ChatCompletionMessageParam;
   if (answer) {
-    messageItem.role = 'system'
-    messageItem.content = answer
+    messageItem = {
+      role: "system",
+      content: answer,
+    };
   } else {
-    messageItem.role = 'user'
-    messageItem.content = msg.text || ''
+    let content = msg.text || "";
+    if (showTelegramNames) {
+      const name = getFullName(msg);
+      if (name) {
+        content = `${name}:\n${content}`;
+      }
+    }
+    messageItem = {
+      role: "user",
+      content,
+      name: msg.from?.first_name,
+    };
   }
-  threads[key].messages.push(messageItem)
+  threads[key].messages.push(messageItem);
 
   if (!answer) {
     threads[key].msgs.push(msg);
     // limit history from begin to last 20 messages
-    threads[key].msgs = threads[key].msgs.slice(-20)
+    threads[key].msgs = threads[key].msgs.slice(-20);
   }
 }
 

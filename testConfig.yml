@@ -27,6 +27,7 @@ chats:
       deleteToolAnswers: 60
       confirmation: false
       showToolMessages: true
+      showTelegramNames: false
     toolParams:
       brainstorm:
         promptBefore: Составь только краткий план действий.

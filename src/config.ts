@@ -73,6 +73,10 @@ export function generateConfig(): ConfigType {
     stt: {
       whisperBaseUrl: "",
     },
+    vision: {
+      model: "gpt-4.1-mini",
+    },
+    models: [],
     chats: [
       {
         name: "default",
@@ -87,6 +91,7 @@ export function generateConfig(): ConfigType {
           deleteToolAnswers: 60,
           confirmation: false,
           showToolMessages: true,
+          showTelegramNames: false,
         },
         toolParams: {
           brainstorm: {
