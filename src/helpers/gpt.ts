@@ -668,10 +668,12 @@ export async function callTools(
     const toolClient = chatTool.module.call(chatConfig, thread);
     // let toolParamsStr = '`' + toolCall.function.name + '()`:\n```\n' + toolParams + '\n```'
 
-    // when tool === 'planfix_add_to_lead_task', parse toolParams, append to description: options.description += `\n\nПолный текст:\n${fromUsername ? `От ${fromUsername}\n\n` : ''}${msgs}`
+    // when tool === 'planfix_add_to_lead_task', parse toolParams, append messages history to description
     if (toolCall.function.name === "planfix_add_to_lead_task") {
       const lastMessage = thread.msgs[thread.msgs.length - 1];
-      const fromUsername = lastMessage.from?.username || "";
+      const from = lastMessage.from;
+      const fromUsername = from?.username || "";
+      const fullName = `${from?.first_name || ""} ${from?.last_name || ""}`.trim();
       const msgs = thread.messages
         .filter((msg) => ["user", "system"].includes(msg.role))
         .map((msg) => msg.content)
@@ -682,7 +684,8 @@ export async function callTools(
       if (!toolParamsParsed.message) {
         toolParamsParsed.message = "";
       }
-      toolParamsParsed.message += `\n\nПолный текст:\n${fromUsername ? `От ${fromUsername}\n\n` : ""}${msgs}`;
+      const fromStr = fromUsername ? `От ${fromUsername}${fullName ? `, ${fullName}` : ""}` : "";
+      toolParamsParsed.message += `\n\nПолный текст:\n${fromStr}\n\n${msgs}`;
       toolParams = JSON.stringify(toolParamsParsed);
     }
 
