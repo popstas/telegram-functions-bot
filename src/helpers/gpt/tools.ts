@@ -1,0 +1,500 @@
+import * as Express from "express";
+import { Chat, Message } from "telegraf/types";
+import OpenAI from "openai";
+import {
+  ChatToolType,
+  ConfigChatType,
+  ModuleType,
+  ThreadStateType,
+  ToolBotType,
+  ToolResponse,
+} from "../../types.ts";
+import { useBot } from "../../bot.ts";
+import { useThreads } from "../../threads.ts";
+import { sendTelegramMessage, getFullName } from "../telegram.ts";
+import { log, sendToHttp } from "../../helpers.ts";
+import useTools from "../useTools.ts";
+import useLangfuse from "../useLangfuse.ts";
+import { isAdminUser } from "../telegram.ts";
+import { useConfig } from "../../config.ts";
+import { requestGptAnswer } from "./llm.ts";
+
+export function chatAsTool({
+  bot_name,
+  name,
+  description,
+  tool_use_behavior,
+  prompt_append,
+  msg,
+}: ToolBotType & { msg: Message.TextMessage }): ChatToolType {
+  return {
+    name,
+    module: {
+      description,
+      call: (configChat: ConfigChatType, thread: ThreadStateType) => {
+        const agentChatConfig = useConfig().chats.find(
+          (c) => c.bot_name === bot_name,
+        );
+        if (!agentChatConfig) {
+          throw new Error(`Bot with bot_name '${bot_name}' not found`);
+        }
+        return {
+          agent: true,
+          functions: {
+            get: () => async (args: string) => {
+              try {
+                interface ParsedArgs {
+                  input?: string;
+                  text?: string;
+                  [key: string]: unknown;
+                }
+                let parsedArgs: ParsedArgs;
+                try {
+                  parsedArgs = JSON.parse(args);
+                } catch {
+                  parsedArgs = { text: args };
+                }
+                msg.text =
+                  typeof parsedArgs === "object" && parsedArgs !== null
+                    ? parsedArgs.input || parsedArgs.text || args
+                    : String(args);
+                const agentStartMsg = `Получил ваше сообщение: ${msg.text}`;
+                sendTelegramMessage(
+                  msg.chat.id,
+                  agentStartMsg,
+                  undefined,
+                  undefined,
+                  agentChatConfig,
+                );
+                const res = await requestGptAnswer(msg, agentChatConfig);
+                const answer = res?.content || "";
+                sendTelegramMessage(
+                  msg.chat.id,
+                  answer,
+                  undefined,
+                  undefined,
+                  agentChatConfig,
+                );
+                if (tool_use_behavior === "stop_on_first_tool") {
+                  sendTelegramMessage(
+                    msg.chat.id,
+                    answer,
+                    undefined,
+                    undefined,
+                    configChat,
+                  );
+                  return { content: "" };
+                }
+                return { content: answer };
+              } catch (err: unknown) {
+                const errorMessage =
+                  err instanceof Error ? err.message : String(err);
+                return {
+                  content: `Proxy tool error for bot '${bot_name}': ${errorMessage}`,
+                };
+              }
+            },
+            toolSpecs: {
+              type: "function",
+              function: {
+                name,
+                description: description || `Proxy tool for bot ${bot_name}`,
+                parameters: {
+                  type: "object",
+                  properties: {
+                    input: {
+                      type: "string",
+                      description:
+                        "Input text for the tool (task, query, etc.)",
+                    },
+                  },
+                  required: ["input"],
+                },
+              },
+            },
+          },
+          prompt_append() {
+            return prompt_append;
+          },
+          configChat: agentChatConfig,
+          thread,
+        } as ModuleType;
+      },
+    },
+  };
+}
+
+export async function executeTools(
+  toolCalls: OpenAI.ChatCompletionMessageToolCall[],
+  chatTools: ChatToolType[],
+  chatConfig: ConfigChatType,
+  msg: Message.TextMessage,
+  expressRes?: Express.Response,
+): Promise<ToolResponse[]> {
+  const thread = useThreads()[msg.chat.id || 0];
+
+  if (msg.text.includes("noconfirm")) {
+    chatConfig = JSON.parse(JSON.stringify(chatConfig));
+    chatConfig.chatParams.confirmation = false;
+    msg.text = msg.text.replace("noconfirm", "");
+  } else if (msg.text.includes("confirm")) {
+    chatConfig = JSON.parse(JSON.stringify(chatConfig));
+    chatConfig.chatParams.confirmation = true;
+    msg.text = msg.text.replace("confirm", "");
+  }
+
+  const uniqueId = Date.now().toString();
+
+  const toolPromises = toolCalls.map(async (toolCall) => {
+    const chatTool = chatTools.find((f) => f.name === toolCall.function.name);
+    if (!chatTool)
+      return { content: `Tool not found: ${toolCall.function.name}` };
+
+    const tool = chatTool.module
+      .call(chatConfig, thread)
+      .functions.get(toolCall.function.name);
+    if (!tool) return { content: `Tool not found! ${toolCall.function.name}` };
+
+    function joinWithOr(arr: string[]): string {
+      if (arr.length === 0) return "";
+      if (arr.length === 1) return arr[0];
+      return arr.slice(0, -1).join(", ") + " or " + arr[arr.length - 1];
+    }
+
+    function prettifyKey(key?: string): string {
+      if (!key) return "";
+      key = key.replace(/[_-]/g, " ");
+      key = key.replace(/([a-z])([A-Z])/g, "$1 $2");
+      key = key.charAt(0).toUpperCase() + key.slice(1);
+      return key;
+    }
+
+    interface FilterType {
+      field?: string;
+      operator?: string;
+      value?: unknown;
+    }
+
+    interface SearchParams {
+      filters?: FilterType[];
+      query?: string;
+      [key: string]: unknown;
+    }
+
+    function prettifyExpertizemeSearchItems(params: SearchParams): string {
+      const lines: string[] = ["`Поиск СМИ:`"];
+      if (Array.isArray(params.filters)) {
+        for (const filter of params.filters) {
+          if (typeof filter === "object" && filter !== null) {
+            const field = prettifyKey(filter.field) || "";
+            const operator = filter.operator || "";
+            const value = filter.value;
+            let valueStr = "";
+            if (Array.isArray(value)) {
+              valueStr = joinWithOr(value);
+            } else {
+              valueStr = value !== undefined ? String(value) : "";
+            }
+            const opStr = operator === "not" ? "not " : "";
+            lines.push(`- **${field}**: ${opStr}${valueStr}`);
+          }
+        }
+      }
+      for (const [key, value] of Object.entries(params)) {
+        if (
+          [
+            "filters",
+            "limit",
+            "sortField",
+            "sortDirection",
+            "groupBy",
+          ].includes(key)
+        )
+          continue;
+        if (Array.isArray(value)) {
+          lines.push(`- **${prettifyKey(key)}**: ${joinWithOr(value)}`);
+        } else {
+          lines.push(`- **${prettifyKey(key)}**: ${value}`);
+        }
+      }
+      if (params.sortField && typeof params.sortField === "string") {
+        const sortLine =
+          "- **Sort by** " +
+          prettifyKey(params.sortField) +
+          (params.sortDirection === "desc" ? " (descending)" : "");
+        lines.push(sortLine);
+      }
+      if (params.groupBy && typeof params.groupBy === "string") {
+        const groupByLine = "- **Group by** " + prettifyKey(params.groupBy);
+        lines.push(groupByLine);
+      }
+      return lines.join("\n");
+    }
+
+    function prettifyKeyValue(key: string, value: unknown, level = 0): string {
+      key = prettifyKey(key);
+      const prefix = "  ".repeat(level) + "-";
+      if (value !== null && typeof value === "object") {
+        if (Array.isArray(value)) {
+          if (value.length === 0) return `${prefix} *${key}:* (empty)`;
+          return [
+            `${prefix} *${key}:*`,
+            ...value.map((v, i) => prettifyKeyValue(String(i), v, level + 1)),
+          ].join("\n");
+        }
+        const entries = Object.entries(value);
+        if (entries.length === 0) return `${prefix} *${key}:* (empty)`;
+        return [
+          `${prefix} *${key}:*`,
+          ...entries.map(([k, v]) => prettifyKeyValue(k, v, level + 1)),
+        ].join("\n");
+      }
+      return `${prefix} *${key}:* ${value}`;
+    }
+
+    let toolParams = toolCall.function.arguments;
+    const toolClient = chatTool.module.call(chatConfig, thread);
+
+    if (toolCall.function.name === "planfix_add_to_lead_task") {
+      const lastMessage = thread.msgs[thread.msgs.length - 1];
+      const from = lastMessage.from;
+      const fromUsername = from?.username || "";
+      const fullName = getFullName(lastMessage);
+      const msgs = thread.messages
+        .filter((m) => ["user", "system"].includes(m.role))
+        .map((m) => m.content)
+        .join("\n\n");
+      const toolParamsParsed = JSON.parse(toolParams) as { message: string };
+      if (!toolParamsParsed.message) toolParamsParsed.message = "";
+      const fromStr = fromUsername
+        ? `От ${fromUsername}${fullName ? `, ${fullName}` : ""}`
+        : "";
+      toolParamsParsed.message += `\n\nПолный текст:\n${fromStr}\n\n${msgs}`;
+      toolParams = JSON.stringify(toolParamsParsed);
+    }
+
+    let toolParamsStr: string;
+    if (chatTool.name === "expertizeme_search_items") {
+      toolParamsStr = prettifyExpertizemeSearchItems(JSON.parse(toolParams));
+    } else {
+      toolParamsStr = [
+        "`" +
+          (toolClient.agent ? "Agent: " : "") +
+          toolCall.function.name.replace(/[_-]/g, " ") +
+          ":`",
+        ...Object.entries(JSON.parse(toolParams)).map(([key, value]) =>
+          prettifyKeyValue(key, value),
+        ),
+      ].join("\n");
+    }
+    if (typeof toolClient.options_string === "function") {
+      toolParamsStr = toolClient.options_string(toolParams);
+    }
+
+    const chatTitle = (msg.chat as Chat.TitleChat).title;
+    const chatId = msg.chat.id;
+    const showMessages = chatConfig.chatParams?.showToolMessages !== false;
+
+    if (toolParams && !chatConfig.chatParams?.confirmation) {
+      log({
+        msg: `${toolCall.function.name}: ${toolParams}`,
+        chatId,
+        chatTitle,
+        role: "assistant",
+      });
+      if (showMessages) {
+        sendToHttp(expressRes, toolParamsStr);
+        await sendTelegramMessage(
+          chatId,
+          toolParamsStr,
+          { deleteAfter: chatConfig.chatParams?.deleteToolAnswers },
+          undefined,
+          chatConfig,
+        );
+      }
+    }
+
+    if (!chatConfig.chatParams?.confirmation) {
+      const { trace } = useLangfuse(msg);
+      let span;
+      if (trace) {
+        span = trace.span({
+          name: toolClient.agent
+            ? `agent_call: ${toolCall.function.name}`
+            : `tool_call: ${toolCall.function.name}`,
+          metadata: { tool: toolCall.function.name },
+          input: JSON.parse(toolParams),
+        });
+      }
+      const executeToolInner = async (attempt = 0): Promise<ToolResponse> => {
+        try {
+          return (await tool(toolParams)) as ToolResponse;
+        } catch (error: unknown) {
+          const err = error as { status?: number; message?: string };
+          if (
+            err.status === 400 &&
+            err.message?.includes("Invalid parameter") &&
+            attempt === 0
+          ) {
+            log({
+              msg: `Retrying tool ${toolCall.function.name} after 400 error`,
+              chatId: msg.chat.id,
+              chatTitle: (msg.chat as Chat.TitleChat).title,
+              role: "tool",
+              logLevel: "warn",
+            });
+            return executeToolInner(attempt + 1);
+          }
+          throw error;
+        }
+      };
+
+      const result = await executeToolInner();
+
+      if (span) {
+        span.end({ output: result.content });
+      }
+      log({ msg: result.content, chatId, chatTitle, role: "tool" });
+      return result;
+    }
+
+    sendToHttp(expressRes, `${toolParamsStr}\nDo you want to proceed?`);
+    return await sendTelegramMessage(
+      msg.chat.id,
+      `${toolParamsStr}\n\nDo you want to proceed?`,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: "Yes", callback_data: `confirm_tool_${uniqueId}` },
+              { text: "No", callback_data: `cancel_tool_${uniqueId}` },
+            ],
+          ],
+        },
+      },
+      undefined,
+      chatConfig,
+    );
+  });
+
+  if (chatConfig.chatParams?.confirmation) {
+    return new Promise((resolve) => {
+      useBot(chatConfig.bot_token!).action(
+        `confirm_tool_${uniqueId}`,
+        async () => {
+          sendToHttp(expressRes, `Yes`);
+          const configConfirmed = JSON.parse(JSON.stringify(chatConfig));
+          configConfirmed.chatParams.confirmation = false;
+          const res = await executeTools(
+            toolCalls,
+            chatTools,
+            configConfirmed,
+            msg,
+          );
+          const chatTitle = (msg.chat as Chat.TitleChat).title;
+          log({
+            msg: "tools called",
+            logLevel: "info",
+            chatId: msg.chat.id,
+            chatTitle,
+            role: "tool",
+          });
+          return resolve(res);
+        },
+      );
+      useBot(chatConfig.bot_token!).action(
+        `cancel_tool_${uniqueId}`,
+        async () => {
+          sendToHttp(expressRes, `Tool execution canceled`);
+          await sendTelegramMessage(
+            msg.chat.id,
+            "Tool execution canceled.",
+            undefined,
+            undefined,
+            chatConfig,
+          );
+          return resolve([]);
+        },
+      );
+    });
+  }
+
+  return Promise.all(toolPromises) as Promise<ToolResponse[]>;
+}
+
+export async function resolveChatTools(
+  msg: Message.TextMessage,
+  chatConfig: ConfigChatType,
+) {
+  if (msg.chat.type === "private" || isAdminUser(msg)) {
+    if (!chatConfig.tools) chatConfig.tools = [];
+    if (!chatConfig.tools.includes("change_chat_settings"))
+      chatConfig.tools.push("change_chat_settings");
+  }
+
+  let agentTools: ChatToolType[] = [];
+  if (chatConfig.tools) {
+    const agentsToolsConfigs = chatConfig.tools.filter((t) => {
+      const isAgent = typeof t === "object" && "bot_name" in t;
+      if (!isAgent) return false;
+      const agentConfig = useConfig().chats.find(
+        (c) => c.bot_name === (t as ToolBotType).bot_name,
+      );
+      if (!agentConfig) return false;
+      if (agentConfig.privateUsers) {
+        const isPrivateUser = agentConfig.privateUsers.includes(
+          msg.from?.username || "without_username",
+        );
+        if (!isPrivateUser) return false;
+      }
+      return true;
+    }) as ToolBotType[];
+    agentTools = agentsToolsConfigs.map((t) => chatAsTool({ ...t, msg }));
+  }
+
+  const globalTools = await useTools();
+  return [
+    ...((chatConfig.tools ?? [])
+      .map((f) => globalTools.find((g) => g.name === f))
+      .filter(Boolean) as ChatToolType[]),
+    ...agentTools,
+  ].filter(Boolean);
+}
+
+export async function getToolsPrompts(
+  chatTools: ChatToolType[],
+  chatConfig: ConfigChatType,
+  thread: ThreadStateType,
+): Promise<string[]> {
+  const promptsPromises = await Promise.all(
+    chatTools
+      .map(async (f) => {
+        const module = f.module.call(chatConfig, thread);
+        if (typeof module.prompt_append === "function") {
+          return module.prompt_append();
+        }
+        return null;
+      })
+      .filter(Boolean),
+  );
+  return promptsPromises.filter(Boolean) as string[];
+}
+
+export async function getToolsSystemMessages(
+  chatTools: ChatToolType[],
+  chatConfig: ConfigChatType,
+  thread: ThreadStateType,
+) {
+  const systemMessagesPromises = await Promise.all(
+    chatTools
+      .map(async (f) => {
+        const module = f.module.call(chatConfig, thread);
+        if (typeof module.systemMessage === "function") {
+          return module.systemMessage();
+        }
+        return null;
+      })
+      .filter(Boolean),
+  );
+  return systemMessagesPromises.filter(Boolean) as string[];
+}

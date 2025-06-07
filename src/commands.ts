@@ -16,7 +16,7 @@ import {
 import {
   getSystemMessage,
   getTokensCount,
-  getChatTools,
+  resolveChatTools,
 } from "./helpers/gpt.ts";
 import { forgetHistory } from "./helpers/history.ts";
 import { commandGoogleOauth } from "./helpers/google.ts";
@@ -195,7 +195,7 @@ export async function getInfoMessage(
   msg: Message.TextMessage,
   chatConfig: ConfigChatType,
 ) {
-  const chatTools = await getChatTools(msg, chatConfig);
+  const chatTools = await resolveChatTools(msg, chatConfig);
   const systemMessage = await getSystemMessage(chatConfig, chatTools);
   const tokens = getTokensCount(chatConfig, systemMessage);
 

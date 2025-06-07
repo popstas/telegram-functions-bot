@@ -6,7 +6,7 @@ import {
   beforeEach,
   afterEach,
 } from "@jest/globals";
-import { callTools } from "../../src/helpers/gpt";
+import { executeTools } from "../../src/helpers/gpt";
 import {
   ConfigChatType,
   ChatToolType,
@@ -74,7 +74,7 @@ const createMockToolCall = (
   },
 });
 
-describe("callTools", () => {
+describe("executeTools", () => {
   // Mock data
   let mockToolCalls: OpenAI.ChatCompletionMessageToolCall[];
   let mockChatTools: ChatToolType[];
@@ -97,6 +97,7 @@ describe("callTools", () => {
     // Create a properly typed mock for the get function
     const mockGet = (name: string) => {
       // Prefix unused parameter with underscore to indicate it's intentionally unused
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const fn = async (_: string): Promise<ToolResponse> => ({
         content:
           name === toolName ? "test response" : `Tool not found: ${name}`,
@@ -130,7 +131,9 @@ describe("callTools", () => {
     // Create a function with the correct signature
     // Using underscore prefix for unused parameters to satisfy linter
     const mockFn = function (
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       _: ConfigChatType,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       __: ThreadStateType,
     ): ModuleType {
       return mockModule;
@@ -187,7 +190,7 @@ describe("callTools", () => {
     const moduleCall = mockChatTools[0].module.call as jest.Mock;
 
     // Execute the function under test
-    const result = await callTools(
+    const result = await executeTools(
       mockToolCalls,
       mockChatTools,
       mockChatConfig,
@@ -205,7 +208,7 @@ describe("callTools", () => {
     // Verify the call arguments for the first call
     const firstCallArgs = moduleCall.mock.calls[0];
     expect(firstCallArgs).toHaveLength(2);
-
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [config, thread] = firstCallArgs;
 
     // Verify config has required properties
@@ -237,7 +240,7 @@ describe("callTools", () => {
     ];
 
     // Execute the function under test
-    const result = await callTools(
+    const result = await executeTools(
       toolCalls,
       mockChatTools,
       mockChatConfig,

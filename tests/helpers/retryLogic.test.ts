@@ -1,18 +1,19 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { jest } from "@jest/globals";
 
-// Mock the callTools function
+// Mock the executeTools function
 const mockCallTools = jest.fn();
 
 // Mock the module
 jest.mock("../../src/helpers/gpt", () => ({
   __esModule: true,
-  callTools: mockCallTools,
+  executeTools: mockCallTools,
 }));
 
 // Import after setting up the mock
-import { callTools } from "../../src/helpers/gpt";
+import { executeTools } from "../../src/helpers/gpt";
 
-describe.skip("callTools retry logic", () => {
+describe.skip("executeTools retry logic", () => {
   // Mock data
   const mockToolCalls = [
     {
@@ -77,7 +78,7 @@ describe.skip("callTools retry logic", () => {
       })
       .mockImplementationOnce(() => Promise.resolve([{ content: "success" }]));
 
-    const result = await callTools(
+    const result = await executeTools(
       mockToolCalls as any,
       mockChatTools as any,
       mockChatConfig,
@@ -97,7 +98,7 @@ describe.skip("callTools retry logic", () => {
     });
 
     await expect(
-      callTools(
+      executeTools(
         mockToolCalls as any,
         mockChatTools as any,
         mockChatConfig,
@@ -117,7 +118,7 @@ describe.skip("callTools retry logic", () => {
     });
 
     await expect(
-      callTools(
+      executeTools(
         mockToolCalls as any,
         mockChatTools as any,
         mockChatConfig,

@@ -141,7 +141,7 @@ describe.skip("Google API Integration Tests", () => {
       const mockCreds = { [existingUserId]: { access_token: "mockToken" } };
       mockReadFileSync.mockReturnValueOnce(JSON.stringify(mockCreds));
 
-      const creds = getUserGoogleCreds(456);
+      const creds = getUserGoogleCreds(nonExistentUserId);
       expect(creds).toBeUndefined();
     });
   });
