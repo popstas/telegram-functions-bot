@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
 import {
   jest,
   describe,
@@ -132,7 +131,9 @@ describe("executeTools", () => {
     // Create a function with the correct signature
     // Using underscore prefix for unused parameters to satisfy linter
     const mockFn = function (
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       _: ConfigChatType,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       __: ThreadStateType,
     ): ModuleType {
       return mockModule;

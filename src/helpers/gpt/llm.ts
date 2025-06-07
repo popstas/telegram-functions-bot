@@ -3,7 +3,6 @@ import express, { Response } from "express";
 import { Context } from "telegraf";
 import { Message } from "telegraf/types";
 import {
-  
   ConfigChatType,
   GptContextType,
   ToolResponse,
@@ -99,7 +98,9 @@ export async function handleModelAnswer({
   addToHistory({ msg, answer });
 
   if (trace) {
-    (trace as any).update({ output: answer });
+    (trace as unknown as { update: (arg: unknown) => void }).update({
+      output: answer,
+    });
   }
 
   if (

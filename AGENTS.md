@@ -1,6 +1,6 @@
 # Guidelines
 
-This project is a TypeScript Telegram bot. The codebase uses Node.js tooling with lint, formatting and tests defined in `.windsurfrules`.
+This project is a TypeScript Telegram bot. The codebase uses Node.js tooling with lint, formatting and tests.
 
 ## Project Structure
 
@@ -17,21 +17,19 @@ Use the npm scripts for development:
 - `npm test` – execute tests and then run typecheck
 - `npm run typecheck` – TypeScript type check
 - `npm run lint` – check lint rules
-- `npm run lint:fix` – automatically fix lint errors
 - `npm run format` – format files with Prettier
 - `npm run format:check` – verify formatting
 
-## Rules from `.windsurfrules`
-
-- Run `npm run lint:fix` before `npm run lint`.
-- Run `npm run format:check` and if it reports issues, run `npm run format`.
-- When using `format` or `format:check`, specify the path to the file.
+## Rules before commit
+- Run `npm run test-full` before commit.
+- Run `npm run format` before commit.
 
 Follow these steps to keep the codebase consistent.
 
+## Описание работы приложения
 Приложение telgram-functions-bot обрабатывает входящие сообщения, определяет их тип, проверяет права доступа, извлекает текст/контекст из медиа или кнопок, формирует историю сообщений. Дальнейшая обработка строится через генерацию промпта и инструментов для запроса к LLM. Ответ LLM может потребовать вызова встроенных или внешних инструментов, которые отрабатываются и результат передается LLM заново — так до получения финального ответа пользователю. Для внешней интеграции работает HTTP-интерфейс, который позволяет эмулировать сообщения от имени бота.
 
-Описание архитектуры и цепочки работы Telegram-бота
+### Описание архитектуры и цепочки работы Telegram-бота
 1. Входящее сообщение (onMessage)
 - Определение типа сообщения:
 - Работа с мультимедиа:
