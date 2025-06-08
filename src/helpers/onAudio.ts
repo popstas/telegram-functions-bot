@@ -3,7 +3,7 @@ import fs from "fs";
 
 import tmp from "tmp";
 import onTextMessage from "./onTextMessage.ts";
-import checkAccessLevel, { isMentioned } from "./access.ts";
+import checkAccessLevel from "./access.ts";
 import { sendTelegramMessage } from "./telegram.ts";
 import { convertToMp3, sendAudioWhisper } from "./stt.ts";
 import { useConfig } from "../config.ts";
@@ -123,7 +123,6 @@ export default async function onAudio(ctx: Context & { secondTry?: boolean }) {
   const access = await checkAccessLevel(ctx);
   if (!access) return;
   const { msg: accessMsg, chat } = access;
-  if (!isMentioned(accessMsg, chat)) return;
 
   if (!useConfig().stt?.whisperBaseUrl) {
     await sendTelegramMessage(
@@ -134,7 +133,9 @@ export default async function onAudio(ctx: Context & { secondTry?: boolean }) {
     );
     return;
   }
-  const msg = accessMsg as unknown as Message.AudioMessage | Message.VoiceMessage;
+  const msg = accessMsg as unknown as
+    | Message.AudioMessage
+    | Message.VoiceMessage;
   const chatTitle = "title" in msg.chat ? msg.chat.title : "private_chat";
   const voice =
     (msg as Message.VoiceMessage).voice || (msg as Message.AudioMessage).audio;

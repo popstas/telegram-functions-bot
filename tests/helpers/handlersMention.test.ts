@@ -5,7 +5,6 @@ import { Context, Message } from "telegraf/types";
 
 const mockSendTelegramMessage = jest.fn();
 const mockCheckAccessLevel = jest.fn();
-const mockIsMentioned = jest.fn(() => false);
 
 jest.unstable_mockModule("../../src/helpers/telegram.ts", () => ({
   __esModule: true,
@@ -19,7 +18,6 @@ jest.unstable_mockModule("../../src/helpers/telegram.ts", () => ({
 jest.unstable_mockModule("../../src/helpers/access.ts", () => ({
   __esModule: true,
   default: mockCheckAccessLevel,
-  isMentioned: mockIsMentioned,
 }));
 
 jest.unstable_mockModule("../../src/helpers/vision.ts", () => ({
@@ -70,7 +68,7 @@ describe("ignore unmentioned messages", () => {
       photo: [{ file_id: "1" }],
       caption: "hello",
     } as unknown as Message.PhotoMessage;
-    mockCheckAccessLevel.mockResolvedValue({ msg, chat });
+    mockCheckAccessLevel.mockResolvedValue(false);
     const ctx = createCtx(msg);
     await onPhoto(ctx);
     expect(mockSendTelegramMessage).not.toHaveBeenCalled();
@@ -82,7 +80,7 @@ describe("ignore unmentioned messages", () => {
       from: { username: "u" },
       voice: { file_id: "v" },
     } as unknown as Message.VoiceMessage;
-    mockCheckAccessLevel.mockResolvedValue({ msg, chat });
+    mockCheckAccessLevel.mockResolvedValue(false);
     const ctx = createCtx(msg);
     await onAudio(ctx);
     expect(mockSendTelegramMessage).not.toHaveBeenCalled();
@@ -94,7 +92,7 @@ describe("ignore unmentioned messages", () => {
       from: { username: "u" },
       document: { file_id: "d" },
     } as unknown as Message.DocumentMessage;
-    mockCheckAccessLevel.mockResolvedValue({ msg, chat });
+    mockCheckAccessLevel.mockResolvedValue(false);
     const ctx = createCtx(msg);
     await onUnsupported(ctx);
     expect(mockSendTelegramMessage).not.toHaveBeenCalled();

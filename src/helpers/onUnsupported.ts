@@ -1,4 +1,4 @@
-import checkAccessLevel, { isMentioned } from "./access.ts";
+import checkAccessLevel from "./access.ts";
 import { Context } from "telegraf";
 import { Message } from "telegraf/types";
 import { sendTelegramMessage } from "./telegram.ts";
@@ -13,7 +13,6 @@ export default async function onUnsupported(ctx: Context) {
   const access = await checkAccessLevel(ctx);
   if (!access) return;
   const { msg, chat } = access;
-  if (!isMentioned(msg, chat)) return;
 
   const message = msg as unknown as SupportedMediaMessage;
   const messageTypes = {

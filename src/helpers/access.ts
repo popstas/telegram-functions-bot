@@ -7,7 +7,9 @@ import { log } from "../helpers.ts";
 
 export default async function checkAccessLevel(
   ctx: Context,
-): Promise<{ msg: Message.TextMessage; chat: ConfigChatType } | undefined> {
+): Promise<
+  { msg: Message.TextMessage; chat: ConfigChatType } | false | undefined
+> {
   const { msg, chat } = getCtxChatMsg(ctx);
   if (!msg) {
     console.log("no ctx message detected");
@@ -37,6 +39,10 @@ export default async function checkAccessLevel(
       : undefined;
     await sendTelegramMessage(msg.chat.id, text, params, ctx);
     return;
+  }
+
+  if (!isMentioned(msg, chat)) {
+    return false;
   }
 
   return { msg, chat };

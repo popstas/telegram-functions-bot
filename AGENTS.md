@@ -20,13 +20,22 @@ Use the npm scripts for development:
 - `npm run format` – format files with Prettier
 - `npm run format:check` – verify formatting
 
-## Rules before commit
-- Run `npm run test-full` before commit.
-- Run `npm run format` before commit.
 
-Follow these steps to keep the codebase consistent.
 
-## Описание работы приложения
+  - `index.ts` регистрирует обработчики `onTextMessage`, `onPhoto`, `onAudio` и `onUnsupported`.
+  - Если сообщение аудио — выполняется speech-to-text (распознавание речи), результат добавляется в историю сообщений, как текст.
+  - Если сообщение фото — извлекается текст с картинки (OCR); если к фото есть подпись (caption), она используется как промпт для задачи над изображением.
+  - `checkAccessLevel` из `src/helpers/access.ts` проверяет уровень доступа и упоминание бота.
+  - Загружаются пользовательские настройки или настройки группового чата.
+  - Если у бота задан префикс и бот не указан явно (ник, reply, тег, префикс-команда), сообщение игнорируется.
+  - `resolveChatButtons` ищет совпадения с кнопками и возвращает промпт.
+  - Далее текст сообщения не анализируется, просто добавляется в историю чата `addToHistory`.
+
+  - Используются функции `getSystemMessage`, `buildMessages`, `resolveChatTools` и `requestGptAnswer`.
+
+  - Основные функции: `handleModelAnswer`, `executeTools` и `processToolResults`.
+
+  - Маршруты реализованы в `telegramPostHandler` и `telegramPostHandlerTest` внутри `index.ts`.
 Приложение telgram-functions-bot обрабатывает входящие сообщения, определяет их тип, проверяет права доступа, извлекает текст/контекст из медиа или кнопок, формирует историю сообщений. Дальнейшая обработка строится через генерацию промпта и инструментов для запроса к LLM. Ответ LLM может потребовать вызова встроенных или внешних инструментов, которые отрабатываются и результат передается LLM заново — так до получения финального ответа пользователю. Для внешней интеграции работает HTTP-интерфейс, который позволяет эмулировать сообщения от имени бота.
 
 ### Описание архитектуры и цепочки работы Telegram-бота
