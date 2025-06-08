@@ -13,7 +13,7 @@ jest.unstable_mockModule("../../src/helpers/telegram.ts", () => ({
 }));
 
 const { default: checkAccessLevel } = await import(
-  "../../src/helpers/checkAccessLevel.ts"
+  "../../src/helpers/access.ts"
 );
 
 describe("checkAccessLevel", () => {
@@ -61,5 +61,29 @@ describe("checkAccessLevel", () => {
     const res = await checkAccessLevel(ctx);
     expect(res).toBeUndefined();
     expect(mockSendTelegramMessage).toHaveBeenCalled();
+  });
+
+  it("returns false when not mentioned", async () => {
+    const msg = {
+      chat: { id: 1, type: "group" },
+      from: { username: "user" },
+      text: "hi",
+    } as unknown as Message.TextMessage;
+    const chat = {
+      name: "test",
+      prefix: "!",
+      completionParams: {},
+      chatParams: {},
+      toolParams: {},
+    } as ConfigChatType;
+    mockGetCtxChatMsg.mockReturnValue({ msg, chat });
+
+    const ctx = { message: msg } as unknown as Parameters<
+      typeof checkAccessLevel
+    >[0];
+
+    const res = await checkAccessLevel(ctx);
+    expect(res).toBe(false);
+    expect(mockSendTelegramMessage).not.toHaveBeenCalled();
   });
 });

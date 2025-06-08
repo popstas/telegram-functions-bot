@@ -1,6 +1,10 @@
 # Guidelines
 
-This project is a TypeScript Telegram bot. The codebase uses Node.js tooling with lint, formatting and tests defined in `.windsurfrules`.
+This project is a TypeScript Telegram bot. The codebase uses Node.js tooling with lint, formatting and tests.
+
+## Rules before commit
+- Run `npm run test-full` before commit.
+- Run `npm run format` before commit.
 
 ## Project Structure
 
@@ -17,21 +21,28 @@ Use the npm scripts for development:
 - `npm test` – execute tests and then run typecheck
 - `npm run typecheck` – TypeScript type check
 - `npm run lint` – check lint rules
-- `npm run lint:fix` – automatically fix lint errors
 - `npm run format` – format files with Prettier
 - `npm run format:check` – verify formatting
 
-## Rules from `.windsurfrules`
 
-- Run `npm run lint:fix` before `npm run lint`.
-- Run `npm run format:check` and if it reports issues, run `npm run format`.
-- When using `format` or `format:check`, specify the path to the file.
 
-Follow these steps to keep the codebase consistent.
+  - `index.ts` регистрирует обработчики `onTextMessage`, `onPhoto`, `onAudio` и `onUnsupported`.
+  - Если сообщение аудио — выполняется speech-to-text (распознавание речи), результат добавляется в историю сообщений, как текст.
+  - Если сообщение фото — извлекается текст с картинки (OCR); если к фото есть подпись (caption), она используется как промпт для задачи над изображением.
+  - `checkAccessLevel` из `src/helpers/access.ts` проверяет уровень доступа и упоминание бота.
+  - Загружаются пользовательские настройки или настройки группового чата.
+  - Если у бота задан префикс и бот не указан явно (ник, reply, тег, префикс-команда), сообщение игнорируется.
+  - `resolveChatButtons` ищет совпадения с кнопками и возвращает промпт.
+  - Далее текст сообщения не анализируется, просто добавляется в историю чата `addToHistory`.
 
+  - Используются функции `getSystemMessage`, `buildMessages`, `resolveChatTools` и `requestGptAnswer`.
+
+  - Основные функции: `handleModelAnswer`, `executeTools` и `processToolResults`.
+
+  - Маршруты реализованы в `telegramPostHandler` и `telegramPostHandlerTest` внутри `index.ts`.
 Приложение telgram-functions-bot обрабатывает входящие сообщения, определяет их тип, проверяет права доступа, извлекает текст/контекст из медиа или кнопок, формирует историю сообщений. Дальнейшая обработка строится через генерацию промпта и инструментов для запроса к LLM. Ответ LLM может потребовать вызова встроенных или внешних инструментов, которые отрабатываются и результат передается LLM заново — так до получения финального ответа пользователю. Для внешней интеграции работает HTTP-интерфейс, который позволяет эмулировать сообщения от имени бота.
 
-Описание архитектуры и цепочки работы Telegram-бота
+### Описание архитектуры и цепочки работы Telegram-бота
 1. Входящее сообщение (onMessage)
 - Определение типа сообщения:
 - Работа с мультимедиа:

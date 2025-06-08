@@ -2,7 +2,6 @@
 description: Run tests and fix errors
 ---
 
-- Run tests
+- Run `npm run test-full`
 - Fix first test
-- Run app
 - Fix remain tests

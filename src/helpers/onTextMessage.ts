@@ -7,8 +7,8 @@ import { log } from "../helpers.ts";
 import { addToHistory, forgetHistory } from "./history.ts";
 import { setLastCtx } from "./lastCtx.ts";
 import { addOauthToThread, ensureAuth } from "./google.ts";
-import { getChatgptAnswer } from "./gpt.ts";
-import checkAccessLevel from "./checkAccessLevel.ts";
+import { requestGptAnswer } from "./gpt.ts";
+import checkAccessLevel from "./access.ts";
 import resolveChatButtons from "./resolveChatButtons.ts";
 import { sendTelegramMessage } from "./telegram.ts";
 
@@ -24,40 +24,8 @@ export default async function onTextMessage(
   if (!access) return;
   const { msg, chat } = access;
 
-  const botName = chat?.bot_name || useConfig().bot_name;
-  let mentioned = false;
-
-  if (
-    msg.reply_to_message &&
-    msg.from?.username !== msg.reply_to_message.from?.username
-  ) {
-    if (msg.reply_to_message.from?.username !== botName) return;
-    mentioned = true;
-  }
-
   const chatTitle = (ctx.message?.chat as Chat.TitleChat).title || "";
   const chatId = msg.chat.id;
-  const isPrivate = msg.chat.type === "private";
-
-  if (chat.prefix && !mentioned && !isPrivate) {
-    const re = new RegExp(`^${chat.prefix}`, "i");
-    const isBot = re.test(msg.text);
-    if (!isBot) {
-      const mention = new RegExp(`@${botName}`, "i");
-      mentioned = mention.test(msg.text);
-      if (!mentioned) {
-        log({
-          msg: `Not mentioned, text: ${msg.text}`,
-          logLevel: "debug",
-          chatId,
-          chatTitle,
-          role: "user",
-          username: msg?.from?.username,
-        });
-        return;
-      }
-    }
-  }
 
   log({
     msg: msg.text,
@@ -165,7 +133,7 @@ async function answerToMessage(
     let msgSent: Message.TextMessage | undefined;
     await ctx.persistentChatAction("typing", async () => {
       if (!msg) return;
-      const res = await getChatgptAnswer(msg, chat, ctx);
+      const res = await requestGptAnswer(msg, chat, ctx);
       const text = res?.content || "бот не ответил";
       const extraParams: Record<string, unknown> = {
         ...extraMessageParams,

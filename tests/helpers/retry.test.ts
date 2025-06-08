@@ -1,8 +1,9 @@
-// This test file tests the retry logic for the callTools function
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// This test file tests the retry logic for the executeTools function
 // We're testing the retry behavior, not the actual implementation
 import { jest, describe, beforeEach, expect, it } from "@jest/globals";
 
-describe.skip("callTools retry logic", () => {
+describe.skip("executeTools retry logic", () => {
   // Mock data
   const mockCallTools = jest.fn<() => Promise<unknown>>();
 
