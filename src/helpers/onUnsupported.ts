@@ -1,3 +1,4 @@
+import checkAccessLevel, { isMentioned } from "./access.ts";
 import { Context } from "telegraf";
 import { Message } from "telegraf/types";
 import { sendTelegramMessage } from "./telegram.ts";
@@ -9,9 +10,12 @@ type SupportedMediaMessage =
   | Message.StickerMessage;
 
 export default async function onUnsupported(ctx: Context) {
-  if (!ctx.message) return;
+  const access = await checkAccessLevel(ctx);
+  if (!access) return;
+  const { msg, chat } = access;
+  if (!isMentioned(msg, chat)) return;
 
-  const message = ctx.message as SupportedMediaMessage;
+  const message = msg as unknown as SupportedMediaMessage;
   const messageTypes = {
     video: "видео",
     video_note: "видео",

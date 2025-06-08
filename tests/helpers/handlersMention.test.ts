@@ -1,0 +1,102 @@
+import { jest } from "@jest/globals";
+import { mockConsole } from "../testHelpers";
+import { ConfigChatType } from "../../src/types";
+import { Context, Message } from "telegraf/types";
+
+const mockSendTelegramMessage = jest.fn();
+const mockCheckAccessLevel = jest.fn();
+const mockIsMentioned = jest.fn(() => false);
+
+jest.unstable_mockModule("../../src/helpers/telegram.ts", () => ({
+  __esModule: true,
+  sendTelegramMessage: mockSendTelegramMessage,
+  getFullName: jest.fn(),
+  getTelegramForwardedUser: jest.fn(),
+  isAdminUser: jest.fn(),
+  getCtxChatMsg: jest.fn(),
+}));
+
+jest.unstable_mockModule("../../src/helpers/access.ts", () => ({
+  __esModule: true,
+  default: mockCheckAccessLevel,
+  isMentioned: mockIsMentioned,
+}));
+
+jest.unstable_mockModule("../../src/helpers/vision.ts", () => ({
+  recognizeImageText: jest.fn(),
+}));
+
+jest.unstable_mockModule("../../src/helpers/stt.ts", () => ({
+  convertToMp3: jest.fn(),
+  sendAudioWhisper: jest.fn(),
+}));
+
+const { default: onPhoto } = await import("../../src/helpers/onPhoto.ts");
+const { default: onAudio } = await import("../../src/helpers/onAudio.ts");
+const { default: onUnsupported } = await import(
+  "../../src/helpers/onUnsupported.ts"
+);
+
+function createCtx(message: Record<string, unknown>): Context {
+  return {
+    message,
+    update: { message },
+    chat: message.chat,
+    persistentChatAction: async (_: string, fn: () => Promise<void>) => {
+      await fn();
+    },
+  } as unknown as Context;
+}
+
+const chat: ConfigChatType = {
+  name: "c",
+  prefix: "!",
+  completionParams: {},
+  chatParams: {},
+  toolParams: {},
+} as ConfigChatType;
+
+describe("ignore unmentioned messages", () => {
+  mockConsole();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("onPhoto", async () => {
+    const msg = {
+      chat: { id: 1, type: "group" },
+      from: { username: "u" },
+      photo: [{ file_id: "1" }],
+      caption: "hello",
+    } as unknown as Message.PhotoMessage;
+    mockCheckAccessLevel.mockResolvedValue({ msg, chat });
+    const ctx = createCtx(msg);
+    await onPhoto(ctx);
+    expect(mockSendTelegramMessage).not.toHaveBeenCalled();
+  });
+
+  it("onAudio", async () => {
+    const msg = {
+      chat: { id: 1, type: "group" },
+      from: { username: "u" },
+      voice: { file_id: "v" },
+    } as unknown as Message.VoiceMessage;
+    mockCheckAccessLevel.mockResolvedValue({ msg, chat });
+    const ctx = createCtx(msg);
+    await onAudio(ctx);
+    expect(mockSendTelegramMessage).not.toHaveBeenCalled();
+  });
+
+  it("onUnsupported", async () => {
+    const msg = {
+      chat: { id: 1, type: "group" },
+      from: { username: "u" },
+      document: { file_id: "d" },
+    } as unknown as Message.DocumentMessage;
+    mockCheckAccessLevel.mockResolvedValue({ msg, chat });
+    const ctx = createCtx(msg);
+    await onUnsupported(ctx);
+    expect(mockSendTelegramMessage).not.toHaveBeenCalled();
+  });
+});

@@ -13,7 +13,7 @@ jest.unstable_mockModule("../../src/helpers/telegram.ts", () => ({
 }));
 
 const { default: checkAccessLevel } = await import(
-  "../../src/helpers/checkAccessLevel.ts"
+  "../../src/helpers/access.ts"
 );
 
 describe("checkAccessLevel", () => {

@@ -1,7 +1,7 @@
 import { Context } from "telegraf";
 import { Message, Update } from "telegraf/types";
 import onTextMessage from "./onTextMessage";
-import checkAccessLevel from "./checkAccessLevel.ts";
+import checkAccessLevel, { isMentioned } from "./access.ts";
 import { recognizeImageText } from "./vision";
 import { log } from "../helpers";
 import { useConfig } from "../config.ts";
@@ -20,7 +20,9 @@ export default async function onPhoto(ctx: Context) {
   const access = await checkAccessLevel(ctx);
   if (!access) return;
 
-  const msg = ctx.update.message as Message.PhotoMessage;
+  const { msg: accessMsg, chat } = access;
+  if (!isMentioned(accessMsg, chat)) return;
+  const msg = accessMsg as unknown as Message.PhotoMessage;
   if (!msg.photo?.length) return;
   const chatTitle = "title" in msg.chat ? msg.chat.title : "private_chat";
   log({

@@ -8,7 +8,7 @@ import { addToHistory, forgetHistory } from "./history.ts";
 import { setLastCtx } from "./lastCtx.ts";
 import { addOauthToThread, ensureAuth } from "./google.ts";
 import { requestGptAnswer } from "./gpt.ts";
-import checkAccessLevel from "./checkAccessLevel.ts";
+import checkAccessLevel from "./access.ts";
 import resolveChatButtons from "./resolveChatButtons.ts";
 import { sendTelegramMessage } from "./telegram.ts";
 
