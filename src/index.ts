@@ -17,6 +17,8 @@ import onPhoto from "./helpers/onPhoto.ts";
 import onAudio from "./helpers/onAudio.ts";
 import onUnsupported from "./helpers/onUnsupported.ts";
 import { useLastCtx } from "./helpers/lastCtx.ts";
+import { requestGptAnswer } from "./helpers/gpt/llm.ts";
+import { initMqtt } from "./mqtt.ts";
 
 process.on("uncaughtException", (error, source) => {
   console.log("Uncaught Exception:", error);
@@ -44,6 +46,7 @@ async function start() {
 
     // Initialize HTTP server
     initHttp();
+    initMqtt();
   } catch (error: unknown) {
     console.error("Error during bot startup:", error);
     console.log("restart after 10 seconds...");
@@ -110,6 +113,9 @@ function initHttp() {
   app.post("/telegram/:chatId", telegramPostHandler);
   // @ts-expect-error express types need proper request/response typing
   app.get("/telegram/test", telegramPostHandlerTest);
+  // call agent by name
+  // @ts-expect-error express types
+  app.post("/agent/:agentName", agentPostHandler);
 
   app.listen(port, () => {
     console.log(`Express server listening on port ${port}`);
@@ -219,5 +225,47 @@ async function telegramPostHandler(
     );
   } catch {
     res.status(500).send("Error sending message.");
+  }
+}
+
+async function agentPostHandler(req: express.Request, res: express.Response) {
+  const { agentName } = req.params;
+  const { text, webhook } = req.body || {};
+  const token = req.headers["authorization"];
+  if (
+    useConfig().http?.auth_token &&
+    token !== `Bearer ${useConfig().http.auth_token}`
+  ) {
+    return res.status(401).send("Unauthorized");
+  }
+  if (!text) {
+    return res.status(400).send("Message text is required.");
+  }
+  const agentConfig = useConfig().chats.find((c) => c.agent_name === agentName);
+  if (!agentConfig) {
+    return res.status(400).send("Wrong agent_name");
+  }
+  const msg = {
+    chat: { id: 0, type: "private" as const },
+    text,
+    message_id: Date.now(),
+    date: Math.floor(Date.now() / 1000),
+    from: { id: 0, is_bot: false, first_name: "http" },
+  } as Message.TextMessage;
+  const resObj = await requestGptAnswer(msg, agentConfig, {
+    noSendTelegram: true,
+  } as unknown as Context);
+  const answer = resObj?.content || "";
+  res.end(answer);
+  if (webhook) {
+    try {
+      await fetch(webhook, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answer }),
+      });
+    } catch {
+      // ignore webhook errors
+    }
   }
 }

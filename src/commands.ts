@@ -118,13 +118,18 @@ export async function commandAddTool(
         if (!chatConfig) return;
 
         if (!chatConfig.tools) chatConfig.tools = [];
-        if (!chatConfig.tools.includes(tool.name)) {
+        const hasTool = (chatConfig.tools || []).some(
+          (t) => typeof t === "string" && t === tool.name,
+        );
+        if (!hasTool) {
           chatConfig.tools.push(tool.name);
         }
-        chatConfig.tools = chatConfig.tools.filter(
-          (t) =>
-            (typeof t === "object" && "bot_name" in t) || !excluded.includes(t),
-        );
+        chatConfig.tools = chatConfig.tools.filter((t) => {
+          if (typeof t === "object" && ("agent_name" in t || "bot_name" in t)) {
+            return true;
+          }
+          return !excluded.includes(t as string);
+        });
 
         if (!chatConfig.toolParams)
           chatConfig.toolParams = {} as ToolParamsType;
@@ -161,10 +166,11 @@ export async function getToolsInfo(
 ) {
   const globalTools = await useTools();
   const agentsToolsConfigs = tools.filter((t) => {
-    const isAgent = typeof t === "object" && "bot_name" in t;
+    const isAgent =
+      typeof t === "object" && ("agent_name" in t || "bot_name" in t);
     if (!isAgent) return false;
     const agentConfig = useConfig().chats.find(
-      (c) => c.bot_name === t.bot_name,
+      (c) => c.agent_name === t.agent_name || c.bot_name === t.bot_name,
     );
     if (!agentConfig) return false;
 

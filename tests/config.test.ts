@@ -6,6 +6,7 @@ const mockExistsSync = jest.fn();
 const mockReadFileSync = jest.fn();
 const mockWriteFileSync = jest.fn();
 const mockWatchFile = jest.fn();
+const mockAppendFileSync = jest.fn();
 const mockDump = jest.fn();
 const mockLoad = jest.fn();
 
@@ -17,11 +18,13 @@ jest.unstable_mockModule("fs", () => ({
     readFileSync: mockReadFileSync,
     writeFileSync: mockWriteFileSync,
     watchFile: mockWatchFile,
+    appendFileSync: mockAppendFileSync,
   },
   existsSync: mockExistsSync,
   readFileSync: mockReadFileSync,
   writeFileSync: mockWriteFileSync,
   watchFile: mockWatchFile,
+  appendFileSync: mockAppendFileSync,
 }));
 
 jest.unstable_mockModule("js-yaml", () => ({
@@ -120,5 +123,23 @@ describe("writeConfig", () => {
 
     // Clean up
     consoleErrorSpy.mockRestore();
+  });
+});
+
+describe("readConfig agent_name", () => {
+  mockConsole();
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("generates agent_name when missing", () => {
+    mockExistsSync.mockReturnValue(true);
+    const cfg = generateConfig();
+    delete cfg.chats[0].agent_name;
+    mockReadFileSync.mockReturnValue("yaml");
+    mockLoad.mockReturnValue(cfg);
+
+    const res = readConfig("testConfig.yml");
+    expect(res.chats[0].agent_name).toBeDefined();
   });
 });
