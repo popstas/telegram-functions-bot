@@ -20,7 +20,7 @@ export default async function onPhoto(ctx: Context) {
   const access = await checkAccessLevel(ctx);
   if (!access) return;
 
-  const { msg: accessMsg, chat } = access;
+  const { msg: accessMsg } = access;
   const msg = accessMsg as unknown as Message.PhotoMessage;
   if (!msg.photo?.length) return;
   const chatTitle = "title" in msg.chat ? msg.chat.title : "private_chat";

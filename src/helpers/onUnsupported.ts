@@ -12,7 +12,7 @@ type SupportedMediaMessage =
 export default async function onUnsupported(ctx: Context) {
   const access = await checkAccessLevel(ctx);
   if (!access) return;
-  const { msg, chat } = access;
+  const { msg } = access;
 
   const message = msg as unknown as SupportedMediaMessage;
   const messageTypes = {

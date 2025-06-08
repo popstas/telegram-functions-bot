@@ -1,6 +1,5 @@
 import { jest } from "@jest/globals";
 import { mockConsole } from "../testHelpers";
-import { ConfigChatType } from "../../src/types";
 import { Context, Message } from "telegraf/types";
 
 const mockSendTelegramMessage = jest.fn();
@@ -45,14 +44,6 @@ function createCtx(message: Record<string, unknown>): Context {
     },
   } as unknown as Context;
 }
-
-const chat: ConfigChatType = {
-  name: "c",
-  prefix: "!",
-  completionParams: {},
-  chatParams: {},
-  toolParams: {},
-} as ConfigChatType;
 
 describe("ignore unmentioned messages", () => {
   mockConsole();

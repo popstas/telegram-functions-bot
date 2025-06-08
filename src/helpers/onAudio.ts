@@ -122,7 +122,7 @@ export default async function onAudio(ctx: Context & { secondTry?: boolean }) {
 
   const access = await checkAccessLevel(ctx);
   if (!access) return;
-  const { msg: accessMsg, chat } = access;
+  const { msg: accessMsg } = access;
 
   if (!useConfig().stt?.whisperBaseUrl) {
     await sendTelegramMessage(
