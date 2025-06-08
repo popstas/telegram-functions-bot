@@ -20,9 +20,9 @@ Use the npm scripts for development:
 - `npm start` – run the bot
 - `npm test` – execute tests and then run typecheck
 - `npm run typecheck` – TypeScript type check
-- `npm run lint` – check lint rules
-- `npm run format` – format files with Prettier
-- `npm run format:check` – verify formatting
+- `npm run lint src tests` – check lint rules
+- `npm run format src tests` – format files with Prettier
+- `npm run format:check src tests` – verify formatting
 
 
 

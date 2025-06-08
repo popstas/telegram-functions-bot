@@ -18,7 +18,7 @@ import onAudio from "./helpers/onAudio.ts";
 import onUnsupported from "./helpers/onUnsupported.ts";
 import { useLastCtx } from "./helpers/lastCtx.ts";
 import { requestGptAnswer } from "./helpers/gpt/llm.ts";
-import { initMqtt } from "./mqtt.ts";
+import { useMqtt } from "./mqtt.ts";
 
 process.on("uncaughtException", (error, source) => {
   console.log("Uncaught Exception:", error);
@@ -46,7 +46,7 @@ async function start() {
 
     // Initialize HTTP server
     initHttp();
-    initMqtt();
+    useMqtt();
   } catch (error: unknown) {
     console.error("Error during bot startup:", error);
     console.log("restart after 10 seconds...");
@@ -118,7 +118,7 @@ function initHttp() {
   app.post("/agent/:agentName", agentPostHandler);
 
   app.listen(port, () => {
-    console.log(`Express server listening on port ${port}`);
+    log({ msg: `http server listening on port ${port}` });
   });
 }
 

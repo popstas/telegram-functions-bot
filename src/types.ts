@@ -102,7 +102,7 @@ export type HttpConfigType = {
 export type MqttConfigType = {
   host: string;
   port?: number;
-  user?: string;
+  username?: string;
   password?: string;
   base: string;
 };

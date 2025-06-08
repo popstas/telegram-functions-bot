@@ -135,11 +135,24 @@ describe("readConfig agent_name", () => {
   it("generates agent_name when missing", () => {
     mockExistsSync.mockReturnValue(true);
     const cfg = generateConfig();
-    delete cfg.chats[0].agent_name;
+    // Add a non-default chat for testing
+    const testChat = {
+      name: "test-chat",
+      completionParams: {
+        model: "gpt-4.1-mini",
+      },
+      systemMessage: "Test chat",
+      chatParams: {},
+      toolParams: {},
+    };
+    cfg.chats.push(testChat);
+    // Delete agent_name from the test chat
+    delete cfg.chats[1].agent_name;
     mockReadFileSync.mockReturnValue("yaml");
     mockLoad.mockReturnValue(cfg);
 
     const res = readConfig("testConfig.yml");
-    expect(res.chats[0].agent_name).toBeDefined();
+    // Check the test chat (index 1) instead of default chat (index 0)
+    expect(res.chats[1].agent_name).toBeDefined();
   });
 });

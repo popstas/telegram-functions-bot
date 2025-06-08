@@ -13,7 +13,7 @@ export async function runAgent(
   const chat = config.chats.find((c) => c.agent_name === agentName);
   if (!chat) throw new Error(`Agent not found: ${agentName}`);
   const msg: Message.TextMessage = {
-    chat: { id: 0, type: "private" as const },
+    chat: { id: 0, type: "private" as const, first_name: "cli" },
     text,
     message_id: Date.now(),
     date: Math.floor(Date.now() / 1000),

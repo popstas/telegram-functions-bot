@@ -8,7 +8,7 @@
     "changelog": "npx conventional-changelog-cli -p angular -i CHANGELOG.md -s -r 0",
     "test": "node --no-warnings=ExperimentalWarning --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test-full": "npm run test && npm run typecheck && npm run lint src tests",
-    "prepare": "npm run test-full && npm run format",
+    "prepare-commit": "npm run test-full && npm run format",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\" \"tests/**/*.{ts,js,json,md}\"",

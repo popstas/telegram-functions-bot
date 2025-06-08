@@ -33,17 +33,17 @@ export function readConfig(path?: string): ConfigType {
 
   // auto-generate agent_name when missing
   config.chats.forEach((chat, idx) => {
-    if (!chat.agent_name) {
-      const base = chat.bot_name?.replace(/_bot$/i, "") || chat.name;
-      const gen = base.toLowerCase().replace(/[^a-z0-9_]/g, "_");
-      chat.agent_name = gen || `agent_${idx}`;
-      log({
-        msg: `agent_name not set for chat ${chat.name}, generated ${chat.agent_name}`,
-        logLevel: "warn",
-      });
-    }
+    if (chat.name === "default") return; // skip default
+    if (chat.username) return; // skip private chats
+    if (chat.agent_name) return; // skip if already set
+    const base = chat.bot_name?.replace(/_bot$/i, "") || chat.name;
+    const gen = base.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+    chat.agent_name = gen || `agent_${idx}`;
+    log({
+      msg: `agent_name not set for chat ${chat.name}, generated ${chat.agent_name}`,
+      logLevel: "warn",
+    });
   });
-
   return config;
 }
 

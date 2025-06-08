@@ -18,6 +18,7 @@ import useLangfuse from "../useLangfuse.ts";
 import { isAdminUser } from "../telegram.ts";
 import { useConfig } from "../../config.ts";
 import { requestGptAnswer } from "./llm.ts";
+import { publishMqttProgress } from "../../mqtt.ts";
 
 export function chatAsTool({
   agent_name,
@@ -137,6 +138,7 @@ export async function executeTools(
   chatConfig: ConfigChatType,
   msg: Message.TextMessage,
   expressRes?: Express.Response,
+  noSendTelegram?: boolean,
 ): Promise<ToolResponse[]> {
   const thread = useThreads()[msg.chat.id || 0];
 
@@ -311,13 +313,16 @@ export async function executeTools(
       });
       if (showMessages) {
         sendToHttp(expressRes, toolParamsStr);
-        await sendTelegramMessage(
-          chatId,
-          toolParamsStr,
-          { deleteAfter: chatConfig.chatParams?.deleteToolAnswers },
-          undefined,
-          chatConfig,
-        );
+        publishMqttProgress(toolParamsStr, chatConfig.agent_name);
+        if (!noSendTelegram) {
+          await sendTelegramMessage(
+            chatId,
+            toolParamsStr,
+            { deleteAfter: chatConfig.chatParams?.deleteToolAnswers },
+            undefined,
+            chatConfig,
+          );
+        }
       }
     }
 
@@ -366,22 +371,24 @@ export async function executeTools(
     }
 
     sendToHttp(expressRes, `${toolParamsStr}\nDo you want to proceed?`);
-    return await sendTelegramMessage(
-      msg.chat.id,
-      `${toolParamsStr}\n\nDo you want to proceed?`,
-      {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: "Yes", callback_data: `confirm_tool_${uniqueId}` },
-              { text: "No", callback_data: `cancel_tool_${uniqueId}` },
+    if (!noSendTelegram)
+      await sendTelegramMessage(
+        msg.chat.id,
+        `${toolParamsStr}\n\nDo you want to proceed?`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "Yes", callback_data: `confirm_tool_${uniqueId}` },
+                { text: "No", callback_data: `cancel_tool_${uniqueId}` },
+              ],
             ],
-          ],
+          },
         },
-      },
-      undefined,
-      chatConfig,
-    );
+        undefined,
+        chatConfig,
+      );
+    return ""; // TODO: fix, show progress?
   });
 
   if (chatConfig.chatParams?.confirmation) {
