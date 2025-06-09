@@ -17,7 +17,7 @@ import onPhoto from "./helpers/onPhoto.ts";
 import onAudio from "./helpers/onAudio.ts";
 import onUnsupported from "./helpers/onUnsupported.ts";
 import { useLastCtx } from "./helpers/lastCtx.ts";
-import { requestGptAnswer } from "./helpers/gpt/llm.ts";
+import { agentPostHandler, toolPostHandler } from "./httpHandlers.ts";
 import { useMqtt } from "./mqtt.ts";
 
 process.on("uncaughtException", (error, source) => {
@@ -116,6 +116,9 @@ function initHttp() {
   // call agent by name
   // @ts-expect-error express types
   app.post("/agent/:agentName", agentPostHandler);
+  // call tool directly
+  // @ts-expect-error express types
+  app.post("/agent/:agentName/tool/:toolName", toolPostHandler);
 
   app.listen(port, () => {
     log({ msg: `http server listening on port ${port}` });
@@ -225,64 +228,5 @@ async function telegramPostHandler(
     );
   } catch {
     res.status(500).send("Error sending message.");
-  }
-}
-
-async function agentPostHandler(req: express.Request, res: express.Response) {
-  const { agentName } = req.params;
-  const { text, webhook } = req.body || {};
-  const token = req.headers["authorization"];
-  if (
-    useConfig().http?.auth_token &&
-    token !== `Bearer ${useConfig().http.auth_token}`
-  ) {
-    return res.status(401).send("Unauthorized");
-  }
-  if (!text) {
-    return res.status(400).send("Message text is required.");
-  }
-  const agentConfig = useConfig().chats.find((c) => c.agent_name === agentName);
-  if (!agentConfig) {
-    return res.status(400).send("Wrong agent_name");
-  }
-  const chatId =
-    agentConfig.id ||
-    parseInt("444" + Math.floor(100000 + Math.random() * 900000));
-  const msg = {
-    chat: { id: chatId, type: "private" as const },
-    text,
-    message_id: Date.now(),
-    date: Math.floor(Date.now() / 1000),
-    from: { id: 0, is_bot: false, first_name: "http" },
-  } as Message.TextMessage;
-  log({
-    msg: msg.text,
-    chatId,
-    chatTitle: "http",
-    username: "http",
-    role: "user",
-  });
-  const resObj = await requestGptAnswer(msg, agentConfig, {
-    noSendTelegram: true,
-  } as unknown as Context);
-  const answer = resObj?.content || "";
-  log({
-    msg: answer,
-    chatId,
-    chatTitle: "http",
-    username: "http",
-    role: "assistant",
-  });
-  res.end(answer);
-  if (webhook) {
-    try {
-      await fetch(webhook, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answer }),
-      });
-    } catch {
-      // ignore webhook errors
-    }
   }
 }
