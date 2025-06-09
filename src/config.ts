@@ -31,6 +31,19 @@ export function readConfig(path?: string): ConfigType {
     delete config.auth.proxy_url;
   }
 
+  // auto-generate agent_name when missing
+  config.chats.forEach((chat, idx) => {
+    if (chat.name === "default") return; // skip default
+    if (chat.username) return; // skip private chats
+    if (chat.agent_name) return; // skip if already set
+    const base = chat.bot_name?.replace(/_bot$/i, "") || chat.name;
+    const gen = base.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+    chat.agent_name = gen || `agent_${idx}`;
+    log({
+      msg: `agent_name not set for chat ${chat.name}, generated ${chat.agent_name}`,
+      logLevel: "warn",
+    });
+  });
   return config;
 }
 
@@ -80,6 +93,7 @@ export function generateConfig(): ConfigType {
     chats: [
       {
         name: "default",
+        agent_name: "default",
         completionParams: {
           model: "gpt-4.1-mini",
         },
@@ -104,6 +118,12 @@ export function generateConfig(): ConfigType {
     http: {
       port: 7586,
       telegram_from_username: "second_bot_name",
+      auth_token: "change_me",
+    },
+    mqtt: {
+      host: "localhost",
+      port: 1883,
+      base: "bots/",
     },
   };
 }

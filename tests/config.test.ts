@@ -6,6 +6,7 @@ const mockExistsSync = jest.fn();
 const mockReadFileSync = jest.fn();
 const mockWriteFileSync = jest.fn();
 const mockWatchFile = jest.fn();
+const mockAppendFileSync = jest.fn();
 const mockDump = jest.fn();
 const mockLoad = jest.fn();
 
@@ -17,11 +18,13 @@ jest.unstable_mockModule("fs", () => ({
     readFileSync: mockReadFileSync,
     writeFileSync: mockWriteFileSync,
     watchFile: mockWatchFile,
+    appendFileSync: mockAppendFileSync,
   },
   existsSync: mockExistsSync,
   readFileSync: mockReadFileSync,
   writeFileSync: mockWriteFileSync,
   watchFile: mockWatchFile,
+  appendFileSync: mockAppendFileSync,
 }));
 
 jest.unstable_mockModule("js-yaml", () => ({
@@ -120,5 +123,36 @@ describe("writeConfig", () => {
 
     // Clean up
     consoleErrorSpy.mockRestore();
+  });
+});
+
+describe("readConfig agent_name", () => {
+  mockConsole();
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("generates agent_name when missing", () => {
+    mockExistsSync.mockReturnValue(true);
+    const cfg = generateConfig();
+    // Add a non-default chat for testing
+    const testChat = {
+      name: "test-chat",
+      completionParams: {
+        model: "gpt-4.1-mini",
+      },
+      systemMessage: "Test chat",
+      chatParams: {},
+      toolParams: {},
+    };
+    cfg.chats.push(testChat);
+    // Delete agent_name from the test chat
+    delete cfg.chats[1].agent_name;
+    mockReadFileSync.mockReturnValue("yaml");
+    mockLoad.mockReturnValue(cfg);
+
+    const res = readConfig("testConfig.yml");
+    // Check the test chat (index 1) instead of default chat (index 0)
+    expect(res.chats[1].agent_name).toBeDefined();
   });
 });

@@ -23,6 +23,7 @@ export type HandleModelAnswerParams = {
   res: OpenAI.ChatCompletion;
   chatConfig: ConfigChatType;
   expressRes: express.Response | undefined;
+  noSendTelegram?: boolean;
   gptContext: GptContextType;
   level?: number;
   trace?: unknown;
@@ -34,6 +35,7 @@ export type ProcessToolResultsParams = {
   chatConfig: ConfigChatType;
   msg: Message.TextMessage;
   expressRes: Response | undefined;
+  noSendTelegram?: boolean;
   gptContext: GptContextType;
   level: number;
 };
@@ -43,6 +45,7 @@ export async function handleModelAnswer({
   res,
   chatConfig,
   expressRes,
+  noSendTelegram,
   gptContext,
   level = 1,
   trace,
@@ -80,6 +83,7 @@ export async function handleModelAnswer({
       chatConfig,
       msg,
       expressRes,
+      noSendTelegram,
     );
     if (tool_res) {
       return processToolResults({
@@ -88,6 +92,7 @@ export async function handleModelAnswer({
         chatConfig,
         msg,
         expressRes,
+        noSendTelegram,
         gptContext,
         level,
       });
@@ -121,6 +126,7 @@ export async function processToolResults({
   chatConfig,
   msg,
   expressRes,
+  noSendTelegram,
   gptContext,
   level,
 }: ProcessToolResultsParams): Promise<ToolResponse> {
@@ -228,6 +234,7 @@ export async function processToolResults({
     res,
     chatConfig,
     expressRes,
+    noSendTelegram,
     gptContext,
     level: level + 1,
     trace,
@@ -239,6 +246,8 @@ export async function requestGptAnswer(
   chatConfig: ConfigChatType,
   ctx?: Context & {
     expressRes?: express.Response;
+    progressCallback?: (msg: string) => void;
+    noSendTelegram?: boolean;
   },
 ) {
   if (!msg.text) return;
@@ -316,6 +325,7 @@ export async function requestGptAnswer(
     res,
     chatConfig,
     expressRes: ctx?.expressRes,
+    noSendTelegram: ctx?.noSendTelegram,
     gptContext,
     trace,
   });

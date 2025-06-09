@@ -18,8 +18,10 @@ import useLangfuse from "../useLangfuse.ts";
 import { isAdminUser } from "../telegram.ts";
 import { useConfig } from "../../config.ts";
 import { requestGptAnswer } from "./llm.ts";
+import { publishMqttProgress } from "../../mqtt.ts";
 
 export function chatAsTool({
+  agent_name,
   bot_name,
   name,
   description,
@@ -33,10 +35,12 @@ export function chatAsTool({
       description,
       call: (configChat: ConfigChatType, thread: ThreadStateType) => {
         const agentChatConfig = useConfig().chats.find(
-          (c) => c.bot_name === bot_name,
+          (c) => c.agent_name === agent_name || c.bot_name === bot_name,
         );
         if (!agentChatConfig) {
-          throw new Error(`Bot with bot_name '${bot_name}' not found`);
+          throw new Error(
+            `Agent not found: ${agent_name || bot_name || "unknown"}`,
+          );
         }
         return {
           agent: true,
@@ -90,7 +94,9 @@ export function chatAsTool({
                 const errorMessage =
                   err instanceof Error ? err.message : String(err);
                 return {
-                  content: `Proxy tool error for bot '${bot_name}': ${errorMessage}`,
+                  content: `Proxy tool error for agent '${
+                    agent_name || bot_name
+                  }': ${errorMessage}`,
                 };
               }
             },
@@ -98,7 +104,9 @@ export function chatAsTool({
               type: "function",
               function: {
                 name,
-                description: description || `Proxy tool for bot ${bot_name}`,
+                description:
+                  description ||
+                  `Proxy tool for agent ${agent_name || bot_name}`,
                 parameters: {
                   type: "object",
                   properties: {
@@ -130,6 +138,7 @@ export async function executeTools(
   chatConfig: ConfigChatType,
   msg: Message.TextMessage,
   expressRes?: Express.Response,
+  noSendTelegram?: boolean,
 ): Promise<ToolResponse[]> {
   const thread = useThreads()[msg.chat.id || 0];
 
@@ -304,13 +313,16 @@ export async function executeTools(
       });
       if (showMessages) {
         sendToHttp(expressRes, toolParamsStr);
-        await sendTelegramMessage(
-          chatId,
-          toolParamsStr,
-          { deleteAfter: chatConfig.chatParams?.deleteToolAnswers },
-          undefined,
-          chatConfig,
-        );
+        publishMqttProgress(toolParamsStr, chatConfig.agent_name);
+        if (!noSendTelegram) {
+          await sendTelegramMessage(
+            chatId,
+            toolParamsStr,
+            { deleteAfter: chatConfig.chatParams?.deleteToolAnswers },
+            undefined,
+            chatConfig,
+          );
+        }
       }
     }
 
@@ -359,22 +371,24 @@ export async function executeTools(
     }
 
     sendToHttp(expressRes, `${toolParamsStr}\nDo you want to proceed?`);
-    return await sendTelegramMessage(
-      msg.chat.id,
-      `${toolParamsStr}\n\nDo you want to proceed?`,
-      {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: "Yes", callback_data: `confirm_tool_${uniqueId}` },
-              { text: "No", callback_data: `cancel_tool_${uniqueId}` },
+    if (!noSendTelegram)
+      await sendTelegramMessage(
+        msg.chat.id,
+        `${toolParamsStr}\n\nDo you want to proceed?`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "Yes", callback_data: `confirm_tool_${uniqueId}` },
+                { text: "No", callback_data: `cancel_tool_${uniqueId}` },
+              ],
             ],
-          ],
+          },
         },
-      },
-      undefined,
-      chatConfig,
-    );
+        undefined,
+        chatConfig,
+      );
+    return ""; // TODO: fix, show progress?
   });
 
   if (chatConfig.chatParams?.confirmation) {
@@ -435,10 +449,13 @@ export async function resolveChatTools(
   let agentTools: ChatToolType[] = [];
   if (chatConfig.tools) {
     const agentsToolsConfigs = chatConfig.tools.filter((t) => {
-      const isAgent = typeof t === "object" && "bot_name" in t;
+      const isAgent =
+        typeof t === "object" && ("agent_name" in t || "bot_name" in t);
       if (!isAgent) return false;
       const agentConfig = useConfig().chats.find(
-        (c) => c.bot_name === (t as ToolBotType).bot_name,
+        (c) =>
+          c.agent_name === (t as ToolBotType).agent_name ||
+          c.bot_name === (t as ToolBotType).bot_name,
       );
       if (!agentConfig) return false;
       if (agentConfig.privateUsers) {

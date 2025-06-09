@@ -68,19 +68,29 @@ function sanitizeTelegramHtml(html: string): string {
   return result.trim();
 }
 
+interface ExtraCtx {
+  noSendTelegram?: boolean;
+  progressCallback?: (msg: string) => void;
+}
+
 export async function sendTelegramMessage(
   chat_id: number,
   text: string,
   extraMessageParams?:
     | Record<string, unknown>
     | Markup.Markup<ReplyKeyboardMarkup>,
-  ctx?: Context,
+  ctx?: Context & ExtraCtx,
   chatConfig?: ConfigChatType,
 ): Promise<Message.TextMessage | undefined> {
   chatConfig =
     chatConfig ||
     useConfig().chats.find((c) => c.bot_name === ctx?.botInfo.username) ||
     ({} as ConfigChatType);
+
+  if (ctx?.noSendTelegram) {
+    ctx.progressCallback?.(text);
+    return undefined;
+  }
 
   let response: Message.TextMessage | undefined;
   const params: Record<string, unknown> = {

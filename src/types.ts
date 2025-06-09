@@ -4,7 +4,8 @@ import { GoogleAuth, OAuth2Client } from "google-auth-library";
 import { CredentialBody } from "google-auth-library/build/src/auth/credentials";
 
 export type ToolBotType = {
-  bot_name: string;
+  agent_name?: string;
+  bot_name?: string; // deprecated
   name: string;
   description?: string;
   tool_use_behavior?: "run_llm_again" | "stop_on_first_tool";
@@ -16,7 +17,8 @@ export type ConfigChatType = {
   model?: string;
   completionParams: CompletionParamsType;
   bot_token?: string;
-  bot_name?: string;
+  bot_name?: string; // deprecated
+  agent_name?: string;
   privateUsers?: string[];
   id?: number;
   ids?: number[];
@@ -70,6 +72,7 @@ export type ConfigType = {
     model: string;
   }[];
   http: HttpConfigType;
+  mqtt?: MqttConfigType;
   adminUsers?: string[];
   privateUsers: string[];
   testUsers?: string[];
@@ -92,6 +95,16 @@ export type ConfigType = {
 export type HttpConfigType = {
   port?: number;
   telegram_from_username?: string;
+  auth_token?: string;
+  webhook?: string;
+};
+
+export type MqttConfigType = {
+  host: string;
+  port?: number;
+  username?: string;
+  password?: string;
+  base: string;
 };
 
 export type ButtonsSyncConfigType = {
