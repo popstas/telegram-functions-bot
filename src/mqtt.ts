@@ -1,6 +1,6 @@
 import mqtt from "mqtt";
 import { useConfig } from "./config.ts";
-import { runAgent } from "./cli-agent.ts";
+import { runAgent } from "./agent-runner.ts";
 import { log } from "./helpers.ts";
 let client: mqtt.MqttClient | undefined;
 

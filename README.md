@@ -12,7 +12,7 @@ Telegram bot with functions tools.
 - MCP support: use external tools and services to get answer
 - Langfuse support: track chat history and tool usage
 - Use agents as tools
-- Agents can be triggered by name via CLI, HTTP or MQTT
+- Agents can be triggered by name via HTTP or MQTT
 - Incoming audio transcription using Whisper service
 
 ## Pipeline
@@ -127,6 +127,7 @@ chats:
 You can run any configured agent outside Telegram.
 
 ### CLI
+CLI isn't working at this time, use scripts that calling curl.
 
 ```
 npm run agent <agent_name> "your text"

@@ -245,17 +245,34 @@ async function agentPostHandler(req: express.Request, res: express.Response) {
   if (!agentConfig) {
     return res.status(400).send("Wrong agent_name");
   }
+  const chatId =
+    agentConfig.id ||
+    parseInt("444" + Math.floor(100000 + Math.random() * 900000));
   const msg = {
-    chat: { id: 0, type: "private" as const },
+    chat: { id: chatId, type: "private" as const },
     text,
     message_id: Date.now(),
     date: Math.floor(Date.now() / 1000),
     from: { id: 0, is_bot: false, first_name: "http" },
   } as Message.TextMessage;
+  log({
+    msg: msg.text,
+    chatId,
+    chatTitle: "http",
+    username: "http",
+    role: "user",
+  });
   const resObj = await requestGptAnswer(msg, agentConfig, {
     noSendTelegram: true,
   } as unknown as Context);
   const answer = resObj?.content || "";
+  log({
+    msg: answer,
+    chatId,
+    chatTitle: "http",
+    username: "http",
+    role: "assistant",
+  });
   res.end(answer);
   if (webhook) {
     try {
