@@ -103,7 +103,7 @@ export async function agentPostHandler(
     role: "user",
     logPath: HTTP_LOG_PATH,
   });
-  
+
   // Add user message to history before requesting answer
   addToHistory({
     msg,
@@ -122,7 +122,7 @@ export async function agentPostHandler(
     role: "assistant",
     logPath: HTTP_LOG_PATH,
   });
-  res.contentType('text/plain; charset=utf-8');
+  res.contentType("text/plain; charset=utf-8");
   res.end(answer);
   if (webhook) {
     try {
