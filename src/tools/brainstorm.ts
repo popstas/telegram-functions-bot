@@ -8,7 +8,7 @@ import {
   ThreadStateType,
 } from "../types.ts";
 import { buildMessages } from "../helpers/gpt.ts";
-import { useApi } from "../helpers/useApi.ts";
+import { llmCall } from "../helpers/gpt.ts";
 
 type ToolArgsType = {
   systemMessage: string;
@@ -52,13 +52,12 @@ export class BrainstormClient extends AIFunctionsProvider {
     const thread = this.thread;
     const messages = await buildMessages(systemMessage, thread.messages);
 
-    const api = useApi();
-    const res = await api.chat.completions.create({
-      messages,
-      model: thread.completionParams?.model || "gpt-4o-mini",
-      temperature: thread.completionParams?.temperature,
-      // tools: isNoTool ? undefined : tools,
-      // tool_choice: isNoTool ? undefined : 'auto',
+    const { res } = await llmCall({
+      apiParams: {
+        messages,
+        model: thread.completionParams?.model || "gpt-4o-mini",
+        temperature: thread.completionParams?.temperature,
+      },
     });
 
     const content =

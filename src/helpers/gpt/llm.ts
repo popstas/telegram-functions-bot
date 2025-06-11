@@ -18,6 +18,30 @@ import { useConfig } from "../../config.ts";
 import { executeTools, resolveChatTools, getToolsPrompts } from "./tools.ts";
 import { buildMessages, getSystemMessage } from "./messages.ts";
 
+export async function llmCall({
+  apiParams,
+  msg,
+  chatConfig,
+  generationName = "llm-call",
+  modelName,
+}: {
+  apiParams: OpenAI.Chat.Completions.ChatCompletionCreateParams;
+  msg?: Message.TextMessage;
+  chatConfig?: ConfigChatType;
+  generationName?: string;
+  modelName?: string;
+}): Promise<{ res: OpenAI.ChatCompletion; trace?: unknown }> {
+  const api = useApi(modelName || chatConfig?.model);
+  const { trace } =
+    msg && chatConfig ? useLangfuse(msg, chatConfig) : { trace: undefined };
+  let apiFunc = api;
+  if (trace) {
+    apiFunc = observeOpenAI(api, { generationName, parent: trace });
+  }
+  const res = await apiFunc.chat.completions.create(apiParams);
+  return { res, trace };
+}
+
 export type HandleModelAnswerParams = {
   msg: Message.TextMessage;
   res: OpenAI.ChatCompletion;
@@ -219,15 +243,13 @@ export async function processToolResults({
       : ("auto" as OpenAI.Chat.Completions.ChatCompletionToolChoiceOption),
   };
 
-  const { trace } = useLangfuse(msg, chatConfig);
-  let apiFunc = api;
-  if (trace) {
-    apiFunc = observeOpenAI(api, {
-      generationName: "after-tools",
-      parent: trace,
-    });
-  }
-  const res = await apiFunc.chat.completions.create(apiParams);
+  const { res, trace } = await llmCall({
+    apiParams,
+    msg,
+    chatConfig,
+    generationName: "after-tools",
+    modelName: chatConfig.model,
+  });
 
   return await handleModelAnswer({
     msg,
@@ -304,12 +326,13 @@ export async function requestGptAnswer(
     temperature: thread.completionParams?.temperature,
     tools,
   };
-  const { trace } = useLangfuse(msg, chatConfig);
-  let apiFunc = api;
-  if (trace) {
-    apiFunc = observeOpenAI(api, { generationName: "llm-call", parent: trace });
-  }
-  const res = await apiFunc.chat.completions.create(apiParams);
+  const { res, trace } = await llmCall({
+    apiParams,
+    msg,
+    chatConfig,
+    generationName: "llm-call",
+    modelName: chatConfig.model,
+  });
 
   const gptContext: GptContextType = {
     thread,

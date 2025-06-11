@@ -13,5 +13,6 @@ export {
 export {
   handleModelAnswer,
   processToolResults,
+  llmCall,
   requestGptAnswer,
 } from "./gpt/llm.ts";
