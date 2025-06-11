@@ -73,15 +73,35 @@ export default async function onTextMessage(
   );
   if (buttonResponse) return buttonResponse;
 
+  // Store the current message count to track if new messages arrive
   const historyLength = thread.messages.length;
-  await ctx.persistentChatAction("typing", async () => {});
-  setTimeout(async () => {
-    if (thread.messages.length !== historyLength) return;
-    const msgSent = await answerToMessage(ctx, msg, chat, extraMessageParams);
-    if (msgSent && typeof callback === "function") {
-      await callback(msgSent);
+  
+  // Start responding immediately
+  let responseCompleted = false;
+  const responsePromise = answerToMessage(ctx, msg, chat, extraMessageParams);
+  
+  // Set up a timeout to check for new messages
+  const timer = setTimeout(async () => {
+    if (responseCompleted) return;
+    
+    // If no new messages, complete the response
+    if (thread.messages.length === historyLength) {
+      responseCompleted = true;
+      const msgSent = await responsePromise;
+      if (msgSent && typeof callback === "function") {
+        await callback(msgSent);
+      }
+    } else {
+      // If new messages arrived, cancel the current response
+      // and let the new message handler take over
+      responsePromise.catch(() => {}); // Prevent unhandled promise rejection
     }
   }, 5000);
+  
+  // Clean up the timer when the response completes
+  responsePromise.finally(() => {
+    clearTimeout(timer);
+  });
 }
 
 async function answerToMessage(
