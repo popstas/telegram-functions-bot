@@ -8,6 +8,8 @@ import { resolveChatTools } from "./helpers/gpt/tools.ts";
 import type { ThreadStateType, ConfigChatType } from "./types.ts";
 import { readFileSync } from "fs";
 
+const HTTP_LOG_PATH = "data/http.log";
+
 const pkg = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf-8"),
 );
@@ -54,6 +56,7 @@ export async function agentPostHandler(
     log({
       msg: "Unauthorized",
       logLevel: "warn",
+      logPath: HTTP_LOG_PATH,
     });
     return res.status(401).send("Unauthorized");
   }
@@ -61,6 +64,7 @@ export async function agentPostHandler(
     log({
       msg: "Message text is required.",
       logLevel: "warn",
+      logPath: HTTP_LOG_PATH,
     });
     return res.status(400).send("Message text is required.");
   }
@@ -68,6 +72,7 @@ export async function agentPostHandler(
     log({
       msg: "Message text is required.",
       logLevel: "warn",
+      logPath: HTTP_LOG_PATH,
     });
     return res.status(400).send("Message text is required.");
   }
@@ -75,6 +80,7 @@ export async function agentPostHandler(
     log({
       msg: "Wrong agent_name",
       logLevel: "warn",
+      logPath: HTTP_LOG_PATH,
     });
     return res.status(400).send("Wrong agent_name");
   }
@@ -94,6 +100,7 @@ export async function agentPostHandler(
     chatTitle: "http",
     username: "http",
     role: "user",
+    logPath: HTTP_LOG_PATH,
   });
   const resObj = await requestGptAnswer(msg, agentConfig, {
     noSendTelegram: true,
@@ -105,6 +112,7 @@ export async function agentPostHandler(
     chatTitle: "http",
     username: "http",
     role: "assistant",
+    logPath: HTTP_LOG_PATH,
   });
   res.end(answer);
   if (webhook) {
@@ -132,6 +140,7 @@ export async function toolPostHandler(
     log({
       msg: "Unauthorized",
       logLevel: "warn",
+      logPath: HTTP_LOG_PATH,
     });
     return res.status(401).send("Unauthorized");
   }
@@ -139,6 +148,7 @@ export async function toolPostHandler(
     log({
       msg: "Wrong agent_name",
       logLevel: "warn",
+      logPath: HTTP_LOG_PATH,
     });
     return res.status(400).send("Wrong agent_name");
   }
@@ -166,6 +176,7 @@ export async function toolPostHandler(
     log({
       msg: "Wrong tool_name",
       logLevel: "warn",
+      logPath: HTTP_LOG_PATH,
     });
     return res.status(400).send("Wrong tool_name");
   }
@@ -177,6 +188,7 @@ export async function toolPostHandler(
     chatTitle: "http",
     username: "http",
     role: "user",
+    logPath: HTTP_LOG_PATH,
   });
   try {
     let jsonAnswer;
@@ -191,6 +203,7 @@ export async function toolPostHandler(
       chatTitle: "http",
       username: "http",
       role: "assistant",
+      logPath: HTTP_LOG_PATH,
     });
     const response = jsonAnswer || { text: result.content };
     log({
@@ -199,6 +212,7 @@ export async function toolPostHandler(
       chatTitle: "http",
       username: "http",
       role: "assistant",
+      logPath: HTTP_LOG_PATH,
     });
     res.json(response);
   } catch (err) {
@@ -206,6 +220,7 @@ export async function toolPostHandler(
     log({
       msg,
       logLevel: "error",
+      logPath: HTTP_LOG_PATH,
     });
     res.status(500).send(msg);
   }
