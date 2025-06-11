@@ -11,13 +11,14 @@ jest.unstable_mockModule("../src/helpers/gpt/llm.ts", () => ({
 
 jest.unstable_mockModule("../src/config.ts", () => ({
   readConfig: mockReadConfig,
+  useConfig: () => mockReadConfig(),
 }));
 
 // Import the module under test after setting up mocks
 const { runCliAgent } = await import("../src/cli-agent.ts");
 
 // Import the type for runAgent
-import type { runAgent } from "../src/agent-runner";
+import type { runAgent } from "../src/agent-runner.ts";
 
 // Mock the agent-runner module
 const mockRunAgent = jest.fn<

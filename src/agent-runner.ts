@@ -3,6 +3,7 @@ import { requestGptAnswer } from "./helpers/gpt/llm.ts";
 import { ConfigChatType } from "./types.ts";
 import { Context } from "telegraf";
 import { Message } from "telegraf/types";
+import { addToHistory } from "./helpers/history.ts";
 import { log } from "./helpers.ts";
 
 export async function runAgent(
@@ -33,6 +34,13 @@ export async function runAgent(
     username: "cli",
     role: "user",
   });
+  
+  // Add user message to history before requesting answer
+  addToHistory({
+    msg,
+    completionParams: chat.completionParams,
+  });
+  
   const res = await requestGptAnswer(msg, chat as ConfigChatType, ctx);
   log({
     msg: res?.content || "",

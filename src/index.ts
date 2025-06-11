@@ -148,6 +148,12 @@ function initHttp() {
   // Set up express server
   const app = express();
   app.use(express.json());
+  
+  // Set default content type with UTF-8 encoding for all responses
+  app.use((_req, res, next) => {
+    res.contentType('application/json; charset=utf-8');
+    next();
+  });
 
   // Add /ping test route
   app.get("/ping", (req, res) => {
@@ -266,6 +272,7 @@ async function telegramPostHandler(
       async (sentMsg: Message.TextMessage) => {
         if (sentMsg) {
           const text = (sentMsg as Message.TextMessage).text;
+          res.contentType('text/plain; charset=utf-8');
           res.end(text);
         } else {
           res.status(500).send("Error sending message.");

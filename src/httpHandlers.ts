@@ -7,6 +7,7 @@ import { requestGptAnswer } from "./helpers/gpt/llm.ts";
 import { resolveChatTools } from "./helpers/gpt/tools.ts";
 import type { ThreadStateType, ConfigChatType } from "./types.ts";
 import { readFileSync } from "fs";
+import { addToHistory } from "./helpers/history.ts";
 
 const HTTP_LOG_PATH = "data/http.log";
 
@@ -102,6 +103,13 @@ export async function agentPostHandler(
     role: "user",
     logPath: HTTP_LOG_PATH,
   });
+  
+  // Add user message to history before requesting answer
+  addToHistory({
+    msg,
+    completionParams: agentConfig.completionParams,
+  });
+
   const resObj = await requestGptAnswer(msg, agentConfig, {
     noSendTelegram: true,
   } as unknown as Context);
@@ -114,6 +122,7 @@ export async function agentPostHandler(
     role: "assistant",
     logPath: HTTP_LOG_PATH,
   });
+  res.contentType('text/plain; charset=utf-8');
   res.end(answer);
   if (webhook) {
     try {
