@@ -5,7 +5,9 @@
 
 # production
 /build
-/data
+/data/*
+!/data/http.log
+!/data/mqtt.log
 
 # dev scripts
 /scripts

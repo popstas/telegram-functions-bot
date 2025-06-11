@@ -2,6 +2,8 @@ import mqtt from "mqtt";
 import { useConfig } from "./config.ts";
 import { runAgent } from "./agent-runner.ts";
 import { log } from "./helpers.ts";
+
+const MQTT_LOG_PATH = "data/mqtt.log";
 let client: mqtt.MqttClient | undefined;
 
 export function useMqtt() {
@@ -15,20 +17,22 @@ export function useMqtt() {
     password: cfg.password,
   });
   client.on("connect", () => {
-    log({ msg: "mqtt connected" });
+    log({ msg: "mqtt connected", logPath: MQTT_LOG_PATH });
     client?.subscribe(`${cfg.base}/+`);
   });
   client.on("offline", () => {
-    log({ msg: "mqtt offline" });
+    log({ msg: "mqtt offline", logPath: MQTT_LOG_PATH });
   });
   client.on("message", async (topic, message) => {
     if (!client) return;
     const agent = topic.toString().replace(`${cfg.base}/`, "");
     const text = message.toString();
+    log({ msg: `[${agent}] ${text}`, logPath: MQTT_LOG_PATH });
     const answer = await runAgent(agent, text, (msg) =>
       publishMqttProgress(msg, agent),
     );
     client.publish(`${cfg.base}/${agent}/answer`, answer);
+    log({ msg: `[${agent}] ${answer}`, logPath: MQTT_LOG_PATH });
   });
   return client;
 }
