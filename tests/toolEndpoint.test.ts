@@ -55,7 +55,9 @@ describe("toolPostHandler", () => {
       module: {
         call: jest.fn().mockReturnValue({
           functions: {
-            get: () => async (args: string) => ({ content: `echo ${args}` }),
+            get: () => async (args: string) => ({
+              content: JSON.stringify([{ text: args }]),
+            }),
           },
           toolSpecs: { type: "function", function: { name: "echo" } },
         }),
@@ -93,7 +95,7 @@ describe("toolPostHandler", () => {
 
     const req = {
       params: { agentName: "agent", toolName: "echo" },
-      body: { args: { a: 1 } },
+      body: { a: 1 },
       headers: { authorization: "Bearer token" },
       query: {},
       get: () => "",
@@ -105,9 +107,7 @@ describe("toolPostHandler", () => {
     await toolPostHandler(req, res);
 
     // Check that the response is a JSON object with the expected content
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ args: { a: 1 } }),
-    );
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ a: 1 }));
   });
 
   it("uses chat http_token when present", async () => {
@@ -126,7 +126,7 @@ describe("toolPostHandler", () => {
 
     const req = {
       params: { agentName: "agent", toolName: "echo" },
-      body: { args: { b: 2 } },
+      body: { b: 2 },
       headers: { authorization: "Bearer chat" },
       query: {},
       get: () => "",

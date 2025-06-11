@@ -75,15 +75,15 @@ export default async function onTextMessage(
 
   // Store the current message count to track if new messages arrive
   const historyLength = thread.messages.length;
-  
+
   // Start responding immediately
   let responseCompleted = false;
   const responsePromise = answerToMessage(ctx, msg, chat, extraMessageParams);
-  
+
   // Set up a timeout to check for new messages
   const timer = setTimeout(async () => {
     if (responseCompleted) return;
-    
+
     // If no new messages, complete the response
     if (thread.messages.length === historyLength) {
       responseCompleted = true;
@@ -97,7 +97,7 @@ export default async function onTextMessage(
       responsePromise.catch(() => {}); // Prevent unhandled promise rejection
     }
   }, 5000);
-  
+
   // Clean up the timer when the response completes
   responsePromise.finally(() => {
     clearTimeout(timer);
