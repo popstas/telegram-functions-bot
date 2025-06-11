@@ -34,13 +34,13 @@ export async function runAgent(
     username: "cli",
     role: "user",
   });
-  
+
   // Add user message to history before requesting answer
   addToHistory({
     msg,
     completionParams: chat.completionParams,
   });
-  
+
   const res = await requestGptAnswer(msg, chat as ConfigChatType, ctx);
   log({
     msg: res?.content || "",

@@ -12,6 +12,12 @@ export type ToolBotType = {
   prompt_append?: string;
 };
 
+export type ChatEvaluatorType = {
+  agentName: string;
+  threshold?: number;
+  maxIterations?: number;
+};
+
 export type ConfigChatType = {
   name: string;
   model?: string;
@@ -30,6 +36,7 @@ export type ConfigChatType = {
   buttonsSynced?: ConfigChatButtonType[];
   http_token?: string;
   tools?: (string | ToolBotType)[];
+  evaluators?: ChatEvaluatorType[];
   chatParams: ChatParamsType;
   toolParams: ToolParamsType;
 };

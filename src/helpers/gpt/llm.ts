@@ -18,6 +18,19 @@ import { useConfig } from "../../config.ts";
 import { executeTools, resolveChatTools, getToolsPrompts } from "./tools.ts";
 import { buildMessages, getSystemMessage } from "./messages.ts";
 
+export const EVALUATOR_PROMPT = `
+You are an impartial quality auditor for a Telegram bot.
+Your goal is to evaluate how complete and useful the assistant\'s answer ("Assistant answer") is in relation to the user\'s original request ("User request").
+
+Rate completeness on a scale from 0 to 5. Return a single JSON object without additional text:
+
+{
+  "score": <integer 0-5>,
+  "justification": "<one or two sentences describing what is missing or why the score is high>",
+  "is_complete": <true|false>  # true if score >= 4
+}
+`;
+
 export async function llmCall({
   apiParams,
   msg,
@@ -38,7 +51,9 @@ export async function llmCall({
   if (trace) {
     apiFunc = observeOpenAI(api, { generationName, parent: trace });
   }
-  const res = await apiFunc.chat.completions.create(apiParams);
+  const res = (await apiFunc.chat.completions.create(
+    apiParams,
+  )) as OpenAI.ChatCompletion;
   return { res, trace };
 }
 
@@ -52,6 +67,44 @@ export type HandleModelAnswerParams = {
   level?: number;
   trace?: unknown;
 };
+
+export type EvaluatorResult = {
+  score: number;
+  justification: string;
+  is_complete: boolean;
+};
+
+async function evaluateAnswer(
+  evaluator: ConfigChatType,
+  task: string,
+  answer: string,
+): Promise<EvaluatorResult> {
+  const systemMessage = [EVALUATOR_PROMPT, evaluator.systemMessage]
+    .filter(Boolean)
+    .join("\n\n");
+  const userMessage = `User request:\n${task}\n\nAssistant answer:\n${answer}`;
+  const apiParams: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
+    messages: [
+      { role: "system", content: systemMessage },
+      { role: "user", content: userMessage },
+    ],
+    model: evaluator.completionParams.model,
+    temperature: evaluator.completionParams?.temperature,
+    response_format: { type: "json_object" as const },
+  };
+  const { res } = await llmCall({
+    apiParams,
+    chatConfig: evaluator,
+    generationName: "evaluation",
+    modelName: evaluator.model,
+  });
+  const content = res.choices[0]?.message?.content || "{}";
+  try {
+    return JSON.parse(content) as EvaluatorResult;
+  } catch {
+    return { score: 0, justification: "invalid json", is_complete: false };
+  }
+}
 
 export type ProcessToolResultsParams = {
   tool_res: ToolResponse[];
@@ -226,7 +279,6 @@ export async function processToolResults({
 
   const isNoTool = level > 6 || !gptContext.tools?.length;
 
-  const api = useApi(chatConfig.model);
   const modelExternal = chatConfig.model
     ? useConfig().models.find((m) => m.name === chatConfig.model)
     : undefined;
@@ -271,6 +323,10 @@ export async function requestGptAnswer(
     progressCallback?: (msg: string) => void;
     noSendTelegram?: boolean;
   },
+  options?: {
+    skipEvaluators?: boolean;
+    responseFormat?: OpenAI.Chat.Completions.ChatCompletionCreateParams["response_format"];
+  },
 ) {
   if (!msg.text) return;
   const threads = useThreads();
@@ -313,7 +369,6 @@ export async function requestGptAnswer(
 
   const messages = await buildMessages(systemMessage, thread.messages);
 
-  const api = useApi(chatConfig.model);
   const modelExternal = chatConfig.model
     ? useConfig().models.find((m) => m.name === chatConfig.model)
     : undefined;
@@ -325,6 +380,7 @@ export async function requestGptAnswer(
     model,
     temperature: thread.completionParams?.temperature,
     tools,
+    response_format: options?.responseFormat,
   };
   const { res, trace } = await llmCall({
     apiParams,
@@ -343,7 +399,7 @@ export async function requestGptAnswer(
     tools,
   };
 
-  return await handleModelAnswer({
+  const result = await handleModelAnswer({
     msg,
     res,
     chatConfig,
@@ -352,4 +408,55 @@ export async function requestGptAnswer(
     gptContext,
     trace,
   });
+
+  if (!options?.skipEvaluators && chatConfig.evaluators?.length) {
+    result.content = await runEvaluatorWorkflow(
+      msg,
+      chatConfig,
+      result.content,
+    );
+  }
+
+  return result;
+}
+
+async function runEvaluatorWorkflow(
+  msg: Message.TextMessage,
+  chatConfig: ConfigChatType,
+  answer: string,
+): Promise<string> {
+  const config = useConfig();
+  let finalAnswer = answer;
+  for (const ev of chatConfig.evaluators || []) {
+    const evalChat = config.chats.find((c) => c.agent_name === ev.agentName);
+    if (!evalChat) continue;
+    const threshold = ev.threshold ?? 4;
+    const maxIter = ev.maxIterations ?? 2;
+    let evaluation = await evaluateAnswer(
+      evalChat,
+      msg.text || "",
+      finalAnswer,
+    );
+    let iter = 0;
+    while (
+      iter < maxIter &&
+      (!evaluation.is_complete || evaluation.score < threshold)
+    ) {
+      iter++;
+      const optimizeMsg: Message.TextMessage = {
+        ...msg,
+        text:
+          msg.text +
+          "\n\nAuditor comment: " +
+          evaluation.justification +
+          "\n\nFix the answer:",
+      };
+      const res = await requestGptAnswer(optimizeMsg, chatConfig, undefined, {
+        skipEvaluators: true,
+      });
+      finalAnswer = res?.content || finalAnswer;
+      evaluation = await evaluateAnswer(evalChat, msg.text || "", finalAnswer);
+    }
+  }
+  return finalAnswer;
 }

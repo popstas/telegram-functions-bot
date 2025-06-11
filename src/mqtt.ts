@@ -27,12 +27,20 @@ export function useMqtt() {
     if (!client) return;
     const agent = topic.toString().replace(`${cfg.base}/`, "");
     const text = message.toString();
-    log({ msg: `[${agent}] ${text}`, logPath: MQTT_LOG_PATH, username: 'client' });
+    log({
+      msg: `[${agent}] ${text}`,
+      logPath: MQTT_LOG_PATH,
+      username: "client",
+    });
     const answer = await runAgent(agent, text, (msg) =>
       publishMqttProgress(msg, agent),
     );
     client.publish(`${cfg.base}/${agent}/answer`, answer);
-    log({ msg: `[${agent}] ${answer}`, logPath: MQTT_LOG_PATH, username: 'mqtt' });
+    log({
+      msg: `[${agent}] ${answer}`,
+      logPath: MQTT_LOG_PATH,
+      username: "mqtt",
+    });
   });
   return client;
 }
