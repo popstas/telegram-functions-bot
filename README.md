@@ -138,7 +138,7 @@ npm run agent <agent_name> "your text"
 ### HTTP endpoint
 
 POST `/agent/:agentName` with JSON `{ "text": "hi", "webhook": "<url>" }`.
-Use header `Authorization: Bearer <auth_token>`.
+Use header `Authorization: Bearer <http_token>`.
 
 ### HTTP tool call
 

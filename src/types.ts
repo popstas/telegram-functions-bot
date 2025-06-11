@@ -28,6 +28,7 @@ export type ConfigChatType = {
   buttons?: ConfigChatButtonType[];
   buttonsSync?: ButtonsSyncConfigType;
   buttonsSynced?: ConfigChatButtonType[];
+  http_token?: string;
   tools?: (string | ToolBotType)[];
   chatParams: ChatParamsType;
   toolParams: ToolParamsType;
@@ -95,7 +96,7 @@ export type ConfigType = {
 export type HttpConfigType = {
   port?: number;
   telegram_from_username?: string;
-  auth_token?: string;
+  http_token?: string;
   webhook?: string;
 };
 

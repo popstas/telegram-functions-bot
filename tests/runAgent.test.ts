@@ -20,7 +20,10 @@ const { runCliAgent } = await import("../src/cli-agent.ts");
 import type { runAgent } from "../src/agent-runner";
 
 // Mock the agent-runner module
-const mockRunAgent = jest.fn<ReturnType<typeof runAgent>, Parameters<typeof runAgent>>();
+const mockRunAgent = jest.fn<
+  ReturnType<typeof runAgent>,
+  Parameters<typeof runAgent>
+>();
 
 jest.mock("../src/agent-runner.ts", () => ({
   runAgent: (...args: Parameters<typeof runAgent>) => mockRunAgent(...args),
@@ -45,7 +48,7 @@ describe.skip("CLI Agent", () => {
   it("calls runAgent with correct arguments and returns result", async () => {
     const progress = jest.fn();
     const result = await mockRunAgent("test", "test message", progress);
-    
+
     expect(mockRunAgent).toHaveBeenCalledWith("test", "test message", progress);
     expect(result).toBe("test response");
   });
@@ -55,18 +58,20 @@ describe.skip("CLI Agent", () => {
   });
 
   it("handles successful agent execution", async () => {
-    const consoleLog = jest.spyOn(console, 'log').mockImplementation(() => {});
-    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
-    
+    const consoleLog = jest.spyOn(console, "log").mockImplementation(() => {});
+    const consoleError = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
     await runCliAgent(["test", "test message"]);
-    
+
     expect(mockRunAgent).toHaveBeenCalledWith(
       "test",
       "test message",
-      expect.any(Function)
+      expect.any(Function),
     );
     expect(consoleLog).toHaveBeenCalledWith("test response");
-    
+
     consoleLog.mockRestore();
     consoleError.mockRestore();
   });

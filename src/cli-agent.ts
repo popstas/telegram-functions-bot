@@ -1,5 +1,7 @@
 // TODO: cli is doing cold start, it's too long, need lightweight cli that will call running agent
 import { runAgent } from "./agent-runner.ts";
+import { fileURLToPath } from "url";
+import { resolve } from "path";
 
 export const runCliAgent = (args: string[]) => {
   const [agentName, ...t] = args;
@@ -16,17 +18,15 @@ export const runCliAgent = (args: string[]) => {
     });
 };
 
-import { fileURLToPath } from 'url';
-import { resolve } from 'path';
-
 // Check if this file is being run directly (not imported)
 const isMain = (() => {
   const currentFilePath = fileURLToPath(import.meta.url);
-  const scriptPath = process.argv[1] ? resolve(process.cwd(), process.argv[1]) : '';
+  const scriptPath = process.argv[1]
+    ? resolve(process.cwd(), process.argv[1])
+    : "";
   return scriptPath === currentFilePath;
 })();
 
 if (isMain) {
   runCliAgent(process.argv.slice(2));
 }
-

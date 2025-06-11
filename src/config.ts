@@ -118,7 +118,7 @@ export function generateConfig(): ConfigType {
     http: {
       port: 7586,
       telegram_from_username: "second_bot_name",
-      auth_token: "change_me",
+      http_token: "change_me",
     },
     mqtt: {
       host: "localhost",

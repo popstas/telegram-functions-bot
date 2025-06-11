@@ -17,7 +17,11 @@ import onPhoto from "./helpers/onPhoto.ts";
 import onAudio from "./helpers/onAudio.ts";
 import onUnsupported from "./helpers/onUnsupported.ts";
 import { useLastCtx } from "./helpers/lastCtx.ts";
-import { agentGetHandler, agentPostHandler, toolPostHandler } from "./httpHandlers.ts";
+import {
+  agentGetHandler,
+  agentPostHandler,
+  toolPostHandler,
+} from "./httpHandlers.ts";
 import { useMqtt } from "./mqtt.ts";
 
 process.on("uncaughtException", (error, source) => {
@@ -64,7 +68,7 @@ async function launchBot(bot_token: string, bot_name: string) {
   try {
     const config = useConfig();
     const bot = useBot(bot_token);
-    
+
     // Set up help command
     bot.help(async (ctx) =>
       ctx.reply("https://github.com/popstas/telegram-functions-bot"),
@@ -97,33 +101,33 @@ async function launchBot(bot_token: string, bot_name: string) {
     });
 
     // Start the bot
-    void bot.launch().catch(error => {
-      log({ 
+    void bot.launch().catch((error) => {
+      log({
         msg: `[${bot_name}] Error during bot launch: ${error instanceof Error ? error.message : String(error)}`,
-        logLevel: 'error' 
+        logLevel: "error",
       });
     });
-    
+
     log({ msg: `bot started: ${bot_name}` });
     return bot;
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'response' in error) {
+    if (error && typeof error === "object" && "response" in error) {
       const errorWithResponse = error as { response?: { statusCode?: number } };
       if (errorWithResponse.response?.statusCode === 401) {
-        log({ 
+        log({
           msg: `[${bot_name}] Error: Invalid bot token (401 Unauthorized). Please check your bot token in the config.`,
-          logLevel: 'error' 
+          logLevel: "error",
         });
       } else {
-        log({ 
+        log({
           msg: `[${bot_name}] Error during bot launch: ${error instanceof Error ? error.message : String(error)}`,
-          logLevel: 'error' 
+          logLevel: "error",
         });
       }
     } else {
-      log({ 
+      log({
         msg: `[${bot_name}] Error during bot launch: ${error instanceof Error ? error.message : String(error)}`,
-        logLevel: 'error' 
+        logLevel: "error",
       });
     }
   }
