@@ -81,7 +81,7 @@ describe("toolPostHandler", () => {
       module: {
         call: jest.fn().mockReturnValue({
           functions: {
-            get: () => async (args: string) => ({ content: `echo ${args}` }),
+            get: () => async (args: string) => ({ content: JSON.stringify([{text: args}]) }),
           },
           toolSpecs: { type: "function", function: { name: "echo" } },
         }),
@@ -102,10 +102,8 @@ describe("toolPostHandler", () => {
     const res = createRes();
     await toolPostHandler(req, res);
 
-    // Check that the response is a JSON object with the expected text
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-      text: expect.stringContaining('echo {\"a\":1}')
-    }));
+    // Check that the response is a JSON object with the expected content
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({args:{a:1}}))
   });
 
   it("rejects unauthorized request", async () => {

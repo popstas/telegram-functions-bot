@@ -180,25 +180,15 @@ export async function toolPostHandler(
       username: "http",
       role: "assistant",
     });
-    if (jsonAnswer) {
-      log({
-        msg: "jsonAnswer",
-        chatId,
-        chatTitle: "http",
-        username: "http",
-        role: "assistant",
-      });
-      res.json(jsonAnswer);
-    } else {
-      log({
-        msg: "result.content",
-        chatId,
-        chatTitle: "http",
-        username: "http",
-        role: "assistant",
-      });
-      res.end(result.content);
-    }
+    const response = jsonAnswer || { text: result.content };
+    log({
+      msg: `Sending response: ${JSON.stringify(response).substring(0, 200)}`,
+      chatId,
+      chatTitle: "http",
+      username: "http",
+      role: "assistant",
+    });
+    res.json(response);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     log({
