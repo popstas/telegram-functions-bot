@@ -17,7 +17,7 @@ import onPhoto from "./helpers/onPhoto.ts";
 import onAudio from "./helpers/onAudio.ts";
 import onUnsupported from "./helpers/onUnsupported.ts";
 import { useLastCtx } from "./helpers/lastCtx.ts";
-import { agentPostHandler, toolPostHandler } from "./httpHandlers.ts";
+import { agentGetHandler, agentPostHandler, toolPostHandler } from "./httpHandlers.ts";
 import { useMqtt } from "./mqtt.ts";
 
 process.on("uncaughtException", (error, source) => {
@@ -42,7 +42,13 @@ async function start() {
     // log({msg: 'bot started'});
 
     const chatBots = config.chats.filter((c) => c.bot_token && c.bot_name);
-    chatBots.forEach((c) => launchBot(c.bot_token!, c.bot_name!));
+    for (const c of chatBots) {
+      try {
+        await launchBot(c.bot_token!, c.bot_name!);
+      } catch (error: unknown) {
+        console.error(`Error launching bot ${c.bot_name}:`, error);
+      }
+    }
 
     // Initialize HTTP server
     initHttp();
@@ -55,36 +61,72 @@ async function start() {
 }
 
 async function launchBot(bot_token: string, bot_name: string) {
-  const config = useConfig();
-  const bot = useBot(bot_token);
-  bot.help(async (ctx) =>
-    ctx.reply("https://github.com/popstas/telegram-functions-bot"),
-  );
-  await initCommands(bot);
-  bot.on([message("text"), editedMessage("text")], onTextMessage);
-  bot.on(message("photo"), onPhoto);
-  bot.on(message("voice"), onAudio);
-  bot.on(message("audio"), onAudio);
-  bot.on(message("sticker"), onUnsupported);
-  bot.on(message("video"), onUnsupported);
-  bot.on(message("video_note"), onUnsupported);
-  bot.on(message("document"), onUnsupported);
+  try {
+    const config = useConfig();
+    const bot = useBot(bot_token);
+    
+    // Set up help command
+    bot.help(async (ctx) =>
+      ctx.reply("https://github.com/popstas/telegram-functions-bot"),
+    );
 
-  bot.action("add_chat", async (ctx) => {
-    const chatId = ctx.chat?.id;
-    // @ts-expect-error title may not exist on chat type
-    const chatName = ctx.chat?.title || `Chat ${chatId}`;
-    if (!chatId) return;
+    // Initialize commands with proper error handling
+    await initCommands(bot);
 
-    const newChat = { name: chatName, id: chatId } as ConfigChatType;
-    config.chats.push(newChat);
-    writeConfig(undefined, config);
-    await ctx.reply(`Chat added: ${chatName}`);
-  });
+    // Set up message handlers
+    bot.on([message("text"), editedMessage("text")], onTextMessage);
+    bot.on(message("photo"), onPhoto);
+    bot.on(message("voice"), onAudio);
+    bot.on(message("audio"), onAudio);
+    bot.on(message("sticker"), onUnsupported);
+    bot.on(message("video"), onUnsupported);
+    bot.on(message("video_note"), onUnsupported);
+    bot.on(message("document"), onUnsupported);
 
-  void bot.launch();
-  log({ msg: `bot started: ${bot_name}` });
-  return bot;
+    // Set up chat action handler
+    bot.action("add_chat", async (ctx) => {
+      const chatId = ctx.chat?.id;
+      // @ts-expect-error title may not exist on chat type
+      const chatName = ctx.chat?.title || `Chat ${chatId}`;
+      if (!chatId) return;
+
+      const newChat = { name: chatName, id: chatId } as ConfigChatType;
+      config.chats.push(newChat);
+      writeConfig(undefined, config);
+      await ctx.reply(`Chat added: ${chatName}`);
+    });
+
+    // Start the bot
+    void bot.launch().catch(error => {
+      log({ 
+        msg: `[${bot_name}] Error during bot launch: ${error instanceof Error ? error.message : String(error)}`,
+        logLevel: 'error' 
+      });
+    });
+    
+    log({ msg: `bot started: ${bot_name}` });
+    return bot;
+  } catch (error: unknown) {
+    if (error && typeof error === 'object' && 'response' in error) {
+      const errorWithResponse = error as { response?: { statusCode?: number } };
+      if (errorWithResponse.response?.statusCode === 401) {
+        log({ 
+          msg: `[${bot_name}] Error: Invalid bot token (401 Unauthorized). Please check your bot token in the config.`,
+          logLevel: 'error' 
+        });
+      } else {
+        log({ 
+          msg: `[${bot_name}] Error during bot launch: ${error instanceof Error ? error.message : String(error)}`,
+          logLevel: 'error' 
+        });
+      }
+    } else {
+      log({ 
+        msg: `[${bot_name}] Error during bot launch: ${error instanceof Error ? error.message : String(error)}`,
+        logLevel: 'error' 
+      });
+    }
+  }
 }
 
 function initHttp() {
@@ -114,6 +156,7 @@ function initHttp() {
   // @ts-expect-error express types need proper request/response typing
   app.get("/telegram/test", telegramPostHandlerTest);
   // call agent by name
+  app.get("/agent/:agentName", agentGetHandler);
   // @ts-expect-error express types
   app.post("/agent/:agentName", agentPostHandler);
   // call tool directly

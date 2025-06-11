@@ -5,7 +5,31 @@ import { useConfig } from "./config.ts";
 import { log } from "./helpers.ts";
 import { requestGptAnswer } from "./helpers/gpt/llm.ts";
 import { resolveChatTools } from "./helpers/gpt/tools.ts";
-import type { ConfigChatType, ThreadStateType } from "./types.ts";
+import type { ThreadStateType } from "./types.ts";
+import { readFileSync } from "fs";
+
+const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf-8"));
+const version = pkg.version;
+
+export async function agentGetHandler(
+  req: express.Request,
+  res: express.Response,
+) {
+  const { agentName } = req.params;
+
+  try {
+    res.json({
+      name: agentName,
+      version,
+      status: "online",
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Error in agentGetHandler:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
 
 export async function agentPostHandler(
   req: express.Request,
@@ -18,13 +42,25 @@ export async function agentPostHandler(
     useConfig().http?.auth_token &&
     token !== `Bearer ${useConfig().http.auth_token}`
   ) {
+    log({
+      msg: "Unauthorized",
+      logLevel: "warn",
+    });
     return res.status(401).send("Unauthorized");
   }
   if (!text) {
+    log({
+      msg: "Message text is required.",
+      logLevel: "warn",
+    });
     return res.status(400).send("Message text is required.");
   }
   const agentConfig = useConfig().chats.find((c) => c.agent_name === agentName);
   if (!agentConfig) {
+    log({
+      msg: "Wrong agent_name",
+      logLevel: "warn",
+    });
     return res.status(400).send("Wrong agent_name");
   }
   const chatId =
@@ -74,16 +110,24 @@ export async function toolPostHandler(
   res: express.Response,
 ) {
   const { agentName, toolName } = req.params;
-  const { args } = req.body || {};
+  const args = req.body || {};
   const token = req.headers["authorization"];
   if (
     useConfig().http?.auth_token &&
     token !== `Bearer ${useConfig().http.auth_token}`
   ) {
+    log({
+      msg: "Unauthorized",
+      logLevel: "warn",
+    });
     return res.status(401).send("Unauthorized");
   }
   const agentConfig = useConfig().chats.find((c) => c.agent_name === agentName);
   if (!agentConfig) {
+    log({
+      msg: "Wrong agent_name",
+      logLevel: "warn",
+    });
     return res.status(400).send("Wrong agent_name");
   }
   const chatId =
@@ -107,6 +151,10 @@ export async function toolPostHandler(
   );
   const chatTool = chatTools.find((f) => f.name === toolName);
   if (!chatTool) {
+    log({
+      msg: "Wrong tool_name",
+      logLevel: "warn",
+    });
     return res.status(400).send("Wrong tool_name");
   }
   const fn = chatTool.module.call(agentConfig, thread).functions.get(toolName);
@@ -119,17 +167,44 @@ export async function toolPostHandler(
     role: "user",
   });
   try {
+    let jsonAnswer;
     const result = await fn(argsStr);
+    const toolAnswer = JSON.parse(result.content);
+    if (toolAnswer[0]) {
+      jsonAnswer = JSON.parse(toolAnswer[0].text);
+    }
     log({
-      msg: result.content,
+      msg: JSON.stringify(jsonAnswer),
       chatId,
       chatTitle: "http",
       username: "http",
       role: "assistant",
     });
-    res.end(result.content);
+    if (jsonAnswer) {
+      log({
+        msg: "jsonAnswer",
+        chatId,
+        chatTitle: "http",
+        username: "http",
+        role: "assistant",
+      });
+      res.json(jsonAnswer);
+    } else {
+      log({
+        msg: "result.content",
+        chatId,
+        chatTitle: "http",
+        username: "http",
+        role: "assistant",
+      });
+      res.end(result.content);
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    log({
+      msg,
+      logLevel: "error",
+    });
     res.status(500).send(msg);
   }
 }

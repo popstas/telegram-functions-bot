@@ -1,10 +1,13 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import type { Request, Response } from "express";
 
+// Mock modules
 const mockUseConfig = jest.fn();
 const mockResolveChatTools = jest.fn();
 const mockRequestGptAnswer = jest.fn();
+const mockLog = jest.fn();
 
+// Mock the modules
 jest.unstable_mockModule("../src/config.ts", () => ({
   useConfig: () => mockUseConfig(),
 }));
@@ -20,10 +23,11 @@ jest.unstable_mockModule("../src/helpers/gpt/llm.ts", () => ({
 }));
 
 jest.unstable_mockModule("../src/helpers.ts", () => ({
-  log: jest.fn(),
+  log: mockLog,
 }));
 
-const { toolPostHandler } = await import("../src/httpHandlers.ts");
+// Import the function to test after setting up mocks
+const { toolPostHandler } = await import("../src/httpHandlers");
 
 describe("toolPostHandler", () => {
   beforeEach(() => {
@@ -39,34 +43,69 @@ describe("toolPostHandler", () => {
         },
       ],
     });
-    const moduleCall = jest.fn(() => ({
-      functions: {
-        get: () => async (args: string) => ({ content: `echo ${args}` }),
-        toolSpecs: { type: "function", function: { name: "echo" } },
+    type MockTool = {
+      name: string;
+      module: {
+        call: jest.Mock;
+      };
+    };
+
+    const mockTool: MockTool = {
+      name: "echo",
+      module: {
+        call: jest.fn().mockReturnValue({
+          functions: {
+            get: () => async (args: string) => ({ content: `echo ${args}` }),
+          },
+          toolSpecs: { type: "function", function: { name: "echo" } },
+        }),
       },
-    }));
-    mockResolveChatTools.mockResolvedValue([
-      { name: "echo", module: { call: moduleCall } },
-    ]);
+    };
+    (mockResolveChatTools as jest.Mock).mockResolvedValue([mockTool]);
   });
 
   function createRes() {
-    const res: Partial<Response> = {};
-    res.status = jest.fn().mockReturnValue(res);
-    res.send = jest.fn().mockReturnValue(res);
-    res.end = jest.fn();
-    return res as Response;
+    return {
+      status: jest.fn().mockReturnThis(),
+      send: jest.fn().mockReturnThis(),
+      end: jest.fn().mockReturnThis(),
+      json: jest.fn().mockReturnThis(),
+      setHeader: jest.fn().mockReturnThis(),
+    } as unknown as Response;
   }
 
   it("returns tool result when authorized", async () => {
+    // Setup mock tool
+    const mockTool = {
+      name: "echo",
+      module: {
+        call: jest.fn().mockReturnValue({
+          functions: {
+            get: () => async (args: string) => ({ content: `echo ${args}` }),
+          },
+          toolSpecs: { type: "function", function: { name: "echo" } },
+        }),
+      },
+    };
+    (mockResolveChatTools as jest.Mock).mockResolvedValue([mockTool]);
+
     const req = {
       params: { agentName: "agent", toolName: "echo" },
       body: { args: { a: 1 } },
       headers: { authorization: "Bearer token" },
+      query: {},
+      get: () => "",
+      header: () => "",
+      accepts: () => [""],
     } as unknown as Request;
+
     const res = createRes();
     await toolPostHandler(req, res);
-    expect(res.end).toHaveBeenCalledWith('echo {"a":1}');
+
+    // Check that the response is a JSON object with the expected text
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      text: expect.stringContaining('echo {\"a\":1}')
+    }));
   });
 
   it("rejects unauthorized request", async () => {
@@ -74,6 +113,12 @@ describe("toolPostHandler", () => {
       params: { agentName: "agent", toolName: "echo" },
       body: {},
       headers: { authorization: "Bearer wrong" },
+      // Add required properties to satisfy Request type
+      query: {},
+      get: () => "",
+      header: () => "",
+      accepts: () => [""],
+      // Add other required properties with default values
     } as unknown as Request;
     const res = createRes();
     await toolPostHandler(req, res);
