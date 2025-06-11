@@ -9,6 +9,7 @@ import {
 } from "../types.ts";
 import { buildMessages } from "../helpers/gpt.ts";
 import { llmCall } from "../helpers/gpt.ts";
+import { Message } from "telegraf/types";
 
 type ToolArgsType = {
   systemMessage: string;
@@ -52,12 +53,15 @@ export class BrainstormClient extends AIFunctionsProvider {
     const thread = this.thread;
     const messages = await buildMessages(systemMessage, thread.messages);
 
+    const msg = thread.msgs[thread.msgs.length - 1] as Message.TextMessage;
     const { res } = await llmCall({
       apiParams: {
         messages,
         model: thread.completionParams?.model || "gpt-4o-mini",
         temperature: thread.completionParams?.temperature,
       },
+      msg,
+      chatConfig: this.configChat,
     });
 
     const content =

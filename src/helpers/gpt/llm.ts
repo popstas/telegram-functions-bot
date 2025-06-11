@@ -40,14 +40,15 @@ export async function llmCall({
   modelName,
 }: {
   apiParams: OpenAI.Chat.Completions.ChatCompletionCreateParams;
-  msg?: Message.TextMessage;
+  msg: Message.TextMessage;
   chatConfig?: ConfigChatType;
   generationName?: string;
   modelName?: string;
 }): Promise<{ res: OpenAI.ChatCompletion; trace?: unknown }> {
   const api = useApi(modelName || chatConfig?.model);
-  const { trace } =
-    msg && chatConfig ? useLangfuse(msg, chatConfig) : { trace: undefined };
+  const { trace } = chatConfig
+    ? useLangfuse(msg, chatConfig)
+    : { trace: undefined };
   let apiFunc = api;
   if (trace) {
     apiFunc = observeOpenAI(api, { generationName, parent: trace });
@@ -76,6 +77,7 @@ export type EvaluatorResult = {
 };
 
 async function evaluateAnswer(
+  msg: Message.TextMessage,
   evaluator: ConfigChatType,
   task: string,
   answer: string,
@@ -98,6 +100,7 @@ async function evaluateAnswer(
     chatConfig: evaluator,
     generationName: "evaluation",
     modelName: evaluator.model,
+    msg,
   });
   const content = res.choices[0]?.message?.content || "{}";
   try {
@@ -434,6 +437,7 @@ async function runEvaluatorWorkflow(
     const threshold = ev.threshold ?? 4;
     const maxIter = ev.maxIterations ?? 2;
     let evaluation = await evaluateAnswer(
+      msg,
       evalChat,
       msg.text || "",
       finalAnswer,
@@ -445,7 +449,7 @@ async function runEvaluatorWorkflow(
       username: "cli",
       role: "system",
     });
-  let iter = 1;
+    let iter = 1;
     while (
       iter < maxIter + 1 &&
       (!evaluation.is_complete || evaluation.score < threshold)
@@ -463,7 +467,12 @@ async function runEvaluatorWorkflow(
         skipEvaluators: true,
       });
       finalAnswer = res?.content || finalAnswer;
-      evaluation = await evaluateAnswer(evalChat, msg.text || "", finalAnswer);
+      evaluation = await evaluateAnswer(
+        msg,
+        evalChat,
+        msg.text || "",
+        finalAnswer,
+      );
       log({
         msg: `evaluation ${iter}: ${JSON.stringify(evaluation)}`,
         chatId: evalChat.id,
