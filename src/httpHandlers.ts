@@ -8,7 +8,9 @@ import { resolveChatTools } from "./helpers/gpt/tools.ts";
 import type { ThreadStateType } from "./types.ts";
 import { readFileSync } from "fs";
 
-const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf-8"));
+const pkg = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf-8"),
+);
 const version = pkg.version;
 
 export async function agentGetHandler(
@@ -30,7 +32,6 @@ export async function agentGetHandler(
   }
 }
 
-
 export async function agentPostHandler(
   req: express.Request,
   res: express.Response,
@@ -38,9 +39,13 @@ export async function agentPostHandler(
   const { agentName } = req.params;
   const { text, webhook } = req.body || {};
   const token = req.headers["authorization"];
+  const agentConfig = useConfig().chats.find((c) => c.agent_name === agentName);
+  const chatToken = agentConfig?.http_token;
   if (
-    useConfig().http?.auth_token &&
-    token !== `Bearer ${useConfig().http.auth_token}`
+    (chatToken && token !== `Bearer ${chatToken}`) ||
+    (!chatToken &&
+      useConfig().http?.http_token &&
+      token !== `Bearer ${useConfig().http.http_token}`)
   ) {
     log({
       msg: "Unauthorized",
@@ -55,7 +60,6 @@ export async function agentPostHandler(
     });
     return res.status(400).send("Message text is required.");
   }
-  const agentConfig = useConfig().chats.find((c) => c.agent_name === agentName);
   if (!agentConfig) {
     log({
       msg: "Wrong agent_name",
@@ -112,9 +116,13 @@ export async function toolPostHandler(
   const { agentName, toolName } = req.params;
   const args = req.body || {};
   const token = req.headers["authorization"];
+  const agentConfig = useConfig().chats.find((c) => c.agent_name === agentName);
+  const chatToken = agentConfig?.http_token;
   if (
-    useConfig().http?.auth_token &&
-    token !== `Bearer ${useConfig().http.auth_token}`
+    (chatToken && token !== `Bearer ${chatToken}`) ||
+    (!chatToken &&
+      useConfig().http?.http_token &&
+      token !== `Bearer ${useConfig().http.http_token}`)
   ) {
     log({
       msg: "Unauthorized",
@@ -122,7 +130,6 @@ export async function toolPostHandler(
     });
     return res.status(401).send("Unauthorized");
   }
-  const agentConfig = useConfig().chats.find((c) => c.agent_name === agentName);
   if (!agentConfig) {
     log({
       msg: "Wrong agent_name",

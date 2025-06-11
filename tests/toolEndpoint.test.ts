@@ -33,7 +33,7 @@ describe("toolPostHandler", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseConfig.mockReturnValue({
-      http: { auth_token: "token" },
+      http: { http_token: "token" },
       chats: [
         {
           agent_name: "agent",
@@ -81,7 +81,9 @@ describe("toolPostHandler", () => {
       module: {
         call: jest.fn().mockReturnValue({
           functions: {
-            get: () => async (args: string) => ({ content: JSON.stringify([{text: args}]) }),
+            get: () => async (args: string) => ({
+              content: JSON.stringify([{ text: args }]),
+            }),
           },
           toolSpecs: { type: "function", function: { name: "echo" } },
         }),
@@ -103,20 +105,63 @@ describe("toolPostHandler", () => {
     await toolPostHandler(req, res);
 
     // Check that the response is a JSON object with the expected content
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({args:{a:1}}))
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ args: { a: 1 } }),
+    );
   });
 
-  it("rejects unauthorized request", async () => {
+  it("uses chat http_token when present", async () => {
+    mockUseConfig.mockReturnValue({
+      http: { http_token: "global" },
+      chats: [
+        {
+          agent_name: "agent",
+          completionParams: {},
+          chatParams: {},
+          toolParams: {},
+          http_token: "chat",
+        },
+      ],
+    });
+
     const req = {
       params: { agentName: "agent", toolName: "echo" },
-      body: {},
-      headers: { authorization: "Bearer wrong" },
-      // Add required properties to satisfy Request type
+      body: { args: { b: 2 } },
+      headers: { authorization: "Bearer chat" },
       query: {},
       get: () => "",
       header: () => "",
       accepts: () => [""],
-      // Add other required properties with default values
+    } as unknown as Request;
+
+    const res = createRes();
+    await toolPostHandler(req, res);
+
+    expect(res.json).toHaveBeenCalled();
+  });
+
+  it("rejects unauthorized request", async () => {
+    mockUseConfig.mockReturnValue({
+      http: { http_token: "global" },
+      chats: [
+        {
+          agent_name: "agent",
+          completionParams: {},
+          chatParams: {},
+          toolParams: {},
+          http_token: "chat",
+        },
+      ],
+    });
+
+    const req = {
+      params: { agentName: "agent", toolName: "echo" },
+      body: {},
+      headers: { authorization: "Bearer wrong" },
+      query: {},
+      get: () => "",
+      header: () => "",
+      accepts: () => [""],
     } as unknown as Request;
     const res = createRes();
     await toolPostHandler(req, res);
