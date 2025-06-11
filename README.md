@@ -194,6 +194,59 @@ MCP (Model Context Protocol) provides external tools and services to the bot. MC
 - All MCP servers listed in `config.mcpServers` are shared between all chats.
 - There is currently no per-chat isolation of MCP servers; every chat can access all configured MCP tools.
 
+## Evaluators
+
+Evaluators are special agents that assess the quality and completeness of the bot's responses. They help ensure that the bot provides useful and complete answers to user queries.
+
+### How Evaluators Work
+
+1. After generating a response, the bot can optionally send both the original user request and the generated response to an evaluator.
+2. The evaluator rates the response on a scale from 0 to 5 based on completeness and usefulness.
+3. The evaluator provides a justification for the score and determines if the response is considered complete.
+4. If the response is incomplete (score < 4), the evaluator can suggest improvements or additional information to include.
+
+### Evaluator Response Format
+
+Evaluators return a JSON object with the following structure:
+
+```json
+{
+  "score": 4,
+  "justification": "The response addresses the main points but could provide more specific examples.",
+  "is_complete": true
+}
+```
+
+### Configuring Evaluators
+
+To enable evaluators for a chat, add an `evaluators` array to your chat settings. Each evaluator is configured with the following properties:
+
+```yaml
+chats:
+  - name: "Chat with Evaluators"
+    id: 123456789
+    evaluators:
+      - agent_name: "url-checker"  # Name of the agent to use for evaluation
+        threshold: 4                   # Optional: minimum score to consider the response complete (default: 4)
+        maxIterations: 3              # Optional: maximum number of evaluation iterations (default: 3)
+  - name: "URL evaluator agent"
+    agent_name: "url-checker"
+    systemMessage: "Check for url in answer."
+    completionParams:
+      model: "gpt-4.1-nano"
+    
+```
+
+### How Evaluators Are Used
+
+- The `agent_name` specifies which agent to use for the evaluation. This agent should be defined in your configuration.
+- The `threshold` (default: 4) sets the minimum score required for a response to be considered complete.
+- The `maxIterations` (default: 3) limits how many times the evaluator will attempt to improve a response.
+
+### Disabling Evaluators
+
+To disable evaluators for a specific chat, simply omit the `evaluators` array from the chat configuration.
+
 ### Chat Configuration (`tools`)
 
 - Each chat's configuration should specify a `tools` list.

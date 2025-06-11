@@ -15,12 +15,13 @@ import { useApi } from "../useApi.ts";
 import useLangfuse from "../useLangfuse.ts";
 import { observeOpenAI } from "langfuse";
 import { useConfig } from "../../config.ts";
+import { log } from "../../helpers.ts";
 import { executeTools, resolveChatTools, getToolsPrompts } from "./tools.ts";
 import { buildMessages, getSystemMessage } from "./messages.ts";
 
 export const EVALUATOR_PROMPT = `
 You are an impartial quality auditor for a Telegram bot.
-Your goal is to evaluate how complete and useful the assistant\'s answer ("Assistant answer") is in relation to the user\'s original request ("User request").
+Your goal is to evaluate how complete and useful the assistant's answer ("Assistant answer") is in relation to the user's original request ("User request").
 
 Rate completeness on a scale from 0 to 5. Return a single JSON object without additional text:
 
@@ -428,7 +429,7 @@ async function runEvaluatorWorkflow(
   const config = useConfig();
   let finalAnswer = answer;
   for (const ev of chatConfig.evaluators || []) {
-    const evalChat = config.chats.find((c) => c.agent_name === ev.agentName);
+    const evalChat = config.chats.find((c) => c.agent_name === ev.agent_name);
     if (!evalChat) continue;
     const threshold = ev.threshold ?? 4;
     const maxIter = ev.maxIterations ?? 2;
@@ -437,9 +438,16 @@ async function runEvaluatorWorkflow(
       msg.text || "",
       finalAnswer,
     );
-    let iter = 0;
+    log({
+      msg: `evaluation 1: ${JSON.stringify(evaluation)}`,
+      chatId: evalChat.id,
+      chatTitle: evalChat.name,
+      username: "cli",
+      role: "system",
+    });
+  let iter = 1;
     while (
-      iter < maxIter &&
+      iter < maxIter + 1 &&
       (!evaluation.is_complete || evaluation.score < threshold)
     ) {
       iter++;
@@ -456,6 +464,13 @@ async function runEvaluatorWorkflow(
       });
       finalAnswer = res?.content || finalAnswer;
       evaluation = await evaluateAnswer(evalChat, msg.text || "", finalAnswer);
+      log({
+        msg: `evaluation ${iter}: ${JSON.stringify(evaluation)}`,
+        chatId: evalChat.id,
+        chatTitle: evalChat.name,
+        username: "cli",
+        role: "system",
+      });
     }
   }
   return finalAnswer;

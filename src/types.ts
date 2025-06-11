@@ -13,7 +13,7 @@ export type ToolBotType = {
 };
 
 export type ChatEvaluatorType = {
-  agentName: string;
+  agent_name: string;
   threshold?: number;
   maxIterations?: number;
 };
