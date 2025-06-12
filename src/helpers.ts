@@ -73,3 +73,17 @@ export function sendToHttp(res: express.Response | undefined, text: string) {
   if (!res) return;
   res.write(text + "\n");
 }
+
+export function agentNameToId(agentName: string): number {
+  let hash = 0;
+
+  if (agentName.length === 0) return hash;
+
+  for (let i = 0; i < agentName.length; i++) {
+    const char = agentName.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+
+  return Math.abs(hash);
+}

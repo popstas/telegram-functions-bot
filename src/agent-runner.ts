@@ -5,6 +5,7 @@ import { Context } from "telegraf";
 import { Message } from "telegraf/types";
 import { addToHistory } from "./helpers/history.ts";
 import { log } from "./helpers.ts";
+import { agentNameToId } from "./helpers.ts";
 
 export async function runAgent(
   agentName: string,
@@ -14,8 +15,7 @@ export async function runAgent(
   const config = readConfig();
   const chat = config.chats.find((c) => c.agent_name === agentName);
   if (!chat) throw new Error(`Agent not found: ${agentName}`);
-  const chatId =
-    chat.id || parseInt("333" + Math.floor(100000 + Math.random() * 900000));
+  const chatId = chat.id || parseInt("333" + agentNameToId(agentName));
   const msg: Message.TextMessage = {
     chat: { id: chatId, type: "private" as const, first_name: "cli" },
     text,

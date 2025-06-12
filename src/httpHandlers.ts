@@ -2,7 +2,7 @@ import type express from "express";
 import { Context } from "telegraf";
 import { Message } from "telegraf/types";
 import { useConfig } from "./config.ts";
-import { log } from "./helpers.ts";
+import { agentNameToId, log } from "./helpers.ts";
 import { requestGptAnswer } from "./helpers/gpt/llm.ts";
 import { resolveChatTools } from "./helpers/gpt/tools.ts";
 import type { ThreadStateType, ConfigChatType } from "./types.ts";
@@ -85,9 +85,7 @@ export async function agentPostHandler(
     });
     return res.status(400).send("Wrong agent_name");
   }
-  const chatId =
-    agentConfig.id ||
-    parseInt("444" + Math.floor(100000 + Math.random() * 900000));
+  const chatId = agentConfig.id || parseInt("444" + agentNameToId(agentName));
   const msg = {
     chat: { id: chatId, type: "private" as const },
     text,
