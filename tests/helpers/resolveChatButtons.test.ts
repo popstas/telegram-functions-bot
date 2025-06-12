@@ -9,7 +9,7 @@ import {
 
 const mockSendTelegramMessage = jest.fn();
 
-jest.unstable_mockModule("../../src/helpers/telegram.ts", () => ({
+jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   sendTelegramMessage: mockSendTelegramMessage,
 }));
 

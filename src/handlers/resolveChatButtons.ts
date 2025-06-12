@@ -5,7 +5,7 @@ import {
   ConfigChatType,
   ThreadStateType,
 } from "../types.ts";
-import { sendTelegramMessage } from "../helpers/telegram.ts";
+import { sendTelegramMessage } from "../telegram/send.ts";
 
 export default async function resolveChatButtons(
   ctx: Context,

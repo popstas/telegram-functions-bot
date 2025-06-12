@@ -2,11 +2,8 @@ import { Context } from "telegraf";
 import { Chat, Message } from "telegraf/types";
 import { ConfigChatType } from "../types.ts";
 import { useConfig } from "../config.ts";
-import {
-  getCtxChatMsg,
-  isAdminUser,
-  sendTelegramMessage,
-} from "../helpers/telegram.ts";
+import { getCtxChatMsg } from "../telegram/context.ts";
+import { isAdminUser, sendTelegramMessage } from "../telegram/send.ts";
 import { log } from "../helpers.ts";
 
 export default async function checkAccessLevel(

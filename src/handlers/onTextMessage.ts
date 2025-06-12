@@ -14,7 +14,7 @@ import { addOauthToThread, ensureAuth } from "../helpers/google.ts";
 import { requestGptAnswer } from "../helpers/gpt.ts";
 import checkAccessLevel from "./access.ts";
 import resolveChatButtons from "./resolveChatButtons.ts";
-import { sendTelegramMessage } from "../helpers/telegram.ts";
+import { sendTelegramMessage } from "../telegram/send.ts";
 
 export default async function onTextMessage(
   ctx: Context & { secondTry?: boolean },

@@ -5,7 +5,7 @@ import checkAccessLevel from "./access.ts";
 import { recognizeImageText } from "../helpers/vision.ts";
 import { log } from "../helpers";
 import { useConfig } from "../config.ts";
-import { sendTelegramMessage } from "../helpers/telegram.ts";
+import { sendTelegramMessage } from "../telegram/send.ts";
 
 // Type guard to check if update has a message
 function isMessageUpdate(update: Update): update is Update.MessageUpdate {
