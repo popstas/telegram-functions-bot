@@ -152,50 +152,36 @@ export function generatePrivateChatConfig(username: string) {
 }
 
 export function checkConfigSchema(config: ConfigType) {
-  const rootKeys = [
-    "bot_name",
-    "debug",
-    "isTest",
-    "auth",
-    "local_models",
-    "http",
-    "mqtt",
-    "adminUsers",
-    "privateUsers",
-    "testUsers",
-    "mcpServers",
-    "stt",
-    "vision",
-    "chats",
-    "logLevel",
-    "langfuse",
-  ];
+  const rootKeys = Array.from(
+    new Set([
+      ...Object.keys(generateConfig()),
+      "debug",
+      "isTest",
+      "logLevel",
+      "langfuse",
+    ]),
+  ) as Array<keyof ConfigType>;
 
   const checkKeys = (
     obj: Record<string, unknown>,
     allowed: string[],
-    path = ""
-  ) => {
-    Object.keys(obj).forEach((k) => {
-      if (!allowed.includes(k)) {
-        let target = path;
-        if (path.startsWith("chats[")) {
-          const chatName = obj.name;
-          target = `chats[${chatName}]`;
-        }
-        log({
-          msg: `Unexpected field ${target}.${k} in config.yml`,
-          logLevel: "warn",
-        });
-      }
-    });
-  };
-
-  checkKeys(config as unknown as Record<string, unknown>, rootKeys);
-
-  config.local_models?.forEach((m, idx) =>
-    checkKeys(
-      m as Record<string, unknown>,
+  const chatKeys = Array.from(
+    new Set([
+      ...Object.keys(generateConfig().chats[0]),
+      ...Object.keys(generatePrivateChatConfig("user")),
+      "id",
+      "ids",
+      "buttons",
+      "buttonsSync",
+      "buttonsSynced",
+      "http_token",
+      "tools",
+      "evaluators",
+      "local_model",
+      "privateUsers",
+      "prefix",
+    ]),
+  ) as Array<keyof ConfigChatType>;
       ["name", "url", "model"],
       `local_models[${idx}].`
     )

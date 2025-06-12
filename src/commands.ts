@@ -208,7 +208,7 @@ export async function getInfoMessage(
   const lines = [
     `System: ${systemMessage.trim()}`,
     `Tokens: ${tokens}`,
-    `Model: ${chatConfig.model || chatConfig.completionParams.model}`,
+    `Model: ${chatConfig.local_model || chatConfig.completionParams.model}`,
   ];
 
   if (chatConfig.id) {

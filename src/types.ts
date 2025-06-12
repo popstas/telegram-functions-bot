@@ -20,7 +20,7 @@ export type ChatEvaluatorType = {
 
 export type ConfigChatType = {
   name: string;
-  model?: string;
+  local_model?: string;
   completionParams: CompletionParamsType;
   bot_token?: string;
   bot_name?: string; // deprecated

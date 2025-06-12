@@ -152,7 +152,7 @@ Progress messages go to `<base><agent_name>_progress` and the final answer to `<
 
 ## ollama models
 
-Add to config.yml local model, use ollama url and model name, then define `model` in the chat settings:
+Add to config.yml local model, use ollama url and model name, then define `local_model` in the chat settings:
 
 ```
 local_models:
@@ -162,7 +162,7 @@ local_models:
 chats:
   - id: 123
     name: Chat with qwen
-    model: qwen3:4b
+    local_model: qwen3:4b
 ```
 
 `/info` should return actual using model.

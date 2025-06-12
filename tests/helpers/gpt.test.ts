@@ -19,7 +19,7 @@ import { OpenAI } from "openai";
 
 // Suppress console.info in tests
 beforeAll(() => {
-  jest.spyOn(console, 'info').mockImplementation(() => {});
+  jest.spyOn(console, "info").mockImplementation(() => {});
 });
 
 // Mock the bot module with proper typing
