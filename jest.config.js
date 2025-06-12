@@ -21,6 +21,8 @@ const config = {
   transformIgnorePatterns: [
     'node_modules/(?!(langfuse|@langfuse)/)',
   ],
+  collectCoverage: true,
+  coverageDirectory: 'coverage',
 };
 
 export default config;
