@@ -32,18 +32,30 @@ export function readConfig(path?: string): ConfigType {
   }
 
   // auto-generate agent_name when missing
-  config.chats.forEach((chat, idx) => {
-    if (chat.name === "default") return; // skip default
-    if (chat.username) return; // skip private chats
-    if (chat.agent_name) return; // skip if already set
+  let configModified = false;
+  config.chats = config.chats.map((chat, idx) => {
+    if (chat.name === "default") return chat; // skip default
+    if (chat.username) return chat; // skip private chats
+    if (chat.agent_name) return chat; // skip if already set
+
     const base = chat.bot_name?.replace(/_bot$/i, "") || chat.name;
     const gen = base.toLowerCase().replace(/[^a-z0-9_]/g, "_");
-    chat.agent_name = gen || `agent_${idx}`;
+    const agent_name = gen || `agent_${idx}`;
+    configModified = true;
+
     log({
-      msg: `agent_name not set for chat ${chat.name}, generated ${chat.agent_name}`,
+      msg: `agent_name not set for chat ${chat.name}, generated ${agent_name}`,
       logLevel: "warn",
     });
+
+    return { ...chat, agent_name };
   });
+
+  if (configModified) {
+    log({ msg: "Config modified" });
+    // writeConfig(path, config);
+  }
+  checkConfigSchema(config);
   return config;
 }
 
@@ -83,13 +95,29 @@ export function generateConfig(): ConfigType {
         args: ["mcp-server-fetch"],
       },
     },
+    local_models: [],
+    http: {
+      port: 7586,
+      telegram_from_username: "second_bot_name",
+      http_token: "change_me",
+    },
+    mqtt: {
+      host: "localhost",
+      port: 1883,
+      base: "bots/",
+    },
     stt: {
       whisperBaseUrl: "",
     },
     vision: {
       model: "gpt-4.1-mini",
     },
-    models: [],
+    logLevel: "info",
+    langfuse: {
+      secretKey: "",
+      publicKey: "",
+      baseUrl: "",
+    },
     chats: [
       {
         name: "default",
@@ -114,17 +142,50 @@ export function generateConfig(): ConfigType {
           },
         },
       },
+      {
+        name: "full-example",
+        description: "Agent's description",
+        bot_token: "",
+        bot_name: "telegram_bot_name",
+        agent_name: "full-example",
+        privateUsers: [],
+        id: 123456789,
+        ids: [123456789],
+        username: "telegram_username_for_private_chats",
+        prefix: "бот",
+        completionParams: {
+          model: "gpt-4.1-mini",
+          temperature: 0.7,
+        },
+        local_model: "",
+        systemMessage:
+          "You are using functions to answer the questions. Current date: {date}",
+        buttons: [{ name: "button_name", prompt: "button_prompt" }],
+        buttonsSync: {
+          sheetId: "sheet_id",
+          sheetName: "sheet_name",
+        },
+        buttonsSynced: [{ name: "button_name", prompt: "button_prompt" }],
+        http_token: "change_me",
+        tools: ["javascript_interpreter", "brainstorm", "fetch"],
+        evaluators: [
+          { agent_name: "evaluator", threshold: 4, maxIterations: 2 },
+        ],
+        chatParams: {
+          forgetTimeout: 600,
+          deleteToolAnswers: 60,
+          confirmation: false,
+          showToolMessages: true,
+          showTelegramNames: false,
+        },
+        toolParams: {
+          brainstorm: {
+            promptBefore: "Составь только краткий план действий.",
+            promptAfter: "Выше написан краткий план действий. Полный ответ:",
+          },
+        },
+      },
     ],
-    http: {
-      port: 7586,
-      telegram_from_username: "second_bot_name",
-      http_token: "change_me",
-    },
-    mqtt: {
-      host: "localhost",
-      port: 1883,
-      base: "bots/",
-    },
   };
 }
 
@@ -148,6 +209,47 @@ export function generatePrivateChatConfig(username: string) {
     toolParams: {} as ToolParamsType,
     chatParams: {} as ChatParamsType,
   } as ConfigChatType;
+}
+
+export function checkConfigSchema(config: ConfigType) {
+  // check root
+  const rootKeys = Object.keys(generateConfig()) as Array<keyof ConfigType>;
+  const checkKeys = (
+    obj: Record<string, unknown>,
+    allowed: string[],
+    path = "",
+  ) => {
+    Object.keys(obj).forEach((k) => {
+      if (!allowed.includes(k)) {
+        let target = path;
+        if (path.startsWith("chats[")) {
+          const chatName = obj.name;
+          target = `chats[${chatName}]`;
+        }
+        log({
+          msg: `Unexpected field ${target}.${k} in config.yml`,
+          logLevel: "warn",
+        });
+      }
+    });
+  };
+  checkKeys(config as unknown as Record<string, unknown>, rootKeys);
+  config.local_models?.forEach((m, idx) =>
+    checkKeys(
+      m as Record<string, unknown>,
+      ["name", "url", "model"],
+      `local_models[${idx}].`,
+    ),
+  );
+
+  // check chats
+  const exampleChat = generateConfig().chats.find(
+    (c) => c.name === "full-example",
+  ) as ConfigChatType;
+  const chatKeys = Object.keys(exampleChat) as Array<keyof ConfigChatType>;
+  config.chats.forEach((c, idx) =>
+    checkKeys(c as Record<string, unknown>, chatKeys, `chats[${idx}].`),
+  );
 }
 
 export function logConfigChanges(oldConfig: ConfigType, newConfig: ConfigType) {

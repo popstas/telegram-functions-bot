@@ -37,15 +37,15 @@ export async function llmCall({
   msg,
   chatConfig,
   generationName = "llm-call",
-  modelName,
+  localModel,
 }: {
   apiParams: OpenAI.Chat.Completions.ChatCompletionCreateParams;
   msg: Message.TextMessage;
   chatConfig?: ConfigChatType;
   generationName?: string;
-  modelName?: string;
+  localModel?: string;
 }): Promise<{ res: OpenAI.ChatCompletion; trace?: unknown }> {
-  const api = useApi(modelName || chatConfig?.model);
+  const api = useApi(localModel || chatConfig?.local_model);
   const { trace } = chatConfig
     ? useLangfuse(msg, chatConfig)
     : { trace: undefined };
@@ -99,7 +99,7 @@ async function evaluateAnswer(
     apiParams,
     chatConfig: evaluator,
     generationName: "evaluation",
-    modelName: evaluator.model,
+    localModel: evaluator.local_model,
     msg,
   });
   const content = res.choices[0]?.message?.content || "{}";
@@ -283,8 +283,8 @@ export async function processToolResults({
 
   const isNoTool = level > 6 || !gptContext.tools?.length;
 
-  const modelExternal = chatConfig.model
-    ? useConfig().models.find((m) => m.name === chatConfig.model)
+  const modelExternal = chatConfig.local_model
+    ? useConfig().local_models.find((m) => m.name === chatConfig.local_model)
     : undefined;
   const model = modelExternal
     ? modelExternal.model
@@ -304,7 +304,7 @@ export async function processToolResults({
     msg,
     chatConfig,
     generationName: "after-tools",
-    modelName: chatConfig.model,
+    localModel: chatConfig.local_model,
   });
 
   return await handleModelAnswer({
@@ -373,8 +373,8 @@ export async function requestGptAnswer(
 
   const messages = await buildMessages(systemMessage, thread.messages);
 
-  const modelExternal = chatConfig.model
-    ? useConfig().models.find((m) => m.name === chatConfig.model)
+  const modelExternal = chatConfig.local_model
+    ? useConfig().local_models.find((m) => m.name === chatConfig.local_model)
     : undefined;
   const model = modelExternal
     ? modelExternal.model
@@ -391,7 +391,7 @@ export async function requestGptAnswer(
     msg,
     chatConfig,
     generationName: "llm-call",
-    modelName: chatConfig.model,
+    localModel: chatConfig.local_model,
   });
 
   const gptContext: GptContextType = {

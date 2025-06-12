@@ -15,7 +15,7 @@ stt:
   whisperBaseUrl: ""
 vision:
   model: gpt-4.1-mini
-models: []
+local_models: []
 chats:
   - name: default
     completionParams:
