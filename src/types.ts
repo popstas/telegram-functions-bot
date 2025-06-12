@@ -3,6 +3,68 @@ import OpenAI from "openai";
 import { GoogleAuth, OAuth2Client } from "google-auth-library";
 import { CredentialBody } from "google-auth-library/build/src/auth/credentials";
 
+export type ConfigType = {
+  bot_name: string;
+  auth: {
+    bot_token: string;
+    chatgpt_api_key: string;
+    google_service_account?: CredentialBody;
+    oauth_google?: {
+      client_id: string;
+      client_secret: string;
+      redirect_uri: string;
+    };
+    proxy_url?: string;
+  };
+  adminUsers?: string[];
+  privateUsers: string[];
+  mcpServers?: Record<string, McpToolConfig>;
+  local_models: {
+    name: string;
+    url: string;
+    model: string;
+  }[];
+  http: HttpConfigType;
+  mqtt?: MqttConfigType;
+  stt?: {
+    whisperBaseUrl?: string;
+  };
+  vision?: {
+    model: string;
+  };
+  logLevel?: "debug" | "info" | "warn" | "error";
+  langfuse?: {
+    secretKey: string;
+    publicKey: string;
+    baseUrl: string;
+  };
+  chats: ConfigChatType[];
+};
+
+export type ConfigChatType = {
+  name: string;
+  description?: string;
+  bot_token?: string;
+  bot_name?: string; // deprecated
+  agent_name?: string;
+  privateUsers?: string[];
+  id?: number;
+  ids?: number[];
+  username?: string;
+  prefix?: string;
+  completionParams: CompletionParamsType;
+  local_model?: string;
+  systemMessage?: string;
+  buttons?: ConfigChatButtonType[];
+  buttonsSync?: ButtonsSyncConfigType;
+  buttonsSynced?: ConfigChatButtonType[];
+  http_token?: string;
+  tools?: (string | ToolBotType)[];
+  evaluators?: ChatEvaluatorType[];
+  chatParams: ChatParamsType;
+  toolParams: ToolParamsType;
+};
+
 export type ToolBotType = {
   agent_name?: string;
   bot_name?: string; // deprecated
@@ -16,29 +78,6 @@ export type ChatEvaluatorType = {
   agent_name: string;
   threshold?: number;
   maxIterations?: number;
-};
-
-export type ConfigChatType = {
-  name: string;
-  local_model?: string;
-  completionParams: CompletionParamsType;
-  bot_token?: string;
-  bot_name?: string; // deprecated
-  agent_name?: string;
-  privateUsers?: string[];
-  id?: number;
-  ids?: number[];
-  username?: string;
-  prefix?: string;
-  systemMessage?: string;
-  buttons?: ConfigChatButtonType[];
-  buttonsSync?: ButtonsSyncConfigType;
-  buttonsSynced?: ConfigChatButtonType[];
-  http_token?: string;
-  tools?: (string | ToolBotType)[];
-  evaluators?: ChatEvaluatorType[];
-  chatParams: ChatParamsType;
-  toolParams: ToolParamsType;
 };
 
 export type ChatParamsType = {
@@ -57,47 +96,6 @@ export type CompletionParamsType = {
   top_p?: number;
   presence_penalty?: number;
   max_tokens?: number;
-};
-
-export type ConfigType = {
-  bot_name: string; // TODO: use ctx.botInfo.username
-  debug?: boolean;
-  isTest?: boolean;
-  auth: {
-    bot_token: string;
-    chatgpt_api_key: string;
-    google_service_account?: CredentialBody;
-    oauth_google?: {
-      client_id: string;
-      client_secret: string;
-      redirect_uri: string;
-    };
-    proxy_url?: string;
-  };
-  local_models: {
-    name: string;
-    url: string;
-    model: string;
-  }[];
-  http: HttpConfigType;
-  mqtt?: MqttConfigType;
-  adminUsers?: string[];
-  privateUsers: string[];
-  testUsers?: string[];
-  mcpServers?: Record<string, McpToolConfig>;
-  stt?: {
-    whisperBaseUrl?: string;
-  };
-  vision?: {
-    model: string;
-  };
-  chats: ConfigChatType[];
-  logLevel?: "debug" | "info" | "warn" | "error";
-  langfuse?: {
-    secretKey: string;
-    publicKey: string;
-    baseUrl: string;
-  };
 };
 
 export type HttpConfigType = {
