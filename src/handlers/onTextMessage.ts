@@ -8,13 +8,13 @@ import {
   addToHistory,
   forgetHistoryOnTimeout,
   forgetHistory,
-} from "./history.ts";
-import { setLastCtx } from "./lastCtx.ts";
-import { addOauthToThread, ensureAuth } from "./google.ts";
-import { requestGptAnswer } from "./gpt.ts";
+} from "../helpers/history.ts";
+import { setLastCtx } from "../helpers/lastCtx.ts";
+import { addOauthToThread, ensureAuth } from "../helpers/google.ts";
+import { requestGptAnswer } from "../helpers/gpt.ts";
 import checkAccessLevel from "./access.ts";
 import resolveChatButtons from "./resolveChatButtons.ts";
-import { sendTelegramMessage } from "./telegram.ts";
+import { sendTelegramMessage } from "../helpers/telegram.ts";
 
 export default async function onTextMessage(
   ctx: Context & { secondTry?: boolean },

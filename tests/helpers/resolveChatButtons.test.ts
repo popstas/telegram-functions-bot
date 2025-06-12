@@ -14,7 +14,7 @@ jest.unstable_mockModule("../../src/helpers/telegram.ts", () => ({
 }));
 
 const { default: resolveChatButtons } = await import(
-  "../../src/helpers/resolveChatButtons.ts"
+  "../../src/handlers/resolveChatButtons.ts"
 );
 
 describe("resolveChatButtons", () => {

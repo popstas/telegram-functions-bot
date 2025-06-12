@@ -14,7 +14,7 @@ jest.unstable_mockModule("../../src/helpers/telegram.ts", () => ({
   getCtxChatMsg: jest.fn(),
 }));
 
-jest.unstable_mockModule("../../src/helpers/access.ts", () => ({
+jest.unstable_mockModule("../../src/handlers/access.ts", () => ({
   __esModule: true,
   default: mockCheckAccessLevel,
 }));
@@ -28,10 +28,10 @@ jest.unstable_mockModule("../../src/helpers/stt.ts", () => ({
   sendAudioWhisper: jest.fn(),
 }));
 
-const { default: onPhoto } = await import("../../src/helpers/onPhoto.ts");
-const { default: onAudio } = await import("../../src/helpers/onAudio.ts");
+const { default: onPhoto } = await import("../../src/handlers/onPhoto.ts");
+const { default: onAudio } = await import("../../src/handlers/onAudio.ts");
 const { default: onUnsupported } = await import(
-  "../../src/helpers/onUnsupported.ts"
+  "../../src/handlers/onUnsupported.ts"
 );
 
 function createCtx(message: Record<string, unknown>): Context {
