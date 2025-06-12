@@ -14,7 +14,7 @@ export function useApi(modelName?: string): OpenAI {
 
     if (modelName) {
       const model = config.models.find((m) => m.name === modelName);
-      if (!model) throw new Error(`Model ${modelName} not found`);
+      if (!model) throw new Error(`Local model ${modelName} not found`);
       apiCache[cacheKey] = new OpenAI({
         baseURL: `${model.url}/v1`,
         apiKey: config.auth.chatgpt_api_key,
