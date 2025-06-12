@@ -3,7 +3,7 @@ import { requestGptAnswer } from "./helpers/gpt/llm.ts";
 import { ConfigChatType } from "./types.ts";
 import { Context } from "telegraf";
 import { Message } from "telegraf/types";
-import { addToHistory } from "./helpers/history.ts";
+import { addToHistory, forgetHistoryOnTimeout } from "./helpers/history.ts";
 import { log } from "./helpers.ts";
 import { agentNameToId } from "./helpers.ts";
 
@@ -40,6 +40,7 @@ export async function runAgent(
     msg,
     completionParams: chat.completionParams,
   });
+  forgetHistoryOnTimeout(chat, msg);
 
   const res = await requestGptAnswer(msg, chat as ConfigChatType, ctx);
   log({

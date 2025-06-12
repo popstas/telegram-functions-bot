@@ -4,7 +4,11 @@ import { useThreads } from "../threads.ts";
 import { ConfigChatType } from "../types.ts";
 import { syncButtons, useConfig } from "../config.ts";
 import { log } from "../helpers.ts";
-import { addToHistory, forgetHistory } from "./history.ts";
+import {
+  addToHistory,
+  forgetHistoryOnTimeout,
+  forgetHistory,
+} from "./history.ts";
 import { setLastCtx } from "./lastCtx.ts";
 import { addOauthToThread, ensureAuth } from "./google.ts";
 import { requestGptAnswer } from "./gpt.ts";
@@ -42,23 +46,7 @@ export default async function onTextMessage(
     showTelegramNames: chat.chatParams?.showTelegramNames,
   });
   const thread = threads[msg.chat.id];
-
-  const forgetTimeout = chat.chatParams?.forgetTimeout;
-  if (forgetTimeout && thread.msgs.length > 1) {
-    const lastMessageTime = new Date(
-      thread.msgs[thread.msgs.length - 2].date * 1000,
-    ).getTime();
-    const currentTime = new Date().getTime();
-    const timeDelta = (currentTime - lastMessageTime) / 1000;
-    if (timeDelta > forgetTimeout) {
-      forgetHistory(msg.chat.id);
-      addToHistory({
-        msg,
-        completionParams: chat.completionParams,
-        showTelegramNames: chat.chatParams?.showTelegramNames,
-      });
-    }
-  }
+  forgetHistoryOnTimeout(chat, msg);
 
   const extraMessageParams = ctx.message?.message_id
     ? { reply_to_message_id: ctx.message?.message_id }

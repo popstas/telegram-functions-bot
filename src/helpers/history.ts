@@ -1,5 +1,5 @@
 import { Message } from "telegraf/types";
-import { CompletionParamsType } from "../types.ts";
+import { CompletionParamsType, ConfigChatType } from "../types.ts";
 import { getFullName } from "./telegram.ts";
 import OpenAI from "openai";
 import { useThreads } from "../threads.ts";
@@ -59,4 +59,30 @@ export function forgetHistory(chatId: number) {
   if (threads[chatId]) {
     threads[chatId].messages = [];
   }
+}
+
+export function forgetHistoryOnTimeout(
+  chat: ConfigChatType,
+  msg: Message.TextMessage,
+) {
+  const threads = useThreads();
+  const thread = threads[msg.chat.id];
+  const forgetTimeout = chat.chatParams?.forgetTimeout;
+  if (forgetTimeout && thread && thread.msgs.length > 1) {
+    const lastMessageTime = new Date(
+      thread.msgs[thread.msgs.length - 2].date * 1000,
+    ).getTime();
+    const currentTime = Date.now();
+    const timeDelta = (currentTime - lastMessageTime) / 1000;
+    if (timeDelta > forgetTimeout) {
+      forgetHistory(msg.chat.id);
+      addToHistory({
+        msg,
+        completionParams: chat.completionParams,
+        showTelegramNames: chat.chatParams?.showTelegramNames,
+      });
+      return true;
+    }
+  }
+  return false;
 }
