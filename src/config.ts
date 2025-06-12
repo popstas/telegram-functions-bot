@@ -44,6 +44,7 @@ export function readConfig(path?: string): ConfigType {
       logLevel: "warn",
     });
   });
+  checkConfigSchema(config);
   return config;
 }
 
@@ -89,7 +90,7 @@ export function generateConfig(): ConfigType {
     vision: {
       model: "gpt-4.1-mini",
     },
-    models: [],
+    local_models: [],
     chats: [
       {
         name: "default",
@@ -148,6 +149,78 @@ export function generatePrivateChatConfig(username: string) {
     toolParams: {} as ToolParamsType,
     chatParams: {} as ChatParamsType,
   } as ConfigChatType;
+}
+
+export function checkConfigSchema(config: ConfigType) {
+  const rootKeys = [
+    "bot_name",
+    "debug",
+    "isTest",
+    "auth",
+    "local_models",
+    "http",
+    "mqtt",
+    "adminUsers",
+    "privateUsers",
+    "testUsers",
+    "mcpServers",
+    "stt",
+    "vision",
+    "chats",
+    "logLevel",
+    "langfuse",
+  ];
+
+  const checkKeys = (
+    obj: Record<string, unknown>,
+    allowed: string[],
+    path = "",
+  ) => {
+    Object.keys(obj).forEach((k) => {
+      if (!allowed.includes(k)) {
+        log({
+          msg: `Unexpected field ${path}${k} in config.yml`,
+          logLevel: "warn",
+        });
+      }
+    });
+  };
+
+  checkKeys(config as unknown as Record<string, unknown>, rootKeys);
+
+  config.local_models?.forEach((m, idx) =>
+    checkKeys(
+      m as Record<string, unknown>,
+      ["name", "url", "model"],
+      `local_models[${idx}].`,
+    ),
+  );
+
+  const chatKeys = [
+    "name",
+    "model",
+    "completionParams",
+    "bot_token",
+    "bot_name",
+    "agent_name",
+    "privateUsers",
+    "id",
+    "ids",
+    "username",
+    "prefix",
+    "systemMessage",
+    "buttons",
+    "buttonsSync",
+    "buttonsSynced",
+    "http_token",
+    "tools",
+    "evaluators",
+    "chatParams",
+    "toolParams",
+  ];
+  config.chats.forEach((c, idx) =>
+    checkKeys(c as Record<string, unknown>, chatKeys, `chats[${idx}].`),
+  );
 }
 
 export function logConfigChanges(oldConfig: ConfigType, newConfig: ConfigType) {

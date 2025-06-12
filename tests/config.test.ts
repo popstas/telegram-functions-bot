@@ -156,3 +156,21 @@ describe("readConfig agent_name", () => {
     expect(res.chats[1].agent_name).toBeDefined();
   });
 });
+
+describe("checkConfigSchema", () => {
+  mockConsole();
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("warns about extra fields", () => {
+    mockExistsSync.mockReturnValue(true);
+    const cfg = generateConfig();
+    (cfg as unknown as Record<string, unknown>).extra = 1;
+    mockReadFileSync.mockReturnValue("yaml");
+    mockLoad.mockReturnValue(cfg);
+
+    readConfig("testConfig.yml");
+    expect(console.warn).toHaveBeenCalled();
+  });
+});

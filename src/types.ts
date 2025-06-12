@@ -74,7 +74,7 @@ export type ConfigType = {
     };
     proxy_url?: string;
   };
-  models: {
+  local_models: {
     name: string;
     url: string;
     model: string;
