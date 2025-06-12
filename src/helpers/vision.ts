@@ -20,6 +20,7 @@ export async function recognizeImageText(
 
   try {
     const { res } = await llmCall({
+      generationName: "llm-vision",
       apiParams: {
         model,
         messages: [
@@ -35,7 +36,6 @@ export async function recognizeImageText(
           },
         ],
       },
-      modelName: model,
       msg: msg as unknown as Message.TextMessage,
       chatConfig,
     });
