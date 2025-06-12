@@ -17,6 +17,11 @@ import {
 import { Message } from "telegraf/types";
 import { OpenAI } from "openai";
 
+// Suppress console.info in tests
+beforeAll(() => {
+  jest.spyOn(console, 'info').mockImplementation(() => {});
+});
+
 // Mock the bot module with proper typing
 jest.mock("../../src/bot", () => ({
   useBot: () => ({
