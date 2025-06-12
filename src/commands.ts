@@ -8,11 +8,8 @@ import {
 } from "./types";
 import { generatePrivateChatConfig, useConfig, writeConfig } from "./config";
 import { useBot } from "./bot";
-import {
-  getActionUserMsg,
-  getCtxChatMsg,
-  sendTelegramMessage,
-} from "./helpers/telegram.ts";
+import { getActionUserMsg, getCtxChatMsg } from "./telegram/context.ts";
+import { sendTelegramMessage } from "./telegram/send.ts";
 import {
   getSystemMessage,
   getTokensCount,

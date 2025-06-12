@@ -1,6 +1,6 @@
 import { Message } from "telegraf/types";
 import { CompletionParamsType, ConfigChatType } from "../types.ts";
-import { getFullName } from "./telegram.ts";
+import { getFullName } from "../telegram/send.ts";
 import OpenAI from "openai";
 import { useThreads } from "../threads.ts";
 

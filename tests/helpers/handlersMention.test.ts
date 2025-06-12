@@ -5,13 +5,12 @@ import { Context, Message } from "telegraf/types";
 const mockSendTelegramMessage = jest.fn();
 const mockCheckAccessLevel = jest.fn();
 
-jest.unstable_mockModule("../../src/helpers/telegram.ts", () => ({
+jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   __esModule: true,
   sendTelegramMessage: mockSendTelegramMessage,
   getFullName: jest.fn(),
   getTelegramForwardedUser: jest.fn(),
   isAdminUser: jest.fn(),
-  getCtxChatMsg: jest.fn(),
 }));
 
 jest.unstable_mockModule("../../src/handlers/access.ts", () => ({

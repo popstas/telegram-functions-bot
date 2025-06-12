@@ -9,7 +9,10 @@ import {
   ThreadStateType,
 } from "../../types.ts";
 import { addToHistory, forgetHistory } from "../history.ts";
-import { sendTelegramMessage, getTelegramForwardedUser } from "../telegram.ts";
+import {
+  sendTelegramMessage,
+  getTelegramForwardedUser,
+} from "../../telegram/send.ts";
 import { useThreads } from "../../threads.ts";
 import { useApi } from "../useApi.ts";
 import useLangfuse from "../useLangfuse.ts";

@@ -4,7 +4,7 @@ import fs from "fs";
 import tmp from "tmp";
 import onTextMessage from "./onTextMessage.ts";
 import checkAccessLevel from "./access.ts";
-import { sendTelegramMessage } from "../helpers/telegram.ts";
+import { sendTelegramMessage } from "../telegram/send.ts";
 import { convertToMp3, sendAudioWhisper } from "../helpers/stt.ts";
 import { useConfig } from "../config.ts";
 import { log } from "../helpers.ts";

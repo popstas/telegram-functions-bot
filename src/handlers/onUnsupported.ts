@@ -1,7 +1,7 @@
 import checkAccessLevel from "./access.ts";
 import { Context } from "telegraf";
 import { Message } from "telegraf/types";
-import { sendTelegramMessage } from "../helpers/telegram.ts";
+import { sendTelegramMessage } from "../telegram/send.ts";
 
 type SupportedMediaMessage =
   | Message.VideoMessage

@@ -10,7 +10,7 @@ import url from "url";
 import { GaxiosError } from "gaxios";
 import { GoogleAuth } from "google-auth-library";
 import { ThreadStateType } from "../types.ts";
-import { sendTelegramMessage } from "./telegram.ts";
+import { sendTelegramMessage } from "../telegram/send.ts";
 
 interface GoogleCredsMap {
   [key: number]: Credentials;

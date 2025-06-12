@@ -11,11 +11,11 @@ import {
 } from "../../types.ts";
 import { useBot } from "../../bot.ts";
 import { useThreads } from "../../threads.ts";
-import { sendTelegramMessage, getFullName } from "../telegram.ts";
+import { sendTelegramMessage, getFullName } from "../../telegram/send.ts";
 import { log, sendToHttp } from "../../helpers.ts";
 import useTools from "../useTools.ts";
 import useLangfuse from "../useLangfuse.ts";
-import { isAdminUser } from "../telegram.ts";
+import { isAdminUser } from "../../telegram/send.ts";
 import { useConfig } from "../../config.ts";
 import { requestGptAnswer } from "./llm.ts";
 import { publishMqttProgress } from "../../mqtt.ts";

@@ -6,8 +6,11 @@ import { ConfigChatType } from "../../src/types";
 const mockGetCtxChatMsg = jest.fn();
 const mockSendTelegramMessage = jest.fn();
 
-jest.unstable_mockModule("../../src/helpers/telegram.ts", () => ({
+jest.unstable_mockModule("../../src/telegram/context.ts", () => ({
   getCtxChatMsg: mockGetCtxChatMsg,
+}));
+
+jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   isAdminUser: () => false,
   sendTelegramMessage: mockSendTelegramMessage,
 }));
