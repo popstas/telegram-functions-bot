@@ -12,10 +12,10 @@ import { initCommands } from "./commands.ts";
 import { log } from "./helpers.ts";
 import express from "express";
 import { useBot } from "./bot";
-import onTextMessage from "./helpers/onTextMessage.ts";
-import onPhoto from "./helpers/onPhoto.ts";
-import onAudio from "./helpers/onAudio.ts";
-import onUnsupported from "./helpers/onUnsupported.ts";
+import onTextMessage from "./handlers/onTextMessage.ts";
+import onPhoto from "./handlers/onPhoto.ts";
+import onAudio from "./handlers/onAudio.ts";
+import onUnsupported from "./handlers/onUnsupported.ts";
 import { useLastCtx } from "./helpers/lastCtx.ts";
 import {
   agentGetHandler,

@@ -1,11 +1,11 @@
 import { Context } from "telegraf";
 import { Message, Update } from "telegraf/types";
-import onTextMessage from "./onTextMessage";
+import onTextMessage from "./onTextMessage.ts";
 import checkAccessLevel from "./access.ts";
-import { recognizeImageText } from "./vision";
+import { recognizeImageText } from "../helpers/vision.ts";
 import { log } from "../helpers";
 import { useConfig } from "../config.ts";
-import { sendTelegramMessage } from "./telegram";
+import { sendTelegramMessage } from "../helpers/telegram.ts";
 
 // Type guard to check if update has a message
 function isMessageUpdate(update: Update): update is Update.MessageUpdate {
