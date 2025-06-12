@@ -51,7 +51,7 @@ export function readConfig(path?: string): ConfigType {
 // TODO: write to config.compiled.yml, for preserve config.yml comments
 export function writeConfig(
   path: string | undefined = "config.yml",
-  config: ConfigType,
+  config: ConfigType
 ): ConfigType {
   try {
     const yamlRaw = yaml.dump(config, {
@@ -174,12 +174,17 @@ export function checkConfigSchema(config: ConfigType) {
   const checkKeys = (
     obj: Record<string, unknown>,
     allowed: string[],
-    path = "",
+    path = ""
   ) => {
     Object.keys(obj).forEach((k) => {
       if (!allowed.includes(k)) {
+        let target = path;
+        if (path.startsWith("chats[")) {
+          const chatName = obj.name;
+          target = `chats[${chatName}]`;
+        }
         log({
-          msg: `Unexpected field ${path}${k} in config.yml`,
+          msg: `Unexpected field ${target}.${k} in config.yml`,
           logLevel: "warn",
         });
       }
@@ -192,12 +197,13 @@ export function checkConfigSchema(config: ConfigType) {
     checkKeys(
       m as Record<string, unknown>,
       ["name", "url", "model"],
-      `local_models[${idx}].`,
-    ),
+      `local_models[${idx}].`
+    )
   );
 
   const chatKeys = [
     "name",
+    "description",
     "model",
     "completionParams",
     "bot_token",
@@ -219,7 +225,7 @@ export function checkConfigSchema(config: ConfigType) {
     "toolParams",
   ];
   config.chats.forEach((c, idx) =>
-    checkKeys(c as Record<string, unknown>, chatKeys, `chats[${idx}].`),
+    checkKeys(c as Record<string, unknown>, chatKeys, `chats[${idx}].`)
   );
 }
 
@@ -263,7 +269,7 @@ export function setConfigPath(path: string) {
 
 export async function syncButtons(
   chat: ConfigChatType,
-  authClient: OAuth2Client | GoogleAuth,
+  authClient: OAuth2Client | GoogleAuth
 ) {
   const syncConfig = chat.buttonsSync || {
     sheetId: "1TCtetO2kEsV7_yaLMej0GCR3lmDMg9nVRyRr82KT5EE",
@@ -285,12 +291,12 @@ export async function syncButtons(
 
 export async function getGoogleButtons(
   syncConfig: ButtonsSyncConfigType,
-  authClient: OAuth2Client | GoogleAuth,
+  authClient: OAuth2Client | GoogleAuth
 ) {
   const rows = await readGoogleSheet(
     syncConfig.sheetId,
     syncConfig.sheetName,
-    authClient,
+    authClient
   );
   if (!rows) {
     console.error(`Failed to load sheet "${syncConfig.sheetId}"`);
@@ -327,7 +333,7 @@ export function watchConfigChanges() {
           const id = c.id as number;
           useThreads()[id].completionParams = c.completionParams;
         });
-    }, 2000),
+    }, 2000)
   );
 }
 
