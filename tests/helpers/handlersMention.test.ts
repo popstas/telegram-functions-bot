@@ -1,5 +1,4 @@
 import { jest } from "@jest/globals";
-import { mockConsole } from "../testHelpers";
 import { Context, Message } from "telegraf/types";
 
 const mockSendTelegramMessage = jest.fn();
@@ -45,8 +44,6 @@ function createCtx(message: Record<string, unknown>): Context {
 }
 
 describe("ignore unmentioned messages", () => {
-  mockConsole();
-
   beforeEach(() => {
     jest.clearAllMocks();
   });

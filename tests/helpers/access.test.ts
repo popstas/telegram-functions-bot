@@ -1,5 +1,4 @@
 import { jest } from "@jest/globals";
-import { mockConsole } from "../testHelpers";
 import { Message } from "telegraf/types";
 import { ConfigChatType } from "../../src/types";
 
@@ -20,8 +19,6 @@ const { default: checkAccessLevel } = await import(
 );
 
 describe("checkAccessLevel", () => {
-  mockConsole();
-
   beforeEach(() => {
     jest.clearAllMocks();
   });

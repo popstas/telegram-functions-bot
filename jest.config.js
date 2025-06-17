@@ -21,6 +21,7 @@ const config = {
   transformIgnorePatterns: [
     'node_modules/(?!(langfuse|@langfuse)/)',
   ],
+  setupFilesAfterEnv: ['<rootDir>/tests/setupTests.ts'],
   collectCoverage: true,
   coverageDirectory: 'coverage',
 };

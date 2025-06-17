@@ -1,5 +1,4 @@
 import { jest } from "@jest/globals";
-import { mockConsole } from "./testHelpers";
 
 // Mock the modules using jest.requireMock
 const mockExistsSync = jest.fn();
@@ -43,7 +42,6 @@ const { readConfig, writeConfig, generateConfig } = await import(
 );
 
 describe("readConfig", () => {
-  mockConsole();
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -81,8 +79,6 @@ describe("readConfig", () => {
 });
 
 describe("writeConfig", () => {
-  mockConsole();
-
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -127,7 +123,6 @@ describe("writeConfig", () => {
 });
 
 describe("readConfig agent_name", () => {
-  mockConsole();
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -182,7 +177,6 @@ describe("readConfig agent_name", () => {
 });
 
 describe("checkConfigSchema", () => {
-  mockConsole();
   beforeEach(() => {
     jest.clearAllMocks();
   });
