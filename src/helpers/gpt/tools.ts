@@ -327,7 +327,7 @@ export async function executeTools(
     }
 
     if (!chatConfig.chatParams?.confirmation) {
-      const { trace } = useLangfuse(msg);
+      const { trace } = useLangfuse(msg, chatConfig);
       let span;
       if (trace) {
         span = trace.span({
