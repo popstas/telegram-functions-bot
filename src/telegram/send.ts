@@ -1,11 +1,7 @@
 import { Message } from "telegraf/types";
 import { useBot } from "../bot.ts";
 import { useConfig } from "../config.ts";
-import {
-  CompletionParamsType,
-  ConfigChatButtonType,
-  ConfigChatType,
-} from "../types.ts";
+import { ConfigChatButtonType, ConfigChatType } from "../types.ts";
 import { Context, Markup } from "telegraf";
 import { User } from "@telegraf/types/manage";
 import {
