@@ -1,5 +1,4 @@
 import { jest } from "@jest/globals";
-import { mockConsole } from "../testHelpers";
 import { Context, Message } from "telegraf/types";
 import {
   ConfigChatType,
@@ -18,8 +17,6 @@ const { default: resolveChatButtons } = await import(
 );
 
 describe("resolveChatButtons", () => {
-  mockConsole();
-
   beforeEach(() => {
     jest.clearAllMocks();
   });
