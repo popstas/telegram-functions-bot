@@ -214,6 +214,9 @@ export async function getInfoMessage(
   if (chatConfig.username) {
     lines.push(`Config is for user: ${chatConfig.username}`);
   }
+  if (chatConfig.prefix) {
+    lines.push(`Prefix: ${chatConfig.prefix}`);
+  }
 
   if (chatConfig.chatParams?.forgetTimeout) {
     lines.push(`Forget timeout: ${chatConfig.chatParams.forgetTimeout} sec`);

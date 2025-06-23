@@ -53,6 +53,7 @@ export function isMentioned(
   msg: Message.TextMessage & { caption?: string },
   chat: ConfigChatType,
 ): boolean {
+  if (!chat.prefix) return true;
   const botName = chat.bot_name || useConfig().bot_name;
   let mentioned = false;
   const isPrivate = msg.chat.type === "private";
@@ -73,7 +74,7 @@ export function isMentioned(
     mentioned = true;
   }
 
-  if (chat.prefix && !mentioned && !isPrivate) {
+  if (!mentioned && !isPrivate) {
     const re = new RegExp(`^${chat.prefix}`, "i");
     const isBot = re.test(text);
     if (!isBot) {
