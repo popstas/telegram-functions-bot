@@ -118,7 +118,10 @@ export async function sendTelegramMessage(
 
   const msgs = splitBigMessage(processedText);
 
-  for (const msg of msgs) {
+  for (const [index, msg] of msgs.entries()) {
+    if (index > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
     try {
       response = await useBot(chatConfig.bot_token).telegram.sendMessage(
         chat_id,
