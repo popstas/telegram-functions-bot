@@ -1,11 +1,11 @@
 // Jest exposes beforeEach and afterEach globally
-let jestObj: typeof import('@jest/globals').jest;
+let jestObj: typeof import("@jest/globals").jest;
 
 const originalConsole = { ...console };
 
 beforeEach(async () => {
   if (!jestObj) {
-    const mod = await import('@jest/globals');
+    const mod = await import("@jest/globals");
     jestObj = mod.jest;
   }
   console.log = jestObj.fn();

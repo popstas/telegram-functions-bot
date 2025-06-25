@@ -3,6 +3,10 @@ import { getEncoding, TiktokenEncoding } from "js-tiktoken";
 import { ChatToolType, ConfigChatType, ThreadStateType } from "../../types.ts";
 import { getToolsPrompts, getToolsSystemMessages } from "./tools.ts";
 
+function sanitizeName(name?: string) {
+  return name ? name.replace(/[\s<>|/]/g, "").slice(0, 64) : undefined;
+}
+
 export async function buildMessages(
   systemMessage: string,
   history: OpenAI.ChatCompletionMessageParam[],
@@ -21,7 +25,17 @@ export async function buildMessages(
     history.shift();
   }
 
-  messages.push(...history);
+  messages.push(
+    ...history.map((m) => {
+      const msg = { ...m } as OpenAI.ChatCompletionMessageParam & {
+        name?: string;
+      };
+      if (msg.name) {
+        msg.name = sanitizeName(msg.name);
+      }
+      return msg;
+    }),
+  );
 
   return messages;
 }
