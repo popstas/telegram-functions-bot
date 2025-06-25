@@ -17,4 +17,13 @@ describe("buildMessages", () => {
     expect(res[1].role).toBe("user");
     expect(res.length).toBeLessThanOrEqual(8); // limit + system
   });
+
+  it("sanitizes user name", async () => {
+    const history: OpenAI.ChatCompletionMessageParam[] = [
+      { role: "user", content: "hi", name: "John / Doe" },
+    ];
+
+    const res = await buildMessages("sys", history);
+    expect(res[1].name).toBe("JohnDoe");
+  });
 });
