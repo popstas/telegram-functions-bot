@@ -370,7 +370,7 @@ export async function requestGptAnswer(
   let systemMessage = await getSystemMessage(chatConfig, chatTools);
   const date = new Date().toISOString();
   systemMessage = systemMessage.replace(/\{date}/g, date);
-  systemMessage = await replaceUrlPlaceholders(systemMessage);
+  systemMessage = await replaceUrlPlaceholders(systemMessage, chatConfig.chatParams.placeholderCacheTime);
   if (thread.nextSystemMessage) {
     systemMessage = thread.nextSystemMessage || "";
     thread.nextSystemMessage = "";

@@ -88,6 +88,7 @@ export type ChatParamsType = {
   forgetTimeout?: number; // in seconds
   showToolMessages?: true | false | undefined | "headers";
   showTelegramNames?: boolean;
+  placeholderCacheTime?: number;
 };
 
 export type CompletionParamsType = {
