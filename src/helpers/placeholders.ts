@@ -81,6 +81,18 @@ export async function replaceToolPlaceholders(
       toolCache[cacheKey] = { content, expiry: Date.now() + cacheTime * 1000 };
     }
     if (content !== undefined) {
+      try {
+        // Only try to parse if content looks like JSON (starts with { or [)
+        if (content.trim().match(/^[[{]/)) {
+          const json = JSON.parse(content);
+          if (Array.isArray(json) && json[0]?.text) {
+            text = text.replace(match[0], json[0].text);
+            continue;
+          }
+        }
+      } catch {
+        // If parsing fails, just use the content as is
+      }
       text = text.replace(match[0], content);
     }
   }
