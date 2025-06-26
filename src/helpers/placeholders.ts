@@ -47,7 +47,7 @@ export async function replaceToolPlaceholders(
   thread: import("../types").ThreadStateType,
   cacheTime = 0,
 ): Promise<string> {
-  const regex = /\{tool:([^\(]+)\(([^\)]*)\)}/g;
+  const regex = /{tool:([^()]+)\(([^)]*)\)}/g;
   const matches = [...text.matchAll(regex)];
   for (const match of matches) {
     const [, toolName, argsStr] = match;
