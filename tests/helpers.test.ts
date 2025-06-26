@@ -1,4 +1,3 @@
-import { jest } from "@jest/globals";
 import { log, agentNameToId } from "../src/helpers.ts";
 
 describe("log", () => {
