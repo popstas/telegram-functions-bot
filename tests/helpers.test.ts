@@ -1,4 +1,5 @@
-import { log } from "../src/helpers.ts";
+import { jest } from "@jest/globals";
+import { log, agentNameToId } from "../src/helpers.ts";
 
 describe("log", () => {
   let consoleOutput: string[] = [];
@@ -73,5 +74,20 @@ describe("log", () => {
         "[123] [Test Chat] [user] [testuser] Test message with details",
       ),
     );
+  });
+});
+
+describe("agentNameToId", () => {
+  it("generates stable positive ids", () => {
+    const id1 = agentNameToId("test");
+    const id2 = agentNameToId("test");
+    expect(id1).toBe(id2);
+    expect(id1).toBeGreaterThanOrEqual(0);
+  });
+
+  it("produces different ids for different names", () => {
+    const a = agentNameToId("a");
+    const b = agentNameToId("b");
+    expect(a).not.toBe(b);
   });
 });
