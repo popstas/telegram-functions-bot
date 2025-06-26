@@ -14,6 +14,7 @@ Telegram bot with functions tools.
 - Use agents as tools
 - Agents can be triggered by name via HTTP or MQTT
 - Incoming audio transcription using Whisper service
+- Prompt placeholders: `{url:...}` and `{tool:...}` for dynamic content
 
 ## Pipeline
 
