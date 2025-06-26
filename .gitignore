@@ -21,3 +21,4 @@ config.yml
 config-*
 
 .history/
+coverage/
