@@ -1,4 +1,5 @@
 import { jest, describe, it, beforeEach, expect } from "@jest/globals";
+import type { OAuth2Client } from "google-auth-library";
 const mockLog = jest.fn();
 const mockWriteFile = jest.fn();
 const mockExistsSync = jest.fn().mockReturnValue(true);
@@ -102,9 +103,10 @@ describe("getGoogleButtons", () => {
       readGoogleSheet: jest.fn().mockResolvedValue(undefined),
     }));
     mod = await import("../src/config.ts");
+    const auth = {} as unknown as OAuth2Client;
     const res = await mod.getGoogleButtons(
       { sheetId: "id", sheetName: "s" },
-      {} as any,
+      auth,
     );
     expect(res).toBeUndefined();
   });
@@ -118,9 +120,10 @@ describe("getGoogleButtons", () => {
       ]),
     }));
     mod = await import("../src/config.ts");
+    const auth = {} as unknown as OAuth2Client;
     const res = await mod.getGoogleButtons(
       { sheetId: "id", sheetName: "s" },
-      {} as any,
+      auth,
     );
     expect(res).toEqual([
       { name: "btn", prompt: "pr", row: 1, waitMessage: "wait" },
