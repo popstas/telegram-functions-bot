@@ -1,5 +1,6 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import type { Context, Update } from "telegraf";
+import type { Message } from "telegraf/types";
 import type { ConfigChatType } from "../../src/types";
 
 const mockUseConfig = jest.fn();
@@ -60,12 +61,12 @@ describe("getCtxChatMsg", () => {
     toolParams: {},
   } as ConfigChatType;
 
-  function createMsg(username: string) {
+  function createMsg(username: string): Message.TextMessage {
     return {
       chat: { id: 123, type: "private", username },
       from: { username },
       text: "hi",
-    } as any;
+    } as unknown as Message.TextMessage;
   }
 
   it("returns chat when user allowed", () => {
