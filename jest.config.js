@@ -24,6 +24,12 @@ const config = {
   setupFilesAfterEnv: ['<rootDir>/tests/setupTests.ts'],
   collectCoverage: true,
   coverageDirectory: 'coverage',
+  coverageReporters: [
+    'json-summary',
+    'lcov',
+    'text',
+    'text-summary'
+  ],
 };
 
 export default config;
