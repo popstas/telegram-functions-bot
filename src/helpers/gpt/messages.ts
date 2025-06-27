@@ -47,10 +47,6 @@ export async function buildMessages(
 
   history = filteredHistory;
 
-  if (history.length && history[0].role === "tool") {
-    history.shift();
-  }
-
   messages.push(
     ...history.map((m) => {
       const msg = { ...m } as OpenAI.ChatCompletionMessageParam & {
