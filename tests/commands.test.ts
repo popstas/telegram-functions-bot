@@ -27,8 +27,8 @@ jest.unstable_mockModule("../src/telegram/send.ts", () => ({
   buildButtonRows: () => [],
 }));
 
-let actionCb: (ctx: any) => Promise<void>;
-const mockAction = jest.fn((name: string, cb: (ctx: any) => Promise<void>) => {
+let actionCb: (ctx: unknown) => Promise<void>;
+const mockAction = jest.fn((name: string, cb: (ctx: unknown) => Promise<void>) => {
   actionCb = cb;
 });
 
@@ -37,7 +37,7 @@ jest.unstable_mockModule("../src/bot", () => ({
   useBot: () => ({ action: mockAction }),
 }));
 
-let config: any;
+let config: unknown;
 
 jest.unstable_mockModule("../src/config.ts", () => ({
   __esModule: true,

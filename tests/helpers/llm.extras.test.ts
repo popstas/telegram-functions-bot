@@ -75,7 +75,10 @@ beforeEach(async () => {
 describe("llmCall", () => {
   it("calls API directly when no trace", async () => {
     mockUseLangfuse.mockReturnValue({ trace: undefined });
-    const params = { messages: [], model: "m" } as OpenAI.ChatCompletionCreateParams;
+    const params = {
+      messages: [],
+      model: "m",
+    } as OpenAI.ChatCompletionCreateParams;
     const result = await llm.llmCall({
       apiParams: params,
       msg: { ...baseMsg },
@@ -88,7 +91,10 @@ describe("llmCall", () => {
 
   it("wraps api when trace exists", async () => {
     mockUseLangfuse.mockReturnValue({ trace: {} });
-    const params = { messages: [], model: "m" } as OpenAI.ChatCompletionCreateParams;
+    const params = {
+      messages: [],
+      model: "m",
+    } as OpenAI.ChatCompletionCreateParams;
     const result = await llm.llmCall({
       apiParams: params,
       msg: { ...baseMsg },
