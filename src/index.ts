@@ -29,7 +29,9 @@ process.on("uncaughtException", (error, source) => {
   console.log("source:", source);
 });
 
-void start();
+if (process.env.NODE_ENV !== "test") {
+  void start();
+}
 
 async function start() {
   // global
@@ -297,3 +299,11 @@ async function telegramPostHandler(
     res.status(500).send("Error sending message.");
   }
 }
+
+export {
+  start,
+  launchBot,
+  initHttp,
+  telegramPostHandler,
+  telegramPostHandlerTest,
+};
