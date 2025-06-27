@@ -11,7 +11,7 @@ export async function buildMessages(
   systemMessage: string,
   history: OpenAI.ChatCompletionMessageParam[],
 ) {
-  const limit = 7; // TODO: to config
+  const limit = 20; // TODO: to config
   const messages: OpenAI.ChatCompletionMessageParam[] = [
     {
       role: "system",
@@ -20,6 +20,32 @@ export async function buildMessages(
   ];
 
   history = history.slice(-limit);
+
+  // remove tool messages without preceding assistant tool call
+  const filteredHistory: OpenAI.ChatCompletionMessageParam[] = [];
+  const availableToolIds = new Set<string>();
+
+  for (const msg of history) {
+    if (
+      msg.role === "assistant" &&
+      (msg as OpenAI.ChatCompletionAssistantMessageParam).tool_calls
+    ) {
+      for (const call of (msg as OpenAI.ChatCompletionAssistantMessageParam)
+        .tool_calls as OpenAI.ChatCompletionMessageToolCall[]) {
+        availableToolIds.add(call.id);
+      }
+      filteredHistory.push(msg);
+    } else if (msg.role === "tool") {
+      const id = (msg as OpenAI.ChatCompletionToolMessageParam).tool_call_id;
+      if (availableToolIds.has(id)) {
+        filteredHistory.push(msg);
+      }
+    } else {
+      filteredHistory.push(msg);
+    }
+  }
+
+  history = filteredHistory;
 
   if (history.length && history[0].role === "tool") {
     history.shift();
