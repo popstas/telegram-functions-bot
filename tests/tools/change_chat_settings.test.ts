@@ -18,14 +18,13 @@ jest.unstable_mockModule("../../src/config.ts", () => ({
 }));
 
 let ChangeChatSettingsClient: typeof import("../../src/tools/change_chat_settings.ts").ChangeChatSettingsClient;
-// let callFn: typeof import("../../src/tools/change_chat_settings.ts").call;
 
 beforeEach(async () => {
   jest.resetModules();
   mockReadConfig.mockReset();
   mockWriteConfig.mockReset();
   mockGeneratePrivateChatConfig.mockReset();
-  ({ ChangeChatSettingsClient, call: callFn } = await import(
+  ({ ChangeChatSettingsClient } = await import(
     "../../src/tools/change_chat_settings.ts"
   ));
 });
