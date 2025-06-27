@@ -94,7 +94,7 @@ Prompt placeholders allow you to include dynamic content in your prompts by fetc
 Fetches content from a URL and inserts it into the prompt.
 
 - **Syntax**: `{url:https://example.com}`
-- **Caching**: Results are cached for 1 hour (3600 seconds) by default
+- **Caching**: Results are cached for 1 hour (3600 seconds) by default, change with `placeholderCacheTime`
 - **Example**: `Check this article: {url:https://example.com/latest-news}`
 
 ```yaml
@@ -103,7 +103,9 @@ systemMessage: |
   Here's the latest news:
   {url:https://example.com/breaking-news}
   
-  Summarize the key points above.
+  Summarize the key points above
+chatParams:
+  placeholderCacheTime: 60
 ```
 
 ### {tool:...}
