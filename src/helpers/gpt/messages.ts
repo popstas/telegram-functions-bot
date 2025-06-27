@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { getEncoding, TiktokenEncoding } from "js-tiktoken";
+import { encodingForModel, TiktokenModel } from "js-tiktoken";
 import { ChatToolType, ConfigChatType, ThreadStateType } from "../../types.ts";
 import { getToolsPrompts, getToolsSystemMessages } from "./tools.ts";
 
@@ -62,11 +62,8 @@ export async function getSystemMessage(
 }
 
 export function getTokensCount(chatConfig: ConfigChatType, text: string) {
-  const encoding: TiktokenEncoding = chatConfig.completionParams.model.includes(
-    "4o",
-  )
-    ? "o200k_base"
-    : "cl100k_base";
-  const tokenizer = getEncoding(encoding);
+  const tokenizer = encodingForModel(
+    chatConfig.completionParams.model as TiktokenModel,
+  );
   return tokenizer.encode(text).length;
 }
