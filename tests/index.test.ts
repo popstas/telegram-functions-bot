@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { jest, describe, it, beforeEach, expect } from "@jest/globals";
 import type { Request, Response } from "express";
 
