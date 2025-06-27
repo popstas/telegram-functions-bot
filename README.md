@@ -1,5 +1,7 @@
 Telegram bot with functions tools.
 
+[![Coverage Status](https://coveralls.io/repos/github/popstas/telegram-functions-bot/badge.svg?branch=master)](https://coveralls.io/github/popstas/telegram-functions-bot?branch=master)
+
 [CHANGELOG.md](CHANGELOG.md)
 
 ## Features
