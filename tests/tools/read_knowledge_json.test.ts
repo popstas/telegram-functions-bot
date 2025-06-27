@@ -46,7 +46,7 @@ describe("KnowledgeJsonClient", () => {
       json: jest.fn().mockResolvedValue([{ title: "A", text: "B" }]),
       ok: true,
     });
-    (global as any).fetch = fetchMock;
+    (global as unknown as { fetch: unknown }).fetch = fetchMock;
     const client = new mod.KnowledgeJsonClient(
       cfg({
         jsonUrl: "http://x",

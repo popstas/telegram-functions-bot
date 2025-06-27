@@ -61,11 +61,11 @@ export class ObsidianReadClient extends AIFunctionsProvider {
       .map((f) => {
         try {
           const text = fs.readFileSync(f, "utf8");
-          return `\n\n=== ${f.replace(root_path, "")} ===\n` + text;
+          const relativePath = f.replace(root_path, "").replace(/\\/g, "/");
+          return `\n\n=== ${relativePath} ===\n` + text;
         } catch (e) {
-          return (
-            `\n\n=== ${f.replace(root_path, "")} ===\n` + (e as Error).message
-          );
+          const relativePath = f.replace(root_path, "").replace(/\\/g, "/");
+          return `\n\n=== ${relativePath} ===\n` + (e as Error).message;
         }
       })
       .join("\n");

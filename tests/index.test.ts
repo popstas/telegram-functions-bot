@@ -79,8 +79,8 @@ jest.unstable_mockModule("express", () => ({
 }));
 
 let index: typeof import("../src/index.ts");
-let telegramPostHandler: any;
-let telegramPostHandlerTest: any;
+let telegramPostHandler: unknown;
+let telegramPostHandlerTest: unknown;
 
 beforeEach(async () => {
   jest.resetModules();
