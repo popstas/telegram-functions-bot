@@ -145,7 +145,7 @@ describe("agentPostHandler", () => {
     mockUseConfig.mockReturnValue(baseConfig);
     mockRequestGptAnswer.mockResolvedValue({ content: "a" });
     const fetchMock = jest.fn().mockResolvedValue({});
-    // @ts-ignore
+    // @ts-expect-error global.fetch is not a function
     global.fetch = fetchMock;
     const req = {
       params: { agentName: "agent" },

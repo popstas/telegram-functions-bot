@@ -1,5 +1,6 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { McpToolConfig } from "../src/types.ts";
 
 const mockConnect = jest.fn();
 
@@ -55,7 +56,7 @@ beforeEach(async () => {
 describe("connectMcp", () => {
   it("returns cached client", async () => {
     const existing = {} as unknown as Client;
-    const res = await connectMcp("m", {} as any, { m: existing });
+    const res = await connectMcp("m", {} as unknown as McpToolConfig, { m: existing });
     expect(res).toEqual({ model: "m", client: existing, connected: true });
     expect(mockConnect).not.toHaveBeenCalled();
   });
@@ -64,7 +65,7 @@ describe("connectMcp", () => {
     const clients: Record<string, Client> = {};
     const res = await connectMcp(
       "m",
-      { serverUrl: "http://s" } as any,
+      { serverUrl: "http://s" } as unknown as McpToolConfig,
       clients,
     );
     expect(mockHttp).toHaveBeenCalledWith(new URL("http://s"), {
@@ -78,7 +79,7 @@ describe("connectMcp", () => {
     const clients: Record<string, Client> = {};
     const res = await connectMcp(
       "m",
-      { command: "cmd", args: ["a"], env: { A: "1" } } as any,
+      { command: "cmd", args: ["a"], env: { A: "1" } } as unknown as McpToolConfig,
       clients,
     );
     expect(mockStdio).toHaveBeenCalledWith(
@@ -97,13 +98,13 @@ describe("connectMcp", () => {
 
   it("returns disconnected on error", async () => {
     mockConnect.mockRejectedValue(new Error("bad"));
-    const res = await connectMcp("m", { serverUrl: "http://s" } as any, {});
+    const res = await connectMcp("m", { serverUrl: "http://s" } as unknown as McpToolConfig, {});
     expect(res).toEqual({ model: "m", client: null, connected: false });
     expect(mockLog).toHaveBeenCalled();
   });
 
   it("handles missing transport", async () => {
-    const res = await connectMcp("m", {} as any, {});
+    const res = await connectMcp("m", {} as unknown as McpToolConfig, {});
     expect(res.connected).toBe(false);
   });
 });
