@@ -5,6 +5,7 @@ import { log } from "./helpers.ts";
 
 const MQTT_LOG_PATH = "data/mqtt.log";
 let client: mqtt.MqttClient | undefined;
+let connected = false;
 
 export function useMqtt() {
   if (client) return client;
@@ -18,10 +19,12 @@ export function useMqtt() {
   });
   client.on("connect", () => {
     log({ msg: "mqtt connected", logPath: MQTT_LOG_PATH });
+    connected = true;
     client?.subscribe(`${cfg.base}/+`);
   });
   client.on("offline", () => {
     log({ msg: "mqtt offline", logPath: MQTT_LOG_PATH });
+    connected = false;
   });
   client.on("message", async (topic, message) => {
     if (!client) return;
@@ -50,4 +53,8 @@ export function publishMqttProgress(msg: string, agent?: string) {
   if (!cfg) return;
   if (!agent) return;
   client?.publish(`${cfg.base}/${agent}/progress`, msg);
+}
+
+export function isMqttConnected() {
+  return connected;
 }

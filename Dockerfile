@@ -25,5 +25,9 @@ WORKDIR /app
 COPY --from=builder /build/node_modules ./node_modules
 COPY . .
 
+# healthcheck script
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD npm -s run healthcheck
+
 # default command
 CMD ["npm", "run", "start"]

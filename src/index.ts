@@ -11,7 +11,7 @@ import {
 import { initCommands } from "./commands.ts";
 import { log } from "./helpers.ts";
 import express from "express";
-import { useBot } from "./bot";
+import { useBot, getBots } from "./bot";
 import onTextMessage from "./handlers/onTextMessage.ts";
 import onPhoto from "./handlers/onPhoto.ts";
 import onAudio from "./handlers/onAudio.ts";
@@ -22,7 +22,7 @@ import {
   agentPostHandler,
   toolPostHandler,
 } from "./httpHandlers.ts";
-import { useMqtt } from "./mqtt.ts";
+import { useMqtt, isMqttConnected } from "./mqtt.ts";
 
 process.on("uncaughtException", (error, source) => {
   console.log("Uncaught Exception:", error);
@@ -158,6 +158,19 @@ function initHttp() {
   // Add /ping test route
   app.get("/ping", (req, res) => {
     res.send("pong");
+  });
+
+  app.get("/health", (_req, res) => {
+    const bots = getBots();
+    const botsRunning = Object.values(bots).every((bot) => {
+      const polling = (
+        bot as unknown as {
+          polling?: { abortController: { signal: AbortSignal } };
+        }
+      ).polling;
+      return polling && !polling.abortController.signal.aborted;
+    });
+    res.json({ botsRunning, mqttConnected: isMqttConnected() });
   });
 
   // Add route handler to create a virtual message and call onMessage
