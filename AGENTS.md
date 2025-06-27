@@ -10,7 +10,7 @@ This project is a TypeScript Telegram bot. The codebase uses Node.js tooling wit
 - Run `npm test` and `npm run coverage-info` to check coverage, sorted by lines_uncovered.
 - Prefer less covered files.
 - Cover each function first.
-- Check `npm run coverage-info` in the end of each iteration, calculate coverage change.
+- Check `npm run test-full` and `npm run coverage-info` in the end of each iteration, calculate coverage change.
 
 ## Project Structure
 
