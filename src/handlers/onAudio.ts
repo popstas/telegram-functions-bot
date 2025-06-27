@@ -31,7 +31,7 @@ type WhisperResponse = {
   segments?: (WhisperSegment | WhisperSegmentArray)[];
 };
 
-async function processAudio(
+export async function processAudio(
   ctx: Context & { secondTry?: boolean },
   voice: { file_id: string },
   chatId: number,
