@@ -48,7 +48,7 @@ const barPath = path.resolve("src/tools/bar.ts");
 beforeAll(() => {
   fs.writeFileSync(
     fooPath,
-    "export function call() { return { content: 'foo' }; }"
+    "export function call() { return { content: 'foo' }; }",
   );
   fs.writeFileSync(barPath, "export const notCall = true;\n");
 });
@@ -69,7 +69,7 @@ beforeEach(async () => {
       description: string;
       properties: unknown;
       model: string;
-    }>
+    }>,
   );
   ({ default: useTools, initTools } = await import(
     "../../src/helpers/useTools.ts"
@@ -107,7 +107,7 @@ describe("initTools", () => {
 
     // Type the mock implementation
     (mockInitMcp as unknown as jest.Mock).mockImplementation(() =>
-      Promise.resolve(mockTools)
+      Promise.resolve(mockTools),
     );
 
     const tools = await initTools();
@@ -118,7 +118,7 @@ describe("initTools", () => {
 
     const instance = mcpTool.module.call(
       {} as unknown as ConfigChatType,
-      {} as unknown as ThreadStateType
+      {} as unknown as ThreadStateType,
     );
     await instance.functions.get("foo")("{}");
     expect(mockCallMcp).toHaveBeenCalledWith("m1", "foo", "{}");

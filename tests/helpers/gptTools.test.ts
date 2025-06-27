@@ -185,4 +185,114 @@ describe("executeTools", () => {
     const res = await tools.executeTools(toolCalls, [], cfg, baseMsg);
     expect(res).toEqual([{ content: "Tool not found: missing" }]);
   });
+
+  it("formats expertizeme search params and calls tool", async () => {
+    const toolCalls: ChatCompletionMessageToolCall[] = [
+      {
+        id: "1",
+        type: "function",
+        function: {
+          name: "expertizeme_search_items",
+          arguments: JSON.stringify({
+            query: "foo",
+            filters: [{ field: "title", operator: "not", value: ["a", "b"] }],
+            sortField: "date",
+            sortDirection: "desc",
+            groupBy: "author",
+          }),
+        },
+      },
+    ];
+
+    const toolFn = jest.fn().mockResolvedValue({ content: "ok" });
+    const chatTools: ChatToolType[] = [
+      {
+        name: "expertizeme_search_items",
+        module: {
+          description: "",
+          call: () => ({
+            functions: { get: () => toolFn, toolSpecs: { function: {} } },
+          }),
+        },
+      },
+    ];
+    const cfg: ConfigChatType = { ...baseConfig, chatParams: {} };
+    await tools.executeTools(toolCalls, chatTools, cfg, baseMsg);
+    expect(toolFn).toHaveBeenCalledTimes(1);
+    const callArgs = mockSendToHttp.mock.calls[0];
+    expect(callArgs[1]).toContain("**Title**: not a or b");
+  });
+
+  it("retries tool once on 400 error", async () => {
+    const toolCalls: ChatCompletionMessageToolCall[] = [
+      {
+        id: "1",
+        type: "function",
+        function: { name: "foo", arguments: "{}" },
+      },
+    ];
+    const error = new Error("Invalid parameter");
+    (error as Error & { status: number }).status = 400;
+    const toolFn = jest
+      .fn()
+      .mockRejectedValueOnce(error)
+      .mockResolvedValue({ content: "done" });
+    const chatTools: ChatToolType[] = [
+      {
+        name: "foo",
+        module: {
+          description: "",
+          call: () => ({
+            functions: { get: () => toolFn, toolSpecs: { function: {} } },
+          }),
+        },
+      },
+    ];
+    const cfg: ConfigChatType = { ...baseConfig, chatParams: {} };
+    const res = await tools.executeTools(toolCalls, chatTools, cfg, baseMsg);
+    expect(res[0].content).toBe("done");
+    expect(toolFn).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("chatAsTool", () => {
+  it("throws when agent missing", () => {
+    mockUseConfig.mockReturnValue({ chats: [] });
+    const msg = { ...baseMsg };
+    const chatTool = tools.chatAsTool({
+      agent_name: "missing",
+      name: "tool",
+      description: "d",
+      msg,
+      prompt_append: "",
+    });
+    expect(() =>
+      chatTool.module.call(baseConfig, { id: 1 } as ThreadStateType),
+    ).toThrow("Agent not found: missing");
+  });
+
+  it("sends answer and stops on first tool", async () => {
+    const agentCfg = { ...baseConfig, agent_name: "agent2" };
+    mockUseConfig.mockReturnValue({ chats: [agentCfg] });
+    mockRequestGptAnswer.mockResolvedValue({ content: "hi" });
+    const msg: Message.TextMessage = { ...baseMsg, text: "q" };
+    const chatTool = tools.chatAsTool({
+      agent_name: "agent2",
+      name: "tool",
+      description: "d",
+      tool_use_behavior: "stop_on_first_tool",
+      prompt_append: "",
+      msg,
+    });
+    const module = chatTool.module.call(baseConfig, {
+      id: 1,
+    } as ThreadStateType);
+    const fn = module.functions.get();
+    const res = await fn('{"input":"hi"}');
+    expect(res.content).toBe("");
+    expect(mockRequestGptAnswer).toHaveBeenCalledWith(msg, agentCfg);
+    expect(mockSendTelegramMessage).toHaveBeenCalledTimes(3);
+    const lastCall = mockSendTelegramMessage.mock.calls.pop();
+    expect(lastCall[4]).toBe(baseConfig);
+  });
 });
