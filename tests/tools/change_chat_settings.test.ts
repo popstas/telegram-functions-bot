@@ -18,6 +18,7 @@ jest.unstable_mockModule("../../src/config.ts", () => ({
 }));
 
 let ChangeChatSettingsClient: typeof import("../../src/tools/change_chat_settings.ts").ChangeChatSettingsClient;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 let callFn: typeof import("../../src/tools/change_chat_settings.ts").call;
 
 beforeEach(async () => {
