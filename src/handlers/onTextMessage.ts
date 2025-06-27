@@ -92,7 +92,7 @@ export default async function onTextMessage(
   });
 }
 
-async function answerToMessage(
+export async function answerToMessage(
   ctx: Context & { secondTry?: boolean },
   msg: Message.TextMessage,
   chat: ConfigChatType,
