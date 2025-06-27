@@ -163,7 +163,11 @@ function initHttp() {
   app.get("/health", (_req, res) => {
     const bots = getBots();
     const botsRunning = Object.values(bots).every((bot) => {
-      const polling = (bot as any).polling;
+      const polling = (
+        bot as unknown as {
+          polling?: { abortController: { signal: AbortSignal } };
+        }
+      ).polling;
       return polling && !polling.abortController.signal.aborted;
     });
     res.json({ botsRunning, mqttConnected: isMqttConnected() });

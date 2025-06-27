@@ -14,7 +14,8 @@
     "lint": "eslint",
     "format": "prettier -l --write \"src/**/*.{ts,js,json,md}\" \"tests/**/*.{ts,js,json,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,js,json,md}\" \"tests/**/*.{ts,js,json,md}\"",
-    "agent": "tsx src/cli-agent.ts"
+    "agent": "tsx src/cli-agent.ts",
+    "healthcheck": "tsx src/healthcheck.ts"
   },
   "author": "",
   "license": "ISC",
