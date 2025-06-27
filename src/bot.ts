@@ -12,3 +12,7 @@ export function useBot(bot_token?: string) {
   }
   return bots[bot_token];
 }
+
+export function getBots() {
+  return bots;
+}
