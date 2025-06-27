@@ -57,8 +57,6 @@ export function log({
     case "error":
       console.error(logMessage);
       break;
-    default:
-      console.log(logMessage);
   }
 }
 

@@ -37,7 +37,7 @@ function toRelativePath(filePath: string): string {
 }
 
 export function parseCoverage(
-  coveragePath = "coverage/coverage-summary.json",
+  coveragePath: string,
 ): FileCoverageInfo[] {
   const absolutePath = path.resolve(process.cwd(), coveragePath);
 
