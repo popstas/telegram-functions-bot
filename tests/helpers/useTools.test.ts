@@ -9,7 +9,7 @@ const mockCallMcp = jest.fn();
 
 jest.unstable_mockModule("fs", () => ({
   __esModule: true,
-  ...jest.requireActual("fs") as object,
+  ...(jest.requireActual("fs") as object),
   readdirSync: mockReaddirSync,
 }));
 
@@ -38,7 +38,7 @@ const barPath = path.resolve("src/tools/bar.ts");
 beforeAll(() => {
   fs.writeFileSync(
     fooPath,
-    "export function call() { return { content: 'foo' }; }"
+    "export function call() { return { content: 'foo' }; }",
   );
   fs.writeFileSync(barPath, "export const notCall = true;\n");
 });
@@ -79,27 +79,30 @@ describe("initTools", () => {
 
   it("adds MCP tools from initMcp", async () => {
     mockReadConfig.mockReturnValue({ mcpServers: { m1: {} } });
-    
+
     // Create a properly typed mock tool
     const mockTools: Array<{
       name: string;
       description: string;
       properties: Record<string, unknown>;
       model: string;
-    }> = [
-      { name: "mcp", description: "d", properties: {}, model: "m1" },
-    ];
-    
+    }> = [{ name: "mcp", description: "d", properties: {}, model: "m1" }];
+
     // Type the mock implementation
-    (mockInitMcp as jest.Mock).mockImplementation(() => Promise.resolve(mockTools));
-    
+    (mockInitMcp as jest.Mock).mockImplementation(() =>
+      Promise.resolve(mockTools),
+    );
+
     const tools = await initTools();
     expect(tools).toHaveLength(2);
     const mcpTool = tools.find((t) => t.name === "mcp");
     expect(mcpTool).toBeDefined();
     if (!mcpTool) return;
-    
-    const instance = mcpTool.module.call({} as unknown as ConfigChatType, {} as unknown as ThreadStateType);
+
+    const instance = mcpTool.module.call(
+      {} as unknown as ConfigChatType,
+      {} as unknown as ThreadStateType,
+    );
     await instance.functions.get("foo")("{}");
     expect(mockCallMcp).toHaveBeenCalledWith("m1", "foo", "{}");
   });
