@@ -3,25 +3,12 @@ import {
   getUserGoogleCreds,
   saveUserGoogleCreds,
 } from "../src/helpers/google.ts";
+import fs from "fs";
 
-// Create manual mocks for fs functions
-const mockExistsSync = jest.fn();
-const mockReadFileSync = jest.fn();
-const mockWriteFileSync = jest.fn();
-
-// Mock the fs module with our manual mocks
-jest.mock("fs", () => ({
-  existsSync: mockExistsSync,
-  readFileSync: mockReadFileSync,
-  writeFileSync: mockWriteFileSync,
-  constants: {
-    F_OK: 0,
-    W_OK: 1,
-    R_OK: 2,
-  },
-}));
-
-jest.mock("fs");
+// Spy on fs functions
+const mockExistsSync = jest.spyOn(fs, "existsSync");
+const mockReadFileSync = jest.spyOn(fs, "readFileSync");
+const mockWriteFileSync = jest.spyOn(fs, "writeFileSync");
 
 // Create a mock for readConfig
 const mockReadConfig = jest.fn();
@@ -77,9 +64,12 @@ afterAll(() => {
   console.warn = originalConsole.warn;
   console.info = originalConsole.info;
   mockExit.mockRestore();
+  mockExistsSync.mockRestore();
+  mockReadFileSync.mockRestore();
+  mockWriteFileSync.mockRestore();
 });
 
-describe.skip("Google API Integration Tests", () => {
+describe("Google API Integration Tests", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -127,11 +117,11 @@ describe.skip("Google API Integration Tests", () => {
       const creds = getUserGoogleCreds(userId);
       expect(creds).toEqual(mockCreds[userId]);
       expect(mockExistsSync).toHaveBeenCalledWith(
-        expect.stringContaining("google-creds.json"),
+        expect.stringContaining("data/creds.json"),
       );
       expect(mockReadFileSync).toHaveBeenCalledWith(
-        expect.stringContaining("google-creds.json"),
-        "utf-8",
+        expect.stringContaining("data/creds.json"),
+        "utf8",
       );
     });
 
@@ -153,17 +143,17 @@ describe.skip("Google API Integration Tests", () => {
       const mockExistingCreds = { [userId]: { access_token: "existingToken" } };
       mockReadFileSync.mockReturnValueOnce(JSON.stringify(mockExistingCreds));
 
-      saveUserGoogleCreds(userId, mockCreds);
+      saveUserGoogleCreds(mockCreds, userId);
 
       expect(mockExistsSync).toHaveBeenCalledWith(
-        expect.stringContaining("google-creds.json"),
+        expect.stringContaining("data/creds.json"),
       );
       expect(mockReadFileSync).toHaveBeenCalledWith(
-        expect.stringContaining("google-creds.json"),
-        "utf-8",
+        expect.stringContaining("data/creds.json"),
+        "utf8",
       );
       expect(mockWriteFileSync).toHaveBeenCalledWith(
-        expect.stringContaining("google-creds.json"),
+        expect.stringContaining("data/creds.json"),
         JSON.stringify({ ...mockExistingCreds, [userId]: mockCreds }, null, 2),
         "utf-8",
       );
@@ -171,7 +161,7 @@ describe.skip("Google API Integration Tests", () => {
 
     it("should not save credentials if no user_id is provided", () => {
       // @ts-expect-error - Testing invalid input
-      saveUserGoogleCreds(undefined, { access_token: "mockToken" });
+      saveUserGoogleCreds({ access_token: "mockToken" }, undefined);
 
       expect(console.error).toHaveBeenCalledWith("No user_id to save creds");
       expect(mockWriteFileSync).not.toHaveBeenCalled();
@@ -180,7 +170,7 @@ describe.skip("Google API Integration Tests", () => {
     it("should not save credentials if no creds are provided", () => {
       const userId = 123;
       // @ts-expect-error - Testing invalid input
-      saveUserGoogleCreds(userId, undefined);
+      saveUserGoogleCreds(undefined, userId);
 
       expect(console.error).toHaveBeenCalledWith("No creds to save");
       expect(mockWriteFileSync).not.toHaveBeenCalled();
