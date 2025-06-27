@@ -12,12 +12,13 @@ function MockClient() {
     connect: mockClientConnect,
     setNotificationHandler: jest.fn(),
     request: jest.fn(),
-    listTools: (...args: unknown[]) => listToolsMock(...args)
+    listTools: (...args: unknown[]) => listToolsMock(...args),
   };
 }
 
 // For TypeScript compatibility
-const createMockClient = (): ReturnType<typeof MockClient> => new (MockClient as unknown as { new (): ReturnType<typeof MockClient> })();
+const createMockClient = (): ReturnType<typeof MockClient> =>
+  new (MockClient as unknown as { new (): ReturnType<typeof MockClient> })();
 
 const StdioTransportMock = jest.fn();
 const StreamableTransportMock = jest.fn();
@@ -34,7 +35,7 @@ jest.unstable_mockModule(
   "@modelcontextprotocol/sdk/client/streamableHttp.js",
   () => ({
     StreamableHTTPClientTransport: StreamableTransportMock,
-  })
+  }),
 );
 
 jest.unstable_mockModule("@modelcontextprotocol/sdk/types.js", () => ({
@@ -79,7 +80,7 @@ describe("connectMcp", () => {
     const res = await connectMcp("m2", cfg, clients as any);
     expect(StreamableTransportMock).toHaveBeenCalledWith(
       new URL("http://srv"),
-      { sessionId: undefined }
+      { sessionId: undefined },
     );
     expect(mockClientConnect).toHaveBeenCalledWith(transport);
     expect(res.connected).toBe(true);
