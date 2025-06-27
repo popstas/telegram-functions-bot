@@ -4,7 +4,16 @@ import * as fs from "fs";
 const mockReaddirSync = jest.fn();
 const mockLog = jest.fn();
 const mockReadConfig = jest.fn();
-const mockInitMcp = jest.fn();
+
+// Mock function with type assertion
+const mockInitMcp = jest.fn() as unknown as jest.MockedFunction<
+  typeof import("../../src/mcp").init
+>;
+
+beforeEach(() => {
+  mockInitMcp.mockClear();
+  mockInitMcp.mockResolvedValue([]);
+});
 const mockCallMcp = jest.fn();
 
 jest.unstable_mockModule("fs", () => ({
@@ -22,7 +31,8 @@ jest.unstable_mockModule("../../src/config.ts", () => ({
 }));
 
 jest.unstable_mockModule("../../src/mcp.ts", () => ({
-  init: (...args: unknown[]) => mockInitMcp(...args),
+  init: (config: Parameters<typeof import("../../src/mcp").init>[0]) =>
+    mockInitMcp(config),
   callMcp: (...args: unknown[]) => mockCallMcp(...args),
 }));
 
@@ -38,7 +48,7 @@ const barPath = path.resolve("src/tools/bar.ts");
 beforeAll(() => {
   fs.writeFileSync(
     fooPath,
-    "export function call() { return { content: 'foo' }; }",
+    "export function call() { return { content: 'foo' }; }"
   );
   fs.writeFileSync(barPath, "export const notCall = true;\n");
 });
@@ -53,7 +63,14 @@ beforeEach(async () => {
   jest.clearAllMocks();
   mockReaddirSync.mockReturnValue(["foo.ts", "bar.ts"]);
   mockReadConfig.mockReturnValue({});
-  mockInitMcp.mockResolvedValue([]);
+  mockInitMcp.mockResolvedValue(
+    [] as Array<{
+      name: string;
+      description: string;
+      properties: unknown;
+      model: string;
+    }>
+  );
   ({ default: useTools, initTools } = await import(
     "../../src/helpers/useTools.ts"
   ));
@@ -89,8 +106,8 @@ describe("initTools", () => {
     }> = [{ name: "mcp", description: "d", properties: {}, model: "m1" }];
 
     // Type the mock implementation
-    (mockInitMcp as jest.Mock).mockImplementation(() =>
-      Promise.resolve(mockTools),
+    (mockInitMcp as unknown as jest.Mock).mockImplementation(() =>
+      Promise.resolve(mockTools)
     );
 
     const tools = await initTools();
@@ -101,7 +118,7 @@ describe("initTools", () => {
 
     const instance = mcpTool.module.call(
       {} as unknown as ConfigChatType,
-      {} as unknown as ThreadStateType,
+      {} as unknown as ThreadStateType
     );
     await instance.functions.get("foo")("{}");
     expect(mockCallMcp).toHaveBeenCalledWith("m1", "foo", "{}");
