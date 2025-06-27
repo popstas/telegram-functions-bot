@@ -12,6 +12,19 @@ import { log } from "./helpers.ts";
 // Store active MCP clients by model key
 const clients: Record<string, Client> = {};
 
+export const __test = {
+  /** Reset cached clients - used in tests */
+  resetClients() {
+    for (const key of Object.keys(clients)) {
+      delete clients[key];
+    }
+  },
+  /** Manually set a client for a model - used in tests */
+  setClient(model: string, client: Client) {
+    clients[model] = client;
+  },
+};
+
 type McpTool = {
   name: string;
   description: string;
@@ -137,7 +150,7 @@ function initSseMcp(serverUrl: string, model: string, client: Client) {
 /**
  * Connect to an MCP server with the given configuration
  */
-async function connectMcp(
+export async function connectMcp(
   model: string,
   cfg: McpToolConfig,
   clients: Record<string, Client>,
