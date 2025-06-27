@@ -232,7 +232,7 @@ describe("executeTools", () => {
       },
     ];
     const error = new Error("Invalid parameter");
-    (error as any).status = 400;
+    (error as Error & { status: number }).status = 400;
     const toolFn = jest
       .fn()
       .mockRejectedValueOnce(error)
