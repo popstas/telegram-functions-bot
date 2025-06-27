@@ -1,4 +1,7 @@
-import { log, agentNameToId } from "../src/helpers.ts";
+import path from "path";
+import os from "os";
+import fs from "fs";
+import { log, agentNameToId, ensureDirectoryExists } from "../src/helpers.ts";
 
 describe("log", () => {
   let consoleOutput: string[] = [];
@@ -26,7 +29,7 @@ describe("log", () => {
   });
 
   it("should log info messages by default", () => {
-    log({ msg: "Test info message" });
+    log({ msg: "Test info\nmessage" });
     expect(consoleOutput).toContainEqual(
       expect.stringContaining("Test info message"),
     );
@@ -76,6 +79,15 @@ describe("log", () => {
   });
 });
 
+describe("ensureDirectoryExists", () => {
+  it("creates directory if it doesn't exist", () => {
+    const dir = path.join(os.tmpdir(), "test-dir");
+    const file = path.join(dir, "test-file");
+    ensureDirectoryExists(file);
+    expect(fs.existsSync(dir)).toBe(true);
+    fs.rmdirSync(dir);
+  });
+});
 describe("agentNameToId", () => {
   it("generates stable positive ids", () => {
     const id1 = agentNameToId("test");
