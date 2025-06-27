@@ -1,10 +1,10 @@
 import { jest, describe, it, beforeEach, expect } from "@jest/globals";
 
-const mockGetEncoding = jest.fn();
+const mockEncodingForModel = jest.fn();
 const fakeEncoding = { encode: (txt: string) => txt.split(" ") };
 
 jest.unstable_mockModule("js-tiktoken", () => ({
-  getEncoding: (name: string) => mockGetEncoding(name),
+  encodingForModel: (model: string) => mockEncodingForModel(model),
 }));
 
 let getTokensCount: typeof import("../../src/helpers/gpt/messages.ts").getTokensCount;
@@ -16,21 +16,21 @@ const baseConfig: { completionParams: { model: string } } = {
 describe("getTokensCount", () => {
   beforeEach(async () => {
     jest.resetModules();
-    mockGetEncoding.mockReturnValue(fakeEncoding);
+    mockEncodingForModel.mockReturnValue(fakeEncoding);
     ({ getTokensCount } = await import("../../src/helpers/gpt/messages.ts"));
   });
 
-  it("uses cl100k_base encoding by default", () => {
+  it("uses model name to select encoding", () => {
     getTokensCount(baseConfig, "a b c");
-    expect(mockGetEncoding).toHaveBeenCalledWith("cl100k_base");
+    expect(mockEncodingForModel).toHaveBeenCalledWith("gpt-3.5-turbo");
   });
 
-  it("uses o200k_base for 4o models", () => {
+  it("passes model name for 4o models", () => {
     const cfg: { completionParams: { model: string } } = {
       completionParams: { model: "gpt-4o" },
     };
     getTokensCount(cfg, "a b c");
-    expect(mockGetEncoding).toHaveBeenCalledWith("o200k_base");
+    expect(mockEncodingForModel).toHaveBeenCalledWith("gpt-4o");
   });
 
   it("counts tokens using encoding", () => {
