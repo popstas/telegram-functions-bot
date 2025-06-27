@@ -6,6 +6,12 @@ This project is a TypeScript Telegram bot. The codebase uses Node.js tooling wit
 - Run `npm run test-full` before commit.
 - Run `npm run format` before commit.
 
+## Coverage improve rules
+- Run `npm test` and `npm run coverage-info` to check coverage, sorted by lines_uncovered.
+- Prefer less covered files.
+- Cover each function first.
+- Check `npm run coverage-info` in the end of each iteration, calculate coverage change.
+
 ## Project Structure
 
 - **src/** – main source code (`bot.ts`, `config.ts`, helpers, tools, etc.)
