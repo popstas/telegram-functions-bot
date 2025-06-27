@@ -23,6 +23,11 @@ const config = {
   ],
   setupFilesAfterEnv: ['<rootDir>/tests/setupTests.ts'],
   collectCoverage: true,
+  collectCoverageFrom: [
+    'src/**/*.ts',
+    '!src/tools/foo.ts',
+    '!src/tools/bar.ts',
+  ],
   coverageDirectory: 'coverage',
   coverageReporters: [
     'json-summary',
