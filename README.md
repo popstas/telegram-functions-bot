@@ -32,7 +32,6 @@ Telegram bot with functions tools.
 - `javascript_interpreter` - exec JavaScript code
 - `obsidian_read` - return the contents of an Obsidian file specified by `file_path`, list of files pass to the prompt
 - `obsidian_write` - append text to a markdown file specified by `out_file`
-- `planfix_create_request_task` - Creates new task in CRM Planfix
 - `powershell` - exec PowerShell command, single server from config
 - `read_google_sheet` - read Google Sheet
 - `read_knowledge_google_sheet` - questions and answers from Google Sheet
