@@ -20,6 +20,38 @@ import { useConfig } from "../../config.ts";
 import { requestGptAnswer } from "./llm.ts";
 import { publishMqttProgress } from "../../mqtt.ts";
 
+export function prettifyKeyValue(
+  key: string,
+  value: unknown,
+  level = 0,
+): string {
+  function prettifyKey(innerKey?: string): string {
+    if (!innerKey) return "";
+    innerKey = innerKey.replace(/[_-]/g, " ");
+    innerKey = innerKey.replace(/([a-z])([A-Z])/g, "$1 $2");
+    innerKey = innerKey.charAt(0).toUpperCase() + innerKey.slice(1);
+    return innerKey;
+  }
+  key = prettifyKey(key);
+  const prefix = "  ".repeat(level) + "-";
+  if (value !== null && typeof value === "object") {
+    if (Array.isArray(value)) {
+      if (value.length === 0) return `${prefix} *${key}:* (empty)`;
+      return [
+        `${prefix} *${key}:*`,
+        ...value.map((v, i) => prettifyKeyValue(String(i), v, level + 1)),
+      ].join("\n");
+    }
+    const entries = Object.entries(value);
+    if (entries.length === 0) return `${prefix} *${key}:* (empty)`;
+    return [
+      `${prefix} *${key}:*`,
+      ...entries.map(([k, v]) => prettifyKeyValue(k, v, level + 1)),
+    ].join("\n");
+  }
+  return `${prefix} *${key}:* ${value}`;
+}
+
 export function chatAsTool({
   agent_name,
   bot_name,
@@ -238,27 +270,6 @@ export async function executeTools(
         lines.push(groupByLine);
       }
       return lines.join("\n");
-    }
-
-    function prettifyKeyValue(key: string, value: unknown, level = 0): string {
-      key = prettifyKey(key);
-      const prefix = "  ".repeat(level) + "-";
-      if (value !== null && typeof value === "object") {
-        if (Array.isArray(value)) {
-          if (value.length === 0) return `${prefix} *${key}:* (empty)`;
-          return [
-            `${prefix} *${key}:*`,
-            ...value.map((v, i) => prettifyKeyValue(String(i), v, level + 1)),
-          ].join("\n");
-        }
-        const entries = Object.entries(value);
-        if (entries.length === 0) return `${prefix} *${key}:* (empty)`;
-        return [
-          `${prefix} *${key}:*`,
-          ...entries.map(([k, v]) => prettifyKeyValue(k, v, level + 1)),
-        ].join("\n");
-      }
-      return `${prefix} *${key}:* ${value}`;
     }
 
     let toolParams = toolCall.function.arguments;
