@@ -25,6 +25,7 @@ import { useConfig } from "../../config.ts";
 import { log } from "../../helpers.ts";
 import { executeTools, resolveChatTools, getToolsPrompts } from "./tools.ts";
 import { buildMessages, getSystemMessage } from "./messages.ts";
+import { APIUserAbortError } from "openai";
 
 export const EVALUATOR_PROMPT = `
 You are an impartial quality auditor for a Telegram bot.
@@ -45,12 +46,14 @@ export async function llmCall({
   chatConfig,
   generationName = "llm-call",
   localModel,
+  signal,
 }: {
   apiParams: OpenAI.Chat.Completions.ChatCompletionCreateParams;
   msg: Message.TextMessage;
   chatConfig?: ConfigChatType;
   generationName?: string;
   localModel?: string;
+  signal?: AbortSignal;
 }): Promise<{ res: OpenAI.ChatCompletion; trace?: unknown }> {
   const api = useApi(localModel || chatConfig?.local_model);
   const { trace } = chatConfig
@@ -60,15 +63,23 @@ export async function llmCall({
   if (trace) {
     apiFunc = observeOpenAI(api, { generationName, parent: trace });
   }
-  const res = (await apiFunc.chat.completions.create(
-    apiParams,
-  )) as OpenAI.ChatCompletion;
-  return { res, trace };
+  try {
+    const res = (await apiFunc.chat.completions.create(apiParams, {
+      signal,
+    })) as OpenAI.ChatCompletion;
+    return { res, trace };
+  } catch (e) {
+    if (e instanceof APIUserAbortError) {
+      return { res: {} as OpenAI.ChatCompletion, trace };
+    }
+    console.error("llmCall error", e);
+    return { res: {} as OpenAI.ChatCompletion, trace };
+  }
 }
 
 export type HandleModelAnswerParams = {
   msg: Message.TextMessage;
-  res: OpenAI.ChatCompletion;
+  res?: OpenAI.ChatCompletion;
   chatConfig: ConfigChatType;
   expressRes: express.Response | undefined;
   noSendTelegram?: boolean;
@@ -87,7 +98,7 @@ async function evaluateAnswer(
   msg: Message.TextMessage,
   evaluator: ConfigChatType,
   task: string,
-  answer: string,
+  answer: string
 ): Promise<EvaluatorResult> {
   const systemMessage = [EVALUATOR_PROMPT, evaluator.systemMessage]
     .filter(Boolean)
@@ -138,14 +149,18 @@ export async function handleModelAnswer({
   level = 1,
   trace,
 }: HandleModelAnswerParams): Promise<ToolResponse> {
-  const messageAgent = res.choices[0]?.message;
+  if (!res || !res?.choices?.[0]) {
+    return { content: "" };
+  }
+
+  const messageAgent = res.choices[0].message;
   if (!messageAgent) {
     throw new Error("No message found in OpenAI response");
   }
 
   if (!messageAgent.tool_calls || messageAgent.tool_calls.length === 0) {
     const toolCallMatches = messageAgent.content?.matchAll(
-      /<tool_call>([\s\S]*?)<\/tool_call>/g,
+      /<tool_call>([\s\S]*?)<\/tool_call>/g
     );
     if (toolCallMatches) {
       const tool_calls =
@@ -171,7 +186,7 @@ export async function handleModelAnswer({
       chatConfig,
       msg,
       expressRes,
-      noSendTelegram,
+      noSendTelegram
     );
     if (tool_res) {
       return processToolResults({
@@ -198,7 +213,7 @@ export async function handleModelAnswer({
 
   if (
     gptContext.thread.messages.find(
-      (m: OpenAI.ChatCompletionMessageParam) => m.role === "tool",
+      (m: OpenAI.ChatCompletionMessageParam) => m.role === "tool"
     ) &&
     chatConfig.chatParams?.memoryless
   ) {
@@ -231,7 +246,7 @@ export async function processToolResults({
       }
     ).tool_calls[i];
     const chatTool = gptContext.chatTools.find(
-      (f) => f.name === toolCall.function.name,
+      (f) => f.name === toolCall.function.name
     );
     const isMcp = chatTool?.module.call(chatConfig, gptContext.thread).mcp;
     const showMessages =
@@ -248,7 +263,7 @@ export async function processToolResults({
         msgContentLimited,
         params,
         undefined,
-        chatConfig,
+        chatConfig
       );
     }
 
@@ -285,7 +300,7 @@ export async function processToolResults({
 
   gptContext.messages = await buildMessages(
     gptContext.systemMessage,
-    gptContext.thread.messages,
+    gptContext.thread.messages
   );
 
   const isNoTool = level > 6 || !gptContext.tools?.length;
@@ -337,7 +352,8 @@ export async function requestGptAnswer(
   options?: {
     skipEvaluators?: boolean;
     responseFormat?: OpenAI.Chat.Completions.ChatCompletionCreateParams["response_format"];
-  },
+    signal?: AbortSignal;
+  }
 ) {
   if (!msg.text) return;
   const threads = useThreads();
@@ -375,14 +391,14 @@ export async function requestGptAnswer(
   systemMessage = systemMessage.replace(/\{date}/g, date);
   systemMessage = await replaceUrlPlaceholders(
     systemMessage,
-    chatConfig.chatParams.placeholderCacheTime,
+    chatConfig.chatParams.placeholderCacheTime
   );
   systemMessage = await replaceToolPlaceholders(
     systemMessage,
     chatTools,
     chatConfig,
     thread,
-    chatConfig.chatParams.placeholderCacheTime,
+    chatConfig.chatParams.placeholderCacheTime
   );
   if (thread.nextSystemMessage) {
     systemMessage = thread.nextSystemMessage || "";
@@ -410,6 +426,7 @@ export async function requestGptAnswer(
     chatConfig,
     generationName: "llm-call",
     localModel: chatConfig.local_model,
+    signal: options?.signal,
   });
 
   const gptContext: GptContextType = {
@@ -435,7 +452,7 @@ export async function requestGptAnswer(
     result.content = await runEvaluatorWorkflow(
       msg,
       chatConfig,
-      result.content,
+      result.content
     );
   }
 
@@ -445,7 +462,7 @@ export async function requestGptAnswer(
 async function runEvaluatorWorkflow(
   msg: Message.TextMessage,
   chatConfig: ConfigChatType,
-  answer: string,
+  answer: string
 ): Promise<string> {
   const config = useConfig();
   let finalAnswer = answer;
@@ -458,7 +475,7 @@ async function runEvaluatorWorkflow(
       msg,
       evalChat,
       msg.text || "",
-      finalAnswer,
+      finalAnswer
     );
     log({
       msg: `evaluation 1: ${JSON.stringify(evaluation)}`,
@@ -489,7 +506,7 @@ async function runEvaluatorWorkflow(
         msg,
         evalChat,
         msg.text || "",
-        finalAnswer,
+        finalAnswer
       );
       log({
         msg: `evaluation ${iter}: ${JSON.stringify(evaluation)}`,

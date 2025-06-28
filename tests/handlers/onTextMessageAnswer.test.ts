@@ -2,6 +2,14 @@ import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import type { Context, Message } from "telegraf/types";
 import type { ConfigChatType } from "../../src/types";
 
+type AbortSignal = {
+  readonly aborted: boolean;
+  onabort: ((this: AbortSignal, ev: Event) => void) | null;
+  addEventListener: (type: "abort", listener: () => void) => void;
+  removeEventListener: (type: "abort", listener: () => void) => void;
+  dispatchEvent: (event: Event) => boolean;
+};
+
 const threads: Record<
   number,
   {
@@ -17,26 +25,35 @@ const threads: Record<
 const mockEnsureAuth = jest.fn();
 const mockAddOauthToThread = jest.fn();
 const mockSyncButtons = jest.fn();
+// Mock implementations
 const mockRequestGptAnswer = jest.fn();
 const mockSendTelegramMessage = jest.fn();
 const mockUseConfig = jest.fn();
 
+// Default mock implementations
+mockRequestGptAnswer.mockImplementation(() =>
+  Promise.resolve({ content: "hi" })
+);
+mockSendTelegramMessage.mockImplementation(() =>
+  Promise.resolve({ chat: { id: 1 } } as Message.TextMessage)
+);
+
 jest.unstable_mockModule("../../src/helpers/google.ts", () => ({
-  ensureAuth: (...args: unknown[]) => mockEnsureAuth(...args),
-  addOauthToThread: (...args: unknown[]) => mockAddOauthToThread(...args),
+  ensureAuth: mockEnsureAuth,
+  addOauthToThread: mockAddOauthToThread,
 }));
 
 jest.unstable_mockModule("../../src/config.ts", () => ({
   useConfig: () => mockUseConfig(),
-  syncButtons: (...args: unknown[]) => mockSyncButtons(...args),
+  syncButtons: mockSyncButtons,
 }));
 
 jest.unstable_mockModule("../../src/helpers/gpt.ts", () => ({
-  requestGptAnswer: (...args: unknown[]) => mockRequestGptAnswer(...args),
+  requestGptAnswer: mockRequestGptAnswer,
 }));
 
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
-  sendTelegramMessage: (...args: unknown[]) => mockSendTelegramMessage(...args),
+  sendTelegramMessage: mockSendTelegramMessage,
   getFullName: jest.fn(),
   getTelegramForwardedUser: jest.fn(),
   isAdminUser: jest.fn(),
@@ -50,7 +67,7 @@ jest.unstable_mockModule("../../src/threads.ts", () => ({
 let handlers: typeof import("../../src/handlers/onTextMessage.ts");
 
 function createCtx(
-  message: Record<string, unknown>,
+  message: Record<string, unknown>
 ): Context & { secondTry?: boolean } {
   return {
     message,
@@ -98,33 +115,72 @@ describe("answerToMessage", () => {
       expect.stringContaining("Готово"),
       expect.anything(),
       ctx,
-      chat,
+      chat
     );
     expect(res).toBeDefined();
   });
 
   it("sends gpt answer and stores message", async () => {
+    // Setup
     mockUseConfig.mockReturnValue({ auth: {} });
-    mockRequestGptAnswer.mockResolvedValue({ content: "hi" });
-    mockSendTelegramMessage.mockResolvedValue({
+
+    // Mock the response from requestGptAnswer
+    mockRequestGptAnswer.mockImplementationOnce(async () => ({
+      content: "hi",
+    }));
+
+    // Mock the response from sendTelegramMessage
+    const mockMessage = {
       chat: { id: 1 },
-    } as unknown as Message.TextMessage);
+      message_id: 123,
+      date: Date.now() / 1000,
+      text: "hi",
+    } as Message.TextMessage;
+    mockSendTelegramMessage.mockImplementationOnce(async () => mockMessage);
+
+    // Test data
     const msg = {
       chat: { id: 1, title: "t" },
-      from: { id: 1 },
+      from: { id: 1, first_name: "Test" },
       text: "hello",
+      message_id: 1,
+      date: Date.now() / 1000,
     } as Message.TextMessage;
+
     const ctx = createCtx(msg);
     const chat = { ...baseChat, buttons: [{ name: "b" }] };
-    const res = await handlers.answerToMessage(ctx, msg, chat, {});
-    expect(mockRequestGptAnswer).toHaveBeenCalledWith(msg, chat, ctx);
+
+    // Create a mock AbortSignal
+    const abortController = {
+      signal: {
+        aborted: false,
+        onabort: null,
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      },
+    };
+
+    // Execute
+    const res = await handlers.answerToMessage(ctx, msg, chat, {
+      signal: abortController.signal,
+    });
+
+    // Verify requestGptAnswer was called correctly
+    expect(mockRequestGptAnswer).toHaveBeenCalledWith(msg, chat, ctx, {
+      signal: abortController.signal,
+    });
+
+    // Verify sendTelegramMessage was called correctly
     expect(mockSendTelegramMessage).toHaveBeenCalledWith(
       1,
       "hi",
       expect.anything(),
       ctx,
-      chat,
+      chat
     );
+
+    // Verify the message was added to history
     expect(threads[1].msgs.length).toBe(1);
     expect(res).toBeDefined();
   });
@@ -148,7 +204,7 @@ describe("answerToMessage", () => {
       "бот не ответил",
       expect.anything(),
       ctx,
-      chat,
+      chat
     );
   });
 
@@ -172,7 +228,7 @@ describe("answerToMessage", () => {
       expect.stringContaining("bad"),
       {},
       ctx,
-      chat,
+      chat
     );
   });
 });

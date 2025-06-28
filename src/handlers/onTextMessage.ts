@@ -16,6 +16,14 @@ import checkAccessLevel from "./access.ts";
 import resolveChatButtons from "./resolveChatButtons.ts";
 import { sendTelegramMessage } from "../telegram/send.ts";
 
+// Track active responses per chat to allow cancellation
+interface ActiveResponse {
+  abortController: AbortController;
+  isCompleted: boolean;
+}
+
+const activeResponses = new Map<number, ActiveResponse>();
+
 export default async function onTextMessage(
   ctx: Context & { secondTry?: boolean },
   next?: () => Promise<void> | void,
@@ -61,43 +69,66 @@ export default async function onTextMessage(
   );
   if (buttonResponse) return buttonResponse;
 
-  // Store the current message count to track if new messages arrive
-  const historyLength = thread.messages.length;
-
-  // Start responding immediately
-  let responseCompleted = false;
-  const responsePromise = answerToMessage(ctx, msg, chat, extraMessageParams);
-
-  // Set up a timeout to check for new messages
-  const timer = setTimeout(async () => {
-    if (responseCompleted) return;
-
-    // If no new messages, complete the response
-    if (thread.messages.length === historyLength) {
-      responseCompleted = true;
-      const msgSent = await responsePromise;
-      if (msgSent && typeof callback === "function") {
-        await callback(msgSent);
-      }
-    } else {
-      // If new messages arrived, cancel the current response
-      // and let the new message handler take over
-      responsePromise.catch(() => {}); // Prevent unhandled promise rejection
+  // Cancel any existing response for this chat
+  const existingResponse = activeResponses.get(chatId);
+  if (existingResponse) {
+    log({
+      msg: "cancelling previous response",
+      chatId,
+      chatTitle: (msg.chat as Chat.TitleChat).title,
+      role: "system",
+      username: msg?.from?.username,
+    });
+    if (!existingResponse.isCompleted) {
+      existingResponse.abortController.abort();
     }
-  }, 5000);
+    activeResponses.delete(chatId);
+  }
 
-  // Clean up the timer when the response completes
-  responsePromise.finally(() => {
-    clearTimeout(timer);
+  // Create a new abort controller for this response
+  const abortController = new AbortController();
+  
+  // Start responding immediately
+  const responsePromise = answerToMessage(ctx, msg, chat, {
+    ...extraMessageParams,
+    signal: abortController.signal,
   });
+
+  // Store the active response for potential cancellation
+  const activeResponse: ActiveResponse = {
+    abortController,
+    isCompleted: false,
+  };
+  activeResponses.set(chatId, activeResponse);
+
+  responsePromise
+    .then((msgSent) => {
+      if (msgSent && typeof callback === "function") {
+        return callback(msgSent);
+      }
+    })
+    .catch((error) => {
+      // Ignore errors from aborted requests
+      if (!abortController.signal.aborted) {
+        console.error("Error in response handler:", error);
+      }
+    })
+    .finally(() => {
+      const currentResponse = activeResponses.get(chatId);
+      if (currentResponse === activeResponse) {
+        activeResponse.isCompleted = true;
+        activeResponses.delete(chatId);
+      }
+    });
 }
 
 export async function answerToMessage(
   ctx: Context & { secondTry?: boolean },
   msg: Message.TextMessage,
   chat: ConfigChatType,
-  extraMessageParams: Record<string, unknown>,
+  extraMessageParams: Record<string, unknown> & { signal?: AbortSignal },
 ): Promise<Message.TextMessage | undefined> {
+  log({msg: "answerToMessage", chatId: msg.chat.id, chatTitle: (msg.chat as Chat.TitleChat).title, role: "user", username: msg?.from?.username})
   if (
     useConfig().auth.oauth_google?.client_id ||
     useConfig().auth.google_service_account?.private_key
@@ -140,8 +171,18 @@ export async function answerToMessage(
   try {
     let msgSent: Message.TextMessage | undefined;
     await ctx.persistentChatAction("typing", async () => {
-      if (!msg) return;
-      const res = await requestGptAnswer(msg, chat, ctx);
+      if (!msg || extraMessageParams.signal?.aborted) {
+        return;
+      }
+      
+      const res = await requestGptAnswer(msg, chat, ctx, {
+        signal: extraMessageParams.signal,
+      });
+      
+      if (extraMessageParams.signal?.aborted) {
+        return;
+      }
+      
       const text = res?.content || "бот не ответил";
       const extraParams: Record<string, unknown> = {
         ...extraMessageParams,

@@ -1,48 +1,118 @@
-import { jest, describe, it, expect, beforeEach } from "@jest/globals";
+import {
+  jest,
+  describe,
+  it,
+  expect,
+  beforeEach,
+  afterEach,
+} from "@jest/globals";
 import type { Context, Message } from "telegraf/types";
 import type { ConfigChatType } from "../../src/types";
 
-const threads: Record<
-  number,
-  {
-    id: number;
-    msgs: Message[];
-    messages: Message[];
-    completionParams: Record<string, unknown>;
-  }
-> = {
+// Extend global type to include our test globals
+declare global {
+  // Using var to extend the global scope
+  // eslint-disable-next-line no-var
+  var firstAbortController: AbortController | undefined;
+  // eslint-disable-next-line no-var
+  var secondAbortController: AbortController | undefined;
+}
+
+interface Thread {
+  id: number;
+  msgs: Message[];
+  messages: Message[];
+  completionParams: Record<string, unknown>;
+}
+
+const threads: Record<number, Thread> = {
   1: { id: 1, msgs: [], messages: [], completionParams: {} },
 };
 
-const mockCheckAccessLevel = jest.fn();
-const mockAddToHistory = jest.fn();
-const mockResolveChatButtons = jest.fn();
-const mockRequestGptAnswer = jest.fn();
-const mockSendTelegramMessage = jest.fn();
+// Mock functions with proper types
+const mockCheckAccessLevel = jest.fn<
+  Promise<
+    { msg: Message.TextMessage; chat: ConfigChatType } | false | undefined
+  >,
+  [Context]
+>();
+const mockAddToHistory = jest.fn<Message.TextMessage, [Message.TextMessage]>();
+const mockResolveChatButtons = jest.fn<
+  Message.TextMessage,
+  [Message.TextMessage]
+>();
+// Mock function for requestGptAnswer with proper typing
+const mockRequestGptAnswer = jest.fn(
+  (
+    _msg: Message.TextMessage,
+    _chat: ConfigChatType,
+    options?: { signal?: AbortSignal }
+  ) => {
+    // Store the abort controller for testing
+    const signal = options?.signal as unknown as {
+      controller?: AbortController;
+    };
+    if (signal?.controller) {
+      if (!global.firstAbortController) {
+        global.firstAbortController = signal.controller;
+      } else {
+        global.secondAbortController = signal.controller;
+      }
+    }
+    return Promise.resolve({ content: "test response" });
+  }
+) as jest.MockedFunction<
+  (
+    msg: Message.TextMessage,
+    chat: ConfigChatType,
+    options?: { signal?: AbortSignal }
+  ) => Promise<{ content: string }>
+>;
+
+// Mock function for sendTelegramMessage
+const mockSendTelegramMessage = jest.fn(() =>
+  Promise.resolve({
+    message_id: 100,
+    date: Math.floor(Date.now() / 1000),
+    chat: { id: 1, type: "private", first_name: "Test" },
+    text: "test response",
+  } as Message.TextMessage)
+);
+
 const mockUseConfig = jest.fn();
+
+// Mock the console.error to avoid polluting test output
+const originalConsoleError = console.error;
+beforeEach(() => {
+  console.error = jest.fn();
+});
+
+afterEach(() => {
+  console.error = originalConsoleError;
+});
 
 jest.unstable_mockModule("../../src/handlers/access.ts", () => ({
   __esModule: true,
-  default: (...args: unknown[]) => mockCheckAccessLevel(...args),
+  default: mockCheckAccessLevel,
 }));
 
 jest.unstable_mockModule("../../src/helpers/history.ts", () => ({
-  addToHistory: (...args: unknown[]) => mockAddToHistory(...args),
+  addToHistory: mockAddToHistory,
   forgetHistoryOnTimeout: jest.fn(),
   forgetHistory: jest.fn(),
 }));
 
 jest.unstable_mockModule("../../src/handlers/resolveChatButtons.ts", () => ({
   __esModule: true,
-  default: (...args: unknown[]) => mockResolveChatButtons(...args),
+  default: mockResolveChatButtons,
 }));
 
 jest.unstable_mockModule("../../src/helpers/gpt.ts", () => ({
-  requestGptAnswer: (...args: unknown[]) => mockRequestGptAnswer(...args),
+  requestGptAnswer: mockRequestGptAnswer,
 }));
 
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
-  sendTelegramMessage: (...args: unknown[]) => mockSendTelegramMessage(...args),
+  sendTelegramMessage: mockSendTelegramMessage,
   getFullName: jest.fn(),
   getTelegramForwardedUser: jest.fn(),
   isAdminUser: jest.fn(),
@@ -72,7 +142,7 @@ let handlers: typeof import("../../src/handlers/onTextMessage.ts");
 let onTextMessage: typeof import("../../src/handlers/onTextMessage.ts").default;
 
 function createCtx(
-  message: Record<string, unknown>,
+  message: Record<string, unknown>
 ): Context & { secondTry?: boolean } {
   return {
     message,
@@ -90,13 +160,33 @@ const baseChat: ConfigChatType = {
   toolParams: {},
 } as ConfigChatType;
 
+beforeAll(async () => {
+  // Load the module after setting up all mocks
+  handlers = await import("../../src/handlers/onTextMessage.ts");
+  onTextMessage = handlers.default;
+});
+
 beforeEach(async () => {
   jest.useFakeTimers();
   jest.clearAllMocks();
-  jest.resetModules();
+  // Reset global state before each test
+  global.firstAbortController = undefined;
+  global.secondAbortController = undefined;
+
+  // Reload the module for each test to ensure a clean state
   handlers = await import("../../src/handlers/onTextMessage.ts");
   onTextMessage = handlers.default;
+
+  // Setup default mocks with proper type annotations
   mockUseConfig.mockReturnValue({ auth: {} });
+  mockResolveChatButtons.mockImplementation((msg) => msg);
+  mockAddToHistory.mockImplementation((msg) => msg);
+  mockCheckAccessLevel.mockImplementation(async (ctx) => {
+    const msg =
+      (ctx as { message?: Message.TextMessage }).message ||
+      ({} as Message.TextMessage);
+    return { msg, chat: baseChat };
+  });
   mockRequestGptAnswer.mockResolvedValue({ content: "ok" });
   mockSendTelegramMessage.mockResolvedValue({
     chat: { id: 1 },
@@ -106,6 +196,9 @@ beforeEach(async () => {
 
 afterEach(() => {
   jest.useRealTimers();
+  // Clean up global state after each test
+  global.firstAbortController = undefined;
+  global.secondAbortController = undefined;
 });
 
 describe("onTextMessage cancel", () => {

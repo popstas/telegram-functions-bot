@@ -342,3 +342,4 @@ This will execute all unit and integration tests in the `tests` directory using 
 - [ ] Tool change_access_settings, for add/remove users to/from adminUsers, privateUsers
 - [ ] Union big incoming messages to single message
 - [ ] Show mqtt progress more verbose
+- [ ] В проекте есть скрытые замены "confirm", "noconfirm"
