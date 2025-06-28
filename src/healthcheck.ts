@@ -2,9 +2,8 @@ import http from "http";
 import { fileURLToPath } from "url";
 import { resolve } from "path";
 
-type HealthResponse = {
-  botsRunning: boolean;
-  mqttConnected: boolean;
+export type HealthResponse = {
+  healthy: boolean;
   errors: string[];
 };
 
@@ -37,10 +36,10 @@ export const runHealthcheck = async () => {
     return false;
   }
   try {
-    const { botsRunning, mqttConnected, errors } = JSON.parse(
+    const { healthy, errors } = JSON.parse(
       health.data
     ) as HealthResponse;
-    if (!botsRunning || !mqttConnected) {
+    if (!healthy) {
       console.error(errors.join("\n"));
       return false;
     }

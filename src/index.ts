@@ -164,9 +164,14 @@ function initHttp() {
 
   app.get("/health", (_req, res) => {
     const bots = getBots();
-    const mqttConnected = isMqttConnected();
     const errors: string[] = [];
-    const botsRunning = Object.values(bots).every((bot) => {
+
+    const mqttConfig = useConfig().mqtt;
+    if (mqttConfig && mqttConfig.host && !isMqttConnected()) {
+      errors.push("MQTT is not connected");
+    }
+
+    Object.values(bots).every((bot) => {
       const polling = (
         bot as unknown as {
           polling?: { abortController: { signal: AbortSignal } };
@@ -176,12 +181,10 @@ function initHttp() {
       if (!isRunning) {
         errors.push(`Bot ${bot.botInfo?.username} is not running`);
       }
-      if (!mqttConnected) {
-        errors.push("MQTT is not connected");
-      }
       return isRunning;
     });
-    res.json({ botsRunning, mqttConnected, errors });
+    const healthy = errors.length === 0;
+    res.json({ healthy, errors });
   });
 
   // Add route handler to create a virtual message and call onMessage
