@@ -73,7 +73,7 @@ async function launchBot(bot_token: string, bot_name: string) {
 
     // Set up help command
     bot.help(async (ctx) =>
-      ctx.reply("https://github.com/popstas/telegram-functions-bot"),
+      ctx.reply("https://github.com/popstas/telegram-functions-bot")
     );
 
     // Initialize commands with proper error handling
@@ -164,15 +164,24 @@ function initHttp() {
 
   app.get("/health", (_req, res) => {
     const bots = getBots();
+    const mqttConnected = isMqttConnected();
+    const errors: string[] = [];
     const botsRunning = Object.values(bots).every((bot) => {
       const polling = (
         bot as unknown as {
           polling?: { abortController: { signal: AbortSignal } };
         }
       ).polling;
-      return polling && !polling.abortController.signal.aborted;
+      const isRunning = polling && !polling.abortController.signal.aborted;
+      if (!isRunning) {
+        errors.push(`Bot ${bot.botInfo?.username} is not running`);
+      }
+      if (!mqttConnected) {
+        errors.push("MQTT is not connected");
+      }
+      return isRunning;
     });
-    res.json({ botsRunning, mqttConnected: isMqttConnected() });
+    res.json({ botsRunning, mqttConnected, errors });
   });
 
   // Add route handler to create a virtual message and call onMessage
@@ -195,7 +204,7 @@ function initHttp() {
 
 async function telegramPostHandlerTest(
   req: express.Request,
-  res: express.Response,
+  res: express.Response
 ) {
   req.params = { chatId: "-4534736935" };
   req.body = {
@@ -206,7 +215,7 @@ async function telegramPostHandlerTest(
 
 async function telegramPostHandler(
   req: express.Request,
-  res: express.Response,
+  res: express.Response
 ) {
   const { chatId } = req.params;
   const { text } = req.body || "";
@@ -218,7 +227,7 @@ async function telegramPostHandler(
   }
 
   const chatConfig = useConfig().chats.find(
-    (chat) => chat.id === parseInt(chatId),
+    (chat) => chat.id === parseInt(chatId)
   );
   if (!chatConfig) {
     log({ msg: `http: Chat ${chatId} not found in config`, logLevel: "warn" });
@@ -270,7 +279,7 @@ async function telegramPostHandler(
     // replace to fake action
     persistentChatAction: async (
       action: string,
-      callback: () => Promise<void>,
+      callback: () => Promise<void>
     ) => {
       log({ msg: `persistentChatAction stub` });
       return await callback();
@@ -293,7 +302,7 @@ async function telegramPostHandler(
           res.status(500).send("Error sending message.");
         }
         // await useBot().telegram.sendMessage(chat.id, 'test - ' + text);
-      },
+      }
     );
   } catch {
     res.status(500).send("Error sending message.");

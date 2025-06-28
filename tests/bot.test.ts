@@ -1,7 +1,16 @@
 import { jest, describe, it, beforeEach, expect } from "@jest/globals";
 
 const mockStop = jest.fn();
-const TelegrafMock = jest.fn().mockImplementation(() => ({ stop: mockStop }));
+const mockGetMe = jest.fn(() =>
+  Promise.resolve({ id: 12345, username: "test_bot" })
+);
+const TelegrafMock = jest.fn().mockImplementation(() => ({
+  stop: mockStop,
+  telegram: {
+    getMe: mockGetMe,
+  },
+  botInfo: null,
+}));
 const mockUseConfig = jest.fn();
 
 jest.unstable_mockModule("../src/config.ts", () => ({
@@ -21,13 +30,15 @@ beforeEach(async () => {
 });
 
 describe("useBot", () => {
-  it("creates bot with config token and caches instance", () => {
+  it("creates bot with config token and caches instance", async () => {
     mockUseConfig.mockReturnValue({ auth: { bot_token: "token1" } });
     const onceSpy = jest
       .spyOn(process, "once")
       .mockImplementation(() => process);
 
     const first = useBot();
+    // Allow any pending promises to resolve
+    await new Promise(process.nextTick);
     const second = useBot();
 
     expect(first).toBe(second);
@@ -38,9 +49,11 @@ describe("useBot", () => {
     onceSpy.mockRestore();
   });
 
-  it("uses provided token when passed", () => {
+  it("uses provided token when passed", async () => {
     mockUseConfig.mockReturnValue({ auth: { bot_token: "token1" } });
     const bot = useBot("custom");
+    // Allow any pending promises to resolve
+    await new Promise(process.nextTick);
     const again = useBot("custom");
     expect(bot).toBe(again);
     expect(TelegrafMock).toHaveBeenCalledTimes(1);

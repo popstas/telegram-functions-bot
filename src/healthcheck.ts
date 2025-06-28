@@ -5,6 +5,7 @@ import { resolve } from "path";
 type HealthResponse = {
   botsRunning: boolean;
   mqttConnected: boolean;
+  errors: string[];
 };
 
 export async function request(path: string): Promise<{
@@ -18,7 +19,7 @@ export async function request(path: string): Promise<{
         let data = "";
         res.on("data", (c) => (data += c));
         res.on("end", () => resolve({ statusCode: res.statusCode || 0, data }));
-      },
+      }
     );
     req.on("error", () => resolve({ statusCode: 0, data: "" }));
   });
@@ -36,11 +37,11 @@ export const runHealthcheck = async () => {
     return false;
   }
   try {
-    const { botsRunning, mqttConnected } = JSON.parse(
-      health.data,
+    const { botsRunning, mqttConnected, errors } = JSON.parse(
+      health.data
     ) as HealthResponse;
     if (!botsRunning || !mqttConnected) {
-      console.error("Bots or MQTT unhealthy");
+      console.error(errors.join("\n"));
       return false;
     }
   } catch {
