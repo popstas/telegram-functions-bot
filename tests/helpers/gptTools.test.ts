@@ -18,6 +18,10 @@ const mockSendToHttp = jest.fn();
 const mockPublish = jest.fn();
 const mockUseLangfuse = jest.fn().mockReturnValue({ trace: null });
 const mockRequestGptAnswer = jest.fn();
+const mockUseBot = jest.fn(() => ({
+  action: jest.fn((_, cb) => cb()),
+  telegram: { sendMessage: jest.fn() },
+}));
 
 jest.unstable_mockModule("../../src/helpers/useTools.ts", () => ({
   default: (...args: unknown[]) => mockUseTools(...args),
@@ -52,6 +56,10 @@ jest.unstable_mockModule("../../src/helpers/useLangfuse.ts", () => ({
 
 jest.unstable_mockModule("../../src/helpers/gpt/llm.ts", () => ({
   requestGptAnswer: (...args: unknown[]) => mockRequestGptAnswer(...args),
+}));
+
+jest.unstable_mockModule("../../src/bot.ts", () => ({
+  useBot: () => mockUseBot(),
 }));
 
 let tools: typeof import("../../src/helpers/gpt/tools.ts");
@@ -253,6 +261,103 @@ describe("executeTools", () => {
     expect(res[0].content).toBe("done");
     expect(toolFn).toHaveBeenCalledTimes(2);
   });
+
+  it("applies noconfirm flag from message", async () => {
+    const toolCalls: ChatCompletionMessageToolCall[] = [
+      {
+        id: "1",
+        type: "function",
+        function: { name: "foo", arguments: "{}" },
+      },
+    ];
+    const toolFn = jest.fn().mockResolvedValue({ content: "ok" });
+    const callMock = jest.fn(() => ({
+      functions: { get: () => toolFn, toolSpecs: { function: {} } },
+    }));
+    const chatTools: ChatToolType[] = [
+      { name: "foo", module: { description: "", call: callMock } },
+    ];
+    const cfg: ConfigChatType = {
+      ...baseConfig,
+      chatParams: { confirmation: true },
+    };
+    const msg = { ...baseMsg, text: "noconfirm run" };
+    await tools.executeTools(toolCalls, chatTools, cfg, msg);
+    expect(callMock).toHaveBeenCalled();
+    const passedCfg = callMock.mock.calls[0][0];
+    expect(passedCfg.chatParams.confirmation).toBe(false);
+    expect(msg.text.trim()).toBe("run");
+  });
+
+  it("returns promise when confirmation enabled", async () => {
+    const toolCalls: ChatCompletionMessageToolCall[] = [
+      {
+        id: "1",
+        type: "function",
+        function: { name: "foo", arguments: "{}" },
+      },
+    ];
+    const chatTools: ChatToolType[] = [
+      {
+        name: "foo",
+        module: {
+          description: "",
+          call: () => ({
+            functions: {
+              get: () => jest.fn().mockResolvedValue({ content: "ok" }),
+              toolSpecs: { function: {} },
+            },
+          }),
+        },
+      },
+    ];
+    const cfg: ConfigChatType = {
+      ...baseConfig,
+      chatParams: { confirmation: true },
+    };
+    const msg = { ...baseMsg };
+    const result = tools.executeTools(toolCalls, chatTools, cfg, msg);
+    await expect(result).resolves.toEqual([]);
+  });
+
+  it("appends full text for planfix_add_to_lead_task", async () => {
+    const toolCalls: ChatCompletionMessageToolCall[] = [
+      {
+        id: "1",
+        type: "function",
+        function: {
+          name: "planfix_add_to_lead_task",
+          arguments: JSON.stringify({ message: "start" }),
+        },
+      },
+    ];
+    mockUseThreads.mockReturnValue({
+      1: {
+        id: 1,
+        msgs: [{ from: { username: "foo" } }],
+        messages: [
+          { role: "user", content: "hi" },
+          { role: "system", content: "sys" },
+        ],
+      },
+    });
+    const toolFn = jest.fn().mockResolvedValue({ content: "ok" });
+    const chatTools: ChatToolType[] = [
+      {
+        name: "planfix_add_to_lead_task",
+        module: {
+          description: "",
+          call: () => ({
+            functions: { get: () => toolFn, toolSpecs: { function: {} } },
+          }),
+        },
+      },
+    ];
+    const cfg: ConfigChatType = { ...baseConfig, chatParams: {} };
+    await tools.executeTools(toolCalls, chatTools, cfg, baseMsg);
+    const arg = toolFn.mock.calls[0][0];
+    expect(JSON.parse(arg).message).toContain("Полный текст:");
+  });
 });
 
 describe("chatAsTool", () => {
@@ -294,5 +399,14 @@ describe("chatAsTool", () => {
     expect(mockSendTelegramMessage).toHaveBeenCalledTimes(3);
     const lastCall = mockSendTelegramMessage.mock.calls.pop();
     expect(lastCall[4]).toBe(baseConfig);
+  });
+});
+
+describe("prettifyKeyValue", () => {
+  it("formats nested values", () => {
+    const result = tools.prettifyKeyValue("foo_bar", { a: 1, arr: [2] });
+    expect(result).toContain("*Foo bar:*");
+    expect(result).toContain("*A:* 1");
+    expect(result).toContain("*0:* 2");
   });
 });
