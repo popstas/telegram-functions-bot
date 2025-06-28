@@ -83,4 +83,16 @@ describe("processAudio", () => {
     );
     expect(mockOnTextMessage).not.toHaveBeenCalled();
   });
+
+  it("handles fetch error", async () => {
+    (global.fetch as unknown as jest.Mock).mockRejectedValue(new Error("fail"));
+    const ctx = createCtx();
+    await processAudio(ctx as Context, { file_id: "f" }, 1);
+    expect(mockSendTelegramMessage).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("Произошла ошибка"),
+      undefined,
+      ctx,
+    );
+  });
 });

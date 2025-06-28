@@ -128,4 +128,51 @@ describe("answerToMessage", () => {
     expect(threads[1].msgs.length).toBe(1);
     expect(res).toBeDefined();
   });
+
+  it("uses default text when gpt answer empty", async () => {
+    mockUseConfig.mockReturnValue({ auth: {} });
+    mockRequestGptAnswer.mockResolvedValue({});
+    mockSendTelegramMessage.mockResolvedValue({
+      chat: { id: 1 },
+    } as unknown as Message.TextMessage);
+    const msg = {
+      chat: { id: 1, title: "t" },
+      from: { id: 1 },
+      text: "hello",
+    } as Message.TextMessage;
+    const ctx = createCtx(msg);
+    const chat = { ...baseChat };
+    await handlers.answerToMessage(ctx, msg, chat, {});
+    expect(mockSendTelegramMessage).toHaveBeenCalledWith(
+      1,
+      "бот не ответил",
+      expect.anything(),
+      ctx,
+      chat,
+    );
+  });
+
+  it("handles errors", async () => {
+    mockUseConfig.mockReturnValue({ auth: {} });
+    mockRequestGptAnswer.mockRejectedValue(new Error("bad"));
+    mockSendTelegramMessage.mockResolvedValue({
+      chat: { id: 1 },
+    } as unknown as Message.TextMessage);
+    const msg = {
+      chat: { id: 1, title: "t" },
+      from: { id: 1 },
+      text: "hello",
+    } as Message.TextMessage;
+    const ctx = createCtx(msg);
+    const chat = { ...baseChat };
+    const res = await handlers.answerToMessage(ctx, msg, chat, {});
+    expect(res).toBeDefined();
+    expect(mockSendTelegramMessage).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("bad"),
+      {},
+      ctx,
+      chat,
+    );
+  });
 });

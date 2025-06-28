@@ -86,4 +86,13 @@ describe("checkAccessLevel", () => {
     expect(res).toBe(false);
     expect(mockSendTelegramMessage).not.toHaveBeenCalled();
   });
+
+  it("returns undefined when message missing", async () => {
+    mockGetCtxChatMsg.mockReturnValue({ chat: undefined, msg: undefined });
+    const res = await checkAccessLevel(
+      {} as Parameters<typeof checkAccessLevel>[0],
+    );
+    expect(res).toBeUndefined();
+    expect(mockSendTelegramMessage).not.toHaveBeenCalled();
+  });
 });
