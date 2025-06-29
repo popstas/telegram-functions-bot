@@ -46,7 +46,7 @@ const mockRequestGptAnswer = jest.fn(
   (
     _msg: Message.TextMessage,
     _chat: ConfigChatType,
-    options?: { signal?: AbortSignal }
+    options?: { signal?: AbortSignal },
   ) => {
     // Store the abort controller for testing
     const signal = options?.signal as unknown as {
@@ -60,12 +60,12 @@ const mockRequestGptAnswer = jest.fn(
       }
     }
     return Promise.resolve({ content: "test response" });
-  }
+  },
 ) as jest.MockedFunction<
   (
     msg: Message.TextMessage,
     chat: ConfigChatType,
-    options?: { signal?: AbortSignal }
+    options?: { signal?: AbortSignal },
   ) => Promise<{ content: string }>
 >;
 
@@ -76,7 +76,7 @@ const mockSendTelegramMessage = jest.fn(() =>
     date: Math.floor(Date.now() / 1000),
     chat: { id: 1, type: "private", first_name: "Test" },
     text: "test response",
-  } as Message.TextMessage)
+  } as Message.TextMessage),
 );
 
 const mockUseConfig = jest.fn();
@@ -142,7 +142,7 @@ let handlers: typeof import("../../src/handlers/onTextMessage.ts");
 let onTextMessage: typeof import("../../src/handlers/onTextMessage.ts").default;
 
 function createCtx(
-  message: Record<string, unknown>
+  message: Record<string, unknown>,
 ): Context & { secondTry?: boolean } {
   return {
     message,
@@ -226,5 +226,49 @@ describe("onTextMessage cancel", () => {
     await Promise.resolve();
 
     expect(cb1).not.toHaveBeenCalled();
+  });
+
+  it("aborts the first response when a second arrives", async () => {
+    const msg1 = {
+      chat: { id: 1, type: "private" },
+      from: { id: 1 },
+      text: "first",
+    } as Message.TextMessage;
+    const msg2 = {
+      chat: { id: 1, type: "private" },
+      from: { id: 1 },
+      text: "second",
+    } as Message.TextMessage;
+
+    const chat = baseChat;
+
+    const abortSignals: AbortSignal[] = [];
+    let resolveFirst: () => void = () => {};
+
+    mockCheckAccessLevel.mockResolvedValueOnce({ msg: msg1, chat });
+    mockCheckAccessLevel.mockResolvedValueOnce({ msg: msg2, chat });
+    mockResolveChatButtons.mockImplementation(() => undefined);
+
+    mockRequestGptAnswer
+      .mockImplementationOnce((_m, _c, _ctx, opts) => {
+        abortSignals.push(opts?.signal as AbortSignal);
+        return new Promise<{ content: string }>((r) => {
+          resolveFirst = () => r({ content: "first" });
+        });
+      })
+      .mockImplementationOnce((_m, _c, _ctx, opts) => {
+        abortSignals.push(opts?.signal as AbortSignal);
+        return Promise.resolve({ content: "second" });
+      });
+
+    await onTextMessage(createCtx(msg1), undefined, jest.fn());
+    await Promise.resolve();
+    await onTextMessage(createCtx(msg2), undefined, jest.fn());
+
+    expect(abortSignals[0]?.aborted).toBe(true);
+
+    // cleanup
+    resolveFirst();
+    await jest.runAllTimersAsync();
   });
 });
