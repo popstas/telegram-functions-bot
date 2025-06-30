@@ -284,12 +284,12 @@ export async function executeTools(
         .filter((m) => ["user", "system"].includes(m.role))
         .map((m) => m.content)
         .join("\n\n");
-      const toolParamsParsed = JSON.parse(toolParams) as { message: string };
-      if (!toolParamsParsed.message) toolParamsParsed.message = "";
+      const toolParamsParsed = JSON.parse(toolParams) as { description: string };
+      if (!toolParamsParsed.description) toolParamsParsed.description = "";
       const fromStr = fromUsername
         ? `От ${fromUsername}${fullName ? `, ${fullName}` : ""}`
         : "";
-      toolParamsParsed.message += `\n\nПолный текст:\n${fromStr}\n\n${msgs}`;
+      toolParamsParsed.description += `\n\n---\nПолный текст:\n${fromStr}\n\n${msgs}\n---`;
       toolParams = JSON.stringify(toolParamsParsed);
     }
 

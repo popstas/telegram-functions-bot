@@ -262,7 +262,7 @@ describe("executeTools", () => {
     expect(toolFn).toHaveBeenCalledTimes(2);
   });
 
-  it("applies noconfirm flag from message", async () => {
+  it("applies noconfirm and confirm flag from message", async () => {
     const toolCalls: ChatCompletionMessageToolCall[] = [
       {
         id: "1",
@@ -286,6 +286,13 @@ describe("executeTools", () => {
     expect(callMock).toHaveBeenCalled();
     const passedCfg = callMock.mock.calls[0][0];
     expect(passedCfg.chatParams.confirmation).toBe(false);
+    expect(msg.text.trim()).toBe("run");
+
+    msg.text = "confirm run";
+    await tools.executeTools(toolCalls, chatTools, cfg, msg);
+    expect(callMock).toHaveBeenCalledTimes(6);
+    const passedCfg2 = callMock.mock.calls[2][0];
+    expect(passedCfg2.chatParams.confirmation).toBe(true);
     expect(msg.text.trim()).toBe("run");
   });
 
@@ -327,7 +334,7 @@ describe("executeTools", () => {
         type: "function",
         function: {
           name: "planfix_add_to_lead_task",
-          arguments: JSON.stringify({ message: "start" }),
+          arguments: JSON.stringify({ description: "start" }),
         },
       },
     ];
@@ -356,7 +363,7 @@ describe("executeTools", () => {
     const cfg: ConfigChatType = { ...baseConfig, chatParams: {} };
     await tools.executeTools(toolCalls, chatTools, cfg, baseMsg);
     const arg = toolFn.mock.calls[0][0];
-    expect(JSON.parse(arg).message).toContain("Полный текст:");
+    expect(JSON.parse(arg).description).toContain("Полный текст:");
   });
 });
 
