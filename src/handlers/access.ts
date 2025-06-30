@@ -49,6 +49,12 @@ export default async function checkAccessLevel(
   return { msg, chat };
 }
 
+// answer always in private chat
+// in public chats answer when:
+// - tagged by prefix
+// - tagged by botName
+// - reply to bot
+// - no prefix and no reply message
 export function isMentioned(
   msg: Message.TextMessage & { caption?: string },
   chat: ConfigChatType,
@@ -56,6 +62,7 @@ export function isMentioned(
   const botName = chat.bot_name || useConfig().bot_name;
   const prefix = chat.prefix ?? "";
   const isPrivate = msg.chat.type === "private";
+  if (isPrivate) return true;
   const text =
     (msg as Message.TextMessage).text ||
     (msg as { caption?: string }).caption ||
@@ -69,19 +76,10 @@ export function isMentioned(
   const replyToBot = isReply && replyAuthor === botName;
   const replyToOther = isReply && replyAuthor !== botName;
 
+  const hasPrefix = new RegExp(`^${prefix}`, "i").test(text);
+  const hasTagged = new RegExp(`@${botName}`, "i").test(text);
+  const isMentioned = hasPrefix || hasTagged || replyToBot;
+  if (prefix && !isMentioned) return false;
   if (replyToOther) return false;
-  if (!prefix) return true;
-
-  if (replyToBot) return true;
-  if (!isPrivate) {
-    const hasPrefix = new RegExp(`^${prefix}`, "i").test(text);
-    if (hasPrefix) return true;
-
-    const hasMention = new RegExp(`@${botName}`, "i").test(text);
-    if (hasMention) return true;
-
-    return false;
-  }
-
   return true;
 }
