@@ -1,4 +1,4 @@
-import { jest, describe, it, expect, beforeEach } from "@jest/globals";
+import { jest, describe, it, beforeEach, expect } from "@jest/globals";
 import type { Message } from "telegraf/types";
 import type { ConfigChatType } from "../../src/types";
 
@@ -10,7 +10,8 @@ jest.unstable_mockModule("../../src/config.ts", () => ({
 
 const { isMentioned } = await import("../../src/handlers/access.ts");
 
-function createMsg(opts: Partial<Message.TextMessage>): Message.TextMessage {
+type TxtMsg = Message.TextMessage & { caption?: string };
+function createMsg(opts: Partial<TxtMsg> = {}): TxtMsg {
   return {
     chat: { id: 1, type: "group" },
     from: { username: "user" },
@@ -18,7 +19,7 @@ function createMsg(opts: Partial<Message.TextMessage>): Message.TextMessage {
     date: 0,
     text: "hi",
     ...opts,
-  } as Message.TextMessage;
+  } as TxtMsg;
 }
 
 const baseChat: ConfigChatType = {
@@ -35,13 +36,18 @@ beforeEach(() => {
 });
 
 describe("isMentioned", () => {
-  it("returns true when no prefix", () => {
+  it("returns true in private chat", () => {
+    const msg = createMsg({ chat: { id: 2, type: "private" }, text: "hello" });
+    expect(isMentioned(msg, baseChat)).toBe(true);
+  });
+
+  it("returns true when no prefix and not a reply", () => {
     const chat = { ...baseChat, prefix: undefined } as ConfigChatType;
     const msg = createMsg({ text: "hello" });
     expect(isMentioned(msg, chat)).toBe(true);
   });
 
-  it("returns false when no prefix and reply to other user", () => {
+  it("returns false when no prefix and reply to other", () => {
     const chat = { ...baseChat, prefix: undefined } as ConfigChatType;
     const msg = createMsg({
       reply_to_message: {
@@ -55,14 +61,25 @@ describe("isMentioned", () => {
     expect(isMentioned(msg, chat)).toBe(false);
   });
 
-  it("detects prefix", () => {
-    const msg = createMsg({ text: "!hello" });
+  it("detects prefix case-insensitively", () => {
+    const msg = createMsg({ text: "!HELLO" });
     expect(isMentioned(msg, baseChat)).toBe(true);
   });
 
-  it("detects mention", () => {
-    const msg = createMsg({ text: "hi @mybot" });
+  it("detects mention case-insensitively", () => {
+    const msg = createMsg({ text: "hi @MYBOT" });
     expect(isMentioned(msg, baseChat)).toBe(true);
+  });
+
+  it("uses caption when text missing", () => {
+    const msg = createMsg({ text: undefined, caption: "!go", photo: [] });
+    expect(isMentioned(msg, baseChat)).toBe(true);
+  });
+
+  it("uses chat bot_name when provided", () => {
+    const chat = { ...baseChat, bot_name: "other" } as ConfigChatType;
+    const msg = createMsg({ text: "hi @other" });
+    expect(isMentioned(msg, chat)).toBe(true);
   });
 
   it("detects reply to bot", () => {
@@ -78,8 +95,9 @@ describe("isMentioned", () => {
     expect(isMentioned(msg, baseChat)).toBe(true);
   });
 
-  it("returns false when reply to other user", () => {
+  it("ignores prefix when replying to other", () => {
     const msg = createMsg({
+      text: "!hello",
       reply_to_message: {
         chat: { id: 1, type: "group" },
         from: { username: "other" },
@@ -89,11 +107,6 @@ describe("isMentioned", () => {
       } as Message.TextMessage,
     });
     expect(isMentioned(msg, baseChat)).toBe(false);
-  });
-
-  it("ignores prefix in private chat", () => {
-    const msg = createMsg({ chat: { id: 2, type: "private" }, text: "hello" });
-    expect(isMentioned(msg, baseChat)).toBe(true);
   });
 
   it("returns false for group without mention", () => {
