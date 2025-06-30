@@ -41,6 +41,20 @@ describe("isMentioned", () => {
     expect(isMentioned(msg, chat)).toBe(true);
   });
 
+  it("returns false when no prefix and reply to other user", () => {
+    const chat = { ...baseChat, prefix: undefined } as ConfigChatType;
+    const msg = createMsg({
+      reply_to_message: {
+        chat: { id: 1, type: "group" },
+        from: { username: "other" },
+        message_id: 2,
+        date: 0,
+        text: "hi",
+      } as Message.TextMessage,
+    });
+    expect(isMentioned(msg, chat)).toBe(false);
+  });
+
   it("detects prefix", () => {
     const msg = createMsg({ text: "!hello" });
     expect(isMentioned(msg, baseChat)).toBe(true);
