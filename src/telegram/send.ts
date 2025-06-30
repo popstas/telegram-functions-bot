@@ -235,7 +235,7 @@ export function getTelegramForwardedUser(
   const username = forwardOrigin?.sender_user?.username;
   const isOurUser =
     username &&
-    [chatConfig.privateUsers, useConfig().privateUsers]
+    [chatConfig.privateUsers, useConfig().privateUsers, useConfig().adminUsers]
       .flat()
       .includes(username);
   if (isOurUser) return "";

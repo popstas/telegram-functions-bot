@@ -109,4 +109,14 @@ describe("getTelegramForwardedUser", () => {
     } as unknown as Message.TextMessage;
     expect(getTelegramForwardedUser(msg, chat)).toBe("");
   });
+
+  it("returns empty when user is admin", () => {
+    const msg = {
+      forward_origin: {
+        type: "user",
+        sender_user: { first_name: "Admin", username: "admin" },
+      },
+    } as unknown as Message.TextMessage;
+    expect(getTelegramForwardedUser(msg, baseChat)).toBe("");
+  });
 });
