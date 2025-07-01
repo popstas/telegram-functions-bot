@@ -29,7 +29,7 @@ export async function handleInfo(ctx: Context) {
     getCtxChatMsg(ctx);
   if (!chat || !msg) return;
   const answer = await getInfoMessage(msg, chat);
-  return sendTelegramMessage(ctx.chat.id, answer, undefined, ctx);
+  return sendTelegramMessage(ctx.chat!.id, answer, undefined, ctx);
 }
 
 export async function handleGoogleAuth(ctx: Context) {
