@@ -31,7 +31,8 @@ export function useMqtt() {
     const agent = topic.toString().replace(`${cfg.base}/`, "");
     const text = message.toString();
     log({
-      msg: `[${agent}] ${text}`,
+      msg: text,
+      chatTitle: "mqtt: " + agent,
       logPath: MQTT_LOG_PATH,
       username: "client",
     });
@@ -40,7 +41,8 @@ export function useMqtt() {
     );
     client.publish(`${cfg.base}/${agent}/answer`, answer);
     log({
-      msg: `[${agent}] ${answer}`,
+      msg: answer,
+      chatTitle: "mqtt: " + agent,
       logPath: MQTT_LOG_PATH,
       username: "mqtt",
     });

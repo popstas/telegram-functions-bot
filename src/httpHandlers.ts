@@ -115,7 +115,7 @@ export async function agentPostHandler(
   log({
     msg: answer,
     chatId,
-    chatTitle: "http",
+    chatTitle: "http: " + agentName,
     username: "http",
     role: "assistant",
     logPath: HTTP_LOG_PATH,
