@@ -10,6 +10,9 @@ const mockWriteConfig = jest.fn();
 const mockLog = jest.fn();
 const mockUseMqtt = jest.fn();
 const mockOnTextMessage = jest.fn();
+const mockOnPhoto = jest.fn();
+const mockOnAudio = jest.fn();
+const mockOnUnsupported = jest.fn();
 const mockUseLastCtx = jest.fn();
 
 jest.unstable_mockModule("langfuse", () => ({
@@ -68,6 +71,21 @@ jest.unstable_mockModule("../src/handlers/onTextMessage.ts", () => ({
   default: (...args: unknown[]) => mockOnTextMessage(...args),
 }));
 
+jest.unstable_mockModule("../src/handlers/onPhoto.ts", () => ({
+  __esModule: true,
+  default: (...args: unknown[]) => mockOnPhoto(...args),
+}));
+
+jest.unstable_mockModule("../src/handlers/onAudio.ts", () => ({
+  __esModule: true,
+  default: (...args: unknown[]) => mockOnAudio(...args),
+}));
+
+jest.unstable_mockModule("../src/handlers/onUnsupported.ts", () => ({
+  __esModule: true,
+  default: (...args: unknown[]) => mockOnUnsupported(...args),
+}));
+
 jest.unstable_mockModule("../src/helpers/lastCtx.ts", () => ({
   __esModule: true,
   useLastCtx: () => mockUseLastCtx(),
@@ -100,6 +118,9 @@ beforeEach(async () => {
   mockOnTextMessage
     .mockReset()
     .mockImplementation(async (_ctx, _o, cb) => cb({ text: "ok" }));
+  mockOnPhoto.mockReset();
+  mockOnAudio.mockReset();
+  mockOnUnsupported.mockReset();
   mockUseLastCtx.mockReset();
   mockExpress.mockClear();
 
@@ -180,5 +201,27 @@ describe("telegramPostHandlerTest", () => {
     await telegramPostHandlerTest(req, res);
     expect(req.params.chatId).toBe("-4534736935");
     expect(res.status).toHaveBeenCalledWith(400);
+  });
+});
+
+describe("launchBot", () => {
+  it("returns bot instance on success", async () => {
+    const bot = await index.launchBot("t", "main");
+    expect(bot).toBeDefined();
+    expect(mockInitCommands).toHaveBeenCalledWith(expect.any(Object));
+    expect(mockLog).toHaveBeenCalledWith({ msg: "bot started: main" });
+  });
+
+  it("logs auth error when token invalid", async () => {
+    const err = { response: { statusCode: 401 } };
+    mockUseBot.mockImplementationOnce(() => {
+      throw err;
+    });
+    await index.launchBot("bad", "bad");
+    expect(mockLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        msg: expect.stringContaining("Invalid bot token"),
+      }),
+    );
   });
 });
