@@ -1,5 +1,6 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import type { Message } from "telegraf/types";
+import type { Context } from "telegraf";
 import type { ConfigChatType } from "../src/types";
 
 const mockUseTools = jest.fn();
@@ -11,6 +12,9 @@ const mockGetActionUserMsg = jest.fn();
 const mockGetSystemMessage = jest.fn();
 const mockGetTokensCount = jest.fn();
 const mockResolveChatTools = jest.fn();
+const mockForgetHistory = jest.fn();
+const mockCommandGoogleOauth = jest.fn();
+const mockGetCtxChatMsg = jest.fn();
 
 jest.unstable_mockModule("../src/helpers/useTools.ts", () => ({
   __esModule: true,
@@ -27,9 +31,11 @@ jest.unstable_mockModule("../src/telegram/send.ts", () => ({
 }));
 
 let actionCb: (ctx: unknown) => Promise<void>;
-const mockAction = jest.fn((name: string, cb: (ctx: unknown) => Promise<void>) => {
-  actionCb = cb;
-});
+const mockAction = jest.fn(
+  (name: string, cb: (ctx: unknown) => Promise<void>) => {
+    actionCb = cb;
+  },
+);
 
 jest.unstable_mockModule("../src/bot", () => ({
   __esModule: true,
@@ -48,7 +54,7 @@ jest.unstable_mockModule("../src/config.ts", () => ({
 jest.unstable_mockModule("../src/telegram/context.ts", () => ({
   __esModule: true,
   getActionUserMsg: () => mockGetActionUserMsg(),
-  getCtxChatMsg: jest.fn(),
+  getCtxChatMsg: (...args: unknown[]) => mockGetCtxChatMsg(...args),
 }));
 
 jest.unstable_mockModule("../src/helpers/gpt.ts", () => ({
@@ -56,6 +62,16 @@ jest.unstable_mockModule("../src/helpers/gpt.ts", () => ({
   getSystemMessage: (...args: unknown[]) => mockGetSystemMessage(...args),
   getTokensCount: (...args: unknown[]) => mockGetTokensCount(...args),
   resolveChatTools: (...args: unknown[]) => mockResolveChatTools(...args),
+}));
+
+jest.unstable_mockModule("../src/helpers/history.ts", () => ({
+  __esModule: true,
+  forgetHistory: (...args: unknown[]) => mockForgetHistory(...args),
+}));
+
+jest.unstable_mockModule("../src/helpers/google.ts", () => ({
+  __esModule: true,
+  commandGoogleOauth: (...args: unknown[]) => mockCommandGoogleOauth(...args),
 }));
 
 // for getInfoMessage internal call
@@ -210,5 +226,68 @@ describe("getInfoMessage", () => {
     expect(res).toContain("Chat is memoryless");
     expect(res).toContain("Tools:\n- foo");
     expect(res).toContain("Настройки приватного режима");
+  });
+});
+
+describe("handleForget", () => {
+  it("forgets history and sends ok", async () => {
+    const ctx = { chat: { id: 1 } } as unknown as Context;
+    mockSendTelegramMessage.mockResolvedValue("ok");
+    await commands.handleForget(ctx);
+    expect(mockForgetHistory).toHaveBeenCalledWith(1);
+    expect(mockSendTelegramMessage).toHaveBeenCalledWith(
+      1,
+      "OK",
+      undefined,
+      ctx,
+    );
+  });
+});
+
+describe("handleInfo", () => {
+  it("sends info message", async () => {
+    const ctx = { chat: { id: 1 } } as unknown as Context;
+    const msg = createMsg();
+    const chat = {
+      completionParams: {},
+      chatParams: {},
+      toolParams: {},
+    } as ConfigChatType;
+    mockGetCtxChatMsg.mockReturnValue({ msg, chat });
+    mockSendTelegramMessage.mockResolvedValue("ok");
+    const expected = await commands.getInfoMessage(msg, chat);
+    await commands.handleInfo(ctx);
+    expect(mockSendTelegramMessage).toHaveBeenCalledWith(
+      1,
+      expected,
+      undefined,
+      ctx,
+    );
+  });
+});
+
+describe("handleGoogleAuth", () => {
+  it("calls oauth when data present", async () => {
+    const ctx = { chat: { id: 1 } } as unknown as Context;
+    const msg = createMsg();
+    const chat = {} as ConfigChatType;
+    mockGetCtxChatMsg.mockReturnValue({ msg, chat });
+    await commands.handleGoogleAuth(ctx);
+    expect(mockCommandGoogleOauth).toHaveBeenCalledWith(msg);
+  });
+});
+
+describe("handleAddTool", () => {
+  it("delegates to commandAddTool", async () => {
+    const ctx = { chat: { id: 1 } } as unknown as Context;
+    const msg = createMsg();
+    const chat = {
+      completionParams: {},
+      chatParams: {},
+      toolParams: {},
+    } as ConfigChatType;
+    mockGetCtxChatMsg.mockReturnValue({ msg, chat });
+    await commands.handleAddTool(ctx);
+    expect(mockSendTelegramMessage).toHaveBeenCalled();
   });
 });

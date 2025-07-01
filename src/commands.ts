@@ -1,4 +1,4 @@
-import { Telegraf } from "telegraf";
+import { Telegraf, Context } from "telegraf";
 import { Message } from "telegraf/types";
 import {
   ConfigChatType,
@@ -19,33 +19,41 @@ import { forgetHistory } from "./helpers/history.ts";
 import { commandGoogleOauth } from "./helpers/google.ts";
 import useTools from "./helpers/useTools.ts";
 
+export async function handleForget(ctx: Context) {
+  forgetHistory(ctx.chat!.id);
+  return await sendTelegramMessage(ctx.chat!.id, "OK", undefined, ctx);
+}
+
+export async function handleInfo(ctx: Context) {
+  const { msg, chat }: { msg?: Message.TextMessage; chat?: ConfigChatType } =
+    getCtxChatMsg(ctx);
+  if (!chat || !msg) return;
+  const answer = await getInfoMessage(msg, chat);
+  return sendTelegramMessage(ctx.chat.id, answer, undefined, ctx);
+}
+
+export async function handleGoogleAuth(ctx: Context) {
+  const { msg, chat }: { msg?: Message.TextMessage; chat?: ConfigChatType } =
+    getCtxChatMsg(ctx);
+  if (!chat || !msg) return;
+  await commandGoogleOauth(msg);
+}
+
+export async function handleAddTool(ctx: Context) {
+  const { msg, chat }: { msg?: Message.TextMessage; chat?: ConfigChatType } =
+    getCtxChatMsg(ctx);
+  if (!chat || !msg) return;
+  await commandAddTool(msg, chat);
+}
+
 export async function initCommands(bot: Telegraf) {
-  bot.command("forget", async (ctx) => {
-    forgetHistory(ctx.chat.id);
-    return await sendTelegramMessage(ctx.chat.id, "OK", undefined, ctx);
-  });
+  bot.command("forget", handleForget);
 
-  bot.command("info", async (ctx) => {
-    const { msg, chat }: { msg?: Message.TextMessage; chat?: ConfigChatType } =
-      getCtxChatMsg(ctx);
-    if (!chat || !msg) return;
-    const answer = await getInfoMessage(msg, chat);
-    return sendTelegramMessage(ctx.chat.id, answer, undefined, ctx);
-  });
+  bot.command("info", handleInfo);
 
-  bot.command("google_auth", async (ctx) => {
-    const { msg, chat }: { msg?: Message.TextMessage; chat?: ConfigChatType } =
-      getCtxChatMsg(ctx);
-    if (!chat || !msg) return;
-    await commandGoogleOauth(msg);
-  });
+  bot.command("google_auth", handleGoogleAuth);
 
-  bot.command("add_tool", async (ctx) => {
-    const { msg, chat }: { msg?: Message.TextMessage; chat?: ConfigChatType } =
-      getCtxChatMsg(ctx);
-    if (!chat || !msg) return;
-    await commandAddTool(msg, chat);
-  });
+  bot.command("add_tool", handleAddTool);
 
   await bot.telegram.setMyCommands([
     {
