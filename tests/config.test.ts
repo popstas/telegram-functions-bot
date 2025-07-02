@@ -191,4 +191,15 @@ describe("checkConfigSchema", () => {
     readConfig("testConfig.yml");
     expect(console.warn).toHaveBeenCalled();
   });
+
+  it("warns about deprecated showTelegramNames", () => {
+    mockExistsSync.mockReturnValue(true);
+    const cfg = generateConfig();
+    cfg.chats[0].chatParams = { showTelegramNames: true } as any;
+    mockReadFileSync.mockReturnValue("yaml");
+    mockLoad.mockReturnValue(cfg);
+
+    readConfig("testConfig.yml");
+    expect(console.warn).toHaveBeenCalled();
+  });
 });
