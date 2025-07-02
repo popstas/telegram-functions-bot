@@ -52,7 +52,7 @@ export class ForgetClient extends AIFunctionsProvider {
   }
 
   options_string() {
-    return "`Clear conversation history:`";
+    return "`Clear conversation history`";
   }
 }
 

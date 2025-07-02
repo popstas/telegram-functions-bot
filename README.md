@@ -336,9 +336,3 @@ npm test
 ```
 
 This will execute all unit and integration tests in the `tests` directory using the `jest` framework.
-
-## TODO
-
-- [ ] Tool change_access_settings, for add/remove users to/from adminUsers, privateUsers
-- [ ] Show mqtt progress more verbose
-- [ ] В проекте есть скрытые замены "confirm", "noconfirm"

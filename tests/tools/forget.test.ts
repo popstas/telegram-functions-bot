@@ -47,13 +47,13 @@ describe("ForgetClient", () => {
     const res = await client.forget({});
     expect(res.content).toContain("boom");
     expect(mockLog).toHaveBeenCalledWith(
-      expect.objectContaining({ logLevel: "error" }),
+      expect.objectContaining({ logLevel: "error" })
     );
   });
 
   it("options_string constant", () => {
     const client = new mod.ForgetClient(cfg, thread);
-    expect(client.options_string()).toBe("`Clear conversation history:`");
+    expect(client.options_string()).toBe("`Clear conversation history`");
   });
 
   it("call returns instance", () => {

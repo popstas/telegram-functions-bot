@@ -27,7 +27,7 @@ const activeResponses = new Map<number, ActiveResponse>();
 export default async function onTextMessage(
   ctx: Context & { secondTry?: boolean },
   next?: () => Promise<void> | void,
-  callback?: (msg: Message.TextMessage) => Promise<void> | void,
+  callback?: (msg: Message.TextMessage) => Promise<void> | void
 ) {
   const threads = useThreads();
   setLastCtx(ctx);
@@ -48,26 +48,38 @@ export default async function onTextMessage(
     username: msg?.from?.username,
   });
 
-  addToHistory({
-    msg,
-    completionParams: chat.completionParams,
-    showTelegramNames: chat.chatParams?.showTelegramNames,
-  });
+  // TODO: remove, it's duplicate from addToHistory for early init thread
+  if (!threads[msg.chat.id]) {
+    threads[msg.chat.id] = {
+      id: msg.chat.id,
+      msgs: [],
+      messages: [],
+      completionParams: chat.completionParams,
+    };
+  }
   const thread = threads[msg.chat.id];
-  forgetHistoryOnTimeout(chat, msg);
 
   const extraMessageParams = ctx.message?.message_id
     ? { reply_to_message_id: ctx.message?.message_id }
     : {};
 
+  // may replace msg.text
   const buttonResponse = await resolveChatButtons(
     ctx,
     msg,
     chat,
     thread,
-    extraMessageParams,
+    extraMessageParams
   );
   if (buttonResponse) return buttonResponse;
+
+  // addToHistory should be after replace msg.text
+  addToHistory({
+    msg,
+    completionParams: chat.completionParams,
+    showTelegramNames: chat.chatParams?.showTelegramNames,
+  });
+  forgetHistoryOnTimeout(chat, msg);
 
   // Cancel any existing response for this chat
   const existingResponse = activeResponses.get(chatId);
@@ -87,7 +99,7 @@ export default async function onTextMessage(
 
   // Create a new abort controller for this response
   const abortController = new AbortController();
-  
+
   // Start responding immediately
   const responsePromise = answerToMessage(ctx, msg, chat, {
     ...extraMessageParams,
@@ -126,9 +138,15 @@ export async function answerToMessage(
   ctx: Context & { secondTry?: boolean },
   msg: Message.TextMessage,
   chat: ConfigChatType,
-  extraMessageParams: Record<string, unknown> & { signal?: AbortSignal },
+  extraMessageParams: Record<string, unknown> & { signal?: AbortSignal }
 ): Promise<Message.TextMessage | undefined> {
-  log({msg: "answerToMessage", chatId: msg.chat.id, chatTitle: (msg.chat as Chat.TitleChat).title, role: "user", username: msg?.from?.username})
+  log({
+    msg: "answerToMessage",
+    chatId: msg.chat.id,
+    chatTitle: (msg.chat as Chat.TitleChat).title,
+    role: "user",
+    username: msg?.from?.username,
+  });
   if (
     useConfig().auth.oauth_google?.client_id ||
     useConfig().auth.google_service_account?.private_key
@@ -147,13 +165,13 @@ export async function answerToMessage(
             "Ошибка синхронизации",
             undefined,
             ctx,
-            chat,
+            chat
           );
           return;
         }
 
         const extraParams = Markup.keyboard(
-          buttons.map((b) => b.name),
+          buttons.map((b) => b.name)
         ).resize();
         const answer = `Готово: ${buttons.map((b) => b.name).join(", ")}`;
         syncResult = await sendTelegramMessage(
@@ -161,7 +179,7 @@ export async function answerToMessage(
           answer,
           extraParams,
           ctx,
-          chat,
+          chat
         );
       });
       return syncResult;
@@ -174,15 +192,15 @@ export async function answerToMessage(
       if (!msg || extraMessageParams.signal?.aborted) {
         return;
       }
-      
+
       const res = await requestGptAnswer(msg, chat, ctx, {
         signal: extraMessageParams.signal,
       });
-      
+
       if (extraMessageParams.signal?.aborted) {
         return;
       }
-      
+
       const text = res?.content || "бот не ответил";
       const extraParams: Record<string, unknown> = {
         ...extraMessageParams,
@@ -190,7 +208,7 @@ export async function answerToMessage(
       const buttons = chat.buttonsSynced || chat.buttons;
       if (buttons) {
         const extraParamsButtons = Markup.keyboard(
-          buttons.map((b) => b.name),
+          buttons.map((b) => b.name)
         ).resize();
         Object.assign(extraParams, extraParamsButtons);
       }
@@ -207,7 +225,7 @@ export async function answerToMessage(
         text,
         extraParams,
         ctx,
-        chat,
+        chat
       );
       if (msgSent?.chat.id) useThreads()[msgSent.chat.id].msgs.push(msgSent);
     });
@@ -227,7 +245,7 @@ export async function answerToMessage(
       `${error.message}${ctx.secondTry ? "\n\nПовторная отправка последнего сообщения..." : ""}`,
       extraMessageParams,
       ctx,
-      chat,
+      chat
     );
   }
 }

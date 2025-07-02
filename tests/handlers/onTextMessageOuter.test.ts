@@ -40,7 +40,7 @@ jest.unstable_mockModule("../../src/threads.ts", () => ({
 let onTextMessage: (ctx: Context & { secondTry?: boolean }) => Promise<void>;
 
 function createCtx(
-  message: Record<string, unknown>,
+  message: Record<string, unknown>
 ): Context & { secondTry?: boolean } {
   return {
     message,
@@ -75,6 +75,6 @@ describe("onTextMessage outer", () => {
     const ctx = createCtx(msg);
     const res = await onTextMessage(ctx);
     expect(res).toBe("ok");
-    expect(mockAddToHistory).toHaveBeenCalled();
+    expect(mockAddToHistory).not.toHaveBeenCalled();
   });
 });
