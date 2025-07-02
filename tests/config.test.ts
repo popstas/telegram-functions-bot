@@ -195,7 +195,7 @@ describe("checkConfigSchema", () => {
   it("warns about deprecated showTelegramNames", () => {
     mockExistsSync.mockReturnValue(true);
     const cfg = generateConfig();
-    cfg.chats[0].chatParams = { showTelegramNames: true } as any;
+    cfg.chats[0].chatParams = { showTelegramNames: true } as unknown as Record<string, unknown>;
     mockReadFileSync.mockReturnValue("yaml");
     mockLoad.mockReturnValue(cfg);
 

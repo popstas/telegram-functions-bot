@@ -25,7 +25,7 @@ export function buildUserMessage(
   msg: Message.TextMessage,
   chatConfig: ConfigChatType,
 ): OpenAI.ChatCompletionMessageParam {
-  let content = msg.text || "";
+  const content = msg.text || "";
   const sender = msg.forward_from || msg.from;
   const isOur = isOurUser(sender, chatConfig);
   let name = sender?.first_name || sender?.last_name || sender?.username;
