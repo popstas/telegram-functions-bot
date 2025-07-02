@@ -133,7 +133,6 @@ export function generateConfig(): ConfigType {
           deleteToolAnswers: 60,
           confirmation: false,
           showToolMessages: true,
-          showTelegramNames: false,
         },
         toolParams: {
           brainstorm: {
@@ -176,7 +175,6 @@ export function generateConfig(): ConfigType {
           deleteToolAnswers: 60,
           confirmation: false,
           showToolMessages: true,
-          showTelegramNames: false,
         },
         toolParams: {
           brainstorm: {
@@ -247,9 +245,18 @@ export function checkConfigSchema(config: ConfigType) {
     (c) => c.name === "full-example",
   ) as ConfigChatType;
   const chatKeys = Object.keys(exampleChat) as Array<keyof ConfigChatType>;
-  config.chats.forEach((c, idx) =>
-    checkKeys(c as Record<string, unknown>, chatKeys, `chats[${idx}].`),
-  );
+  config.chats.forEach((c, idx) => {
+    checkKeys(c as Record<string, unknown>, chatKeys, `chats[${idx}].`);
+    if (
+      c.chatParams &&
+      Object.prototype.hasOwnProperty.call(c.chatParams, "showTelegramNames")
+    ) {
+      log({
+        msg: `chats[${idx}].chatParams.showTelegramNames is deprecated and ignored`,
+        logLevel: "warn",
+      });
+    }
+  });
 }
 
 export function logConfigChanges(oldConfig: ConfigType, newConfig: ConfigType) {

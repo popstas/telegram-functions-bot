@@ -27,7 +27,7 @@ const activeResponses = new Map<number, ActiveResponse>();
 export default async function onTextMessage(
   ctx: Context & { secondTry?: boolean },
   next?: () => Promise<void> | void,
-  callback?: (msg: Message.TextMessage) => Promise<void> | void
+  callback?: (msg: Message.TextMessage) => Promise<void> | void,
 ) {
   const threads = useThreads();
   setLastCtx(ctx);
@@ -69,7 +69,7 @@ export default async function onTextMessage(
     msg,
     chat,
     thread,
-    extraMessageParams
+    extraMessageParams,
   );
   if (buttonResponse) return buttonResponse;
 
@@ -77,7 +77,6 @@ export default async function onTextMessage(
   addToHistory({
     msg,
     completionParams: chat.completionParams,
-    showTelegramNames: chat.chatParams?.showTelegramNames,
   });
   forgetHistoryOnTimeout(chat, msg);
 
@@ -138,7 +137,7 @@ export async function answerToMessage(
   ctx: Context & { secondTry?: boolean },
   msg: Message.TextMessage,
   chat: ConfigChatType,
-  extraMessageParams: Record<string, unknown> & { signal?: AbortSignal }
+  extraMessageParams: Record<string, unknown> & { signal?: AbortSignal },
 ): Promise<Message.TextMessage | undefined> {
   log({
     msg: "answerToMessage",
@@ -165,13 +164,13 @@ export async function answerToMessage(
             "Ошибка синхронизации",
             undefined,
             ctx,
-            chat
+            chat,
           );
           return;
         }
 
         const extraParams = Markup.keyboard(
-          buttons.map((b) => b.name)
+          buttons.map((b) => b.name),
         ).resize();
         const answer = `Готово: ${buttons.map((b) => b.name).join(", ")}`;
         syncResult = await sendTelegramMessage(
@@ -179,7 +178,7 @@ export async function answerToMessage(
           answer,
           extraParams,
           ctx,
-          chat
+          chat,
         );
       });
       return syncResult;
@@ -208,7 +207,7 @@ export async function answerToMessage(
       const buttons = chat.buttonsSynced || chat.buttons;
       if (buttons) {
         const extraParamsButtons = Markup.keyboard(
-          buttons.map((b) => b.name)
+          buttons.map((b) => b.name),
         ).resize();
         Object.assign(extraParams, extraParamsButtons);
       }
@@ -225,7 +224,7 @@ export async function answerToMessage(
         text,
         extraParams,
         ctx,
-        chat
+        chat,
       );
       if (msgSent?.chat.id) useThreads()[msgSent.chat.id].msgs.push(msgSent);
     });
@@ -245,7 +244,7 @@ export async function answerToMessage(
       `${error.message}${ctx.secondTry ? "\n\nПовторная отправка последнего сообщения..." : ""}`,
       extraMessageParams,
       ctx,
-      chat
+      chat,
     );
   }
 }

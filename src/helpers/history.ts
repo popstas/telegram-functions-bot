@@ -1,6 +1,6 @@
 import { Message } from "telegraf/types";
 import { CompletionParamsType, ConfigChatType } from "../types.ts";
-import { getFullName, isOurUser } from "../telegram/send.ts";
+import { isOurUser } from "../telegram/send.ts";
 import OpenAI from "openai";
 import { useThreads } from "../threads.ts";
 import { useConfig } from "../config.ts";
@@ -9,12 +9,10 @@ export function addToHistory({
   msg,
   answer,
   completionParams,
-  showTelegramNames,
 }: {
   msg: Message.TextMessage;
   answer?: string;
   completionParams?: CompletionParamsType;
-  showTelegramNames?: boolean;
 }) {
   const key = msg.chat?.id || 0;
   const threads = useThreads();
@@ -33,15 +31,11 @@ export function addToHistory({
       content: answer,
     };
   } else {
-    let content = msg.text || "";
-    if (showTelegramNames) {
-      const name = getFullName(msg);
-      if (name) {
-        content = `${name}:\n${content}`;
-      }
-    }
+    const content = msg.text || "";
     const sender = msg.forward_from || msg.from;
-    const chatConfig = useConfig().chats.find((c) => c.id === msg.chat.id) as ConfigChatType;
+    const chatConfig = useConfig().chats.find(
+      (c) => c.id === msg.chat.id,
+    ) as ConfigChatType;
     const isOur = isOurUser(sender, chatConfig);
     let name = sender?.first_name || sender?.last_name || sender?.username;
     if (isOur && chatConfig?.chatParams?.markOurUsers) {
@@ -87,7 +81,6 @@ export function forgetHistoryOnTimeout(
       addToHistory({
         msg,
         completionParams: chat.completionParams,
-        showTelegramNames: chat.chatParams?.showTelegramNames,
       });
       return true;
     }
