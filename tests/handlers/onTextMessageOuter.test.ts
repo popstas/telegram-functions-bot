@@ -26,6 +26,7 @@ jest.unstable_mockModule("../../src/helpers/history.ts", () => ({
   addToHistory: (...args: unknown[]) => mockAddToHistory(...args),
   forgetHistoryOnTimeout: jest.fn(),
   forgetHistory: jest.fn(),
+  initThread: jest.fn(() => ({ id: 1, msgs: [], messages: [], completionParams: {} })),
 }));
 
 jest.unstable_mockModule("../../src/handlers/resolveChatButtons.ts", () => ({
@@ -40,7 +41,7 @@ jest.unstable_mockModule("../../src/threads.ts", () => ({
 let onTextMessage: (ctx: Context & { secondTry?: boolean }) => Promise<void>;
 
 function createCtx(
-  message: Record<string, unknown>
+  message: Record<string, unknown>,
 ): Context & { secondTry?: boolean } {
   return {
     message,

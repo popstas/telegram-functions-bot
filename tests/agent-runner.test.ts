@@ -55,10 +55,7 @@ describe("runAgent", () => {
     expect(res).toBe("answer");
     const msg = mockRequestGptAnswer.mock.calls[0][0];
     expect(msg.text).toBe("hi");
-    expect(mockAddToHistory).toHaveBeenCalledWith({
-      msg,
-      completionParams: chat.completionParams,
-    });
+    expect(mockAddToHistory).toHaveBeenCalledWith(msg, chat);
     expect(mockForgetHistoryOnTimeout).toHaveBeenCalledWith(chat, msg);
     const ctx = mockRequestGptAnswer.mock.calls[0][2];
     expect(ctx.noSendTelegram).toBe(true);

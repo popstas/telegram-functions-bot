@@ -103,10 +103,7 @@ export async function agentPostHandler(
   });
 
   // Add user message to history before requesting answer
-  addToHistory({
-    msg,
-    completionParams: agentConfig.completionParams,
-  });
+  addToHistory(msg, agentConfig);
 
   const resObj = await requestGptAnswer(msg, agentConfig, {
     noSendTelegram: true,

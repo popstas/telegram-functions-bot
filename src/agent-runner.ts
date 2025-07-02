@@ -36,10 +36,7 @@ export async function runAgent(
   });
 
   // Add user message to history before requesting answer
-  addToHistory({
-    msg,
-    completionParams: chat.completionParams,
-  });
+  addToHistory(msg, chat);
   forgetHistoryOnTimeout(chat, msg);
 
   const res = await requestGptAnswer(msg, chat as ConfigChatType, ctx);
