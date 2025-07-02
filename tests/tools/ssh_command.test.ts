@@ -51,7 +51,9 @@ describe("SshCommandClient", () => {
       removeCallback: jest.fn(),
     });
     mockExec
-      .mockImplementationOnce((_cmd: string, cb: (e: unknown) => void) => cb(null))
+      .mockImplementationOnce((_cmd: string, cb: (e: unknown) => void) =>
+        cb(null),
+      )
       .mockImplementationOnce(
         (_cmd: string, cb: (e: unknown, out: string, err: string) => void) =>
           cb(null, "ok", ""),
@@ -72,7 +74,9 @@ describe("SshCommandClient", () => {
       removeCallback: remove,
     });
     mockExec
-      .mockImplementationOnce((_c: string, cb: (e: unknown) => void) => cb(null))
+      .mockImplementationOnce((_c: string, cb: (e: unknown) => void) =>
+        cb(null),
+      )
       .mockImplementationOnce(
         (_c: string, cb: (e: unknown, out: string, err: string) => void) => {
           const err = new Error("Command failed: ssh boom");

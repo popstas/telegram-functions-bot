@@ -286,11 +286,11 @@ export async function executeTools(
           return `${userMsg.name}:\n${userMsg.content}`;
         })
         .join("\n\n");
-      const toolParamsParsed = JSON.parse(toolParams) as { description: string };
+      const toolParamsParsed = JSON.parse(toolParams) as {
+        description: string;
+      };
       if (!toolParamsParsed.description) toolParamsParsed.description = "";
-      const fromStr = fromUsername
-        ? `От ${fromUsername}`
-        : "";
+      const fromStr = fromUsername ? `От ${fromUsername}` : "";
       toolParamsParsed.description += `\n\n---\nПолный текст:\n${fromStr}\n\n${msgs}\n---`;
       toolParams = JSON.stringify(toolParamsParsed);
     }

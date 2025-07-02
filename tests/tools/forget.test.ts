@@ -47,7 +47,7 @@ describe("ForgetClient", () => {
     const res = await client.forget({});
     expect(res.content).toContain("boom");
     expect(mockLog).toHaveBeenCalledWith(
-      expect.objectContaining({ logLevel: "error" })
+      expect.objectContaining({ logLevel: "error" }),
     );
   });
 

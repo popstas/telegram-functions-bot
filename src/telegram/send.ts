@@ -225,7 +225,10 @@ export function getFullName(msg: {
   }
 }
 
-export function isOurUser(sender_user: User | undefined, chatConfig: ConfigChatType) {
+export function isOurUser(
+  sender_user: User | undefined,
+  chatConfig: ConfigChatType,
+) {
   const username = sender_user?.username;
   const chatPrivateUsers = chatConfig?.privateUsers || [];
   const isOurUser =

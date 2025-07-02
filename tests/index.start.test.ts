@@ -42,7 +42,7 @@ const expressApp = {
 };
 const mockExpress = jest.fn(() => expressApp);
 mockExpress.json = jest.fn(
-  () => (_req: unknown, _res: unknown, next: () => void) => next()
+  () => (_req: unknown, _res: unknown, next: () => void) => next(),
 );
 
 jest.unstable_mockModule("../src/bot.ts", () => ({

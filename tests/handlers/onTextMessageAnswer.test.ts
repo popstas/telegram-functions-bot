@@ -32,10 +32,10 @@ const mockUseConfig = jest.fn();
 
 // Default mock implementations
 mockRequestGptAnswer.mockImplementation(() =>
-  Promise.resolve({ content: "hi" })
+  Promise.resolve({ content: "hi" }),
 );
 mockSendTelegramMessage.mockImplementation(() =>
-  Promise.resolve({ chat: { id: 1 } } as Message.TextMessage)
+  Promise.resolve({ chat: { id: 1 } } as Message.TextMessage),
 );
 
 jest.unstable_mockModule("../../src/helpers/google.ts", () => ({
@@ -68,7 +68,7 @@ jest.unstable_mockModule("../../src/threads.ts", () => ({
 let handlers: typeof import("../../src/handlers/onTextMessage.ts");
 
 function createCtx(
-  message: Record<string, unknown>
+  message: Record<string, unknown>,
 ): Context & { secondTry?: boolean } {
   return {
     message,
@@ -116,7 +116,7 @@ describe("answerToMessage", () => {
       expect.stringContaining("Готово"),
       expect.anything(),
       ctx,
-      chat
+      chat,
     );
     expect(res).toBeDefined();
   });
@@ -178,7 +178,7 @@ describe("answerToMessage", () => {
       "hi",
       expect.anything(),
       ctx,
-      chat
+      chat,
     );
 
     // Verify the message was added to history
@@ -205,7 +205,7 @@ describe("answerToMessage", () => {
       "бот не ответил",
       expect.anything(),
       ctx,
-      chat
+      chat,
     );
   });
 
@@ -229,7 +229,7 @@ describe("answerToMessage", () => {
       expect.stringContaining("bad"),
       {},
       ctx,
-      chat
+      chat,
     );
   });
 });

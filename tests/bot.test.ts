@@ -2,7 +2,7 @@ import { jest, describe, it, beforeEach, expect } from "@jest/globals";
 
 const mockStop = jest.fn();
 const mockGetMe = jest.fn(() =>
-  Promise.resolve({ id: 12345, username: "test_bot" })
+  Promise.resolve({ id: 12345, username: "test_bot" }),
 );
 const TelegrafMock = jest.fn().mockImplementation(() => ({
   stop: mockStop,

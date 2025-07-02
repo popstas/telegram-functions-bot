@@ -1,9 +1,9 @@
-import { describe, it, expect, jest, afterEach } from '@jest/globals';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import { describe, it, expect, jest, afterEach } from "@jest/globals";
+import fs from "fs";
+import path from "path";
+import os from "os";
 
-import { parseCoverage, coverageInfo } from '../../src/utils/coverage-info.ts';
+import { parseCoverage, coverageInfo } from "../../src/utils/coverage-info.ts";
 
 afterEach(() => {
   jest.restoreAllMocks();
@@ -78,7 +78,7 @@ describe("coverageInfo", () => {
       branches: { total: 0, covered: 0, skipped: 0, pct: 100 },
     };
     fs.writeFileSync(file, JSON.stringify(data));
-    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
 
     coverageInfo(file);
 

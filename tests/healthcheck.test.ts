@@ -36,7 +36,7 @@ function mockResponse(path: string, status: number, data: string) {
   mockGet.mockImplementationOnce(
     (
       _opts: unknown,
-      cb: (res: EventEmitter & { statusCode?: number }) => void
+      cb: (res: EventEmitter & { statusCode?: number }) => void,
     ) => {
       const res = new EventEmitter() as EventEmitter & { statusCode?: number };
       res.statusCode = status;
@@ -46,7 +46,7 @@ function mockResponse(path: string, status: number, data: string) {
         res.emit("end");
       });
       return { on: jest.fn() } as unknown as EventEmitter;
-    }
+    },
   );
 }
 
@@ -66,7 +66,7 @@ describe("runHealthcheck", () => {
     mockResponse(
       "/health",
       200,
-      JSON.stringify({ healthy: true, errors: [] } as HealthResponse)
+      JSON.stringify({ healthy: true, errors: [] } as HealthResponse),
     );
     await expect(runHealthcheck()).resolves.toBe(true);
     expect(consoleErrorSpy).not.toHaveBeenCalled();
@@ -113,7 +113,7 @@ describe("runHealthcheck", () => {
       JSON.stringify({
         healthy: false,
         errors: ["Service unavailable"],
-      } as HealthResponse)
+      } as HealthResponse),
     );
     await expect(runHealthcheck()).resolves.toBe(false);
     expect(consoleErrorSpy).toHaveBeenCalledWith("Service unavailable");
@@ -127,11 +127,11 @@ describe("runHealthcheck", () => {
       JSON.stringify({
         healthy: false,
         errors: ["Service unavailable", "Connection timeout"],
-      } as HealthResponse)
+      } as HealthResponse),
     );
     await expect(runHealthcheck()).resolves.toBe(false);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "Service unavailable\nConnection timeout"
+      "Service unavailable\nConnection timeout",
     );
   });
 });

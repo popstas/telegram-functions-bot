@@ -18,7 +18,7 @@ export async function request(path: string): Promise<{
         let data = "";
         res.on("data", (c) => (data += c));
         res.on("end", () => resolve({ statusCode: res.statusCode || 0, data }));
-      }
+      },
     );
     req.on("error", () => resolve({ statusCode: 0, data: "" }));
   });
@@ -36,9 +36,7 @@ export const runHealthcheck = async () => {
     return false;
   }
   try {
-    const { healthy, errors } = JSON.parse(
-      health.data
-    ) as HealthResponse;
+    const { healthy, errors } = JSON.parse(health.data) as HealthResponse;
     if (!healthy) {
       console.error(errors.join("\n"));
       return false;

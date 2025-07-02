@@ -36,9 +36,7 @@ function toRelativePath(filePath: string): string {
   return filePath.replace(process.cwd(), "").replace(/\\/g, "/");
 }
 
-export function parseCoverage(
-  coveragePath: string,
-): FileCoverageInfo[] {
+export function parseCoverage(coveragePath: string): FileCoverageInfo[] {
   const absolutePath = path.resolve(process.cwd(), coveragePath);
 
   if (!existsSync(absolutePath)) {
