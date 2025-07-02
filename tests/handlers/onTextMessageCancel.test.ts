@@ -100,6 +100,7 @@ jest.unstable_mockModule("../../src/helpers/history.ts", () => ({
   addToHistory: mockAddToHistory,
   forgetHistoryOnTimeout: jest.fn(),
   forgetHistory: jest.fn(),
+  initThread: jest.fn(() => ({ id: 1, msgs: [], messages: [], completionParams: {} })),
 }));
 
 jest.unstable_mockModule("../../src/handlers/resolveChatButtons.ts", () => ({

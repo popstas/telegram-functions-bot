@@ -98,7 +98,7 @@ async function evaluateAnswer(
   msg: Message.TextMessage,
   evaluator: ConfigChatType,
   task: string,
-  answer: string
+  answer: string,
 ): Promise<EvaluatorResult> {
   const systemMessage = [EVALUATOR_PROMPT, evaluator.systemMessage]
     .filter(Boolean)
@@ -160,7 +160,7 @@ export async function handleModelAnswer({
 
   if (!messageAgent.tool_calls || messageAgent.tool_calls.length === 0) {
     const toolCallMatches = messageAgent.content?.matchAll(
-      /<tool_call>([\s\S]*?)<\/tool_call>/g
+      /<tool_call>([\s\S]*?)<\/tool_call>/g,
     );
     if (toolCallMatches) {
       const tool_calls =
@@ -186,7 +186,7 @@ export async function handleModelAnswer({
       chatConfig,
       msg,
       expressRes,
-      noSendTelegram
+      noSendTelegram,
     );
     if (tool_res) {
       return processToolResults({
@@ -203,7 +203,7 @@ export async function handleModelAnswer({
   }
 
   const answer = res.choices[0]?.message.content || "";
-  addToHistory({ msg, answer });
+  addToHistory(msg, chatConfig, answer);
 
   if (trace) {
     (trace as unknown as { update: (arg: unknown) => void }).update({
@@ -213,7 +213,7 @@ export async function handleModelAnswer({
 
   if (
     gptContext.thread.messages.find(
-      (m: OpenAI.ChatCompletionMessageParam) => m.role === "tool"
+      (m: OpenAI.ChatCompletionMessageParam) => m.role === "tool",
     ) &&
     chatConfig.chatParams?.memoryless
   ) {
@@ -246,7 +246,7 @@ export async function processToolResults({
       }
     ).tool_calls[i];
     const chatTool = gptContext.chatTools.find(
-      (f) => f.name === toolCall.function.name
+      (f) => f.name === toolCall.function.name,
     );
     const isMcp = chatTool?.module.call(chatConfig, gptContext.thread).mcp;
     const showMessages =
@@ -263,7 +263,7 @@ export async function processToolResults({
         msgContentLimited,
         params,
         undefined,
-        chatConfig
+        chatConfig,
       );
     }
 
@@ -300,7 +300,7 @@ export async function processToolResults({
 
   gptContext.messages = await buildMessages(
     gptContext.systemMessage,
-    gptContext.thread.messages
+    gptContext.thread.messages,
   );
 
   const isNoTool = level > 6 || !gptContext.tools?.length;
@@ -353,7 +353,7 @@ export async function requestGptAnswer(
     skipEvaluators?: boolean;
     responseFormat?: OpenAI.Chat.Completions.ChatCompletionCreateParams["response_format"];
     signal?: AbortSignal;
-  }
+  },
 ) {
   if (!msg.text) return;
   const threads = useThreads();
@@ -391,14 +391,14 @@ export async function requestGptAnswer(
   systemMessage = systemMessage.replace(/\{date}/g, date);
   systemMessage = await replaceUrlPlaceholders(
     systemMessage,
-    chatConfig.chatParams.placeholderCacheTime
+    chatConfig.chatParams.placeholderCacheTime,
   );
   systemMessage = await replaceToolPlaceholders(
     systemMessage,
     chatTools,
     chatConfig,
     thread,
-    chatConfig.chatParams.placeholderCacheTime
+    chatConfig.chatParams.placeholderCacheTime,
   );
   if (thread.nextSystemMessage) {
     systemMessage = thread.nextSystemMessage || "";
@@ -452,7 +452,7 @@ export async function requestGptAnswer(
     result.content = await runEvaluatorWorkflow(
       msg,
       chatConfig,
-      result.content
+      result.content,
     );
   }
 
@@ -462,7 +462,7 @@ export async function requestGptAnswer(
 async function runEvaluatorWorkflow(
   msg: Message.TextMessage,
   chatConfig: ConfigChatType,
-  answer: string
+  answer: string,
 ): Promise<string> {
   const config = useConfig();
   let finalAnswer = answer;
@@ -475,7 +475,7 @@ async function runEvaluatorWorkflow(
       msg,
       evalChat,
       msg.text || "",
-      finalAnswer
+      finalAnswer,
     );
     log({
       msg: `evaluation 1: ${JSON.stringify(evaluation)}`,
@@ -506,7 +506,7 @@ async function runEvaluatorWorkflow(
         msg,
         evalChat,
         msg.text || "",
-        finalAnswer
+        finalAnswer,
       );
       log({
         msg: `evaluation ${iter}: ${JSON.stringify(evaluation)}`,
