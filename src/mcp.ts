@@ -50,11 +50,24 @@ export async function init(
     msg: `Connecting to ${Object.keys(configs).length} MCP servers...`,
     logLevel: "debug",
   });
+  const startTime = Date.now();
+  const times: Record<string, number> = {};
 
-  const connectPromises = Object.entries(configs).map(([model, cfg]) =>
-    connectMcp(model, cfg, clients).then(getMcpTools),
-  );
+  const connectPromises = Object.entries(configs).map(([model, cfg]) => {
+    const modelStart = Date.now();
+    return connectMcp(model, cfg, clients)
+      .then((res) => getMcpTools(res))
+      .finally(() => {
+        times[model] = (Date.now() - modelStart) / 1000;
+      });
+  });
+
   const tools: McpTool[] = (await Promise.all(connectPromises)).flat();
+  const total = (Date.now() - startTime) / 1000;
+  const detail = Object.entries(times)
+    .map(([model, t]) => `${model}: ${t.toFixed(1)} sec`)
+    .join(", ");
+  log({ msg: `MCP loaded for ${total.toFixed(1)} sec. ${detail}` });
   return tools;
 }
 

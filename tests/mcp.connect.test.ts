@@ -136,4 +136,12 @@ describe("init", () => {
       { name: "t1", description: "d", properties: {}, model: "m1" },
     ]);
   });
+
+  it("logs loading time", async () => {
+    listToolsMock.mockResolvedValue({ tools: [] });
+    StreamableTransportMock.mockReturnValue({});
+    await init({ m1: { serverUrl: "http://one" } as McpToolConfig });
+    const msgs = mockLog.mock.calls.map((c) => c[0].msg);
+    expect(msgs.some((m) => m.includes("MCP loaded for"))).toBe(true);
+  });
 });
