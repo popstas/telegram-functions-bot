@@ -1,8 +1,9 @@
 import { Message } from "telegraf/types";
 import { CompletionParamsType, ConfigChatType } from "../types.ts";
-import { getFullName } from "../telegram/send.ts";
+import { getFullName, isOurUser } from "../telegram/send.ts";
 import OpenAI from "openai";
 import { useThreads } from "../threads.ts";
+import { useConfig } from "../config.ts";
 
 export function addToHistory({
   msg,
@@ -39,10 +40,17 @@ export function addToHistory({
         content = `${name}:\n${content}`;
       }
     }
+    const sender = msg.forward_from || msg.from;
+    const chatConfig = useConfig().chats.find((c) => c.id === msg.chat.id) as ConfigChatType;
+    const isOur = isOurUser(sender, chatConfig);
+    let name = sender?.first_name || sender?.last_name || sender?.username;
+    if (isOur && chatConfig?.chatParams?.markOurUsers) {
+      name = `${name} (${chatConfig.chatParams.markOurUsers})`;
+    }
     messageItem = {
       role: "user",
       content,
-      name: msg.from?.first_name,
+      name,
     };
   }
   threads[key].messages.push(messageItem);

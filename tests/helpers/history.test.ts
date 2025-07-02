@@ -10,6 +10,7 @@ jest.unstable_mockModule("../../src/threads.ts", () => ({
 
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   getFullName: () => "John Doe",
+  isOurUser: jest.fn(),
 }));
 
 const { addToHistory, forgetHistoryOnTimeout } = await import(

@@ -11,7 +11,7 @@ import {
 } from "../../types.ts";
 import { useBot } from "../../bot.ts";
 import { useThreads } from "../../threads.ts";
-import { sendTelegramMessage, getFullName } from "../../telegram/send.ts";
+import { sendTelegramMessage } from "../../telegram/send.ts";
 import { log, sendToHttp } from "../../helpers.ts";
 import useTools from "../useTools.ts";
 import useLangfuse from "../useLangfuse.ts";
@@ -276,18 +276,20 @@ export async function executeTools(
     const toolClient = chatTool.module.call(chatConfig, thread);
 
     if (toolCall.function.name === "planfix_add_to_lead_task") {
-      const lastMessage = thread.msgs[thread.msgs.length - 1];
-      const from = lastMessage.from;
+      const firstMessage = thread.msgs[0];
+      const from = firstMessage.from;
       const fromUsername = from?.username || "";
-      const fullName = getFullName(lastMessage);
       const msgs = thread.messages
         .filter((m) => ["user", "system"].includes(m.role))
-        .map((m) => m.content)
+        .map((m) => {
+          const userMsg = m as OpenAI.ChatCompletionUserMessageParam;
+          return `${userMsg.name}:\n${userMsg.content}`;
+        })
         .join("\n\n");
       const toolParamsParsed = JSON.parse(toolParams) as { description: string };
       if (!toolParamsParsed.description) toolParamsParsed.description = "";
       const fromStr = fromUsername
-        ? `От ${fromUsername}${fullName ? `, ${fullName}` : ""}`
+        ? `От ${fromUsername}`
         : "";
       toolParamsParsed.description += `\n\n---\nПолный текст:\n${fromStr}\n\n${msgs}\n---`;
       toolParams = JSON.stringify(toolParamsParsed);

@@ -11,6 +11,7 @@ jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   getTelegramForwardedUser: jest.fn(),
   isAdminUser: jest.fn(),
   buildButtonRows: jest.fn(),
+  isOurUser: jest.fn(),
 }));
 
 jest.unstable_mockModule("../../src/handlers/access.ts", () => ({

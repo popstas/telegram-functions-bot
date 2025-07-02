@@ -225,6 +225,16 @@ export function getFullName(msg: {
   }
 }
 
+export function isOurUser(sender_user: User | undefined, chatConfig: ConfigChatType) {
+  const username = sender_user?.username;
+  const isOurUser =
+    username &&
+    [chatConfig.privateUsers, useConfig().privateUsers, useConfig().adminUsers]
+      .flat()
+      .includes(username);
+  return isOurUser;
+}
+
 export function getTelegramForwardedUser(
   msg: Message.TextMessage & { forward_origin?: ForwardOrigin },
   chatConfig: ConfigChatType,
@@ -233,12 +243,8 @@ export function getTelegramForwardedUser(
   if (!forwardOrigin) return "";
 
   const username = forwardOrigin?.sender_user?.username;
-  const isOurUser =
-    username &&
-    [chatConfig.privateUsers, useConfig().privateUsers, useConfig().adminUsers]
-      .flat()
-      .includes(username);
-  if (isOurUser) return "";
+  const isOur = isOurUser(forwardOrigin.sender_user, chatConfig);
+  if (isOur) return "";
 
   const name =
     forwardOrigin.type === "hidden_user"

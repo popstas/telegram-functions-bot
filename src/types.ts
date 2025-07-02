@@ -87,7 +87,8 @@ export type ChatParamsType = {
   memoryless?: boolean;
   forgetTimeout?: number; // in seconds
   showToolMessages?: true | false | undefined | "headers";
-  showTelegramNames?: boolean;
+  showTelegramNames?: boolean; // deprecated
+  markOurUsers?: string;
   placeholderCacheTime?: number;
 };
 

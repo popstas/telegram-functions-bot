@@ -10,6 +10,7 @@ jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   getFullName: jest.fn(),
   getTelegramForwardedUser: jest.fn(),
   isAdminUser: jest.fn(),
+  isOurUser: jest.fn(),
 }));
 
 jest.unstable_mockModule("../../src/handlers/access.ts", () => ({
