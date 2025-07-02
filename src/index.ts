@@ -135,14 +135,14 @@ async function launchBot(bot_token: string, bot_name: string) {
   }
 }
 
-function initHttp() {
+function createHttpApp() {
   // Validate HTTP configuration
   if (!useConfig().http) {
     log({
       msg: `Invalid http configuration in config, skip http server init`,
       logLevel: "warn",
     });
-    return;
+    return null;
   }
 
   const port = useConfig().http.port || 7586;
@@ -158,7 +158,7 @@ function initHttp() {
   });
 
   // Add /ping test route
-  app.get("/ping", (req, res) => {
+  app.get("/ping", (_req, res) => {
     res.send("pong");
   });
 
@@ -200,9 +200,17 @@ function initHttp() {
   // @ts-expect-error express types
   app.post("/agent/:agentName/tool/:toolName", toolPostHandler);
 
+  return { app, port };
+}
+
+function initHttp() {
+  const result = createHttpApp();
+  if (!result) return null;
+  const { app, port } = result;
   app.listen(port, () => {
     log({ msg: `http server listening on port ${port}` });
   });
+  return app;
 }
 
 async function telegramPostHandlerTest(
@@ -315,6 +323,7 @@ async function telegramPostHandler(
 export {
   start,
   launchBot,
+  createHttpApp,
   initHttp,
   telegramPostHandler,
   telegramPostHandlerTest,
