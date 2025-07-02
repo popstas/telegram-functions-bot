@@ -1,5 +1,6 @@
 import { jest, describe, it, beforeEach, expect } from "@jest/globals";
 import type { OAuth2Client } from "google-auth-library";
+import { ConfigChatType } from "../src/types.ts";
 const mockLog = jest.fn();
 const mockWriteFile = jest.fn();
 const mockExistsSync = jest.fn().mockReturnValue(true);
@@ -171,7 +172,7 @@ describe("watchConfigChanges", () => {
     const oldCfg = mod.generateConfig();
     oldCfg.chats = [
       { name: "test", id: 1, completionParams: { model: "old" } },
-    ] as any;
+    ] as ConfigChatType[];
     const newCfg = {
       ...oldCfg,
       chats: [{ name: "test", id: 1, completionParams: { model: "new" } }],

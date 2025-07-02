@@ -1,4 +1,5 @@
 import { jest } from "@jest/globals";
+import { ConfigChatType } from "../src/types.ts";
 
 // Mock the modules using jest.requireMock
 const mockExistsSync = jest.fn();
@@ -129,7 +130,7 @@ describe("readConfig agent_name", () => {
   it("generates agent_name and strips proxy_url", () => {
     mockExistsSync.mockReturnValue(true);
     const cfg = generateConfig();
-    cfg.chats.push({ name: "Test Chat" } as any);
+    cfg.chats.push({ name: "Test Chat" } as ConfigChatType);
     mockReadFileSync.mockReturnValue("yaml content");
     mockLoad.mockReturnValue(JSON.parse(JSON.stringify(cfg)));
     const result = readConfig("testConfig.yml");
