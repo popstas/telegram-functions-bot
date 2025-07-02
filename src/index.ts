@@ -4,6 +4,7 @@ import { Message } from "telegraf/types";
 import { useConfig, validateConfig, watchConfigChanges } from "./config.ts";
 import { initCommands, handleAddChat } from "./commands.ts";
 import { log } from "./helpers.ts";
+import { initTools } from "./helpers/useTools.ts";
 import express from "express";
 import { useBot } from "./bot";
 import onTextMessage from "./handlers/onTextMessage.ts";
@@ -54,6 +55,7 @@ async function start() {
     // Initialize HTTP server
     initHttp();
     useMqtt();
+    await initTools();
   } catch (error: unknown) {
     console.error("Error during bot startup:", error);
     console.log("restart after 10 seconds...");
