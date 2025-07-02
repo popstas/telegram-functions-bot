@@ -37,9 +37,8 @@ jest.unstable_mockModule("js-yaml", () => ({
 }));
 
 // Import the module under test after setting up mocks
-const { readConfig, writeConfig, generateConfig } = await import(
-  "../src/config.ts"
-);
+const configMod = await import("../src/config.ts");
+const { readConfig, writeConfig, generateConfig } = configMod;
 
 describe("readConfig", () => {
   beforeEach(() => {
@@ -127,52 +126,23 @@ describe("readConfig agent_name", () => {
     jest.clearAllMocks();
   });
 
-  it.skip("generates agent_name when missing", () => {
-    // Skipped due to mocking issues
-    // Arrange
-    const testConfigPath = "testConfig.yml";
-
-    // Reset all mocks
-    jest.clearAllMocks();
-
-    // Mock existsSync to return true for our test file
-    mockExistsSync.mockImplementation((path) => {
-      return path === testConfigPath;
-    });
-
-    // Create a minimal config with a test chat that's missing agent_name
-    const testConfig = {
-      bot_name: "test-bot",
-      auth: {
-        bot_token: "test-token",
-        chatgpt_api_key: "test-api-key",
-      },
-      chats: [
-        {
-          name: "default",
-          agent_name: "default",
-        },
-        {
-          name: "test-chat",
-        },
-      ],
-    };
-
-    // Mock file reading to return our test config
+  it("generates agent_name and strips proxy_url", () => {
+    mockExistsSync.mockReturnValue(true);
+    const cfg = generateConfig();
+    cfg.chats.push({ name: "Test Chat" } as any);
     mockReadFileSync.mockReturnValue("yaml content");
-    mockLoad.mockReturnValue(JSON.parse(JSON.stringify(testConfig)));
+    mockLoad.mockReturnValue(JSON.parse(JSON.stringify(cfg)));
+    const result = readConfig("testConfig.yml");
 
-    // Act
-    const result = readConfig(testConfigPath);
-
-    // Assert
-    // Verify the file operations were called correctly
-    expect(mockExistsSync).toHaveBeenCalledWith(testConfigPath);
-    expect(mockReadFileSync).toHaveBeenCalledWith(testConfigPath, "utf8");
-
-    // Verify the chat at index 1 (our test chat) has an agent_name
-    expect(result.chats[1].agent_name).toBeDefined();
-    expect(result.chats[1].agent_name).toMatch(/^test_chat|agent_\d+$/);
+    expect(result.auth.proxy_url).toBeUndefined();
+    const newChat = result.chats[result.chats.length - 1];
+    expect(newChat.agent_name).toBe("test_chat");
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("agent_name not set for chat Test Chat"),
+    );
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining("Config modified"),
+    );
   });
 });
 
@@ -195,7 +165,10 @@ describe("checkConfigSchema", () => {
   it("warns about deprecated showTelegramNames", () => {
     mockExistsSync.mockReturnValue(true);
     const cfg = generateConfig();
-    cfg.chats[0].chatParams = { showTelegramNames: true } as unknown as Record<string, unknown>;
+    cfg.chats[0].chatParams = { showTelegramNames: true } as unknown as Record<
+      string,
+      unknown
+    >;
     mockReadFileSync.mockReturnValue("yaml");
     mockLoad.mockReturnValue(cfg);
 
