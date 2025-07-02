@@ -1,15 +1,34 @@
-# [](https://github.com/popstas/telegram-functions-bot/compare/v2025.6.5...v) (2025-06-27)
+# [](https://github.com/popstas/telegram-functions-bot/compare/v2025.6.1...v) (2025-07-02)
 
 
 ### Bug Fixes
 
+* Remove deprecated showTelegramNames ([#100](https://github.com/popstas/telegram-functions-bot/issues/100)) ([84b6544](https://github.com/popstas/telegram-functions-bot/commit/84b65443fe468351dee627b79a2f95d9615aed49))
+* restore buttons prompts working ([6f43251](https://github.com/popstas/telegram-functions-bot/commit/6f432519892eda7cfa217307a878de611b8bd601))
+
+
+### Features
+
+* markOurUsers ([0a71520](https://github.com/popstas/telegram-functions-bot/commit/0a71520002d62783db7d0f7af90ae74781bd5a7d))
+
+
+
+## [2025.6.1](https://github.com/popstas/telegram-functions-bot/compare/v2025.6.5...v2025.6.1) (2025-07-01)
+
+
+### Bug Fixes
+
+* add agent name to http/mqtt log ([d611664](https://github.com/popstas/telegram-functions-bot/commit/d611664e75780bf9a9b8f3af49b939f5e52e35e8))
 * add resender full name to planfix_add_to_lead_task ([958c7aa](https://github.com/popstas/telegram-functions-bot/commit/958c7aa47fcd37fd2690c15cb6179496998d3b17))
 * addToHistory messages from http and mqtt ([7fc7b00](https://github.com/popstas/telegram-functions-bot/commit/7fc7b0006f5fe30d4741f7489f0414978ec57af7))
+* append message history to planfix_add_to_lead_task ([b6abdac](https://github.com/popstas/telegram-functions-bot/commit/b6abdac49a8eb5dea72c15ffc98f666be3004a60))
+* better healthcheck error output ([c73a6c5](https://github.com/popstas/telegram-functions-bot/commit/c73a6c55cdb37f4bed4455bd3804c280090738c3))
 * context errors, add vision to config ([fb9a7b7](https://github.com/popstas/telegram-functions-bot/commit/fb9a7b73fbdea0ff61abad4efb30f39d2c07f3c9))
 * delete tool planfix_create_request_task, use popstas/planfix-mcp-server ([d7ea910](https://github.com/popstas/telegram-functions-bot/commit/d7ea9109de966db8a5dd4fd915137d73d10e48bf))
 * don't wait for 5 sec before answer ([8259113](https://github.com/popstas/telegram-functions-bot/commit/82591132f6b43a42a96b5de0ceb62dfaf1d29b04))
 * Filter invalid tool messages, fix error 400 Invalid parameter: messages with role 'tool' must be a response to a preceeding message with 'tool_calls'.([#76](https://github.com/popstas/telegram-functions-bot/issues/76)) ([dc9df77](https://github.com/popstas/telegram-functions-bot/commit/dc9df777d489944b5bbb8ff3843e106d4504ef88))
 * finish process audio ([036305f](https://github.com/popstas/telegram-functions-bot/commit/036305f42732ed842144425881537f2269ed6da6))
+* Improve isMentioned prefixless replies ([#91](https://github.com/popstas/telegram-functions-bot/issues/91)) ([2cbc956](https://github.com/popstas/telegram-functions-bot/commit/2cbc956fa63ffb8c40acbd3c813163977151d4c9))
 * **langfuse:** use single trace for evaluations ([#54](https://github.com/popstas/telegram-functions-bot/issues/54)) ([a055e43](https://github.com/popstas/telegram-functions-bot/commit/a055e43a30dda095f1e766b9b97e218c9bc9440e))
 * process unsupported message types ([0a45db7](https://github.com/popstas/telegram-functions-bot/commit/0a45db7cb3686d5f0839a7a7db36a13c2d7e4155))
 * sanitize user name in buildMessages ([782551d](https://github.com/popstas/telegram-functions-bot/commit/782551d38b0b61ba13aaf90b413ee86f70104b57))
@@ -20,6 +39,7 @@
 
 ### Features
 
+* abort previous answer when user sent new message ([343743a](https://github.com/popstas/telegram-functions-bot/commit/343743afa9d1a02ab88ade5587ec68f22cac4378))
 * add audio transcription ([3b07d4b](https://github.com/popstas/telegram-functions-bot/commit/3b07d4b2157d1b8acfb6dd411101b35bc0a1c5a2))
 * Add dedicated log files for HTTP and MQTT ([#51](https://github.com/popstas/telegram-functions-bot/issues/51)) ([089f12e](https://github.com/popstas/telegram-functions-bot/commit/089f12e4fc59337fdc895982253f72f8e7555599))
 * Add Docker healthcheck ([#70](https://github.com/popstas/telegram-functions-bot/issues/70)) ([041c24e](https://github.com/popstas/telegram-functions-bot/commit/041c24ececbc21e140ee7c82a567d103169fa22e))
