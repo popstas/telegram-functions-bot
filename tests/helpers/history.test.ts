@@ -39,12 +39,12 @@ describe("history helpers", () => {
     toolParams: {},
   } as ConfigChatType;
 
-  it("adds message with username", () => {
+  it("adds message", () => {
     const msg = createMsg("hi");
-    addToHistory(msg, { ...baseChat, chatParams: { showTelegramNames: true } });
+    addToHistory(msg, baseChat);
     expect(threads[1].messages[0]).toEqual({
       role: "user",
-      content: "John Doe:\nhi",
+      content: "hi",
       name: "John",
     });
     expect(threads[1].msgs[0]).toBe(msg);

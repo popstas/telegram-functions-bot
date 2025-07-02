@@ -1,6 +1,6 @@
 import { Message } from "telegraf/types";
 import { ConfigChatType } from "../types.ts";
-import { getFullName, isOurUser } from "../telegram/send.ts";
+import { isOurUser } from "../telegram/send.ts";
 import OpenAI from "openai";
 import { useThreads } from "../threads.ts";
 
@@ -25,13 +25,7 @@ export function buildUserMessage(
   msg: Message.TextMessage,
   chatConfig: ConfigChatType,
 ): OpenAI.ChatCompletionMessageParam {
-  let content = msg.text || "";
-  if (chatConfig.chatParams?.showTelegramNames) {
-    const name = getFullName(msg);
-    if (name) {
-      content = `${name}:\n${content}`;
-    }
-  }
+  const content = msg.text || "";
   const sender = msg.forward_from || msg.from;
   const isOur = isOurUser(sender, chatConfig);
   let name = sender?.first_name || sender?.last_name || sender?.username;
