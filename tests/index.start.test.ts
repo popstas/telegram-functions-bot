@@ -7,6 +7,7 @@ const mockUseMqtt = jest.fn();
 const mockUseBot = jest.fn();
 const mockInitCommands = jest.fn();
 const mockLog = jest.fn();
+const mockInitTools = jest.fn();
 
 const botInstance = {
   help: jest.fn(),
@@ -57,6 +58,12 @@ jest.unstable_mockModule("../src/commands.ts", () => ({
   handleAddChat: jest.fn(),
 }));
 
+jest.unstable_mockModule("../src/helpers/useTools.ts", () => ({
+  __esModule: true,
+  initTools: (...args: unknown[]) => mockInitTools(...args),
+  default: jest.fn(),
+}));
+
 jest.unstable_mockModule("../src/helpers.ts", () => ({
   __esModule: true,
   log: (...args: unknown[]) => mockLog(...args),
@@ -77,6 +84,7 @@ beforeEach(async () => {
   mockValidateConfig.mockReset();
   mockWatchConfigChanges.mockReset();
   mockUseMqtt.mockReset();
+  mockInitTools.mockReset();
 
   index = await import("../src/index.ts");
 });
@@ -107,6 +115,7 @@ describe("start", () => {
     await index.start();
 
     expect(mockWatchConfigChanges).toHaveBeenCalled();
+    expect(mockInitTools).toHaveBeenCalled();
     expect(mockUseBot).toHaveBeenCalledTimes(2);
     expect(expressApp.listen).toHaveBeenCalled();
     expect(mockUseMqtt).toHaveBeenCalled();
@@ -144,6 +153,7 @@ describe("start", () => {
     await index.start();
 
     expect(setTimeoutSpy).toHaveBeenCalledWith(index.start, 10000);
+    expect(mockInitTools).toHaveBeenCalled();
     setTimeoutSpy.mockRestore();
   });
 });

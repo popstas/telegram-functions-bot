@@ -4,6 +4,7 @@ import { Message } from "telegraf/types";
 import { useConfig, validateConfig, watchConfigChanges } from "./config.ts";
 import { initCommands, handleAddChat } from "./commands.ts";
 import { log } from "./helpers.ts";
+import { initTools } from "./helpers/useTools.ts";
 import express from "express";
 import { useBot } from "./bot";
 import onTextMessage from "./handlers/onTextMessage.ts";
@@ -37,6 +38,9 @@ async function start() {
     process.exit(1);
   }
   watchConfigChanges();
+
+  // init global tools, including MCP functions
+  await initTools();
 
   try {
     await launchBot(config.auth.bot_token, config.bot_name);
