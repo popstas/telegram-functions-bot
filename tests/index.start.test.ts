@@ -153,7 +153,6 @@ describe("start", () => {
     await index.start();
 
     expect(setTimeoutSpy).toHaveBeenCalledWith(index.start, 10000);
-    expect(mockInitTools).toHaveBeenCalled();
     setTimeoutSpy.mockRestore();
   });
 });

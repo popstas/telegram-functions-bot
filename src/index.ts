@@ -39,9 +39,6 @@ async function start() {
   }
   watchConfigChanges();
 
-  // init global tools, including MCP functions
-  await initTools();
-
   try {
     await launchBot(config.auth.bot_token, config.bot_name);
     // log({msg: 'bot started'});
@@ -58,6 +55,7 @@ async function start() {
     // Initialize HTTP server
     initHttp();
     useMqtt();
+    await initTools();
   } catch (error: unknown) {
     console.error("Error during bot startup:", error);
     console.log("restart after 10 seconds...");
