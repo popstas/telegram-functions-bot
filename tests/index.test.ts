@@ -50,6 +50,7 @@ jest.unstable_mockModule("../src/bot", () => ({
 jest.unstable_mockModule("../src/commands.ts", () => ({
   __esModule: true,
   initCommands: (...args: unknown[]) => mockInitCommands(...args),
+  handleAddChat: jest.fn(),
 }));
 
 jest.unstable_mockModule("../src/helpers.ts", () => ({

@@ -1,17 +1,11 @@
 import { Context } from "telegraf";
 import { message, editedMessage } from "telegraf/filters";
 import { Message } from "telegraf/types";
-import { ConfigChatType } from "./types.ts";
-import {
-  useConfig,
-  validateConfig,
-  writeConfig,
-  watchConfigChanges,
-} from "./config.ts";
-import { initCommands } from "./commands.ts";
+import { useConfig, validateConfig, watchConfigChanges } from "./config.ts";
+import { initCommands, handleAddChat } from "./commands.ts";
 import { log } from "./helpers.ts";
 import express from "express";
-import { useBot, getBots } from "./bot";
+import { useBot } from "./bot";
 import onTextMessage from "./handlers/onTextMessage.ts";
 import onPhoto from "./handlers/onPhoto.ts";
 import onAudio from "./handlers/onAudio.ts";
@@ -22,7 +16,8 @@ import {
   agentPostHandler,
   toolPostHandler,
 } from "./httpHandlers.ts";
-import { useMqtt, isMqttConnected } from "./mqtt.ts";
+import { useMqtt } from "./mqtt.ts";
+import { healthHandler } from "./healthcheck.ts";
 
 process.on("uncaughtException", (error, source) => {
   console.log("Uncaught Exception:", error);
@@ -68,7 +63,6 @@ async function start() {
 
 async function launchBot(bot_token: string, bot_name: string) {
   try {
-    const config = useConfig();
     const bot = useBot(bot_token);
 
     // Set up help command
@@ -90,17 +84,7 @@ async function launchBot(bot_token: string, bot_name: string) {
     bot.on(message("document"), onUnsupported);
 
     // Set up chat action handler
-    bot.action("add_chat", async (ctx) => {
-      const chatId = ctx.chat?.id;
-      // @ts-expect-error title may not exist on chat type
-      const chatName = ctx.chat?.title || `Chat ${chatId}`;
-      if (!chatId) return;
-
-      const newChat = { name: chatName, id: chatId } as ConfigChatType;
-      config.chats.push(newChat);
-      writeConfig(undefined, config);
-      await ctx.reply(`Chat added: ${chatName}`);
-    });
+    bot.action("add_chat", handleAddChat);
 
     // Start the bot
     void bot.launch().catch((error) => {
@@ -162,30 +146,7 @@ function createHttpApp() {
     res.send("pong");
   });
 
-  app.get("/health", (_req, res) => {
-    const bots = getBots();
-    const errors: string[] = [];
-
-    const mqttConfig = useConfig().mqtt;
-    if (mqttConfig && mqttConfig.host && !isMqttConnected()) {
-      errors.push("MQTT is not connected");
-    }
-
-    Object.values(bots).every((bot) => {
-      const polling = (
-        bot as unknown as {
-          polling?: { abortController: { signal: AbortSignal } };
-        }
-      ).polling;
-      const isRunning = polling && !polling.abortController.signal.aborted;
-      if (!isRunning) {
-        errors.push(`Bot ${bot.botInfo?.username} is not running`);
-      }
-      return isRunning;
-    });
-    const healthy = errors.length === 0;
-    res.json({ healthy, errors });
-  });
+  app.get("/health", healthHandler);
 
   // Add route handler to create a virtual message and call onMessage
   // @ts-expect-error express types need proper request/response typing
