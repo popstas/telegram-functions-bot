@@ -46,6 +46,19 @@ export async function handleAddTool(ctx: Context) {
   await commandAddTool(msg, chat);
 }
 
+export async function handleAddChat(ctx: Context) {
+  const chatId = ctx.chat?.id;
+  // @ts-expect-error title may not exist on chat type
+  const chatName = (ctx.chat as { title?: string })?.title || `Chat ${chatId}`;
+  if (!chatId) return;
+
+  const config = useConfig();
+  const newChat = { name: chatName, id: chatId } as ConfigChatType;
+  config.chats.push(newChat);
+  writeConfig(undefined, config);
+  await ctx.reply(`Chat added: ${chatName}`);
+}
+
 export async function initCommands(bot: Telegraf) {
   bot.command("forget", handleForget);
 

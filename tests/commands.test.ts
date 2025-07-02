@@ -291,3 +291,16 @@ describe("handleAddTool", () => {
     expect(mockSendTelegramMessage).toHaveBeenCalled();
   });
 });
+
+describe("handleAddChat", () => {
+  it("adds chat to config and replies", async () => {
+    const ctx = {
+      chat: { id: 5, title: "t" },
+      reply: jest.fn(),
+    } as unknown as Context;
+    await commands.handleAddChat(ctx);
+    expect(config.chats[0]).toEqual({ name: "t", id: 5 });
+    expect(mockWriteConfig).toHaveBeenCalledWith(undefined, config);
+    expect(ctx.reply).toHaveBeenCalledWith("Chat added: t");
+  });
+});

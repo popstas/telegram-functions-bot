@@ -1,11 +1,44 @@
 import http from "http";
 import { fileURLToPath } from "url";
 import { resolve } from "path";
+import type express from "express";
+import { useConfig } from "./config.ts";
+import { getBots } from "./bot";
+import { isMqttConnected } from "./mqtt.ts";
 
 export type HealthResponse = {
   healthy: boolean;
   errors: string[];
 };
+
+export function getHealthStatus() {
+  const bots = getBots();
+  const errors: string[] = [];
+
+  const mqttConfig = useConfig().mqtt;
+  if (mqttConfig && mqttConfig.host && !isMqttConnected()) {
+    errors.push("MQTT is not connected");
+  }
+
+  Object.values(bots).forEach((bot) => {
+    const polling = (
+      bot as unknown as {
+        polling?: { abortController: { signal: AbortSignal } };
+      }
+    ).polling;
+    const isRunning = polling && !polling.abortController.signal.aborted;
+    if (!isRunning) {
+      errors.push(`Bot ${bot.botInfo?.username} is not running`);
+    }
+  });
+
+  const healthy = errors.length === 0;
+  return { healthy, errors } as HealthResponse;
+}
+
+export function healthHandler(_req: express.Request, res: express.Response) {
+  res.json(getHealthStatus());
+}
 
 export async function request(path: string): Promise<{
   statusCode: number;
