@@ -17,6 +17,15 @@ Telegram bot with functions tools.
 - Agents can be triggered by name via HTTP or MQTT
 - Incoming audio transcription using Whisper service
 - Prompt placeholders: `{url:...}` and `{tool:...}` for dynamic content
+- Photo messages are processed with OCR to extract text
+- Dedicated log files for HTTP and MQTT activity
+- Docker healthcheck endpoint for container monitoring
+- GET `/agent/:agent` returns agent status
+- Per-chat `http_token` overrides the global HTTP token
+- Mark known users in history using `markOurUsers`
+- Automatic history cleanup with `forgetTimeout`
+- Abort previous answer if user sends a new message
+- Optional delay between split messages
 
 ## Pipeline
 
@@ -48,6 +57,7 @@ Empty `config.yml` should be generated. Fill it with your data:
 - auth.token
 - auth.chatgpt_api_key
 - stt.whisperBaseUrl
+- http.http_token (per-chat tokens use chat.http_token)
 
 ### Multiple Bots / Secondary bot_token
 
@@ -184,6 +194,10 @@ npm run agent <agent_name> "your text"
 POST `/agent/:agentName` with JSON `{ "text": "hi", "webhook": "<url>" }`.
 Use header `Authorization: Bearer <http_token>`.
 
+GET `/agent/:agentName` returns current agent status.
+
+You can set `http_token` per chat in `config.yml`; it overrides the global token.
+
 ### HTTP tool call
 
 POST `/agent/:agentName/tool/:toolName` with JSON `{ "args": { ... } }`.
@@ -295,6 +309,10 @@ To disable evaluators for a specific chat, simply omit the `evaluators` array fr
 
 - Each chat's configuration should specify a `tools` list.
 - The `tools` list should include the names of tools (from MCP) that are available to that chat.
+
+Other useful chat parameters include:
+- `markOurUsers` – suffix to append to known users in history
+- `forgetTimeout` – auto-forget history after N seconds
 - Example chat config snippet:
   ```yaml
   - name: Memory MCP agent
