@@ -5,7 +5,7 @@ import { useConfig, validateConfig, watchConfigChanges } from "./config.ts";
 import { initCommands, handleAddChat } from "./commands.ts";
 import { log } from "./helpers.ts";
 import express from "express";
-import { useBot, getBots } from "./bot";
+import { useBot } from "./bot";
 import onTextMessage from "./handlers/onTextMessage.ts";
 import onPhoto from "./handlers/onPhoto.ts";
 import onAudio from "./handlers/onAudio.ts";
@@ -16,7 +16,7 @@ import {
   agentPostHandler,
   toolPostHandler,
 } from "./httpHandlers.ts";
-import { useMqtt, isMqttConnected } from "./mqtt.ts";
+import { useMqtt } from "./mqtt.ts";
 import { healthHandler } from "./healthcheck.ts";
 
 process.on("uncaughtException", (error, source) => {
@@ -63,7 +63,6 @@ async function start() {
 
 async function launchBot(bot_token: string, bot_name: string) {
   try {
-    const config = useConfig();
     const bot = useBot(bot_token);
 
     // Set up help command

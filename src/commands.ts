@@ -48,7 +48,6 @@ export async function handleAddTool(ctx: Context) {
 
 export async function handleAddChat(ctx: Context) {
   const chatId = ctx.chat?.id;
-  // @ts-expect-error title may not exist on chat type
   const chatName = (ctx.chat as { title?: string })?.title || `Chat ${chatId}`;
   if (!chatId) return;
 
