@@ -37,6 +37,7 @@ Telegram bot with functions tools.
 
 - `brainstorm` - Useful tool for brainstorming and planning task
 - `change_chat_settings` - Change chat settings in config.yml
+- `change_access_settings` - Update admin and private user lists in config.yml
 - `get_next_offday` - count 4-days cycle: day, night, sleep, offday
 - `javascript_interpreter` - exec JavaScript code
 - `obsidian_read` - return the contents of an Obsidian file specified by `file_path`, list of files pass to the prompt
@@ -113,7 +114,7 @@ Fetches content from a URL and inserts it into the prompt.
 systemMessage: |
   Here's the latest news:
   {url:https://example.com/breaking-news}
-  
+
   Summarize the key points above
 chatParams:
   placeholderCacheTime: 60
@@ -134,7 +135,7 @@ Executes a tool and inserts its output into the prompt.
 systemMessage: |
   Current weather:
   {tool:getWeather({"city": "London"})}
-  
+
   Based on this weather, what should I wear today?
 ```
 
@@ -284,15 +285,14 @@ chats:
   - name: "Chat with Evaluators"
     id: 123456789
     evaluators:
-      - agent_name: "url-checker"  # Name of the agent to use for evaluation
-        threshold: 4                   # Optional: minimum score to consider the response complete (default: 4)
-        maxIterations: 3              # Optional: maximum number of evaluation iterations (default: 3)
+      - agent_name: "url-checker" # Name of the agent to use for evaluation
+        threshold: 4 # Optional: minimum score to consider the response complete (default: 4)
+        maxIterations: 3 # Optional: maximum number of evaluation iterations (default: 3)
   - name: "URL evaluator agent"
     agent_name: "url-checker"
     systemMessage: "Check for url in answer."
     completionParams:
       model: "gpt-4.1-nano"
-    
 ```
 
 ### How Evaluators Are Used
@@ -311,6 +311,7 @@ To disable evaluators for a specific chat, simply omit the `evaluators` array fr
 - The `tools` list should include the names of tools (from MCP) that are available to that chat.
 
 Other useful chat parameters include:
+
 - `markOurUsers` – suffix to append to known users in history
 - `forgetTimeout` – auto-forget history after N seconds
 - Example chat config snippet:
