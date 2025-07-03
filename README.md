@@ -37,8 +37,9 @@ Telegram bot with functions tools.
 
 - `brainstorm` - Useful tool for brainstorming and planning task
 - `change_chat_settings` - Change chat settings in config.yml
-- `change_access_settings` - Update admin and private user lists in config.yml
+- `change_access_settings` - Add/remove users to admin and private user lists in config.yml
 - `get_next_offday` - count 4-days cycle: day, night, sleep, offday
+- `forget` - Forget chat history
 - `javascript_interpreter` - exec JavaScript code
 - `obsidian_read` - return the contents of an Obsidian file specified by `file_path`, list of files pass to the prompt
 - `obsidian_write` - append text to a markdown file specified by `out_file`
