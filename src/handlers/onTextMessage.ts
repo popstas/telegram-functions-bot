@@ -78,6 +78,7 @@ export default async function onTextMessage(
       chatTitle: (msg.chat as Chat.TitleChat).title,
       role: "system",
       username: msg?.from?.username,
+      logLevel: "debug",
     });
     if (!existingResponse.isCompleted) {
       existingResponse.abortController.abort();
@@ -128,13 +129,6 @@ export async function answerToMessage(
   chat: ConfigChatType,
   extraMessageParams: Record<string, unknown> & { signal?: AbortSignal },
 ): Promise<Message.TextMessage | undefined> {
-  log({
-    msg: "answerToMessage",
-    chatId: msg.chat.id,
-    chatTitle: (msg.chat as Chat.TitleChat).title,
-    role: "user",
-    username: msg?.from?.username,
-  });
   if (
     useConfig().auth.oauth_google?.client_id ||
     useConfig().auth.google_service_account?.private_key

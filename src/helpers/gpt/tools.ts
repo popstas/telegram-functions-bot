@@ -379,7 +379,18 @@ export async function executeTools(
       if (span) {
         span.end({ output: result.content });
       }
-      log({ msg: result.content, chatId, chatTitle, role: "tool" });
+      try {
+        const content = JSON.parse(result.content);
+        log({
+          msg: `${toolCall.function.name} result: ${content[0].text}`,
+          chatId,
+          chatTitle,
+          role: "tool",
+        });
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (_error) {
+        log({ msg: result.content, chatId, chatTitle, role: "tool" });
+      }
       return result;
     }
 
