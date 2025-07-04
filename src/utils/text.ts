@@ -3,11 +3,9 @@ export function splitBigMessage(text: string) {
   const sizeLimit = 4096;
   let msg = "";
 
-  for (const origLine of text.split("\n")) {
-    const line = origLine.trim();
-    if (!line) continue;
+  for (const line of text.split("\n")) {
     if (msg.length + line.length + 1 > sizeLimit) {
-      if (msg.trim()) msgs.push(msg);
+      if (msg) msgs.push(msg);
       msg = "";
     }
     msg += line + "\n";
@@ -15,6 +13,6 @@ export function splitBigMessage(text: string) {
   if (msg.length > sizeLimit) {
     msg = msg.slice(0, sizeLimit - 3) + "...";
   }
-  if (msg.trim()) msgs.push(msg);
+  if (msg) msgs.push(msg);
   return msgs;
 }

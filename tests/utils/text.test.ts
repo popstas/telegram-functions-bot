@@ -17,4 +17,9 @@ describe("splitBigMessage", () => {
     expect(msg.length).toBe(4096);
     expect(msg.endsWith("...")).toBe(true);
   });
+
+  it("keeps blank lines", () => {
+    const res = splitBigMessage("a\n\nb");
+    expect(res).toEqual(["a\n\nb\n"]);
+  });
 });
