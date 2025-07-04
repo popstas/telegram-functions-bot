@@ -131,6 +131,12 @@ export async function sendTelegramMessage(
     } catch (e: unknown) {
       const error = e as TelegramError;
       // Fallback: if error is 'bot was blocked by the user', handle gracefully
+      log({
+        msg: `Error sending message to user ${chat_id}: ${error.response?.description || "Unknown error"}, msg: ${msg}`,
+        chatId: chat_id,
+        chatTitle: chatConfig.name,
+        logLevel: "warn",
+      });
       if (error?.response?.error_code === 403) {
         // Telegram error 403: bot was blocked by the user
         log({

@@ -283,7 +283,8 @@ export async function executeTools(
         .filter((m) => ["user", "system"].includes(m.role))
         .map((m) => {
           const userMsg = m as OpenAI.ChatCompletionUserMessageParam;
-          return `${userMsg.name}:\n${userMsg.content}`;
+          const name = userMsg.role === "user" ? userMsg.name : userMsg.role;
+          return `${name}:\n${userMsg.content}`;
         })
         .join("\n\n");
       const toolParamsParsed = JSON.parse(toolParams) as {
@@ -291,7 +292,7 @@ export async function executeTools(
       };
       if (!toolParamsParsed.description) toolParamsParsed.description = "";
       const fromStr = fromUsername ? `От ${fromUsername}` : "";
-      toolParamsParsed.description += `\n\n---\nПолный текст:\n${fromStr}\n\n${msgs}\n---`;
+      toolParamsParsed.description += `\n\nПолный текст:\n${fromStr}\n\n${msgs}\n`;
       toolParams = JSON.stringify(toolParamsParsed);
     }
 
