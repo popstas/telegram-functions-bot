@@ -44,6 +44,18 @@ function sanitizeTelegramHtml(html: string): string {
   return result.trim();
 }
 
+function telegramifyWithCodeBlocks(text: string): string {
+  if (!text.includes("```")) {
+    return telegramifyMarkdown(text, "keep");
+  }
+  return text
+    .split(/(```[\s\S]*?```)/)
+    .map((part) =>
+      part.startsWith("```") ? part : telegramifyMarkdown(part, "keep"),
+    )
+    .join("");
+}
+
 export interface ExtraCtx {
   noSendTelegram?: boolean;
   progressCallback?: (msg: string) => void;
@@ -110,10 +122,11 @@ export async function sendTelegramMessage(
   // Process the text based on parse_mode
   if (params.parse_mode === "HTML") {
     processedText = sanitizeTelegramHtml(text);
-  } else if (params.parse_mode === "MarkdownV2") {
-    processedText = telegramifyMarkdown(processedText, "keep");
-  } else if (params.parse_mode === "Markdown") {
-    processedText = telegramifyMarkdown(text, "keep");
+  } else if (
+    params.parse_mode === "MarkdownV2" ||
+    params.parse_mode === "Markdown"
+  ) {
+    processedText = telegramifyWithCodeBlocks(text);
   }
 
   const msgs = splitBigMessage(processedText);
