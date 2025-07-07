@@ -9,6 +9,7 @@ import { convertToMp3, sendAudioWhisper } from "../helpers/stt.ts";
 import { useConfig } from "../config.ts";
 import { log } from "../helpers.ts";
 import { Message } from "telegraf/types";
+import { prettyText } from "../utils/text.ts";
 
 tmp.setGracefulCleanup();
 
@@ -85,7 +86,8 @@ export async function processAudio(
       return;
     }
 
-    await sendTelegramMessage(chatId, text, undefined, ctx);
+    const paragraphs = prettyText(text);
+    await sendTelegramMessage(chatId, paragraphs, undefined, ctx);
 
     const fakeMsg = { ...ctx.message, text };
     const newCtx = Object.create(Object.getPrototypeOf(ctx), {
