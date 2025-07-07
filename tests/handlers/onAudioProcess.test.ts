@@ -64,7 +64,7 @@ describe("processAudio", () => {
     await processAudio(ctx as Context, { file_id: "f" }, 1);
     expect(mockSendTelegramMessage).toHaveBeenCalledWith(
       1,
-      "hello",
+      "hello.",
       undefined,
       ctx,
     );
