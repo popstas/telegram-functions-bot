@@ -194,9 +194,10 @@ export async function toolPostHandler(
     role: "user",
     logPath: HTTP_LOG_PATH,
   });
+  let result;
   try {
     let jsonAnswer;
-    const result = await fn(argsStr);
+    result = await fn(argsStr);
     const toolAnswer = JSON.parse(result.content);
     if (toolAnswer[0]) {
       jsonAnswer = JSON.parse(toolAnswer[0].text);
@@ -222,7 +223,7 @@ export async function toolPostHandler(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     log({
-      msg,
+      msg: `toolPostHandler error: ${msg}, result: ${JSON.stringify(result)}`,
       logLevel: "error",
       logPath: HTTP_LOG_PATH,
     });
