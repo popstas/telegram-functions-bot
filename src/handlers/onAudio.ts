@@ -40,6 +40,7 @@ export async function processAudio(
   const link = await ctx.telegram.getFileLink(voice.file_id);
   const oggPath = tmp.tmpNameSync({ postfix: ".ogg" });
   let mp3Path: string | null = null;
+  let progressTimer: NodeJS.Timeout | null = null;
 
   try {
     const response = await fetch(link.href);
@@ -50,6 +51,16 @@ export async function processAudio(
     await fs.promises.writeFile(oggPath, Buffer.from(arrayBuffer));
 
     mp3Path = await convertToMp3(oggPath);
+
+    progressTimer = setInterval(() => {
+      void sendTelegramMessage(
+        chatId,
+        "Распознавание продолжается...",
+        undefined,
+        ctx,
+      );
+    }, 60_000);
+
     const res = (await sendAudioWhisper({ mp3Path })) as WhisperResponse;
 
     if (res.error) {
@@ -110,6 +121,7 @@ export async function processAudio(
     );
   } finally {
     try {
+      if (progressTimer) clearInterval(progressTimer);
       if (fs.existsSync(oggPath)) fs.unlinkSync(oggPath);
       if (mp3Path && fs.existsSync(mp3Path)) fs.unlinkSync(mp3Path);
     } catch (cleanupError) {

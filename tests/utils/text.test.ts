@@ -13,14 +13,15 @@ describe("splitBigMessage", () => {
 
   it("truncates single oversized line", () => {
     const line = "x".repeat(4100);
-    const [msg] = splitBigMessage(line);
-    expect(msg.length).toBe(4096);
-    expect(msg.endsWith("...")).toBe(true);
+    const msgs = splitBigMessage(line);
+    expect(msgs.length).toBe(2);
+    expect(msgs[0].length).toBe(4096);
+    expect(msgs[1].length).toBe(4);
   });
 
   it("keeps blank lines", () => {
     const res = splitBigMessage("a\n\nb");
-    expect(res).toEqual(["a\n\nb\n"]);
+    expect(res).toEqual(["a\n\nb"]);
   });
 });
 
@@ -28,26 +29,26 @@ describe("prettyText", () => {
   it("formats a simple sentence correctly", () => {
     const input = "Hello world.";
     const result = prettyText(input);
-    expect(result).toBe("Hello world. ");
+    expect(result).toBe("Hello world.");
   });
 
   it("combines short sentences into one paragraph", () => {
     const input = "First sentence. Second sentence. Third sentence.";
     const result = prettyText(input);
-    expect(result).toBe("First sentence. Second sentence. Third sentence. ");
+    expect(result).toBe("First sentence. Second sentence. Third sentence.");
   });
 
   it("splits long text into multiple paragraphs", () => {
-    const longText = 
+    const longText =
       "This is a long sentence that should be in the first paragraph. " +
       "This is another long sentence that should be in the first paragraph. " +
       "This is a very long sentence that should trigger a new paragraph because " +
       "it makes the total length exceed the 200 character limit. " +
       "This should be in the second paragraph.";
-    
+
     const result = prettyText(longText);
     const paragraphs = result.split("\n\n");
-    
+
     expect(paragraphs.length).toBe(2);
     expect(paragraphs[0].length).toBeGreaterThan(200);
     expect(paragraphs[0]).toContain("first paragraph.");
@@ -67,6 +68,6 @@ describe("prettyText", () => {
   });
 
   it("handles single word", () => {
-    expect(prettyText("Hello")).toBe("Hello. ");
+    expect(prettyText("Hello")).toBe("Hello.");
   });
 });

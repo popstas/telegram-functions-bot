@@ -22,37 +22,40 @@ export function splitBigMessage(text: string) {
       msg += line + "\n";
     }
   }
-  
+
   // Handle any remaining text in the buffer
   if (msg) {
     // Remove trailing newline if present
     const trimmedMsg = msg.endsWith("\n") ? msg.slice(0, -1) : msg;
     if (trimmedMsg) msgs.push(trimmedMsg);
   }
-  
+
   return msgs;
 }
 
 export function prettyText(text: string) {
-  const paragraphs = [];
-  const sentences = text.split(/[.?!][ \n]/g);
-  // console.log("sentences:", sentences.length);
-  let paragraph = '';
-  while (sentences.length > 0) {
-    paragraph += sentences.shift() + '. ';
-    paragraph = paragraph.replace(/\.\. $/, '. '); // remove ..
+  if (!text) return "";
+
+  const paragraphs: string[] = [];
+  const sentences = text.match(/[^.?!]+[.?!]?/g) || [];
+
+  let paragraph = "";
+  for (let sentence of sentences) {
+    sentence = sentence.trim();
+    if (!/[.?!]$/.test(sentence)) sentence += ".";
+
+    paragraph += sentence + " ";
+    paragraph = paragraph.replace(/\.\. $/, ". ");
 
     if (paragraph.length > 200) {
-      paragraphs.push(paragraph.trim() + '');
-      // console.log("zero paragraph:", paragraph);
-      paragraph = '';
+      paragraphs.push(paragraph.trim());
+      paragraph = "";
     }
   }
-  if (paragraph.length > 0) {
-    paragraphs.push(paragraph.trim() + '');
-  }
-  // console.log("paragraphs", paragraphs);
 
-  const prettyText = paragraphs.join('\n\n');
-  return prettyText;
+  if (paragraph.trim()) {
+    paragraphs.push(paragraph.trim());
+  }
+
+  return paragraphs.join("\n\n");
 }
