@@ -94,6 +94,7 @@ async function launchBot(bot_token: string, bot_name: string) {
         msg: `[${bot_name}] Error during bot launch: ${error instanceof Error ? error.message : String(error)}`,
         logLevel: "error",
       });
+      console.error(error.stack)
     });
 
     log({ msg: `bot started: ${bot_name}` });
@@ -108,13 +109,13 @@ async function launchBot(bot_token: string, bot_name: string) {
         });
       } else {
         log({
-          msg: `[${bot_name}] Error during bot launch: ${error instanceof Error ? error.message : String(error)}`,
+          msg: `[${bot_name}] Error during bot launch (2): ${error instanceof Error ? error.message : String(error)}`,
           logLevel: "error",
         });
       }
     } else {
       log({
-        msg: `[${bot_name}] Error during bot launch: ${error instanceof Error ? error.message : String(error)}`,
+        msg: `[${bot_name}] Error during bot launch (3): ${error instanceof Error ? error.message : String(error)}`,
         logLevel: "error",
       });
     }
