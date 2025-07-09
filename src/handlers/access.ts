@@ -43,6 +43,12 @@ export default async function checkAccessLevel(
   }
 
   if (!isMentioned(msg, chat)) {
+    log({
+      msg: `Not mentioned, from: ${JSON.stringify(msg.from)}, text: ${msg.text}`,
+      chatId,
+      chatTitle,
+      logLevel: "debug",
+    });
     return false;
   }
 
