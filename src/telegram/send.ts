@@ -46,12 +46,12 @@ function sanitizeTelegramHtml(html: string): string {
 
 function telegramifyWithCodeBlocks(text: string): string {
   if (!text.includes("```")) {
-    return telegramifyMarkdown(text, "keep");
+    return telegramifyMarkdown(text, "escape");
   }
   return text
     .split(/(```[\s\S]*?```)/)
     .map((part) =>
-      part.startsWith("```") ? part : telegramifyMarkdown(part, "keep"),
+      part.startsWith("```") ? part : telegramifyMarkdown(part, "escape"),
     )
     .join("");
 }
