@@ -84,8 +84,14 @@ export async function getSystemMessage(
 }
 
 export function getTokensCount(chatConfig: ConfigChatType, text: string) {
-  const tokenizer = encodingForModel(
-    chatConfig.completionParams.model as TiktokenModel,
-  );
-  return tokenizer.encode(text).length;
+  try {
+    const tokenizer = encodingForModel(
+      chatConfig.completionParams.model as TiktokenModel,
+    );
+    return tokenizer.encode(text).length;
+  } catch (error) {
+    console.error(error);
+    console.error("model:", chatConfig.completionParams.model)
+    return 0;
+  }
 }
