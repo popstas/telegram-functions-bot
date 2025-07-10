@@ -32,7 +32,6 @@ export default async function onTextMessage(
 ) {
   setLastCtx(ctx);
 
-  console.log("onTextMessage", ctx.message)
   const access = await checkAccessLevel(ctx);
   if (!access) return;
   const { msg, chat } = access;
