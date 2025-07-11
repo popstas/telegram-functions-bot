@@ -280,14 +280,15 @@ export function getTelegramForwardedUser(
 }
 export async function sendTelegramDocument(
   chat_id: number,
-  filePath: string,
+  file: string | Buffer,
   fileName?: string,
+  mimeType?: string,
   chatConfig?: ConfigChatType,
 ): Promise<Message.DocumentMessage | undefined> {
   try {
     const response = await useBot(chatConfig?.bot_token).telegram.sendDocument(
       chat_id,
-      { source: filePath, filename: fileName },
+      { source: file, filename: fileName, contentType: mimeType },
     );
     return response as unknown as Message.DocumentMessage;
   } catch (e: unknown) {

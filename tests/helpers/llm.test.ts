@@ -186,6 +186,59 @@ describe("processToolResults", () => {
       1,
       "/tmp/test.txt",
       "test.txt",
+      undefined,
+      chatConfig,
+    );
+  });
+
+  it("sends file when resource with blob is returned", async () => {
+    const fileData = Buffer.from("hello").toString("base64");
+    const resContent = JSON.stringify({
+      content: [
+        { type: "text", text: "blob ready" },
+        {
+          type: "resource",
+          resource: {
+            blob: fileData,
+            name: "test.txt",
+            mimeType: "text/plain",
+          },
+        },
+      ],
+    });
+    const tool_res: ToolResponse[] = [{ content: resContent }];
+    const messageAgent = {
+      role: "assistant",
+      content: "",
+      tool_calls: [
+        {
+          id: "1",
+          type: "function",
+          function: { name: "foo", arguments: "{}" },
+        },
+      ],
+    } as any;
+    await processToolResults({
+      tool_res,
+      messageAgent,
+      chatConfig,
+      msg,
+      expressRes: undefined,
+      gptContext: { ...baseContext },
+      level: 1,
+    });
+    expect(mockSendTelegramMessage).toHaveBeenCalledWith(
+      1,
+      "blob ready",
+      { deleteAfter: undefined },
+      undefined,
+      chatConfig,
+    );
+    expect(mockSendTelegramDocument).toHaveBeenCalledWith(
+      1,
+      Buffer.from(fileData, "base64"),
+      "test.txt",
+      "text/plain",
       chatConfig,
     );
   });

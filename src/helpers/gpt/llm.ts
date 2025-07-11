@@ -282,17 +282,26 @@ export async function processToolResults({
             undefined,
             chatConfig,
           );
-        } else if (
-          part.type === "resource" &&
-          part.resource?.uri?.startsWith("file://")
-        ) {
-          const filePath = part.resource.uri.replace(/^file:\/\//, "");
-          await sendTelegramDocument(
-            msg.chat.id,
-            filePath,
-            part.resource.name,
-            chatConfig,
-          );
+        } else if (part.type === "resource") {
+          if (part.resource?.uri?.startsWith("file://")) {
+            const filePath = part.resource.uri.replace(/^file:\/\//, "");
+            await sendTelegramDocument(
+              msg.chat.id,
+              filePath,
+              part.resource.name,
+              part.resource.mimeType,
+              chatConfig,
+            );
+          } else if (part.resource?.blob) {
+            const buffer = Buffer.from(part.resource.blob, "base64");
+            await sendTelegramDocument(
+              msg.chat.id,
+              buffer,
+              part.resource.name,
+              part.resource.mimeType,
+              chatConfig,
+            );
+          }
         }
       }
     }
