@@ -133,6 +133,7 @@ export function generateConfig(): ConfigType {
           deleteToolAnswers: 60,
           confirmation: false,
           showToolMessages: true,
+          useResponsesApi: false,
         },
         toolParams: {
           brainstorm: {
@@ -175,6 +176,7 @@ export function generateConfig(): ConfigType {
           deleteToolAnswers: 60,
           confirmation: false,
           showToolMessages: true,
+          useResponsesApi: false,
         },
         toolParams: {
           brainstorm: {
@@ -205,7 +207,7 @@ export function generatePrivateChatConfig(username: string) {
     name: `Private ${username}`,
     username,
     toolParams: {} as ToolParamsType,
-    chatParams: {} as ChatParamsType,
+    chatParams: { useResponsesApi: false } as ChatParamsType,
   } as ConfigChatType;
 }
 

@@ -106,6 +106,29 @@ describe("llmCall", () => {
     expect(mockObserveOpenAI).toHaveBeenCalled();
     expect(result.res).toEqual({ choices: [{ message: { content: "b" } }] });
   });
+
+  it("uses responses api when enabled", async () => {
+    mockUseLangfuse.mockReturnValue({ trace: undefined });
+    const api = {
+      responses: {
+        create: jest.fn().mockResolvedValue({ output_text: "r" }),
+      },
+    };
+    mockUseApi.mockReturnValue(api);
+    const params = {
+      messages: [],
+      model: "m",
+    } as OpenAI.ChatCompletionCreateParams;
+    const result = await llm.llmCall({
+      apiParams: params,
+      msg: { ...baseMsg },
+      chatConfig: { ...chatConfig, chatParams: { useResponsesApi: true } },
+    });
+    expect((api.responses.create as jest.Mock).mock.calls[0][0].input).toEqual(
+      [],
+    );
+    expect(result.res.choices[0].message.content).toBe("r");
+  });
 });
 
 describe("requestGptAnswer", () => {

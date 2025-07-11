@@ -58,6 +58,10 @@ export class ChangeChatSettingsClient extends AIFunctionsProvider {
         .describe(
           "Whether to show tool messages, headers means only tool calls",
         ),
+      useResponsesApi: z
+        .boolean()
+        .optional()
+        .describe("Use Responses API instead of Chat Completions"),
     }),
   })
   async change_chat_settings(settings: ToolArgsType) {
