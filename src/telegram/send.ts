@@ -286,7 +286,10 @@ export async function sendTelegramDocument(
   chatConfig?: ConfigChatType,
 ): Promise<Message.DocumentMessage | undefined> {
   try {
-    const document = file instanceof Buffer ? Input.fromBuffer(file, fileName) : Input.fromLocalFile(file as string);
+    const document =
+      file instanceof Buffer
+        ? Input.fromBuffer(file, fileName)
+        : Input.fromLocalFile(file as string);
     const response = await useBot(chatConfig?.bot_token).telegram.sendDocument(
       chat_id,
       document,

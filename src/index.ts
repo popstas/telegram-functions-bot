@@ -94,7 +94,7 @@ async function launchBot(bot_token: string, bot_name: string) {
         msg: `[${bot_name}] Error during bot launch: ${error instanceof Error ? error.message : String(error)}`,
         logLevel: "error",
       });
-      console.error(error.stack)
+      console.error(error.stack);
     });
 
     log({ msg: `bot started: ${bot_name}` });
@@ -152,16 +152,12 @@ function createHttpApp() {
   app.get("/health", healthHandler);
 
   // Add route handler to create a virtual message and call onMessage
-  // @ts-expect-error express types need proper request/response typing
   app.post("/telegram/:chatId", telegramPostHandler);
-  // @ts-expect-error express types need proper request/response typing
   app.get("/telegram/test", telegramPostHandlerTest);
   // call agent by name
   app.get("/agent/:agentName", agentGetHandler);
-  // @ts-expect-error express types
   app.post("/agent/:agentName", agentPostHandler);
   // call tool directly
-  // @ts-expect-error express types
   app.post("/agent/:agentName/tool/:toolName", toolPostHandler);
 
   return { app, port };
