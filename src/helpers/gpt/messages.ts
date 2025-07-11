@@ -91,7 +91,7 @@ export function getTokensCount(chatConfig: ConfigChatType, text: string) {
     return tokenizer.encode(text).length;
   } catch (error) {
     console.error(error);
-    console.error("model:", chatConfig.completionParams.model)
+    console.error("model:", chatConfig.completionParams.model);
     return 0;
   }
 }
