@@ -11,6 +11,7 @@ jest.unstable_mockModule("../../src/handlers/access.ts", () => ({
 
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   sendTelegramMessage: mockSendTelegramMessage,
+  sendTelegramDocument: jest.fn(),
 }));
 
 const { default: onUnsupported } = await import(

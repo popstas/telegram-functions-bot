@@ -12,6 +12,7 @@ jest.unstable_mockModule("../../src/telegram/context.ts", () => ({
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   isAdminUser: () => false,
   sendTelegramMessage: mockSendTelegramMessage,
+  sendTelegramDocument: jest.fn(),
 }));
 
 const { default: checkAccessLevel } = await import(

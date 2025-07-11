@@ -23,6 +23,7 @@ jest.unstable_mockModule("../../src/config.ts", () => ({
 
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   sendTelegramMessage: (...args: unknown[]) => mockSendTelegramMessage(...args),
+  sendTelegramDocument: jest.fn(),
 }));
 
 jest.unstable_mockModule("../../src/handlers/onTextMessage.ts", () => ({

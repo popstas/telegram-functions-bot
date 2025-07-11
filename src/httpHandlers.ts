@@ -199,8 +199,9 @@ export async function toolPostHandler(
     let jsonAnswer;
     result = await fn(argsStr);
     const toolAnswer = JSON.parse(result.content);
-    if (toolAnswer[0]) {
-      jsonAnswer = JSON.parse(toolAnswer[0].text);
+    const arr = Array.isArray(toolAnswer) ? toolAnswer : toolAnswer.content;
+    if (arr && arr[0]) {
+      jsonAnswer = JSON.parse(arr[0].text);
     }
     log({
       msg: JSON.stringify(jsonAnswer),

@@ -278,3 +278,26 @@ export function getTelegramForwardedUser(
 
   return `${name}${username ? `, Telegram: @${username}` : ""}`;
 }
+export async function sendTelegramDocument(
+  chat_id: number,
+  filePath: string,
+  fileName?: string,
+  chatConfig?: ConfigChatType,
+): Promise<Message.DocumentMessage | undefined> {
+  try {
+    const response = await useBot(chatConfig?.bot_token).telegram.sendDocument(
+      chat_id,
+      { source: filePath, filename: fileName },
+    );
+    return response as unknown as Message.DocumentMessage;
+  } catch (e: unknown) {
+    const error = e as TelegramError;
+    log({
+      msg: `Error sending document to user ${chat_id}: ${
+        error.response?.description || "Unknown error"
+      }`,
+      chatId: chat_id,
+      logLevel: "warn",
+    });
+  }
+}
