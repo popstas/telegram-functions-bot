@@ -7,6 +7,7 @@ const mockExecuteTools = jest.fn();
 const mockAddToHistory = jest.fn();
 const mockForgetHistory = jest.fn();
 const mockSendTelegramMessage = jest.fn();
+const mockSendTelegramDocument = jest.fn();
 const mockBuildMessages = jest.fn();
 const mockUseApi = jest.fn();
 const mockUseLangfuse = jest.fn();
@@ -34,6 +35,8 @@ jest.unstable_mockModule("../../src/helpers/history.ts", () => ({
 
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   sendTelegramMessage: (...args: unknown[]) => mockSendTelegramMessage(...args),
+  sendTelegramDocument: (...args: unknown[]) =>
+    mockSendTelegramDocument(...args),
   getTelegramForwardedUser: jest.fn(),
   getFullName: jest.fn(),
   isAdminUser: jest.fn(),
@@ -109,6 +112,7 @@ beforeEach(async () => {
   mockAddToHistory.mockReset();
   mockForgetHistory.mockReset();
   mockSendTelegramMessage.mockReset();
+  mockSendTelegramDocument.mockReset();
   mockBuildMessages.mockReset();
   mockUseApi.mockReset();
   mockUseLangfuse.mockReset();

@@ -29,6 +29,7 @@ jest.unstable_mockModule("../../src/helpers/useTools.ts", () => ({
 
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   sendTelegramMessage: (...args: unknown[]) => mockSendTelegramMessage(...args),
+  sendTelegramDocument: jest.fn(),
   getFullName: () => "User",
   isAdminUser: (...args: unknown[]) => mockIsAdminUser(...args),
 }));

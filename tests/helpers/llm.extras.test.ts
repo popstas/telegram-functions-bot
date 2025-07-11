@@ -139,6 +139,7 @@ describe("requestGptAnswer", () => {
   jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
     getTelegramForwardedUser: (...args: unknown[]) => mockForward(...args),
     sendTelegramMessage: jest.fn(),
+    sendTelegramDocument: jest.fn(),
     getFullName: jest.fn(),
     isAdminUser: jest.fn(),
   }));

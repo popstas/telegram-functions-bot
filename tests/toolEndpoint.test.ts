@@ -66,7 +66,9 @@ describe("toolPostHandler", () => {
         call: jest.fn().mockReturnValue({
           functions: {
             get: () => async (args: string) => ({
-              content: JSON.stringify([{ text: args }]),
+              content: JSON.stringify({
+                content: [{ type: "text", text: args }],
+              }),
             }),
           },
           toolSpecs: { type: "function", function: { name: "echo" } },
@@ -94,7 +96,9 @@ describe("toolPostHandler", () => {
         call: jest.fn().mockReturnValue({
           functions: {
             get: () => async (args: string) => ({
-              content: JSON.stringify([{ text: args }]),
+              content: JSON.stringify({
+                content: [{ type: "text", text: args }],
+              }),
             }),
           },
           toolSpecs: { type: "function", function: { name: "echo" } },

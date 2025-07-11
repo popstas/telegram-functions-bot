@@ -2,7 +2,7 @@ import { Message } from "telegraf/types";
 import { useBot } from "../bot.ts";
 import { useConfig } from "../config.ts";
 import { ConfigChatButtonType, ConfigChatType } from "../types.ts";
-import { Context, Markup } from "telegraf";
+import { Context, Markup, Input } from "telegraf";
 import { User } from "@telegraf/types/manage";
 import {
   InlineKeyboardMarkup,
@@ -277,4 +277,29 @@ export function getTelegramForwardedUser(
         }`.trim();
 
   return `${name}${username ? `, Telegram: @${username}` : ""}`;
+}
+export async function sendTelegramDocument(
+  chat_id: number,
+  file: string | Buffer,
+  fileName?: string,
+  mimeType?: string,
+  chatConfig?: ConfigChatType,
+): Promise<Message.DocumentMessage | undefined> {
+  try {
+    const document = file instanceof Buffer ? Input.fromBuffer(file, fileName) : Input.fromLocalFile(file as string);
+    const response = await useBot(chatConfig?.bot_token).telegram.sendDocument(
+      chat_id,
+      document,
+    );
+    return response as unknown as Message.DocumentMessage;
+  } catch (e: unknown) {
+    const error = e as TelegramError;
+    log({
+      msg: `Error sending document to user ${chat_id}: ${
+        error.response?.description || "Unknown error"
+      }`,
+      chatId: chat_id,
+      logLevel: "warn",
+    });
+  }
 }

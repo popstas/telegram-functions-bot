@@ -119,6 +119,7 @@ jest.unstable_mockModule("../../src/helpers/gpt.ts", () => ({
 
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   sendTelegramMessage: mockSendTelegramMessage,
+  sendTelegramDocument: jest.fn(),
   getFullName: jest.fn(),
   getTelegramForwardedUser: jest.fn(),
   isAdminUser: jest.fn(),

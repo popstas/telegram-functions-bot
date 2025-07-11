@@ -10,6 +10,7 @@ const mockSendTelegramMessage = jest.fn();
 
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   sendTelegramMessage: mockSendTelegramMessage,
+  sendTelegramDocument: jest.fn(),
 }));
 
 const { default: resolveChatButtons } = await import(

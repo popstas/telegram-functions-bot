@@ -7,6 +7,7 @@ const mockCheckAccessLevel = jest.fn();
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   __esModule: true,
   sendTelegramMessage: mockSendTelegramMessage,
+  sendTelegramDocument: jest.fn(),
   getFullName: jest.fn(),
   getTelegramForwardedUser: jest.fn(),
   isAdminUser: jest.fn(),

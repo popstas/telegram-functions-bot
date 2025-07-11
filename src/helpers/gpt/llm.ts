@@ -15,6 +15,7 @@ import {
 import { addToHistory, forgetHistory } from "../history.ts";
 import {
   sendTelegramMessage,
+  sendTelegramDocument,
   getTelegramForwardedUser,
 } from "../../telegram/send.ts";
 import { useThreads } from "../../threads.ts";
@@ -223,6 +224,19 @@ export async function handleModelAnswer({
   return { content: answer };
 }
 
+function parseToolContent(content: string) {
+  try {
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && Array.isArray((parsed as { content?: unknown }).content)) {
+      return (parsed as { content: unknown[] }).content;
+    }
+  } catch {
+    // ignore parse error
+  }
+  return [{ type: "text", text: content }];
+}
+
 export async function processToolResults({
   tool_res,
   messageAgent,
@@ -251,20 +265,45 @@ export async function processToolResults({
     const isMcp = chatTool?.module.call(chatConfig, gptContext.thread).mcp;
     const showMessages =
       chatConfig.chatParams?.showToolMessages !== false && !isMcp;
-    if (showMessages && toolCall.function.name !== "forget") {
+    if (toolCall.function.name !== "forget") {
       const params = { deleteAfter: chatConfig.chatParams?.deleteToolAnswers };
       const toolResMessageLimit = 8000;
-      const msgContentLimited =
-        toolRes.content.length > toolResMessageLimit
-          ? toolRes.content.slice(0, toolResMessageLimit) + "..."
-          : toolRes.content;
-      sendTelegramMessage(
-        msg.chat.id,
-        msgContentLimited,
-        params,
-        undefined,
-        chatConfig,
-      );
+      const parts = parseToolContent(toolRes.content);
+      for (const part of parts) {
+        if (part.type === "text" && part.text && showMessages) {
+          const msgContentLimited =
+            part.text.length > toolResMessageLimit
+              ? part.text.slice(0, toolResMessageLimit) + "..."
+              : part.text;
+          await sendTelegramMessage(
+            msg.chat.id,
+            msgContentLimited,
+            params,
+            undefined,
+            chatConfig,
+          );
+        } else if (part.type === "resource") {
+          if (part.resource?.blob) {
+            const buffer = Buffer.from(part.resource.blob, "base64");
+            await sendTelegramDocument(
+              msg.chat.id,
+              buffer,
+              part.resource.name,
+              part.resource.mimeType,
+              chatConfig,
+            );
+          } else if (part.resource?.uri?.startsWith("file://")) {
+            const filePath = part.resource.uri.replace(/^file:\/\//, "");
+            await sendTelegramDocument(
+              msg.chat.id,
+              filePath,
+              part.resource.name,
+              part.resource.mimeType,
+              chatConfig,
+            );
+          }
+        }
+      }
     }
 
     const messageTool: OpenAI.ChatCompletionToolMessageParam = {
