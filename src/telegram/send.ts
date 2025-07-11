@@ -2,7 +2,7 @@ import { Message } from "telegraf/types";
 import { useBot } from "../bot.ts";
 import { useConfig } from "../config.ts";
 import { ConfigChatButtonType, ConfigChatType } from "../types.ts";
-import { Context, Markup } from "telegraf";
+import { Context, Markup, Input } from "telegraf";
 import { User } from "@telegraf/types/manage";
 import {
   InlineKeyboardMarkup,
@@ -286,9 +286,10 @@ export async function sendTelegramDocument(
   chatConfig?: ConfigChatType,
 ): Promise<Message.DocumentMessage | undefined> {
   try {
+    const document = file instanceof Buffer ? Input.fromBuffer(file, fileName) : Input.fromLocalFile(file as string);
     const response = await useBot(chatConfig?.bot_token).telegram.sendDocument(
       chat_id,
-      { source: file, filename: fileName, contentType: mimeType },
+      document,
     );
     return response as unknown as Message.DocumentMessage;
   } catch (e: unknown) {

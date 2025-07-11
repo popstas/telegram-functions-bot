@@ -222,8 +222,9 @@ export async function executeTools(
       [key: string]: unknown;
     }
 
-    function prettifyExpertizemeSearchItems(params: SearchParams): string {
-      const lines: string[] = ["`Поиск СМИ:`"];
+    function prettifyExpertizemeSearchItems(params: SearchParams, toolName: string): string {
+      const title = toolName === "expertizeme_search_items" ? "Поиск СМИ:" : "Экспорт СМИ:";
+      const lines: string[] = ["`" + title + "`"];
       if (Array.isArray(params.filters)) {
         for (const filter of params.filters) {
           if (typeof filter === "object" && filter !== null) {
@@ -297,8 +298,8 @@ export async function executeTools(
     }
 
     let toolParamsStr: string;
-    if (chatTool.name === "expertizeme_search_items") {
-      toolParamsStr = prettifyExpertizemeSearchItems(JSON.parse(toolParams));
+    if (["expertizeme_search_items", "expertizeme_export_items"].includes(chatTool.name)) {
+      toolParamsStr = prettifyExpertizemeSearchItems(JSON.parse(toolParams), chatTool.name);
     } else {
       toolParamsStr = [
         "`" +

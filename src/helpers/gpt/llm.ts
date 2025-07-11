@@ -265,12 +265,12 @@ export async function processToolResults({
     const isMcp = chatTool?.module.call(chatConfig, gptContext.thread).mcp;
     const showMessages =
       chatConfig.chatParams?.showToolMessages !== false && !isMcp;
-    if (showMessages && toolCall.function.name !== "forget") {
+    if (toolCall.function.name !== "forget") {
       const params = { deleteAfter: chatConfig.chatParams?.deleteToolAnswers };
       const toolResMessageLimit = 8000;
       const parts = parseToolContent(toolRes.content);
       for (const part of parts) {
-        if (part.type === "text" && part.text) {
+        if (part.type === "text" && part.text && showMessages) {
           const msgContentLimited =
             part.text.length > toolResMessageLimit
               ? part.text.slice(0, toolResMessageLimit) + "..."
@@ -283,20 +283,20 @@ export async function processToolResults({
             chatConfig,
           );
         } else if (part.type === "resource") {
-          if (part.resource?.uri?.startsWith("file://")) {
-            const filePath = part.resource.uri.replace(/^file:\/\//, "");
-            await sendTelegramDocument(
-              msg.chat.id,
-              filePath,
-              part.resource.name,
-              part.resource.mimeType,
-              chatConfig,
-            );
-          } else if (part.resource?.blob) {
+          if (part.resource?.blob) {
             const buffer = Buffer.from(part.resource.blob, "base64");
             await sendTelegramDocument(
               msg.chat.id,
               buffer,
+              part.resource.name,
+              part.resource.mimeType,
+              chatConfig,
+            );
+          } else if (part.resource?.uri?.startsWith("file://")) {
+            const filePath = part.resource.uri.replace(/^file:\/\//, "");
+            await sendTelegramDocument(
+              msg.chat.id,
+              filePath,
               part.resource.name,
               part.resource.mimeType,
               chatConfig,
