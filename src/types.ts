@@ -89,6 +89,7 @@ export type ChatParamsType = {
   showToolMessages?: true | false | undefined | "headers";
   markOurUsers?: string;
   placeholderCacheTime?: number;
+  useResponsesApi?: boolean;
 };
 
 export type CompletionParamsType = {

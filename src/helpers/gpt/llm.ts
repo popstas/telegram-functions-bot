@@ -65,10 +65,25 @@ export async function llmCall({
     apiFunc = observeOpenAI(api, { generationName, parent: trace });
   }
   try {
-    const res = (await apiFunc.chat.completions.create(apiParams, {
-      signal,
-    })) as OpenAI.ChatCompletion;
-    return { res, trace };
+    const useResponses = chatConfig?.chatParams?.useResponsesApi;
+    if (useResponses && (apiFunc as any).responses?.create) {
+      const respParams: Record<string, unknown> = {
+        ...apiParams,
+        input: (apiParams as any).messages,
+      };
+      delete (respParams as any).messages;
+      const r = await (apiFunc as any).responses.create(respParams, { signal });
+      const output = (r as any).output_text ?? "";
+      const res = {
+        choices: [{ message: { role: "assistant", content: output } }],
+      } as OpenAI.ChatCompletion;
+      return { res, trace };
+    } else {
+      const res = (await apiFunc.chat.completions.create(apiParams, {
+        signal,
+      })) as OpenAI.ChatCompletion;
+      return { res, trace };
+    }
   } catch (e) {
     if (e instanceof APIUserAbortError) {
       return { res: {} as OpenAI.ChatCompletion, trace };
