@@ -70,16 +70,66 @@ export async function llmCall({
       responses?: OpenAI.Responses;
     };
     if (useResponses && apiResponses.responses?.create) {
+      const messages = (
+        apiParams as OpenAI.Chat.Completions.ChatCompletionCreateParams
+      ).messages;
+      const input: OpenAI.Responses.ResponseInputItem[] = [];
+      for (const m of (messages || []) as (OpenAI.ChatCompletionMessageParam & {
+        name?: string;
+      })[]) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { name: _unused, ...rest } = m;
+        if (
+          rest.role === "assistant" &&
+          (rest as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam)
+            .tool_calls?.length
+        ) {
+          for (const call of (
+            rest as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam
+          )
+            .tool_calls as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) {
+            input.push({
+              type: "function_call",
+              name: call.function.name,
+              arguments: call.function.arguments,
+              call_id:
+                (call as unknown as { call_id?: string }).call_id || call.id,
+            } as OpenAI.Responses.ResponseFunctionToolCall);
+          }
+          if (
+            (
+              rest as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam
+            ).content
+          ) {
+            input.push({
+              role: "assistant",
+              content: (
+                rest as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam
+              ).content as string,
+              type: "message",
+            } as OpenAI.Responses.EasyInputMessage);
+          }
+        } else if (rest.role === "tool") {
+          input.push({
+            type: "function_call_output",
+            call_id: (rest as OpenAI.Chat.CompletionToolMessageParam)
+              .tool_call_id,
+            output: rest.content as string,
+          } as OpenAI.Responses.FunctionCallOutput);
+        } else {
+          input.push({
+            role: rest.role as "user" | "assistant" | "system" | "developer",
+            content: (
+              rest as OpenAI.ChatCompletionMessageParam & { content?: string }
+            ).content as string,
+            type: "message",
+          } as OpenAI.Responses.EasyInputMessage);
+        }
+      }
+
       const respParams: Record<string, unknown> = {
         ...apiParams,
-        input: (
-          (apiParams as OpenAI.Chat.Completions.ChatCompletionCreateParams)
-            .messages || []
-        ).map((m: OpenAI.ChatCompletionMessageParam & { name?: string }) => {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { name: _unused, ...rest } = m;
-          return rest;
-        }),
+        input,
       };
       delete (respParams as { messages?: unknown }).messages;
       if (apiParams.tools) {
@@ -111,6 +161,7 @@ export async function llmCall({
       if (functionCalls.length) {
         const calls = functionCalls.map((call) => ({
           id: call.id ?? call.call_id,
+          call_id: call.call_id,
           type: "function",
           function: { name: call.name, arguments: call.arguments },
         }));
