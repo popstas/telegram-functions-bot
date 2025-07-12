@@ -118,14 +118,31 @@ describe("llmCall", () => {
     const params = {
       messages: [{ role: "user", content: "hi", name: "Stanislav" }],
       model: "m",
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "t",
+            description: "d",
+            parameters: { type: "object", properties: {} },
+          },
+        },
+      ],
     } as OpenAI.ChatCompletionCreateParams;
     const result = await llm.llmCall({
       apiParams: params,
       msg: { ...baseMsg },
       chatConfig: { ...chatConfig, chatParams: { useResponsesApi: true } },
     });
-    expect((api.responses.create as jest.Mock).mock.calls[0][0].input).toEqual([
-      { role: "user", content: "hi" },
+    const calledParams = (api.responses.create as jest.Mock).mock.calls[0][0];
+    expect(calledParams.input).toEqual([{ role: "user", content: "hi" }]);
+    expect(calledParams.tools).toEqual([
+      {
+        type: "function",
+        name: "t",
+        description: "d",
+        parameters: { type: "object", properties: {} },
+      },
     ]);
     expect(result.res.choices[0].message.content).toBe("r");
   });

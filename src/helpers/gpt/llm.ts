@@ -87,6 +87,23 @@ export async function llmCall({
         }),
       };
       delete (respParams as { messages?: unknown }).messages;
+      if (apiParams.tools) {
+        respParams.tools = (apiParams.tools as OpenAI.ChatCompletionTool[]).map(
+          (t) => {
+            if (t.type === "function") {
+              const { function: fn, ...rest } = t;
+              return {
+                ...rest,
+                type: "function",
+                name: fn.name,
+                description: fn.description,
+                parameters: fn.parameters,
+              };
+            }
+            return t as unknown as Record<string, unknown>;
+          },
+        );
+      }
       const r = await apiResponses.responses.create(respParams, { signal });
       const output = r.output_text ?? "";
       const res = {
