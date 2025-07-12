@@ -54,7 +54,7 @@ export class CreateAgentClient extends AIFunctionsProvider {
         (args.name || "agent").toLowerCase().replace(/[^a-z0-9_]/g, "_"),
       systemMessage: args.prompt || "You are an assistant",
       completionParams: { model: this.configChat.completionParams.model },
-      chatParams: { useResponsesApi: false } as ChatParamsType,
+      chatParams: {} as ChatParamsType,
       toolParams: {} as ToolParamsType,
     };
     config.chats.push(agent);

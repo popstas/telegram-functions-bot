@@ -97,7 +97,7 @@ describe("generatePrivateChatConfig", () => {
       name: "Private alice",
       username: "alice",
       toolParams: {},
-      chatParams: { useResponsesApi: false },
+      chatParams: {},
     });
   });
 });

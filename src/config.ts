@@ -207,7 +207,7 @@ export function generatePrivateChatConfig(username: string) {
     name: `Private ${username}`,
     username,
     toolParams: {} as ToolParamsType,
-    chatParams: { useResponsesApi: false } as ChatParamsType,
+    chatParams: {} as ChatParamsType,
   } as ConfigChatType;
 }
 
