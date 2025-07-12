@@ -116,7 +116,7 @@ describe("llmCall", () => {
     };
     mockUseApi.mockReturnValue(api);
     const params = {
-      messages: [],
+      messages: [{ role: "user", content: "hi", name: "Stanislav" }],
       model: "m",
     } as OpenAI.ChatCompletionCreateParams;
     const result = await llm.llmCall({
@@ -124,9 +124,9 @@ describe("llmCall", () => {
       msg: { ...baseMsg },
       chatConfig: { ...chatConfig, chatParams: { useResponsesApi: true } },
     });
-    expect((api.responses.create as jest.Mock).mock.calls[0][0].input).toEqual(
-      [],
-    );
+    expect((api.responses.create as jest.Mock).mock.calls[0][0].input).toEqual([
+      { role: "user", content: "hi" },
+    ]);
     expect(result.res.choices[0].message.content).toBe("r");
   });
 });

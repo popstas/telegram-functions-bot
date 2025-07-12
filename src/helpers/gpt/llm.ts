@@ -66,14 +66,29 @@ export async function llmCall({
   }
   try {
     const useResponses = chatConfig?.chatParams?.useResponsesApi;
-    if (useResponses && (apiFunc as any).responses?.create) {
+    const apiResponses = apiFunc as unknown as {
+      responses?: {
+        create: (
+          params: Record<string, unknown>,
+          options?: { signal?: AbortSignal },
+        ) => Promise<{ output_text?: string }>;
+      };
+    };
+    if (useResponses && apiResponses.responses?.create) {
       const respParams: Record<string, unknown> = {
         ...apiParams,
-        input: (apiParams as any).messages,
+        input: (
+          (apiParams as OpenAI.Chat.Completions.ChatCompletionCreateParams)
+            .messages || []
+        ).map((m: OpenAI.ChatCompletionMessageParam & { name?: string }) => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { name: _unused, ...rest } = m;
+          return rest;
+        }),
       };
-      delete (respParams as any).messages;
-      const r = await (apiFunc as any).responses.create(respParams, { signal });
-      const output = (r as any).output_text ?? "";
+      delete (respParams as { messages?: unknown }).messages;
+      const r = await apiResponses.responses.create(respParams, { signal });
+      const output = r.output_text ?? "";
       const res = {
         choices: [{ message: { role: "assistant", content: output } }],
       } as OpenAI.ChatCompletion;
