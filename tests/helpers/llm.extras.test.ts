@@ -146,6 +146,47 @@ describe("llmCall", () => {
     ]);
     expect(result.res.choices[0].message.content).toBe("r");
   });
+
+  it("handles responses function_call", async () => {
+    mockUseLangfuse.mockReturnValue({ trace: undefined });
+    const api = {
+      responses: {
+        create: jest.fn().mockResolvedValue({
+          type: "function_call",
+          call_id: "call1",
+          name: "t",
+          arguments: "{}",
+        }),
+      },
+    };
+    mockUseApi.mockReturnValue(api);
+    const params = {
+      messages: [{ role: "user", content: "hi", name: "Stanislav" }],
+      model: "m",
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "t",
+            description: "d",
+            parameters: { type: "object", properties: {} },
+          },
+        },
+      ],
+    } as OpenAI.ChatCompletionCreateParams;
+    const result = await llm.llmCall({
+      apiParams: params,
+      msg: { ...baseMsg },
+      chatConfig: { ...chatConfig, chatParams: { useResponsesApi: true } },
+    });
+    expect(result.res.choices[0].message.tool_calls).toEqual([
+      {
+        id: "call1",
+        type: "function",
+        function: { name: "t", arguments: "{}" },
+      },
+    ]);
+  });
 });
 
 describe("requestGptAnswer", () => {

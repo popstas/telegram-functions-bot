@@ -105,10 +105,33 @@ export async function llmCall({
         );
       }
       const r = await apiResponses.responses.create(respParams, { signal });
-      const output = r.output_text ?? "";
-      const res = {
-        choices: [{ message: { role: "assistant", content: output } }],
-      } as OpenAI.ChatCompletion;
+      let res: OpenAI.ChatCompletion;
+      if ((r as { output_text?: string }).output_text !== undefined) {
+        const output = (r as { output_text?: string }).output_text ?? "";
+        res = {
+          choices: [{ message: { role: "assistant", content: output } }],
+        } as OpenAI.ChatCompletion;
+      } else if ((r as { type?: string }).type === "function_call") {
+        const call = {
+          id:
+            (r as { call_id?: string; id?: string }).call_id ||
+            (r as { id?: string }).id ||
+            "call",
+          type: "function",
+          function: {
+            name: (r as { name?: string }).name || "",
+            arguments: (r as { arguments?: string }).arguments || "",
+          },
+        } as OpenAI.Chat.Completions.ChatCompletionMessageToolCall;
+        res = {
+          choices: [{ message: { role: "assistant", tool_calls: [call] } }],
+        } as OpenAI.ChatCompletion;
+      } else {
+        const output = (r as { output?: string }).output ?? "";
+        res = {
+          choices: [{ message: { role: "assistant", content: output } }],
+        } as OpenAI.ChatCompletion;
+      }
       return { res, trace };
     } else {
       const res = (await apiFunc.chat.completions.create(apiParams, {
