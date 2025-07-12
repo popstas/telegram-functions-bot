@@ -67,12 +67,7 @@ export async function llmCall({
   try {
     const useResponses = chatConfig?.chatParams?.useResponsesApi;
     const apiResponses = apiFunc as unknown as {
-      responses?: {
-        create: (
-          params: Record<string, unknown>,
-          options?: { signal?: AbortSignal },
-        ) => Promise<{ output_text?: string }>;
-      };
+      responses?: OpenAI.Responses;
     };
     if (useResponses && apiResponses.responses?.create) {
       const respParams: Record<string, unknown> = {
@@ -104,30 +99,26 @@ export async function llmCall({
           },
         );
       }
-      const r = await apiResponses.responses.create(respParams, { signal });
+      const r = (await apiResponses.responses.create(respParams, {
+        signal,
+      })) as OpenAI.Responses.Response;
       let res: OpenAI.ChatCompletion;
-      if ((r as { output_text?: string }).output_text !== undefined) {
-        const output = (r as { output_text?: string }).output_text ?? "";
-        res = {
-          choices: [{ message: { role: "assistant", content: output } }],
-        } as OpenAI.ChatCompletion;
-      } else if ((r as { type?: string }).type === "function_call") {
-        const call = {
-          id:
-            (r as { call_id?: string; id?: string }).call_id ||
-            (r as { id?: string }).id ||
-            "call",
+      const functionCalls = Array.isArray(r.output)
+        ? (r.output.filter(
+            (item) => item.type === "function_call",
+          ) as OpenAI.Responses.ResponseFunctionToolCall[])
+        : [];
+      if (functionCalls.length) {
+        const calls = functionCalls.map((call) => ({
+          id: call.id ?? call.call_id,
           type: "function",
-          function: {
-            name: (r as { name?: string }).name || "",
-            arguments: (r as { arguments?: string }).arguments || "",
-          },
-        } as OpenAI.Chat.Completions.ChatCompletionMessageToolCall;
+          function: { name: call.name, arguments: call.arguments },
+        }));
         res = {
-          choices: [{ message: { role: "assistant", tool_calls: [call] } }],
+          choices: [{ message: { role: "assistant", tool_calls: calls } }],
         } as OpenAI.ChatCompletion;
       } else {
-        const output = (r as { output?: string }).output ?? "";
+        const output = r.output_text ?? (r as { output?: string }).output ?? "";
         res = {
           choices: [{ message: { role: "assistant", content: output } }],
         } as OpenAI.ChatCompletion;

@@ -152,10 +152,15 @@ describe("llmCall", () => {
     const api = {
       responses: {
         create: jest.fn().mockResolvedValue({
-          type: "function_call",
-          call_id: "call1",
-          name: "t",
-          arguments: "{}",
+          output_text: "",
+          output: [
+            {
+              type: "function_call",
+              call_id: "call1",
+              name: "t",
+              arguments: "{}",
+            },
+          ],
         }),
       },
     };
