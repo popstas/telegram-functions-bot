@@ -24,7 +24,7 @@ export function useApi(localModel?: string): OpenAI {
       apiCache[cacheKey] = new OpenAI({
         apiKey: config.auth.chatgpt_api_key,
         httpAgent,
-      });
+      } as unknown as OpenAI.ClientOptions & { httpAgent: unknown });
     }
   }
   return apiCache[cacheKey];

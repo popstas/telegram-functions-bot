@@ -17,6 +17,7 @@ import {
   sendTelegramMessage,
   sendTelegramDocument,
   getTelegramForwardedUser,
+  type ForwardOrigin,
 } from "../../telegram/send.ts";
 import { useThreads } from "../../threads.ts";
 import { useApi } from "../useApi.ts";
@@ -81,9 +82,9 @@ function convertToResponsesParams(
     } else if (msg.role === "tool") {
       input.push({
         type: "function_call_output",
-        call_id: (msg as OpenAI.Chat.CompletionToolMessageParam).tool_call_id,
+        call_id: (msg as OpenAI.ChatCompletionToolMessageParam).tool_call_id,
         output: msg.content as string,
-      } as OpenAI.Responses.FunctionCallOutput);
+      } as OpenAI.Responses.ResponseInputItem.FunctionCallOutput);
     } else {
       input.push({
         role: msg.role as "user" | "assistant" | "system" | "developer",
@@ -163,12 +164,12 @@ export async function llmCall({
         }));
         res = {
           choices: [{ message: { role: "assistant", tool_calls: calls } }],
-        } as OpenAI.ChatCompletion;
+        } as unknown as OpenAI.ChatCompletion;
       } else {
         const output = r.output_text ?? (r as { output?: string }).output ?? "";
         res = {
           choices: [{ message: { role: "assistant", content: output } }],
-        } as OpenAI.ChatCompletion;
+        } as unknown as OpenAI.ChatCompletion;
       }
       return { res, trace };
     } else {
@@ -505,7 +506,10 @@ export async function requestGptAnswer(
   if (!msg.text) return;
   const threads = useThreads();
 
-  const forwardedName = getTelegramForwardedUser(msg, chatConfig);
+  const forwardedName = getTelegramForwardedUser(
+    msg as Message.TextMessage & { forward_origin?: ForwardOrigin },
+    chatConfig,
+  );
   if (forwardedName) {
     msg.text = `Переслано от: ${forwardedName}\n` + msg.text;
   }

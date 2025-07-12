@@ -102,7 +102,7 @@ export function getActionUserMsg(ctx: Context): { user?: User; msg?: Message } {
   if (Object.prototype.hasOwnProperty.call(ctx, "update")) {
     const updateQuery = ctx.update as Update.CallbackQueryUpdate;
     const user = updateQuery.callback_query.from;
-    const msg = updateQuery.callback_query.message;
+    const msg = updateQuery.callback_query.message as Message;
     return { user, msg };
   }
   return {};
