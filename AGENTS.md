@@ -3,6 +3,7 @@
 This project is a TypeScript Telegram bot. The codebase uses Node.js tooling with lint, formatting and tests.
 
 ## Rules before commit
+- Always run `npm run typecheck` before commit.
 - Run `npm run test-full` before commit.
 - Run `npm run format` before commit.
 
