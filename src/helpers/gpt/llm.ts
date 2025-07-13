@@ -467,7 +467,11 @@ export async function requestGptAnswer(
     .map((f) => f.module.call(chatConfig, thread).functions.toolSpecs)
     .flat();
 
-  const allTools = [...builtInTools, ...functionTools];
+  const allTools = [...functionTools];
+  if (chatConfig.chatParams?.useResponsesApi) {
+    allTools.push(...builtInTools);
+  }
+
   const tools =
     allTools.length > 0
       ? (allTools as OpenAI.Chat.Completions.ChatCompletionTool[])

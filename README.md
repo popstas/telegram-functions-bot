@@ -48,7 +48,7 @@ Telegram bot with functions tools.
 - `read_knowledge_google_sheet` - questions and answers from Google Sheet
 - `read_knowledge_json` - questions and answers from json file/url
 - `ssh_command` - exec ssh shell command, single server from config
-- `web_search_preview` - use OpenAI web search tool (Responses API)
+- `web_search_preview` - use OpenAI internal web search tool (only for Responses API)
 - ... and thousands of tools from MCP
 
 ## Config
@@ -140,6 +140,16 @@ systemMessage: |
 
   Based on this weather, what should I wear today?
 ```
+
+## Use Responses API
+
+Responses API is a new feature of OpenAI that allows you to use tools and web search to get answers to user questions.
+
+To use it, set `useResponsesApi` to `true` in the chat config.
+
+Work only with OpenAI models.
+
+When enabled, the bot can use the `web_search_preview` tool to get web search results.
 
 ## Use agents as tools
 
