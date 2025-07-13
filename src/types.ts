@@ -90,6 +90,7 @@ export type ChatParamsType = {
   markOurUsers?: string;
   placeholderCacheTime?: number;
   useResponsesApi?: boolean;
+  streaming?: boolean;
 };
 
 export type CompletionParamsType = {
