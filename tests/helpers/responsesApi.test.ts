@@ -67,8 +67,8 @@ describe("responsesApi helpers", () => {
         { type: "function_call", call_id: "c", name: "t", arguments: "{}" },
       ],
     } as OpenAI.Responses.Response;
-    const chat = convertResponsesOutput(r);
-    expect(chat.choices[0].message.tool_calls).toEqual([
+    const { res } = convertResponsesOutput(r);
+    expect(res.choices[0].message.tool_calls).toEqual([
       {
         id: "c",
         call_id: "c",
@@ -82,7 +82,36 @@ describe("responsesApi helpers", () => {
     const r: OpenAI.Responses.Response = {
       output_text: "hello",
     } as OpenAI.Responses.Response;
-    const chat = convertResponsesOutput(r);
-    expect(chat.choices[0].message.content).toBe("hello");
+    const { res } = convertResponsesOutput(r);
+    expect(res.choices[0].message.content).toBe("hello");
+  });
+
+  it("parses web search details", () => {
+    const r: OpenAI.Responses.Response = {
+      output_text: "hi",
+      output: [
+        '{"id":"ws_1","type":"web_search_call","action":{"type":"search","query":"q"}}',
+        {
+          type: "message",
+          content: [
+            {
+              type: "output_text",
+              text: "hi",
+              annotations: [
+                {
+                  type: "url_citation",
+                  title: "T",
+                  url: "https://u",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    } as unknown as OpenAI.Responses.Response;
+    const { res, webSearchDetails } = convertResponsesOutput(r);
+    expect(res.choices[0].message.content).toBe("hi");
+    expect(webSearchDetails).toContain("Web search:");
+    expect(webSearchDetails).toContain("[T](https://u)");
   });
 });

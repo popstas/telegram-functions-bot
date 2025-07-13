@@ -72,13 +72,18 @@ export function convertResponsesInput(
   return respParams;
 }
 
-export function convertResponsesOutput(
-  r: OpenAI.Responses.Response,
-): OpenAI.ChatCompletion {
+export function convertResponsesOutput(r: OpenAI.Responses.Response): {
+  res: OpenAI.ChatCompletion;
+  webSearchDetails?: string;
+} {
   const functionCalls = Array.isArray(r.output)
-    ? (r.output.filter(
-        (item) => item.type === "function_call",
-      ) as OpenAI.Responses.ResponseFunctionToolCall[])
+    ? (
+        r.output.filter(
+          (item) =>
+            (typeof item === "string" ? JSON.parse(item) : item).type ===
+            "function_call",
+        ) as (OpenAI.Responses.ResponseFunctionToolCall | string)[]
+      ).map((item) => (typeof item === "string" ? JSON.parse(item) : item))
     : [];
   if (functionCalls.length) {
     const calls = functionCalls.map((call) => ({
@@ -88,11 +93,51 @@ export function convertResponsesOutput(
       function: { name: call.name, arguments: call.arguments },
     }));
     return {
-      choices: [{ message: { role: "assistant", tool_calls: calls } }],
-    } as unknown as OpenAI.ChatCompletion;
+      res: {
+        choices: [{ message: { role: "assistant", tool_calls: calls } }],
+      } as unknown as OpenAI.ChatCompletion,
+    };
   }
+
+  let webSearchDetails: string | undefined;
+  if (Array.isArray(r.output)) {
+    const lines: string[] = [];
+    let idx = 0;
+    for (const rawItem of r.output) {
+      let item: any = rawItem;
+      if (typeof rawItem === "string") {
+        try {
+          item = JSON.parse(rawItem);
+        } catch {
+          continue;
+        }
+      }
+      if (item.type === "web_search_call") {
+        idx++;
+        const query = item.action?.query || item.action?.url || "";
+        lines.push(`${idx}. ${query}:`);
+      } else if (item.type === "message") {
+        const contentItem = (item.content || []).find(
+          (c: any) => c.type === "output_text",
+        );
+        const annotations = (contentItem?.annotations || []).filter(
+          (a: any) => a.type === "url_citation",
+        );
+        for (const a of annotations) {
+          lines.push(`- [${a.title}](${a.url})`);
+        }
+      }
+    }
+    if (lines.length) {
+      webSearchDetails = "`Web search:`\n\n" + lines.join("\n");
+    }
+  }
+
   const output = r.output_text ?? "";
   return {
-    choices: [{ message: { role: "assistant", content: output } }],
-  } as unknown as OpenAI.ChatCompletion;
+    res: {
+      choices: [{ message: { role: "assistant", content: output } }],
+    } as unknown as OpenAI.ChatCompletion,
+    webSearchDetails,
+  };
 }

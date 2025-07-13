@@ -317,7 +317,7 @@ describe("requestGptAnswer", () => {
     expect(mockForward).toHaveBeenCalledWith(msg, chatConfig);
     expect(msg.text).toBe("Переслано от: Bob\nhi");
     expect(threads[1]).toBeDefined();
-    expect(res).toEqual({ content: "a" });
+    expect(res?.content).toBe("a");
   });
 
   it("passes web_search_preview tool to API", async () => {
@@ -336,5 +336,47 @@ describe("requestGptAnswer", () => {
     });
     const calledParams = (api.responses.create as jest.Mock).mock.calls[0][0];
     expect(calledParams.tools).toEqual([{ type: "web_search_preview" }]);
+  });
+
+  it("sends web search details", async () => {
+    const api = {
+      responses: {
+        create: jest.fn().mockResolvedValue({
+          output_text: "a",
+          output: [
+            '{"type":"web_search_call","action":{"type":"search","query":"q"}}',
+            {
+              type: "message",
+              content: [
+                {
+                  type: "output_text",
+                  text: "a",
+                  annotations: [
+                    {
+                      type: "url_citation",
+                      title: "T",
+                      url: "https://u",
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      },
+    };
+    mockUseApi.mockReturnValue(api);
+    const msg: Message.TextMessage = { ...baseMsg };
+    await requestGptAnswer(msg, {
+      ...chatConfig,
+      tools: ["web_search_preview"],
+      local_model: undefined,
+      chatParams: { useResponsesApi: true },
+    });
+    const sent = (await import("../../src/telegram/send.ts"))
+      .sendTelegramMessage as jest.Mock;
+    const message = sent.mock.calls.pop()?.[1];
+    expect(message).toContain("Web search:");
+    expect(message).toContain("[T](https://u)");
   });
 });

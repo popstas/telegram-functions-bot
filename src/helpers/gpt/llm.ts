@@ -60,7 +60,11 @@ export async function llmCall({
   generationName?: string;
   localModel?: string;
   signal?: AbortSignal;
-}): Promise<{ res: OpenAI.ChatCompletion; trace?: unknown }> {
+}): Promise<{
+  res: OpenAI.ChatCompletion;
+  trace?: unknown;
+  webSearchDetails?: string;
+}> {
   const api = useApi(localModel || chatConfig?.local_model);
   const { trace } = chatConfig
     ? useLangfuse(msg, chatConfig)
@@ -84,8 +88,8 @@ export async function llmCall({
       const r = (await apiResponses.responses.create(respParams, {
         signal,
       })) as OpenAI.Responses.Response;
-      const res = convertResponsesOutput(r);
-      return { res, trace };
+      const { res, webSearchDetails } = convertResponsesOutput(r);
+      return { res, trace, webSearchDetails };
     } else {
       const res = (await apiFunc.chat.completions.create(apiParams, {
         signal,
@@ -383,13 +387,23 @@ export async function processToolResults({
       : ("auto" as OpenAI.Chat.Completions.ChatCompletionToolChoiceOption),
   };
 
-  const { res, trace } = await llmCall({
+  const { res, trace, webSearchDetails } = await llmCall({
     apiParams,
     msg,
     chatConfig,
     generationName: "after-tools",
     localModel: chatConfig.local_model,
   });
+
+  if (webSearchDetails && chatConfig.chatParams?.showToolMessages !== false) {
+    await sendTelegramMessage(
+      msg.chat.id,
+      webSearchDetails,
+      { deleteAfter: chatConfig.chatParams?.deleteToolAnswers },
+      undefined,
+      chatConfig,
+    );
+  }
 
   return await handleModelAnswer({
     msg,
@@ -493,7 +507,7 @@ export async function requestGptAnswer(
     tools,
     response_format: options?.responseFormat,
   };
-  const { res, trace } = await llmCall({
+  const { res, trace, webSearchDetails } = await llmCall({
     apiParams,
     msg,
     chatConfig,
@@ -501,6 +515,16 @@ export async function requestGptAnswer(
     localModel: chatConfig.local_model,
     signal: options?.signal,
   });
+
+  if (webSearchDetails && chatConfig.chatParams?.showToolMessages !== false) {
+    await sendTelegramMessage(
+      msg.chat.id,
+      webSearchDetails,
+      { deleteAfter: chatConfig.chatParams?.deleteToolAnswers },
+      undefined,
+      chatConfig,
+    );
+  }
 
   const gptContext: GptContextType = {
     thread,
