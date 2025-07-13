@@ -3,7 +3,6 @@ import OpenAI from "openai";
 import {
   convertResponsesInput,
   convertResponsesOutput,
-  getWebSearchDetails,
 } from "../../src/helpers/gpt/responsesApi";
 
 describe("responsesApi helpers", () => {
