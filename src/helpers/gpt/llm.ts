@@ -17,6 +17,7 @@ import {
   sendTelegramMessage,
   sendTelegramDocument,
   getTelegramForwardedUser,
+  type ForwardOrigin,
 } from "../../telegram/send.ts";
 import { useThreads } from "../../threads.ts";
 import { useApi } from "../useApi.ts";
@@ -27,6 +28,10 @@ import { log } from "../../helpers.ts";
 import { executeTools, resolveChatTools, getToolsPrompts } from "./tools.ts";
 import { buildMessages, getSystemMessage } from "./messages.ts";
 import { APIUserAbortError } from "openai";
+import {
+  convertResponsesInput,
+  convertResponsesOutput,
+} from "./responsesApi.ts";
 
 export const EVALUATOR_PROMPT = `
 You are an impartial quality auditor for a Telegram bot.
@@ -65,18 +70,21 @@ export async function llmCall({
     apiFunc = observeOpenAI(api, { generationName, parent: trace });
   }
   try {
-    const useResponses = chatConfig?.chatParams?.useResponsesApi;
-    if (useResponses && (apiFunc as any).responses?.create) {
-      const respParams: Record<string, unknown> = {
-        ...apiParams,
-        input: (apiParams as any).messages,
-      };
-      delete (respParams as any).messages;
-      const r = await (apiFunc as any).responses.create(respParams, { signal });
-      const output = (r as any).output_text ?? "";
-      const res = {
-        choices: [{ message: { role: "assistant", content: output } }],
-      } as OpenAI.ChatCompletion;
+    const useResponses =
+      !localModel &&
+      !chatConfig?.local_model &&
+      chatConfig?.chatParams?.useResponsesApi;
+    const apiResponses = apiFunc as unknown as {
+      responses?: OpenAI.Responses;
+    };
+    if (useResponses && apiResponses.responses?.create) {
+      const respParams = convertResponsesInput(
+        apiParams as OpenAI.Chat.Completions.ChatCompletionCreateParams,
+      );
+      const r = (await apiResponses.responses.create(respParams, {
+        signal,
+      })) as OpenAI.Responses.Response;
+      const res = convertResponsesOutput(r);
       return { res, trace };
     } else {
       const res = (await apiFunc.chat.completions.create(apiParams, {
@@ -412,7 +420,10 @@ export async function requestGptAnswer(
   if (!msg.text) return;
   const threads = useThreads();
 
-  const forwardedName = getTelegramForwardedUser(msg, chatConfig);
+  const forwardedName = getTelegramForwardedUser(
+    msg as Message.TextMessage & { forward_origin?: ForwardOrigin },
+    chatConfig,
+  );
   if (forwardedName) {
     msg.text = `Переслано от: ${forwardedName}\n` + msg.text;
   }

@@ -9,13 +9,21 @@ import {
 import type { Context, Message } from "telegraf/types";
 import type { ConfigChatType } from "../../src/types";
 
-// Extend global type to include our test globals
+// Extend the global namespace
 declare global {
-  // Using var to extend the global scope
-  // eslint-disable-next-line no-var
-  var firstAbortController: AbortController | undefined;
-  // eslint-disable-next-line no-var
-  var secondAbortController: AbortController | undefined;
+  // These are type declarations for the global variables
+  interface Global {
+    firstAbortController: AbortController | undefined;
+    secondAbortController: AbortController | undefined;
+  }
+}
+
+// Initialize global variables
+if (global.firstAbortController === undefined) {
+  global.firstAbortController = undefined;
+}
+if (global.secondAbortController === undefined) {
+  global.secondAbortController = undefined;
 }
 
 interface Thread {

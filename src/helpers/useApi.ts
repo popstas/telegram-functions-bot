@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import OpenAI, { ClientOptions } from "openai";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import { useConfig } from "../config";
 
@@ -24,7 +24,7 @@ export function useApi(localModel?: string): OpenAI {
       apiCache[cacheKey] = new OpenAI({
         apiKey: config.auth.chatgpt_api_key,
         httpAgent,
-      });
+      } as unknown as ClientOptions & { httpAgent: unknown });
     }
   }
   return apiCache[cacheKey];

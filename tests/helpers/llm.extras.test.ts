@@ -116,18 +116,138 @@ describe("llmCall", () => {
     };
     mockUseApi.mockReturnValue(api);
     const params = {
-      messages: [],
+      messages: [{ role: "user", content: "hi", name: "Stanislav" }],
       model: "m",
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "t",
+            description: "d",
+            parameters: { type: "object", properties: {} },
+          },
+        },
+      ],
     } as OpenAI.ChatCompletionCreateParams;
     const result = await llm.llmCall({
       apiParams: params,
       msg: { ...baseMsg },
-      chatConfig: { ...chatConfig, chatParams: { useResponsesApi: true } },
+      chatConfig: {
+        ...chatConfig,
+        local_model: undefined,
+        chatParams: { useResponsesApi: true },
+      },
     });
-    expect((api.responses.create as jest.Mock).mock.calls[0][0].input).toEqual(
-      [],
-    );
+    const calledParams = (api.responses.create as jest.Mock).mock.calls[0][0];
+    expect(calledParams.input).toEqual([
+      { role: "user", content: "hi", type: "message" },
+    ]);
+    expect(calledParams.tools).toEqual([
+      {
+        type: "function",
+        name: "t",
+        description: "d",
+        parameters: { type: "object", properties: {} },
+      },
+    ]);
     expect(result.res.choices[0].message.content).toBe("r");
+  });
+
+  it("handles responses function_call", async () => {
+    mockUseLangfuse.mockReturnValue({ trace: undefined });
+    const api = {
+      responses: {
+        create: jest.fn().mockResolvedValue({
+          output_text: "",
+          output: [
+            {
+              type: "function_call",
+              call_id: "call1",
+              name: "t",
+              arguments: "{}",
+            },
+          ],
+        }),
+      },
+    };
+    mockUseApi.mockReturnValue(api);
+    const params = {
+      messages: [{ role: "user", content: "hi", name: "Stanislav" }],
+      model: "m",
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "t",
+            description: "d",
+            parameters: { type: "object", properties: {} },
+          },
+        },
+      ],
+    } as OpenAI.ChatCompletionCreateParams;
+    const result = await llm.llmCall({
+      apiParams: params,
+      msg: { ...baseMsg },
+      chatConfig: {
+        ...chatConfig,
+        local_model: undefined,
+        chatParams: { useResponsesApi: true },
+      },
+    });
+    expect(result.res.choices[0].message.tool_calls).toEqual([
+      {
+        id: "call1",
+        call_id: "call1",
+        type: "function",
+        function: { name: "t", arguments: "{}" },
+      },
+    ]);
+  });
+
+  it("converts tool messages for responses api", async () => {
+    mockUseLangfuse.mockReturnValue({ trace: undefined });
+    const api = {
+      responses: {
+        create: jest.fn().mockResolvedValue({ output_text: "r" }),
+      },
+    };
+    mockUseApi.mockReturnValue(api);
+    const params = {
+      messages: [
+        {
+          role: "assistant",
+          content: null,
+          tool_calls: [
+            {
+              id: "x",
+              type: "function",
+              function: { name: "t", arguments: "{}" },
+            },
+          ],
+        } as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam,
+        { role: "tool", content: "res", tool_call_id: "x" },
+      ],
+      model: "m",
+    } as OpenAI.ChatCompletionCreateParams;
+    await llm.llmCall({
+      apiParams: params,
+      msg: { ...baseMsg },
+      chatConfig: {
+        ...chatConfig,
+        local_model: undefined,
+        chatParams: { useResponsesApi: true },
+      },
+    });
+    const calledParams = (api.responses.create as jest.Mock).mock.calls[0][0];
+    expect(calledParams.input).toEqual([
+      {
+        type: "function_call",
+        name: "t",
+        arguments: "{}",
+        call_id: "x",
+      },
+      { type: "function_call_output", call_id: "x", output: "res" },
+    ]);
   });
 });
 
