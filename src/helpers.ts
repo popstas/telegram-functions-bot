@@ -2,7 +2,7 @@ import express from "express";
 import fs from "fs";
 import path from "path";
 
-type LogLevel = "debug" | "info" | "warn" | "error";
+type LogLevel = "debug" | "verbose" | "info" | "warn" | "error";
 
 interface LogParams {
   msg: string;

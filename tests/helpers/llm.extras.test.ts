@@ -135,7 +135,7 @@ describe("llmCall", () => {
       chatConfig: {
         ...chatConfig,
         local_model: undefined,
-        chatParams: { useResponsesApi: true },
+        chatParams: { useResponsesApi: true, streaming: false },
       },
     });
     const calledParams = (api.responses.create as jest.Mock).mock.calls[0][0];
@@ -191,7 +191,7 @@ describe("llmCall", () => {
       chatConfig: {
         ...chatConfig,
         local_model: undefined,
-        chatParams: { useResponsesApi: true },
+        chatParams: { useResponsesApi: true, streaming: false },
       },
     });
     expect(result.res.choices[0].message.tool_calls).toEqual([
@@ -235,7 +235,7 @@ describe("llmCall", () => {
       chatConfig: {
         ...chatConfig,
         local_model: undefined,
-        chatParams: { useResponsesApi: true },
+        chatParams: { useResponsesApi: true, streaming: false },
       },
     });
     const calledParams = (api.responses.create as jest.Mock).mock.calls[0][0];
@@ -248,6 +248,52 @@ describe("llmCall", () => {
       },
       { type: "function_call_output", call_id: "x", output: "res" },
     ]);
+  });
+
+  it("uses responses streaming when enabled", async () => {
+    mockUseLangfuse.mockReturnValue({ trace: undefined });
+    const events = [
+      {
+        type: "response.created",
+        sequence_number: 0,
+        response: { output: [], output_text: "" },
+      },
+      {
+        type: "response.completed",
+        sequence_number: 1,
+        response: { output_text: "r", output: [] },
+      },
+    ];
+    const stream = {
+      async *[Symbol.asyncIterator]() {
+        for (const e of events)
+          yield e as unknown as OpenAI.Responses.ResponseStreamEvent;
+      },
+      controller: { signal: undefined },
+      on: jest.fn(),
+    } as unknown as AsyncIterable<OpenAI.Responses.ResponseStreamEvent>;
+    const api = {
+      responses: {
+        stream: jest.fn().mockReturnValue(stream),
+        create: jest.fn(),
+      },
+    };
+    mockUseApi.mockReturnValue(api);
+    const params = {
+      messages: [{ role: "user", content: "hi" }],
+      model: "m",
+    } as OpenAI.ChatCompletionCreateParams;
+    const result = await llm.llmCall({
+      apiParams: params,
+      msg: { ...baseMsg },
+      chatConfig: {
+        ...chatConfig,
+        local_model: undefined,
+        chatParams: { useResponsesApi: true, streaming: true },
+      },
+    });
+    expect(api.responses.stream).toHaveBeenCalled();
+    expect(result.res.choices[0].message.content).toBe("r");
   });
 });
 
@@ -332,7 +378,7 @@ describe("requestGptAnswer", () => {
       ...chatConfig,
       tools: ["web_search_preview"],
       local_model: undefined,
-      chatParams: { useResponsesApi: true },
+      chatParams: { useResponsesApi: true, streaming: false },
     });
     const calledParams = (api.responses.create as jest.Mock).mock.calls[0][0];
     expect(calledParams.tools).toEqual([{ type: "web_search_preview" }]);
@@ -372,7 +418,7 @@ describe("requestGptAnswer", () => {
       ...chatConfig,
       tools: ["web_search_preview"],
       local_model: undefined,
-      chatParams: { useResponsesApi: true },
+      chatParams: { useResponsesApi: true, streaming: false },
     });
     const sent = (await import("../../src/telegram/send.ts"))
       .sendTelegramMessage as jest.Mock;

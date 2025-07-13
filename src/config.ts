@@ -134,6 +134,7 @@ export function generateConfig(): ConfigType {
           confirmation: false,
           showToolMessages: true,
           useResponsesApi: false,
+          streaming: true,
         },
         toolParams: {
           brainstorm: {
@@ -177,6 +178,7 @@ export function generateConfig(): ConfigType {
           confirmation: false,
           showToolMessages: true,
           useResponsesApi: false,
+          streaming: true,
         },
         toolParams: {
           brainstorm: {

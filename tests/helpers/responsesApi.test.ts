@@ -86,6 +86,19 @@ describe("responsesApi helpers", () => {
     expect(res.choices[0].message.content).toBe("hello");
   });
 
+  it("uses message output when output_text missing", () => {
+    const r: OpenAI.Responses.Response = {
+      output: [
+        {
+          type: "message",
+          content: [{ type: "output_text", text: "msg" }],
+        },
+      ],
+    } as unknown as OpenAI.Responses.Response;
+    const { res } = convertResponsesOutput(r);
+    expect(res.choices[0].message.content).toBe("msg");
+  });
+
   it("parses web search details", () => {
     const r: OpenAI.Responses.Response = {
       output_text: "hi",

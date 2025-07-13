@@ -32,6 +32,7 @@ import {
   convertResponsesInput,
   convertResponsesOutput,
 } from "./responsesApi.ts";
+import { handleResponseStream } from "./streaming.ts";
 
 export const EVALUATOR_PROMPT = `
 You are an impartial quality auditor for a Telegram bot.
@@ -85,6 +86,17 @@ export async function llmCall({
       const respParams = convertResponsesInput(
         apiParams as OpenAI.Chat.Completions.ChatCompletionCreateParams,
       );
+      if (chatConfig?.chatParams?.streaming !== false) {
+        const stream = apiResponses.responses.stream(
+          { ...respParams, stream: true } as never,
+          { signal },
+        );
+        const { res, webSearchDetails } = await handleResponseStream(
+          stream,
+          chatConfig,
+        );
+        return { res, trace, webSearchDetails };
+      }
       const r = (await apiResponses.responses.create(respParams, {
         signal,
       })) as OpenAI.Responses.Response;
