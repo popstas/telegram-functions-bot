@@ -48,6 +48,7 @@ Telegram bot with functions tools.
 - `read_knowledge_google_sheet` - questions and answers from Google Sheet
 - `read_knowledge_json` - questions and answers from json file/url
 - `ssh_command` - exec ssh shell command, single server from config
+- `web_search_preview` - use OpenAI web search tool (Responses API)
 - ... and thousands of tools from MCP
 
 ## Config

@@ -442,14 +442,22 @@ export async function requestGptAnswer(
   const chatTools = await resolveChatTools(msg, chatConfig);
   const prompts = await getToolsPrompts(chatTools, chatConfig, thread);
 
-  const isTools = chatTools.length > 0;
-  const tools = isTools
-    ? ([
-        ...chatTools
-          .map((f) => f.module.call(chatConfig, thread).functions.toolSpecs)
-          .flat(),
-      ] as OpenAI.Chat.Completions.ChatCompletionTool[])
-    : undefined;
+  const builtInToolNames = (chatConfig.tools || []).filter(
+    (t) => typeof t === "string" && t === "web_search_preview",
+  ) as string[];
+  const builtInTools = builtInToolNames.map(
+    (name) => ({ type: name }) as OpenAI.Chat.Completions.ChatCompletionTool,
+  );
+
+  const functionTools = chatTools
+    .map((f) => f.module.call(chatConfig, thread).functions.toolSpecs)
+    .flat();
+
+  const allTools = [...builtInTools, ...functionTools];
+  const tools =
+    allTools.length > 0
+      ? (allTools as OpenAI.Chat.Completions.ChatCompletionTool[])
+      : undefined;
 
   let systemMessage = await getSystemMessage(chatConfig, chatTools);
   const date = new Date().toISOString();

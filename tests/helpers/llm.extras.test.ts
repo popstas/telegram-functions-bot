@@ -319,4 +319,22 @@ describe("requestGptAnswer", () => {
     expect(threads[1]).toBeDefined();
     expect(res).toEqual({ content: "a" });
   });
+
+  it("passes web_search_preview tool to API", async () => {
+    const api = {
+      responses: {
+        create: jest.fn().mockResolvedValue({ output_text: "r" }),
+      },
+    };
+    mockUseApi.mockReturnValue(api);
+    const msg: Message.TextMessage = { ...baseMsg };
+    await requestGptAnswer(msg, {
+      ...chatConfig,
+      tools: ["web_search_preview"],
+      local_model: undefined,
+      chatParams: { useResponsesApi: true },
+    });
+    const calledParams = (api.responses.create as jest.Mock).mock.calls[0][0];
+    expect(calledParams.tools).toEqual([{ type: "web_search_preview" }]);
+  });
 });
