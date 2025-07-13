@@ -91,7 +91,7 @@ export function convertResponsesOutput(
       choices: [{ message: { role: "assistant", tool_calls: calls } }],
     } as unknown as OpenAI.ChatCompletion;
   }
-  const output = r.output_text ?? (r as { output?: string }).output ?? "";
+  const output = r.output_text ?? "";
   return {
     choices: [{ message: { role: "assistant", content: output } }],
   } as unknown as OpenAI.ChatCompletion;

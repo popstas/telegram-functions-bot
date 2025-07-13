@@ -132,7 +132,11 @@ describe("llmCall", () => {
     const result = await llm.llmCall({
       apiParams: params,
       msg: { ...baseMsg },
-      chatConfig: { ...chatConfig, chatParams: { useResponsesApi: true } },
+      chatConfig: {
+        ...chatConfig,
+        local_model: undefined,
+        chatParams: { useResponsesApi: true },
+      },
     });
     const calledParams = (api.responses.create as jest.Mock).mock.calls[0][0];
     expect(calledParams.input).toEqual([
@@ -184,7 +188,11 @@ describe("llmCall", () => {
     const result = await llm.llmCall({
       apiParams: params,
       msg: { ...baseMsg },
-      chatConfig: { ...chatConfig, chatParams: { useResponsesApi: true } },
+      chatConfig: {
+        ...chatConfig,
+        local_model: undefined,
+        chatParams: { useResponsesApi: true },
+      },
     });
     expect(result.res.choices[0].message.tool_calls).toEqual([
       {
@@ -224,7 +232,11 @@ describe("llmCall", () => {
     await llm.llmCall({
       apiParams: params,
       msg: { ...baseMsg },
-      chatConfig: { ...chatConfig, chatParams: { useResponsesApi: true } },
+      chatConfig: {
+        ...chatConfig,
+        local_model: undefined,
+        chatParams: { useResponsesApi: true },
+      },
     });
     const calledParams = (api.responses.create as jest.Mock).mock.calls[0][0];
     expect(calledParams.input).toEqual([

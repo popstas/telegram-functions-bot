@@ -70,7 +70,10 @@ export async function llmCall({
     apiFunc = observeOpenAI(api, { generationName, parent: trace });
   }
   try {
-    const useResponses = chatConfig?.chatParams?.useResponsesApi;
+    const useResponses =
+      !localModel &&
+      !chatConfig?.local_model &&
+      chatConfig?.chatParams?.useResponsesApi;
     const apiResponses = apiFunc as unknown as {
       responses?: OpenAI.Responses;
     };
