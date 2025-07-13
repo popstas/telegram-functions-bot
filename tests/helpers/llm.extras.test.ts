@@ -345,6 +345,7 @@ describe("requestGptAnswer", () => {
           output_text: "a",
           output: [
             '{"type":"web_search_call","action":{"type":"search","query":"q"}}',
+            '{"type":"web_search_call","action":{"type":"open_page","url":"https://u"}}',
             {
               type: "message",
               content: [
@@ -377,6 +378,6 @@ describe("requestGptAnswer", () => {
       .sendTelegramMessage as jest.Mock;
     const message = sent.mock.calls.pop()?.[1];
     expect(message).toContain("Web search:");
-    expect(message).toContain("[T](https://u)");
+    expect(message).toContain("[T](https://u) (opened)");
   });
 });

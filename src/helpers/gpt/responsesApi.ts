@@ -72,6 +72,43 @@ export function convertResponsesInput(
   return respParams;
 }
 
+export function getWebSearchDetails(
+  r: OpenAI.Responses.Response,
+): string | undefined {
+  if (!Array.isArray(r.output)) return undefined;
+
+  const opened = new Set<string>();
+  for (const raw of r.output) {
+    const item = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (item.type === "web_search_call" && item.action?.type === "open_page") {
+      if (item.action.url) opened.add(item.action.url);
+    }
+  }
+
+  const lines: string[] = [];
+  let idx = 0;
+  for (const raw of r.output) {
+    const item = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (item.type === "web_search_call" && item.action?.type === "search") {
+      idx++;
+      lines.push(`${idx}. ${item.action.query}:`);
+    } else if (item.type === "message") {
+      const contentItem = (item.content || []).find(
+        (c: any) => c.type === "output_text",
+      );
+      const annotations = (contentItem?.annotations || []).filter(
+        (a: any) => a.type === "url_citation",
+      );
+      for (const a of annotations) {
+        const openedFlag = opened.has(a.url) ? " (opened)" : "";
+        lines.push(`- [${a.title}](${a.url})${openedFlag}`);
+      }
+    }
+  }
+
+  return lines.length ? "`Web search:`\n\n" + lines.join("\n") : undefined;
+}
+
 export function convertResponsesOutput(r: OpenAI.Responses.Response): {
   res: OpenAI.ChatCompletion;
   webSearchDetails?: string;
@@ -99,39 +136,7 @@ export function convertResponsesOutput(r: OpenAI.Responses.Response): {
     };
   }
 
-  let webSearchDetails: string | undefined;
-  if (Array.isArray(r.output)) {
-    const lines: string[] = [];
-    let idx = 0;
-    for (const rawItem of r.output) {
-      let item: any = rawItem;
-      if (typeof rawItem === "string") {
-        try {
-          item = JSON.parse(rawItem);
-        } catch {
-          continue;
-        }
-      }
-      if (item.type === "web_search_call") {
-        idx++;
-        const query = item.action?.query || item.action?.url || "";
-        lines.push(`${idx}. ${query}:`);
-      } else if (item.type === "message") {
-        const contentItem = (item.content || []).find(
-          (c: any) => c.type === "output_text",
-        );
-        const annotations = (contentItem?.annotations || []).filter(
-          (a: any) => a.type === "url_citation",
-        );
-        for (const a of annotations) {
-          lines.push(`- [${a.title}](${a.url})`);
-        }
-      }
-    }
-    if (lines.length) {
-      webSearchDetails = "`Web search:`\n\n" + lines.join("\n");
-    }
-  }
+  const webSearchDetails = getWebSearchDetails(r);
 
   const output = r.output_text ?? "";
   return {

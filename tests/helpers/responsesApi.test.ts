@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import {
   convertResponsesInput,
   convertResponsesOutput,
+  getWebSearchDetails,
 } from "../../src/helpers/gpt/responsesApi";
 
 describe("responsesApi helpers", () => {
@@ -91,6 +92,7 @@ describe("responsesApi helpers", () => {
       output_text: "hi",
       output: [
         '{"id":"ws_1","type":"web_search_call","action":{"type":"search","query":"q"}}',
+        '{"type":"web_search_call","action":{"type":"open_page","url":"https://u"}}',
         {
           type: "message",
           content: [
@@ -112,6 +114,6 @@ describe("responsesApi helpers", () => {
     const { res, webSearchDetails } = convertResponsesOutput(r);
     expect(res.choices[0].message.content).toBe("hi");
     expect(webSearchDetails).toContain("Web search:");
-    expect(webSearchDetails).toContain("[T](https://u)");
+    expect(webSearchDetails).toContain("[T](https://u) (opened)");
   });
 });
