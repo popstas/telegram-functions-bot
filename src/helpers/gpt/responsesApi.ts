@@ -72,13 +72,80 @@ export function convertResponsesInput(
   return respParams;
 }
 
-export function convertResponsesOutput(
+export function getWebSearchDetails(
   r: OpenAI.Responses.Response,
-): OpenAI.ChatCompletion {
+): string | undefined {
+  if (!Array.isArray(r.output)) return undefined;
+
+  type WebSearchCallItem = OpenAI.Responses.ResponseFunctionWebSearch & {
+    action?:
+      | OpenAI.Responses.ResponseFunctionWebSearch.Search
+      | OpenAI.Responses.ResponseFunctionWebSearch.OpenPage;
+  };
+
+  const items = r.output.map(
+    (raw) =>
+      (typeof raw === "string" ? JSON.parse(raw) : raw) as
+        | WebSearchCallItem
+        | OpenAI.Responses.ResponseOutputMessage
+        | Record<string, unknown>,
+  );
+
+  const opened = new Set<string>();
+  for (const item of items) {
+    if (item.type === "web_search_call") {
+      const action = (item as WebSearchCallItem).action;
+      if (action && action.type === "open_page") {
+        const url = (
+          action as OpenAI.Responses.ResponseFunctionWebSearch.OpenPage
+        ).url;
+        if (url) opened.add(url);
+      }
+    }
+  }
+
+  const lines: string[] = [];
+  let idx = 0;
+  for (const item of items) {
+    if (item.type === "web_search_call") {
+      const action = (item as WebSearchCallItem).action;
+      if (action && action.type === "search") {
+        const query = (
+          action as OpenAI.Responses.ResponseFunctionWebSearch.Search
+        ).query;
+        idx++;
+        lines.push(`${idx}. ${query}:`);
+      }
+    } else if (item.type === "message") {
+      const msg = item as OpenAI.Responses.ResponseOutputMessage;
+      const contentItem = msg.content.find((c) => c.type === "output_text") as
+        | OpenAI.Responses.ResponseOutputText
+        | undefined;
+      const annotations = (contentItem?.annotations || []).filter(
+        (a) => a.type === "url_citation",
+      ) as OpenAI.Responses.ResponseOutputText.URLCitation[];
+      for (const a of annotations) {
+        const openedFlag = opened.has(a.url) ? " (opened)" : "";
+        lines.push(`- [${a.title}](${a.url})${openedFlag}`);
+      }
+    }
+  }
+
+  return lines.length ? "`Web search:`\n\n" + lines.join("\n") : undefined;
+}
+
+export function convertResponsesOutput(r: OpenAI.Responses.Response): {
+  res: OpenAI.ChatCompletion;
+  webSearchDetails?: string;
+} {
   const functionCalls = Array.isArray(r.output)
-    ? (r.output.filter(
-        (item) => item.type === "function_call",
-      ) as OpenAI.Responses.ResponseFunctionToolCall[])
+    ? (
+        r.output.filter(
+          (item) =>
+            (typeof item === "string" ? JSON.parse(item) : item).type ===
+            "function_call",
+        ) as (OpenAI.Responses.ResponseFunctionToolCall | string)[]
+      ).map((item) => (typeof item === "string" ? JSON.parse(item) : item))
     : [];
   if (functionCalls.length) {
     const calls = functionCalls.map((call) => ({
@@ -88,11 +155,19 @@ export function convertResponsesOutput(
       function: { name: call.name, arguments: call.arguments },
     }));
     return {
-      choices: [{ message: { role: "assistant", tool_calls: calls } }],
-    } as unknown as OpenAI.ChatCompletion;
+      res: {
+        choices: [{ message: { role: "assistant", tool_calls: calls } }],
+      } as unknown as OpenAI.ChatCompletion,
+    };
   }
+
+  const webSearchDetails = getWebSearchDetails(r);
+
   const output = r.output_text ?? "";
   return {
-    choices: [{ message: { role: "assistant", content: output } }],
-  } as unknown as OpenAI.ChatCompletion;
+    res: {
+      choices: [{ message: { role: "assistant", content: output } }],
+    } as unknown as OpenAI.ChatCompletion,
+    webSearchDetails,
+  };
 }
