@@ -269,10 +269,9 @@ describe("llmCall", () => {
         for (const e of events)
           yield e as unknown as OpenAI.Responses.ResponseStreamEvent;
       },
-      finalResponse: jest.fn().mockResolvedValue(events[1].response),
       controller: { signal: undefined },
       on: jest.fn(),
-    } as unknown as OpenAI.Responses.ResponseStream<OpenAI.Responses.ResponseStreamEvent>;
+    } as unknown as AsyncIterable<OpenAI.Responses.ResponseStreamEvent>;
     const api = {
       responses: {
         stream: jest.fn().mockReturnValue(stream),

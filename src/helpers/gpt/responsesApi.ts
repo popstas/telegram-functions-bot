@@ -163,10 +163,25 @@ export function convertResponsesOutput(r: OpenAI.Responses.Response): {
 
   const webSearchDetails = getWebSearchDetails(r);
 
-  const output = r.output_text ?? "";
+  let output: string | undefined = r.output_text;
+  if (!output && Array.isArray(r.output)) {
+    const msgItem = r.output
+      .map((item) => (typeof item === "string" ? JSON.parse(item) : item))
+      .find((item) => item.type === "message") as
+      | OpenAI.Responses.ResponseOutputMessage
+      | undefined;
+    if (msgItem) {
+      const textItem = msgItem.content.find((c) => c.type === "output_text") as
+        | OpenAI.Responses.ResponseOutputText
+        | undefined;
+      output = textItem?.text;
+    }
+  }
+
+  const finalOutput = output ?? "";
   return {
     res: {
-      choices: [{ message: { role: "assistant", content: output } }],
+      choices: [{ message: { role: "assistant", content: finalOutput } }],
     } as unknown as OpenAI.ChatCompletion,
     webSearchDetails,
   };

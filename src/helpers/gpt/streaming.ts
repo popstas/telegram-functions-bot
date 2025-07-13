@@ -4,11 +4,10 @@ import { convertResponsesOutput } from "./responsesApi.ts";
 import type { ConfigChatType } from "../../types.ts";
 
 export async function handleResponseStream(
-  stream: AsyncIterable<{ type: string; response?: unknown }> & {
-    finalResponse(): Promise<OpenAI.Responses.Response>;
-  },
+  stream: AsyncIterable<{ type: string; response?: unknown }>,
   chatConfig?: ConfigChatType,
 ): Promise<{ res: OpenAI.ChatCompletion; webSearchDetails?: string }> {
+  let completed: OpenAI.Responses.Response | undefined;
   for await (const event of stream) {
     log({
       msg: `responses event: ${event.type}`,
@@ -21,11 +20,15 @@ export async function handleResponseStream(
         msg: `response.completed`,
         chatId: chatConfig?.id,
         chatTitle: chatConfig?.name,
-        logLevel: "info",
+        logLevel: "verbose",
       });
+      completed = event.response as OpenAI.Responses.Response;
     }
   }
 
-  const response = (await stream.finalResponse()) as OpenAI.Responses.Response;
-  return convertResponsesOutput(response);
+  if (!completed) {
+    throw new Error("No response.completed event received");
+  }
+
+  return convertResponsesOutput(completed);
 }
