@@ -77,28 +77,53 @@ export function getWebSearchDetails(
 ): string | undefined {
   if (!Array.isArray(r.output)) return undefined;
 
+  type WebSearchCallItem = OpenAI.Responses.ResponseFunctionWebSearch & {
+    action?:
+      | OpenAI.Responses.ResponseFunctionWebSearch.Search
+      | OpenAI.Responses.ResponseFunctionWebSearch.OpenPage;
+  };
+
+  const items = r.output.map(
+    (raw) =>
+      (typeof raw === "string" ? JSON.parse(raw) : raw) as
+        | WebSearchCallItem
+        | OpenAI.Responses.ResponseOutputMessage
+        | Record<string, unknown>,
+  );
+
   const opened = new Set<string>();
-  for (const raw of r.output) {
-    const item = typeof raw === "string" ? JSON.parse(raw) : raw;
-    if (item.type === "web_search_call" && item.action?.type === "open_page") {
-      if (item.action.url) opened.add(item.action.url);
+  for (const item of items) {
+    if (item.type === "web_search_call") {
+      const action = (item as WebSearchCallItem).action;
+      if (action && action.type === "open_page") {
+        const url = (
+          action as OpenAI.Responses.ResponseFunctionWebSearch.OpenPage
+        ).url;
+        if (url) opened.add(url);
+      }
     }
   }
 
   const lines: string[] = [];
   let idx = 0;
-  for (const raw of r.output) {
-    const item = typeof raw === "string" ? JSON.parse(raw) : raw;
-    if (item.type === "web_search_call" && item.action?.type === "search") {
-      idx++;
-      lines.push(`${idx}. ${item.action.query}:`);
+  for (const item of items) {
+    if (item.type === "web_search_call") {
+      const action = (item as WebSearchCallItem).action;
+      if (action && action.type === "search") {
+        const query = (
+          action as OpenAI.Responses.ResponseFunctionWebSearch.Search
+        ).query;
+        idx++;
+        lines.push(`${idx}. ${query}:`);
+      }
     } else if (item.type === "message") {
-      const contentItem = (item.content || []).find(
-        (c: any) => c.type === "output_text",
-      );
+      const msg = item as OpenAI.Responses.ResponseOutputMessage;
+      const contentItem = msg.content.find((c) => c.type === "output_text") as
+        | OpenAI.Responses.ResponseOutputText
+        | undefined;
       const annotations = (contentItem?.annotations || []).filter(
-        (a: any) => a.type === "url_citation",
-      );
+        (a) => a.type === "url_citation",
+      ) as OpenAI.Responses.ResponseOutputText.URLCitation[];
       for (const a of annotations) {
         const openedFlag = opened.has(a.url) ? " (opened)" : "";
         lines.push(`- [${a.title}](${a.url})${openedFlag}`);
