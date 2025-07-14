@@ -18,7 +18,7 @@ export function useApi(localModel?: string): OpenAI {
       apiCache[cacheKey] = new OpenAI({
         baseURL: `${model.url}/v1`,
         apiKey: config.auth.chatgpt_api_key,
-        ...(proxyAgent ? { fetchOptions: { dispatcher: proxyAgent } } : {}),
+        // don't use proxyAgent for local models
       });
     } else {
       apiCache[cacheKey] = new OpenAI({
