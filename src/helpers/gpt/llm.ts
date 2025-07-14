@@ -32,7 +32,11 @@ import {
   convertResponsesInput,
   convertResponsesOutput,
 } from "./responsesApi.ts";
-import { handleResponseStream } from "./streaming.ts";
+import {
+  handleResponseStream,
+  handleChatCompletionStream,
+} from "./streaming.ts";
+import type { ChatCompletionStream } from "openai/lib/ChatCompletionStream.js";
 
 export const EVALUATOR_PROMPT = `
 You are an impartial quality auditor for a Telegram bot.
@@ -103,6 +107,24 @@ export async function llmCall({
       const { res, webSearchDetails, images } = await convertResponsesOutput(r);
       return { res, trace, webSearchDetails, images };
     } else {
+      if (
+        chatConfig?.chatParams?.streaming !== false &&
+        "stream" in apiFunc.chat.completions
+      ) {
+        const { stream } = apiFunc.chat.completions as unknown as {
+          stream: (
+            params: OpenAI.Chat.Completions.ChatCompletionCreateParams,
+            options?: { signal?: AbortSignal },
+          ) => ChatCompletionStream;
+        };
+        const streamObj = stream({ ...apiParams, stream: true }, { signal });
+        const { res, sentMessages } = await handleChatCompletionStream(
+          streamObj,
+          msg,
+          chatConfig,
+        );
+        return { res, trace, sentMessages };
+      }
       const res = (await apiFunc.chat.completions.create(apiParams, {
         signal,
       })) as OpenAI.ChatCompletion;
