@@ -245,6 +245,23 @@ export async function convertResponsesOutput(
       }
     }
 
+    async function safeDelete(m: Message.TextMessage) {
+      for (;;) {
+        try {
+          await bot.telegram.deleteMessage(m.chat.id, m.message_id);
+          return;
+        } catch (err) {
+          const wait = getRetryAfter(err);
+          if (wait) {
+            await delay(wait);
+            continue;
+          }
+          console.warn("deleteMessage failed", err);
+          return;
+        }
+      }
+    }
+
     const processed = telegramifyMarkdown(finalOutput, "escape");
     const chunks = splitBigMessage(processed);
     for (let i = 0; i < chunks.length; i++) {
@@ -252,6 +269,10 @@ export async function convertResponsesOutput(
         await safeEdit(opts.sentMessages[i], chunks[i]);
       }
     }
+    for (const m of opts.sentMessages) {
+      await safeDelete(m);
+    }
+    opts.sentMessages.length = 0;
   }
 
   return {
