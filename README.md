@@ -49,6 +49,7 @@ Telegram bot with functions tools.
 - `read_knowledge_json` - questions and answers from json file/url
 - `ssh_command` - exec ssh shell command, single server from config
 - `web_search_preview` - use OpenAI internal web search tool (only for Responses API)
+- `image_generation` - generate images using OpenAI image model (only for Responses API)
 - ... and thousands of tools from MCP
 
 ## Config
@@ -150,6 +151,7 @@ To use it, set `useResponsesApi` to `true` in the chat config.
 Work only with OpenAI models.
 
 When enabled, the bot can use the `web_search_preview` tool to get web search results.
+It can also generate images using the `image_generation` tool.
 
 ## Streaming API responses
 

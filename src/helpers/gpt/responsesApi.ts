@@ -137,6 +137,7 @@ export function getWebSearchDetails(
 export function convertResponsesOutput(r: OpenAI.Responses.Response): {
   res: OpenAI.ChatCompletion;
   webSearchDetails?: string;
+  images?: { id?: string; result: string }[];
 } {
   const functionCalls = Array.isArray(r.output)
     ? (
@@ -163,6 +164,16 @@ export function convertResponsesOutput(r: OpenAI.Responses.Response): {
 
   const webSearchDetails = getWebSearchDetails(r);
 
+  const images: { id?: string; result: string }[] = [];
+  if (Array.isArray(r.output)) {
+    for (const raw of r.output) {
+      const item = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (item.type === "image_generation_call" && item.result) {
+        images.push({ id: item.id, result: item.result });
+      }
+    }
+  }
+
   let output: string | undefined = r.output_text;
   if (!output && Array.isArray(r.output)) {
     const msgItem = r.output
@@ -184,5 +195,6 @@ export function convertResponsesOutput(r: OpenAI.Responses.Response): {
       choices: [{ message: { role: "assistant", content: finalOutput } }],
     } as unknown as OpenAI.ChatCompletion,
     webSearchDetails,
+    images: images.length ? images : undefined,
   };
 }
