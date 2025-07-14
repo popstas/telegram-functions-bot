@@ -88,17 +88,17 @@ export async function llmCall({
     };
     if (useResponses && apiResponses.responses?.create) {
       const respParams = convertResponsesInput(
-        apiParams as OpenAI.Chat.Completions.ChatCompletionCreateParams,
+        apiParams as OpenAI.Chat.Completions.ChatCompletionCreateParams
       );
-      if (chatConfig?.chatParams?.streaming !== false && !noSendTelegram) {
+      if (chatConfig?.chatParams?.streaming && !noSendTelegram) {
         const stream = apiResponses.responses.stream(
           { ...respParams, stream: true } as never,
-          { signal },
+          { signal }
         );
         const { res, webSearchDetails, images } = await handleResponseStream(
           stream,
           msg,
-          chatConfig,
+          chatConfig
         );
         return { res, trace, webSearchDetails, images };
       }
@@ -108,22 +108,18 @@ export async function llmCall({
       const { res, webSearchDetails, images } = await convertResponsesOutput(r);
       return { res, trace, webSearchDetails, images };
     } else {
-      if (
-        chatConfig?.chatParams?.streaming !== false &&
-        !noSendTelegram &&
-        "stream" in apiFunc.chat.completions
-      ) {
+      if (chatConfig?.chatParams?.streaming && !noSendTelegram) {
         const { stream } = apiFunc.chat.completions as unknown as {
           stream: (
             params: OpenAI.Chat.Completions.ChatCompletionCreateParams,
-            options?: { signal?: AbortSignal },
+            options?: { signal?: AbortSignal }
           ) => ChatCompletionStream;
         };
         const streamObj = stream({ ...apiParams, stream: true }, { signal });
         const { res } = await handleCompletionStream(
           streamObj,
           msg,
-          chatConfig,
+          chatConfig
         );
         return { res, trace };
       }
@@ -162,7 +158,7 @@ async function evaluateAnswer(
   msg: Message.TextMessage,
   evaluator: ConfigChatType,
   task: string,
-  answer: string,
+  answer: string
 ): Promise<EvaluatorResult> {
   const systemMessage = [EVALUATOR_PROMPT, evaluator.systemMessage]
     .filter(Boolean)
@@ -225,7 +221,7 @@ export async function handleModelAnswer({
 
   if (!messageAgent.tool_calls || messageAgent.tool_calls.length === 0) {
     const toolCallMatches = messageAgent.content?.matchAll(
-      /<tool_call>([\s\S]*?)<\/tool_call>/g,
+      /<tool_call>([\s\S]*?)<\/tool_call>/g
     );
     if (toolCallMatches) {
       const tool_calls =
@@ -251,7 +247,7 @@ export async function handleModelAnswer({
       chatConfig,
       msg,
       expressRes,
-      noSendTelegram,
+      noSendTelegram
     );
     if (tool_res) {
       return processToolResults({
@@ -278,7 +274,7 @@ export async function handleModelAnswer({
 
   if (
     gptContext.thread.messages.find(
-      (m: OpenAI.ChatCompletionMessageParam) => m.role === "tool",
+      (m: OpenAI.ChatCompletionMessageParam) => m.role === "tool"
     ) &&
     chatConfig.chatParams?.memoryless
   ) {
@@ -324,7 +320,7 @@ export async function processToolResults({
       }
     ).tool_calls[i];
     const chatTool = gptContext.chatTools.find(
-      (f) => f.name === toolCall.function.name,
+      (f) => f.name === toolCall.function.name
     );
     const isMcp = chatTool?.module.call(chatConfig, gptContext.thread).mcp;
     const showMessages =
@@ -344,7 +340,7 @@ export async function processToolResults({
             msgContentLimited,
             params,
             undefined,
-            chatConfig,
+            chatConfig
           );
         } else if (part.type === "resource") {
           if (part.resource?.blob) {
@@ -354,7 +350,7 @@ export async function processToolResults({
               buffer,
               part.resource.name,
               part.resource.mimeType,
-              chatConfig,
+              chatConfig
             );
           } else if (part.resource?.uri?.startsWith("file://")) {
             const filePath = part.resource.uri.replace(/^file:\/\//, "");
@@ -363,7 +359,7 @@ export async function processToolResults({
               filePath,
               part.resource.name,
               part.resource.mimeType,
-              chatConfig,
+              chatConfig
             );
           }
         }
@@ -403,7 +399,7 @@ export async function processToolResults({
 
   gptContext.messages = await buildMessages(
     gptContext.systemMessage,
-    gptContext.thread.messages,
+    gptContext.thread.messages
   );
 
   const isNoTool = level > 6 || !gptContext.tools?.length;
@@ -439,7 +435,7 @@ export async function processToolResults({
       webSearchDetails,
       { deleteAfter: chatConfig.chatParams?.deleteToolAnswers },
       undefined,
-      chatConfig,
+      chatConfig
     );
   }
 
@@ -451,7 +447,7 @@ export async function processToolResults({
         buffer,
         `${img.id || "image"}.png`,
         undefined,
-        chatConfig,
+        chatConfig
       );
     }
   }
@@ -480,14 +476,14 @@ export async function requestGptAnswer(
     skipEvaluators?: boolean;
     responseFormat?: OpenAI.Chat.Completions.ChatCompletionCreateParams["response_format"];
     signal?: AbortSignal;
-  },
+  }
 ) {
   if (!msg.text) return;
   const threads = useThreads();
 
   const forwardedName = getTelegramForwardedUser(
     msg as Message.TextMessage & { forward_origin?: ForwardOrigin },
-    chatConfig,
+    chatConfig
   );
   if (forwardedName) {
     msg.text = `Переслано от: ${forwardedName}\n` + msg.text;
@@ -510,10 +506,10 @@ export async function requestGptAnswer(
   const builtInToolNames = (chatConfig.tools || []).filter(
     (t) =>
       typeof t === "string" &&
-      (t === "web_search_preview" || t === "image_generation"),
+      (t === "web_search_preview" || t === "image_generation")
   ) as string[];
   const builtInTools = builtInToolNames.map(
-    (name) => ({ type: name }) as OpenAI.Chat.Completions.ChatCompletionTool,
+    (name) => ({ type: name }) as OpenAI.Chat.Completions.ChatCompletionTool
   );
 
   const functionTools = chatTools
@@ -535,14 +531,14 @@ export async function requestGptAnswer(
   systemMessage = systemMessage.replace(/\{date}/g, date);
   systemMessage = await replaceUrlPlaceholders(
     systemMessage,
-    chatConfig.chatParams.placeholderCacheTime,
+    chatConfig.chatParams.placeholderCacheTime
   );
   systemMessage = await replaceToolPlaceholders(
     systemMessage,
     chatTools,
     chatConfig,
     thread,
-    chatConfig.chatParams.placeholderCacheTime,
+    chatConfig.chatParams.placeholderCacheTime
   );
   if (thread.nextSystemMessage) {
     systemMessage = thread.nextSystemMessage || "";
@@ -580,7 +576,7 @@ export async function requestGptAnswer(
       webSearchDetails,
       { deleteAfter: chatConfig.chatParams?.deleteToolAnswers },
       undefined,
-      chatConfig,
+      chatConfig
     );
   }
 
@@ -592,7 +588,7 @@ export async function requestGptAnswer(
         buffer,
         `${img.id || "image"}.png`,
         undefined,
-        chatConfig,
+        chatConfig
       );
     }
   }
@@ -620,7 +616,7 @@ export async function requestGptAnswer(
     result.content = await runEvaluatorWorkflow(
       msg,
       chatConfig,
-      result.content,
+      result.content
     );
   }
 
@@ -630,7 +626,7 @@ export async function requestGptAnswer(
 async function runEvaluatorWorkflow(
   msg: Message.TextMessage,
   chatConfig: ConfigChatType,
-  answer: string,
+  answer: string
 ): Promise<string> {
   const config = useConfig();
   let finalAnswer = answer;
@@ -643,7 +639,7 @@ async function runEvaluatorWorkflow(
       msg,
       evalChat,
       msg.text || "",
-      finalAnswer,
+      finalAnswer
     );
     log({
       msg: `evaluation 1: ${JSON.stringify(evaluation)}`,
@@ -674,7 +670,7 @@ async function runEvaluatorWorkflow(
         msg,
         evalChat,
         msg.text || "",
-        finalAnswer,
+        finalAnswer
       );
       log({
         msg: `evaluation ${iter}: ${JSON.stringify(evaluation)}`,
