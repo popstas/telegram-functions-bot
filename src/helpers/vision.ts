@@ -38,6 +38,7 @@ export async function recognizeImageText(
       },
       msg: msg as unknown as Message.TextMessage,
       chatConfig,
+      noSendTelegram: true,
     });
     return res.choices[0]?.message?.content?.trim() || "";
   } catch (e) {

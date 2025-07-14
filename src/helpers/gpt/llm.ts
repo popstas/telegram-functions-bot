@@ -32,10 +32,7 @@ import {
   convertResponsesInput,
   convertResponsesOutput,
 } from "./responsesApi.ts";
-import {
-  handleResponseStream,
-  handleChatCompletionStream,
-} from "./streaming.ts";
+import { handleResponseStream, handleCompletionStream } from "./streaming.ts";
 import type { ChatCompletionStream } from "openai/lib/ChatCompletionStream.js";
 
 export const EVALUATOR_PROMPT = `
@@ -58,6 +55,7 @@ export async function llmCall({
   generationName = "llm-call",
   localModel,
   signal,
+  noSendTelegram,
 }: {
   apiParams: OpenAI.Chat.Completions.ChatCompletionCreateParams;
   msg: Message.TextMessage;
@@ -65,12 +63,12 @@ export async function llmCall({
   generationName?: string;
   localModel?: string;
   signal?: AbortSignal;
+  noSendTelegram?: boolean;
 }): Promise<{
   res: OpenAI.ChatCompletion;
   trace?: unknown;
   webSearchDetails?: string;
   images?: { id?: string; result: string }[];
-  sentMessages?: Message.TextMessage[];
 }> {
   const api = useApi(localModel || chatConfig?.local_model);
   const { trace } = chatConfig
@@ -92,14 +90,17 @@ export async function llmCall({
       const respParams = convertResponsesInput(
         apiParams as OpenAI.Chat.Completions.ChatCompletionCreateParams,
       );
-      if (chatConfig?.chatParams?.streaming !== false) {
+      if (chatConfig?.chatParams?.streaming !== false && !noSendTelegram) {
         const stream = apiResponses.responses.stream(
           { ...respParams, stream: true } as never,
           { signal },
         );
-        const { res, webSearchDetails, images, sentMessages } =
-          await handleResponseStream(stream, msg, chatConfig);
-        return { res, trace, webSearchDetails, images, sentMessages };
+        const { res, webSearchDetails, images } = await handleResponseStream(
+          stream,
+          msg,
+          chatConfig,
+        );
+        return { res, trace, webSearchDetails, images };
       }
       const r = (await apiResponses.responses.create(respParams, {
         signal,
@@ -109,6 +110,7 @@ export async function llmCall({
     } else {
       if (
         chatConfig?.chatParams?.streaming !== false &&
+        !noSendTelegram &&
         "stream" in apiFunc.chat.completions
       ) {
         const { stream } = apiFunc.chat.completions as unknown as {
@@ -118,12 +120,12 @@ export async function llmCall({
           ) => ChatCompletionStream;
         };
         const streamObj = stream({ ...apiParams, stream: true }, { signal });
-        const { res, sentMessages } = await handleChatCompletionStream(
+        const { res } = await handleCompletionStream(
           streamObj,
           msg,
           chatConfig,
         );
-        return { res, trace, sentMessages };
+        return { res, trace };
       }
       const res = (await apiFunc.chat.completions.create(apiParams, {
         signal,
@@ -180,6 +182,7 @@ async function evaluateAnswer(
     chatConfig: evaluator,
     generationName: "evaluation",
     localModel: evaluator.local_model,
+    noSendTelegram: true,
     msg,
   });
   const content = res.choices[0]?.message?.content || "{}";
@@ -427,6 +430,7 @@ export async function processToolResults({
     chatConfig,
     generationName: "after-tools",
     localModel: chatConfig.local_model,
+    noSendTelegram,
   });
 
   if (webSearchDetails && chatConfig.chatParams?.showToolMessages !== false) {
@@ -567,6 +571,7 @@ export async function requestGptAnswer(
     generationName: "llm-call",
     localModel: chatConfig.local_model,
     signal: options?.signal,
+    noSendTelegram: ctx?.noSendTelegram,
   });
 
   if (webSearchDetails && chatConfig.chatParams?.showToolMessages !== false) {
