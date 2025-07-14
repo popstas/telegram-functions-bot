@@ -123,4 +123,25 @@ describe("initTools", () => {
     await instance.functions.get("foo")("{}");
     expect(mockCallMcp).toHaveBeenCalledWith("m1", "foo", "{}");
   });
+
+  it("waits for initTools when called concurrently", async () => {
+    const delayPath = path.resolve("src/tools/delay.ts");
+    fs.writeFileSync(
+      delayPath,
+      "await new Promise(r => setTimeout(r, 50)); export function call() { return { content: 'delay' }; }\n",
+    );
+    mockReaddirSync.mockReturnValue(["delay.ts"]);
+    jest.resetModules();
+    ({ default: useTools, initTools } = await import(
+      "../../src/helpers/useTools.ts"
+    ));
+
+    const initPromise = initTools();
+    const usePromise = useTools();
+    const [initRes, useRes] = await Promise.all([initPromise, usePromise]);
+
+    expect(useRes).toEqual(initRes);
+
+    fs.unlinkSync(delayPath);
+  });
 });
