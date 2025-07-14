@@ -55,6 +55,7 @@ export async function llmCall({
   generationName = "llm-call",
   localModel,
   signal,
+  noSendTelegram,
 }: {
   apiParams: OpenAI.Chat.Completions.ChatCompletionCreateParams;
   msg: Message.TextMessage;
@@ -62,6 +63,7 @@ export async function llmCall({
   generationName?: string;
   localModel?: string;
   signal?: AbortSignal;
+  noSendTelegram?: boolean;
 }): Promise<{
   res: OpenAI.ChatCompletion;
   trace?: unknown;
@@ -88,7 +90,7 @@ export async function llmCall({
       const respParams = convertResponsesInput(
         apiParams as OpenAI.Chat.Completions.ChatCompletionCreateParams,
       );
-      if (chatConfig?.chatParams?.streaming !== false) {
+      if (chatConfig?.chatParams?.streaming !== false && !noSendTelegram) {
         const stream = apiResponses.responses.stream(
           { ...respParams, stream: true } as never,
           { signal },
@@ -108,6 +110,7 @@ export async function llmCall({
     } else {
       if (
         chatConfig?.chatParams?.streaming !== false &&
+        !noSendTelegram &&
         "stream" in apiFunc.chat.completions
       ) {
         const { stream } = apiFunc.chat.completions as unknown as {
@@ -179,6 +182,7 @@ async function evaluateAnswer(
     chatConfig: evaluator,
     generationName: "evaluation",
     localModel: evaluator.local_model,
+    noSendTelegram: true,
     msg,
   });
   const content = res.choices[0]?.message?.content || "{}";
@@ -426,6 +430,7 @@ export async function processToolResults({
     chatConfig,
     generationName: "after-tools",
     localModel: chatConfig.local_model,
+    noSendTelegram,
   });
 
   if (webSearchDetails && chatConfig.chatParams?.showToolMessages !== false) {
@@ -566,6 +571,7 @@ export async function requestGptAnswer(
     generationName: "llm-call",
     localModel: chatConfig.local_model,
     signal: options?.signal,
+    noSendTelegram: ctx?.noSendTelegram,
   });
 
   if (webSearchDetails && chatConfig.chatParams?.showToolMessages !== false) {

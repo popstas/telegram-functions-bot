@@ -1,5 +1,4 @@
 import OpenAI from "openai";
-import type { ConfigChatType } from "../../types.ts";
 
 export function convertResponsesInput(
   apiParams: OpenAI.Chat.Completions.ChatCompletionCreateParams,

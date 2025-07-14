@@ -64,6 +64,7 @@ describe("recognizeImageText", () => {
       }),
       msg: msg as unknown as Message.TextMessage,
       chatConfig: chat,
+      noSendTelegram: true,
     });
     expect(res).toBe("ok");
   });

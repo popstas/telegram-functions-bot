@@ -62,6 +62,7 @@ export class BrainstormClient extends AIFunctionsProvider {
       },
       msg,
       chatConfig: this.configChat,
+      noSendTelegram: true,
     });
 
     const content =

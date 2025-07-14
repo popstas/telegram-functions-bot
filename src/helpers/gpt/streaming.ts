@@ -226,6 +226,7 @@ export async function handleResponseStream(
 }
 
 import type { ChatCompletionStream } from "openai/lib/ChatCompletionStream.js";
+import type { ChatCompletionChunk } from "openai/resources/chat/completions/index.js";
 
 export async function handleCompletionStream(
   stream: ChatCompletionStream,
@@ -236,25 +237,27 @@ export async function handleCompletionStream(
   sentMessages: Message.TextMessage[];
 }> {
   return handleStream(stream, msg, chatConfig, {
-    extractDelta(chunk) {
-      return (chunk as any).choices?.[0]?.delta?.content;
+    extractDelta(chunk: ChatCompletionChunk) {
+      return chunk.choices?.[0]?.delta?.content ?? undefined;
     },
     async finalize(fullText, helpers) {
       let res: OpenAI.ChatCompletion;
       let finalOutput = "";
-      if (typeof (stream as any).finalChatCompletion === "function") {
-        res = await (
-          stream as unknown as {
-            finalChatCompletion(): Promise<OpenAI.ChatCompletion>;
-          }
-        ).finalChatCompletion();
+      const withFinalCC = stream as unknown as {
+        finalChatCompletion?: () => Promise<OpenAI.ChatCompletion>;
+        finalMessage?: () => Promise<OpenAI.ChatCompletionMessageParam>;
+        finalContent?: () => Promise<string | null | undefined>;
+      };
+      if (typeof withFinalCC.finalChatCompletion === "function") {
+        res = await withFinalCC.finalChatCompletion();
         finalOutput = res.choices?.[0]?.message?.content ?? "";
-      } else if (typeof (stream as any).finalMessage === "function") {
-        const message = await (stream as any).finalMessage();
+      } else if (typeof withFinalCC.finalMessage === "function") {
+        const message = await withFinalCC.finalMessage();
         res = { choices: [{ index: 0, message }] } as OpenAI.ChatCompletion;
-        finalOutput = message?.content ?? "";
-      } else if (typeof (stream as any).finalContent === "function") {
-        const content = await (stream as any).finalContent();
+        finalOutput =
+          typeof message?.content === "string" ? message.content : "";
+      } else if (typeof withFinalCC.finalContent === "function") {
+        const content = await withFinalCC.finalContent();
         res = {
           choices: [
             {
@@ -263,7 +266,7 @@ export async function handleCompletionStream(
             } as OpenAI.ChatCompletion.Choice,
           ],
         } as OpenAI.ChatCompletion;
-        finalOutput = content ?? "";
+        finalOutput = typeof content === "string" ? content : "";
       } else {
         res = {
           choices: [
