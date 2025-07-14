@@ -6,7 +6,11 @@ import type { ConfigChatType } from "../../types.ts";
 export async function handleResponseStream(
   stream: AsyncIterable<{ type: string; response?: unknown }>,
   chatConfig?: ConfigChatType,
-): Promise<{ res: OpenAI.ChatCompletion; webSearchDetails?: string }> {
+): Promise<{
+  res: OpenAI.ChatCompletion;
+  webSearchDetails?: string;
+  images?: { id?: string; result: string }[];
+}> {
   let completed: OpenAI.Responses.Response | undefined;
   for await (const event of stream) {
     log({

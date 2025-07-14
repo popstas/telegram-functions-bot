@@ -128,4 +128,21 @@ describe("responsesApi helpers", () => {
     expect(webSearchDetails).toContain("Web search:");
     expect(webSearchDetails).toContain("[T](https://u) (opened)");
   });
+
+  it("returns image generation data", () => {
+    const r: OpenAI.Responses.Response = {
+      output_text: "img",
+      output: [
+        {
+          id: "img_1",
+          type: "image_generation_call",
+          status: "completed",
+          result: "abcd",
+        },
+      ],
+    } as unknown as OpenAI.Responses.Response;
+    const { res, images } = convertResponsesOutput(r);
+    expect(res.choices[0].message.content).toBe("img");
+    expect(images?.[0].result).toBe("abcd");
+  });
 });

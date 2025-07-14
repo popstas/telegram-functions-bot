@@ -384,6 +384,24 @@ describe("requestGptAnswer", () => {
     expect(calledParams.tools).toEqual([{ type: "web_search_preview" }]);
   });
 
+  it("passes image_generation tool to API", async () => {
+    const api = {
+      responses: {
+        create: jest.fn().mockResolvedValue({ output_text: "r" }),
+      },
+    };
+    mockUseApi.mockReturnValue(api);
+    const msg: Message.TextMessage = { ...baseMsg };
+    await requestGptAnswer(msg, {
+      ...chatConfig,
+      tools: ["image_generation"],
+      local_model: undefined,
+      chatParams: { useResponsesApi: true, streaming: false },
+    });
+    const calledParams = (api.responses.create as jest.Mock).mock.calls[0][0];
+    expect(calledParams.tools).toEqual([{ type: "image_generation" }]);
+  });
+
   it("sends web search details", async () => {
     const api = {
       responses: {
@@ -425,5 +443,34 @@ describe("requestGptAnswer", () => {
     const message = sent.mock.calls.pop()?.[1];
     expect(message).toContain("Web search:");
     expect(message).toContain("[T](https://u) (opened)");
+  });
+
+  it("sends generated image", async () => {
+    const api = {
+      responses: {
+        create: jest.fn().mockResolvedValue({
+          output_text: "img",
+          output: [
+            {
+              id: "ig_1",
+              type: "image_generation_call",
+              status: "completed",
+              result: Buffer.from("hello").toString("base64"),
+            },
+          ],
+        }),
+      },
+    };
+    mockUseApi.mockReturnValue(api);
+    const msg: Message.TextMessage = { ...baseMsg };
+    await requestGptAnswer(msg, {
+      ...chatConfig,
+      tools: ["image_generation"],
+      local_model: undefined,
+      chatParams: { useResponsesApi: true, streaming: false },
+    });
+    const sendDoc = (await import("../../src/telegram/send.ts"))
+      .sendTelegramDocument as jest.Mock;
+    expect(sendDoc).toHaveBeenCalled();
   });
 });

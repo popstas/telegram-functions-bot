@@ -65,6 +65,7 @@ export async function llmCall({
   res: OpenAI.ChatCompletion;
   trace?: unknown;
   webSearchDetails?: string;
+  images?: { id?: string; result: string }[];
 }> {
   const api = useApi(localModel || chatConfig?.local_model);
   const { trace } = chatConfig
@@ -91,17 +92,17 @@ export async function llmCall({
           { ...respParams, stream: true } as never,
           { signal },
         );
-        const { res, webSearchDetails } = await handleResponseStream(
+        const { res, webSearchDetails, images } = await handleResponseStream(
           stream,
           chatConfig,
         );
-        return { res, trace, webSearchDetails };
+        return { res, trace, webSearchDetails, images };
       }
       const r = (await apiResponses.responses.create(respParams, {
         signal,
       })) as OpenAI.Responses.Response;
-      const { res, webSearchDetails } = convertResponsesOutput(r);
-      return { res, trace, webSearchDetails };
+      const { res, webSearchDetails, images } = convertResponsesOutput(r);
+      return { res, trace, webSearchDetails, images };
     } else {
       const res = (await apiFunc.chat.completions.create(apiParams, {
         signal,
@@ -399,7 +400,7 @@ export async function processToolResults({
       : ("auto" as OpenAI.Chat.Completions.ChatCompletionToolChoiceOption),
   };
 
-  const { res, trace, webSearchDetails } = await llmCall({
+  const { res, trace, webSearchDetails, images } = await llmCall({
     apiParams,
     msg,
     chatConfig,
@@ -415,6 +416,19 @@ export async function processToolResults({
       undefined,
       chatConfig,
     );
+  }
+
+  if (images && images.length) {
+    for (const img of images) {
+      const buffer = Buffer.from(img.result, "base64");
+      await sendTelegramDocument(
+        msg.chat.id,
+        buffer,
+        `${img.id || "image"}.png`,
+        undefined,
+        chatConfig,
+      );
+    }
   }
 
   return await handleModelAnswer({
@@ -469,7 +483,9 @@ export async function requestGptAnswer(
   const prompts = await getToolsPrompts(chatTools, chatConfig, thread);
 
   const builtInToolNames = (chatConfig.tools || []).filter(
-    (t) => typeof t === "string" && t === "web_search_preview",
+    (t) =>
+      typeof t === "string" &&
+      (t === "web_search_preview" || t === "image_generation"),
   ) as string[];
   const builtInTools = builtInToolNames.map(
     (name) => ({ type: name }) as OpenAI.Chat.Completions.ChatCompletionTool,
@@ -523,7 +539,7 @@ export async function requestGptAnswer(
     tools,
     response_format: options?.responseFormat,
   };
-  const { res, trace, webSearchDetails } = await llmCall({
+  const { res, trace, webSearchDetails, images } = await llmCall({
     apiParams,
     msg,
     chatConfig,
@@ -540,6 +556,19 @@ export async function requestGptAnswer(
       undefined,
       chatConfig,
     );
+  }
+
+  if (images && images.length) {
+    for (const img of images) {
+      const buffer = Buffer.from(img.result, "base64");
+      await sendTelegramDocument(
+        msg.chat.id,
+        buffer,
+        `${img.id || "image"}.png`,
+        undefined,
+        chatConfig,
+      );
+    }
   }
 
   const gptContext: GptContextType = {
