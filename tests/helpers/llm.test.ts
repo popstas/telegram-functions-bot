@@ -12,6 +12,13 @@ const mockAddToHistory = jest.fn();
 const mockForgetHistory = jest.fn();
 const mockSendTelegramMessage = jest.fn();
 const mockSendTelegramDocument = jest.fn();
+const mockUseBot = jest.fn(() => ({
+  telegram: {
+    sendMessage: jest.fn(),
+    editMessageText: jest.fn(),
+    deleteMessage: jest.fn(),
+  },
+}));
 
 jest.unstable_mockModule("../../src/helpers/gpt/tools.ts", () => ({
   executeTools: (...args: unknown[]) => mockExecuteTools(...args),
@@ -30,6 +37,10 @@ jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   sendTelegramDocument: (...args: unknown[]) =>
     mockSendTelegramDocument(...args),
   getTelegramForwardedUser: jest.fn(),
+}));
+
+jest.unstable_mockModule("../../src/bot.ts", () => ({
+  useBot: () => mockUseBot(),
 }));
 
 let handleModelAnswer: typeof import("../../src/helpers/gpt/llm.ts").handleModelAnswer;

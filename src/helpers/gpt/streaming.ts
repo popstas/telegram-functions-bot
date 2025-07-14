@@ -4,6 +4,7 @@ import type { ConfigChatType } from "../../types.ts";
 import { Message } from "telegraf/types";
 import { useBot } from "../../bot.ts";
 import { splitBigMessage } from "../../utils/text.ts";
+import telegramifyMarkdown from "telegramify-markdown";
 
 export async function handleResponseStream(
   stream: AsyncIterable<OpenAI.Responses.ResponseStreamEvent>,
@@ -134,4 +135,155 @@ export async function handleResponseStream(
     chatConfig,
   });
   return { ...result, sentMessages };
+}
+
+import type { ChatCompletionStream } from "openai/lib/ChatCompletionStream.js";
+
+export async function handleChatCompletionStream(
+  stream: ChatCompletionStream,
+  msg: Message.TextMessage,
+  chatConfig?: ConfigChatType,
+): Promise<{
+  res: OpenAI.ChatCompletion;
+  sentMessages: Message.TextMessage[];
+}> {
+  const sentMessages: Message.TextMessage[] = [];
+  const lastChunks: string[] = [];
+  let fullText = "";
+  const bot = useBot(chatConfig?.bot_token);
+
+  async function delay(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  function getRetryAfter(error: unknown) {
+    const e = error as {
+      response?: { error_code?: number; parameters?: { retry_after?: number } };
+    };
+    if (e?.response?.error_code === 429 && e.response.parameters?.retry_after) {
+      return e.response.parameters.retry_after * 1000;
+    }
+    return undefined;
+  }
+
+  async function safeSend(text: string) {
+    for (;;) {
+      try {
+        return (await bot.telegram.sendMessage(
+          msg.chat.id,
+          text,
+        )) as Message.TextMessage;
+      } catch (err) {
+        const wait = getRetryAfter(err);
+        if (wait) {
+          await delay(wait);
+          continue;
+        }
+        console.warn("sendMessage failed", err);
+        throw err;
+      }
+    }
+  }
+
+  async function safeEdit(m: Message.TextMessage, text: string) {
+    for (;;) {
+      try {
+        await bot.telegram.editMessageText(
+          m.chat.id,
+          m.message_id,
+          undefined,
+          text,
+        );
+        return;
+      } catch (err) {
+        const wait = getRetryAfter(err);
+        if (wait) {
+          await delay(wait);
+          continue;
+        }
+        console.warn("editMessageText failed", err);
+        return;
+      }
+    }
+  }
+
+  async function safeDelete(m: Message.TextMessage) {
+    for (;;) {
+      try {
+        await bot.telegram.deleteMessage(m.chat.id, m.message_id);
+        return;
+      } catch (err) {
+        const wait = getRetryAfter(err);
+        if (wait) {
+          await delay(wait);
+          continue;
+        }
+        console.warn("deleteMessage failed", err);
+        return;
+      }
+    }
+  }
+
+  async function sendChunks(text: string) {
+    const chunks = splitBigMessage(text);
+    for (let i = 0; i < chunks.length; i++) {
+      if (lastChunks[i] === chunks[i]) continue;
+      lastChunks[i] = chunks[i];
+      if (!sentMessages[i]) {
+        sentMessages[i] = await safeSend(chunks[i]);
+      } else {
+        await safeEdit(sentMessages[i], chunks[i]);
+      }
+    }
+  }
+
+  let flushTimeout: NodeJS.Timeout | undefined;
+  let processing = true;
+
+  async function flush() {
+    await sendChunks(fullText);
+  }
+
+  function scheduleFlush() {
+    if (flushTimeout) return;
+    flushTimeout = setTimeout(async () => {
+      flushTimeout = undefined;
+      await flush();
+      if (processing) scheduleFlush();
+    }, 2000);
+  }
+
+  scheduleFlush();
+
+  for await (const chunk of stream) {
+    const delta = chunk.choices?.[0]?.delta?.content;
+    if (delta) {
+      fullText += delta;
+      scheduleFlush();
+    }
+  }
+
+  processing = false;
+  if (flushTimeout) {
+    clearTimeout(flushTimeout);
+    flushTimeout = undefined;
+  }
+  await flush();
+
+  const res = await stream.finalChatCompletion();
+  const finalOutput = res.choices?.[0]?.message?.content ?? "";
+
+  const processed = telegramifyMarkdown(finalOutput, "escape");
+  const chunks = splitBigMessage(processed);
+  for (let i = 0; i < chunks.length; i++) {
+    if (sentMessages[i]) {
+      await safeEdit(sentMessages[i], chunks[i]);
+    }
+  }
+  for (const m of sentMessages) {
+    await safeDelete(m);
+  }
+  sentMessages.length = 0;
+
+  return { res, sentMessages };
 }
