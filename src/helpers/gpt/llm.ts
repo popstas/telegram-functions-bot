@@ -94,6 +94,7 @@ export async function llmCall({
         );
         const { res, webSearchDetails, images } = await handleResponseStream(
           stream,
+          msg,
           chatConfig,
         );
         return { res, trace, webSearchDetails, images };
