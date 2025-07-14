@@ -12,6 +12,8 @@ beforeEach(async () => {
   console.error = jestObj.fn();
   console.warn = jestObj.fn();
   console.info = jestObj.fn();
+  console.debug = jestObj.fn();
+  process.exit = jestObj.fn();
 });
 
 afterEach(() => {
@@ -19,6 +21,7 @@ afterEach(() => {
   console.error = originalConsole.error;
   console.warn = originalConsole.warn;
   console.info = originalConsole.info;
+  console.debug = originalConsole.debug;
 });
 
 export {};
