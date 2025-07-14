@@ -13,6 +13,7 @@ export async function handleResponseStream(
   res: OpenAI.ChatCompletion;
   webSearchDetails?: string;
   images?: { id?: string; result: string }[];
+  sentMessages: Message.TextMessage[];
 }> {
   let completed: OpenAI.Responses.Response | undefined;
   const sentMessages: Message.TextMessage[] = [];
@@ -128,5 +129,9 @@ export async function handleResponseStream(
     throw new Error("No response.completed event received");
   }
 
-  return convertResponsesOutput(completed);
+  const result = await convertResponsesOutput(completed, {
+    sentMessages,
+    chatConfig,
+  });
+  return { ...result, sentMessages };
 }

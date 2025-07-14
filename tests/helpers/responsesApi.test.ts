@@ -60,14 +60,14 @@ describe("responsesApi helpers", () => {
     ]);
   });
 
-  it("converts responses output with function_call", () => {
+  it("converts responses output with function_call", async () => {
     const r: OpenAI.Responses.Response = {
       output_text: "",
       output: [
         { type: "function_call", call_id: "c", name: "t", arguments: "{}" },
       ],
     } as OpenAI.Responses.Response;
-    const { res } = convertResponsesOutput(r);
+    const { res } = await convertResponsesOutput(r);
     expect(res.choices[0].message.tool_calls).toEqual([
       {
         id: "c",
@@ -78,15 +78,15 @@ describe("responsesApi helpers", () => {
     ]);
   });
 
-  it("converts responses output with text", () => {
+  it("converts responses output with text", async () => {
     const r: OpenAI.Responses.Response = {
       output_text: "hello",
     } as OpenAI.Responses.Response;
-    const { res } = convertResponsesOutput(r);
+    const { res } = await convertResponsesOutput(r);
     expect(res.choices[0].message.content).toBe("hello");
   });
 
-  it("uses message output when output_text missing", () => {
+  it("uses message output when output_text missing", async () => {
     const r: OpenAI.Responses.Response = {
       output: [
         {
@@ -95,11 +95,11 @@ describe("responsesApi helpers", () => {
         },
       ],
     } as unknown as OpenAI.Responses.Response;
-    const { res } = convertResponsesOutput(r);
+    const { res } = await convertResponsesOutput(r);
     expect(res.choices[0].message.content).toBe("msg");
   });
 
-  it("parses web search details", () => {
+  it("parses web search details", async () => {
     const r: OpenAI.Responses.Response = {
       output_text: "hi",
       output: [
@@ -123,13 +123,13 @@ describe("responsesApi helpers", () => {
         },
       ],
     } as unknown as OpenAI.Responses.Response;
-    const { res, webSearchDetails } = convertResponsesOutput(r);
+    const { res, webSearchDetails } = await convertResponsesOutput(r);
     expect(res.choices[0].message.content).toBe("hi");
     expect(webSearchDetails).toContain("Web search:");
     expect(webSearchDetails).toContain("[T](https://u) (opened)");
   });
 
-  it("returns image generation data", () => {
+  it("returns image generation data", async () => {
     const r: OpenAI.Responses.Response = {
       output_text: "img",
       output: [
@@ -141,7 +141,7 @@ describe("responsesApi helpers", () => {
         },
       ],
     } as unknown as OpenAI.Responses.Response;
-    const { res, images } = convertResponsesOutput(r);
+    const { res, images } = await convertResponsesOutput(r);
     expect(res.choices[0].message.content).toBe("img");
     expect(images?.[0].result).toBe("abcd");
   });

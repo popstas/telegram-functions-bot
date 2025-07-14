@@ -66,6 +66,7 @@ export async function llmCall({
   trace?: unknown;
   webSearchDetails?: string;
   images?: { id?: string; result: string }[];
+  sentMessages?: Message.TextMessage[];
 }> {
   const api = useApi(localModel || chatConfig?.local_model);
   const { trace } = chatConfig
@@ -92,17 +93,14 @@ export async function llmCall({
           { ...respParams, stream: true } as never,
           { signal },
         );
-        const { res, webSearchDetails, images } = await handleResponseStream(
-          stream,
-          msg,
-          chatConfig,
-        );
-        return { res, trace, webSearchDetails, images };
+        const { res, webSearchDetails, images, sentMessages } =
+          await handleResponseStream(stream, msg, chatConfig);
+        return { res, trace, webSearchDetails, images, sentMessages };
       }
       const r = (await apiResponses.responses.create(respParams, {
         signal,
       })) as OpenAI.Responses.Response;
-      const { res, webSearchDetails, images } = convertResponsesOutput(r);
+      const { res, webSearchDetails, images } = await convertResponsesOutput(r);
       return { res, trace, webSearchDetails, images };
     } else {
       const res = (await apiFunc.chat.completions.create(apiParams, {
