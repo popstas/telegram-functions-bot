@@ -2,6 +2,9 @@
 const config = {
   preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
+  silent: true,
+  forceExit: true,
+  maxWorkers: 1,
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   extensionsToTreatAsEsm: ['.ts'],
   testMatch: ['**/__tests__/**/*.+(ts|tsx|js)', '**/?(*.)+(spec|test).+(ts|tsx|js)'],
@@ -13,7 +16,6 @@ const config = {
       'ts-jest',
       {
         useESM: true,
-        isolatedModules: true,
         tsconfig: 'tsconfig.json',
       },
     ],
