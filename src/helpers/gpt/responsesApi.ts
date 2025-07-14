@@ -1,9 +1,5 @@
 import OpenAI from "openai";
-import { Message } from "telegraf/types";
-import { useBot } from "../../bot.ts";
 import type { ConfigChatType } from "../../types.ts";
-import { splitBigMessage } from "../../utils/text.ts";
-import telegramifyMarkdown from "telegramify-markdown";
 
 export function convertResponsesInput(
   apiParams: OpenAI.Chat.Completions.ChatCompletionCreateParams,
@@ -141,7 +137,6 @@ export function getWebSearchDetails(
 
 export async function convertResponsesOutput(
   r: OpenAI.Responses.Response,
-  opts?: { sentMessages?: Message.TextMessage[]; chatConfig?: ConfigChatType },
 ): Promise<{
   res: OpenAI.ChatCompletion;
   webSearchDetails?: string;
@@ -198,82 +193,6 @@ export async function convertResponsesOutput(
   }
 
   const finalOutput = output ?? "";
-
-  if (opts?.sentMessages?.length) {
-    const bot = useBot(opts.chatConfig?.bot_token);
-
-    function getRetryAfter(error: unknown) {
-      const e = error as {
-        response?: {
-          error_code?: number;
-          parameters?: { retry_after?: number };
-        };
-      };
-      if (
-        e?.response?.error_code === 429 &&
-        e.response.parameters?.retry_after
-      ) {
-        return e.response.parameters.retry_after * 1000;
-      }
-      return undefined;
-    }
-
-    async function delay(ms: number) {
-      return new Promise((resolve) => setTimeout(resolve, ms));
-    }
-
-    async function safeEdit(m: Message.TextMessage, text: string) {
-      for (;;) {
-        try {
-          await bot.telegram.editMessageText(
-            m.chat.id,
-            m.message_id,
-            undefined,
-            text,
-            { parse_mode: "MarkdownV2" },
-          );
-          return;
-        } catch (err) {
-          const wait = getRetryAfter(err);
-          if (wait) {
-            await delay(wait);
-            continue;
-          }
-          console.warn("editMessageText failed", err);
-          return;
-        }
-      }
-    }
-
-    async function safeDelete(m: Message.TextMessage) {
-      for (;;) {
-        try {
-          await bot.telegram.deleteMessage(m.chat.id, m.message_id);
-          return;
-        } catch (err) {
-          const wait = getRetryAfter(err);
-          if (wait) {
-            await delay(wait);
-            continue;
-          }
-          console.warn("deleteMessage failed", err);
-          return;
-        }
-      }
-    }
-
-    const processed = telegramifyMarkdown(finalOutput, "escape");
-    const chunks = splitBigMessage(processed);
-    for (let i = 0; i < chunks.length; i++) {
-      if (opts.sentMessages[i]) {
-        await safeEdit(opts.sentMessages[i], chunks[i]);
-      }
-    }
-    for (const m of opts.sentMessages) {
-      await safeDelete(m);
-    }
-    opts.sentMessages.length = 0;
-  }
 
   return {
     res: {

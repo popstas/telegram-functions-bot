@@ -207,10 +207,20 @@ export async function handleResponseStream(
       if (!completed) {
         throw new Error("No response.completed event received");
       }
-      return convertResponsesOutput(completed, {
-        sentMessages: helpers.sentMessages,
-        chatConfig,
-      });
+      const result = await convertResponsesOutput(completed);
+      const finalOutput = result.res.choices?.[0]?.message?.content ?? "";
+      const processed = telegramifyMarkdown(finalOutput, "escape");
+      const chunks = splitBigMessage(processed);
+      for (let i = 0; i < chunks.length; i++) {
+        if (helpers.sentMessages[i]) {
+          await helpers.safeEdit(helpers.sentMessages[i], chunks[i]);
+        }
+      }
+      for (const m of helpers.sentMessages) {
+        await helpers.safeDelete(m);
+      }
+      helpers.sentMessages.length = 0;
+      return result;
     },
   });
 }

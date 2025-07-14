@@ -32,10 +32,7 @@ import {
   convertResponsesInput,
   convertResponsesOutput,
 } from "./responsesApi.ts";
-import {
-  handleResponseStream,
-  handleCompletionStream,
-} from "./streaming.ts";
+import { handleResponseStream, handleCompletionStream } from "./streaming.ts";
 import type { ChatCompletionStream } from "openai/lib/ChatCompletionStream.js";
 
 export const EVALUATOR_PROMPT = `
@@ -70,7 +67,6 @@ export async function llmCall({
   trace?: unknown;
   webSearchDetails?: string;
   images?: { id?: string; result: string }[];
-  sentMessages?: Message.TextMessage[];
 }> {
   const api = useApi(localModel || chatConfig?.local_model);
   const { trace } = chatConfig
@@ -97,9 +93,12 @@ export async function llmCall({
           { ...respParams, stream: true } as never,
           { signal },
         );
-        const { res, webSearchDetails, images, sentMessages } =
-          await handleResponseStream(stream, msg, chatConfig);
-        return { res, trace, webSearchDetails, images, sentMessages };
+        const { res, webSearchDetails, images } = await handleResponseStream(
+          stream,
+          msg,
+          chatConfig,
+        );
+        return { res, trace, webSearchDetails, images };
       }
       const r = (await apiResponses.responses.create(respParams, {
         signal,
@@ -118,12 +117,12 @@ export async function llmCall({
           ) => ChatCompletionStream;
         };
         const streamObj = stream({ ...apiParams, stream: true }, { signal });
-        const { res, sentMessages } = await handleCompletionStream(
+        const { res } = await handleCompletionStream(
           streamObj,
           msg,
           chatConfig,
         );
-        return { res, trace, sentMessages };
+        return { res, trace };
       }
       const res = (await apiFunc.chat.completions.create(apiParams, {
         signal,
