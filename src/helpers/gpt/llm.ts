@@ -34,7 +34,7 @@ import {
 } from "./responsesApi.ts";
 import {
   handleResponseStream,
-  handleChatCompletionStream,
+  handleCompletionStream,
 } from "./streaming.ts";
 import type { ChatCompletionStream } from "openai/lib/ChatCompletionStream.js";
 
@@ -118,7 +118,7 @@ export async function llmCall({
           ) => ChatCompletionStream;
         };
         const streamObj = stream({ ...apiParams, stream: true }, { signal });
-        const { res, sentMessages } = await handleChatCompletionStream(
+        const { res, sentMessages } = await handleCompletionStream(
           streamObj,
           msg,
           chatConfig,
