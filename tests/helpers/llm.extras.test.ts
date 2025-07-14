@@ -348,6 +348,45 @@ describe("llmCall", () => {
     expect(api.chat.completions.stream).toHaveBeenCalled();
     expect(result.res.choices[0].message.content).toBe("r");
   });
+
+  it("falls back when finalChatCompletion missing", async () => {
+    const events = [
+      {
+        choices: [{ delta: { content: "hello" }, finish_reason: "stop" }],
+      } as ChatCompletionChunk,
+    ];
+    const stream = {
+      async *[Symbol.asyncIterator]() {
+        for (const e of events) yield e as ChatCompletionChunk;
+      },
+      on: jest.fn(),
+      controller: { signal: undefined },
+    } as unknown as ChatCompletionStream;
+    const api = {
+      chat: {
+        completions: {
+          stream: jest.fn().mockReturnValue(stream),
+          create: jest.fn(),
+        },
+      },
+    };
+    mockUseApi.mockReturnValue(api);
+    const params = {
+      messages: [{ role: "user", content: "hi" }],
+      model: "m",
+    } as OpenAI.ChatCompletionCreateParams;
+    const result = await llm.llmCall({
+      apiParams: params,
+      msg: { ...baseMsg },
+      chatConfig: {
+        ...chatConfig,
+        local_model: undefined,
+        chatParams: { streaming: true },
+      },
+    });
+    expect(api.chat.completions.stream).toHaveBeenCalled();
+    expect(result.res.choices[0].message.content).toBe("hello");
+  });
 });
 
 describe("requestGptAnswer", () => {

@@ -270,8 +270,41 @@ export async function handleChatCompletionStream(
   }
   await flush();
 
-  const res = await stream.finalChatCompletion();
-  const finalOutput = res.choices?.[0]?.message?.content ?? "";
+  let res: OpenAI.ChatCompletion;
+  let finalOutput = "";
+  if (typeof (stream as any).finalChatCompletion === "function") {
+    res = await (
+      stream as unknown as {
+        finalChatCompletion(): Promise<OpenAI.ChatCompletion>;
+      }
+    ).finalChatCompletion();
+    finalOutput = res.choices?.[0]?.message?.content ?? "";
+  } else if (typeof (stream as any).finalMessage === "function") {
+    const message = await (stream as any).finalMessage();
+    res = { choices: [{ index: 0, message }] } as OpenAI.ChatCompletion;
+    finalOutput = message?.content ?? "";
+  } else if (typeof (stream as any).finalContent === "function") {
+    const content = await (stream as any).finalContent();
+    res = {
+      choices: [
+        {
+          index: 0,
+          message: { role: "assistant", content: content ?? "" },
+        } as OpenAI.ChatCompletion.Choice,
+      ],
+    } as OpenAI.ChatCompletion;
+    finalOutput = content ?? "";
+  } else {
+    res = {
+      choices: [
+        {
+          index: 0,
+          message: { role: "assistant", content: fullText },
+        } as OpenAI.ChatCompletion.Choice,
+      ],
+    } as OpenAI.ChatCompletion;
+    finalOutput = fullText;
+  }
 
   const processed = telegramifyMarkdown(finalOutput, "escape");
   const chunks = splitBigMessage(processed);
