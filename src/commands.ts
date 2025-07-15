@@ -246,9 +246,17 @@ export async function getInfoMessage(
     lines.push(`Chat is memoryless: it forget history after each tool usage.`);
   }
 
-  if (chatConfig.tools) {
+  if (chatConfig.tools && chatConfig.tools.length > 0) {
     const tools = await getToolsInfo(chatConfig.tools, msg);
-    lines.push(`Tools:\n${tools.join("\n\n")}`);
+    lines.push(`\nTools:\n${tools.join("\n\n")}`);
+  }
+
+  if (chatConfig.chatParams?.streaming) {
+    lines.push("Streaming: yes");
+  }
+
+  if (chatConfig.chatParams?.useResponsesApi) {
+    lines.push("Responses API: yes");
   }
 
   if (msg.chat.type === "private") {
