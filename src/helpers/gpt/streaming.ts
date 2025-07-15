@@ -136,7 +136,7 @@ function createFlusher(
       clearTimeout(flushTimeout);
       flushTimeout = undefined;
     }
-    await flush();
+    // await flush();
     return { fullText, sentMessages } as const;
   }
 
