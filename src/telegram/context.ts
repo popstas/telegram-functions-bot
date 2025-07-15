@@ -3,7 +3,7 @@ import { Context } from "telegraf";
 import { User } from "@telegraf/types/manage";
 import { useConfig } from "../config.ts";
 import { log } from "../helpers.ts";
-import { CompletionParamsType, ConfigChatType } from "../types.ts";
+import { ChatParamsType, CompletionParamsType, ConfigChatType } from "../types.ts";
 
 function isAccessAllowed(chatConfig: ConfigChatType, ctxChat: Chat) {
   const privateChat = ctxChat as Chat.PrivateChat;
@@ -90,6 +90,11 @@ function getChatConfig(
     chat = { ...defaultChat, ...chat };
     mergeConfigParam<{ completionParams: CompletionParamsType }>(
       "completionParams",
+      defaultChat,
+      chat,
+    );
+    mergeConfigParam<{ chatParams: ChatParamsType }>(
+      "chatParams",
       defaultChat,
       chat,
     );
