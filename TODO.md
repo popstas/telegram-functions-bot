@@ -1,10 +1,5 @@
 - [ ] Show mqtt progress more verbose
-- [x] showTelegramNames is deprecated, remove it from the project
-- [ ] When chat has bot_name, and I've added the bot to the new group, bot doesn't check access level
-- [ ] Сделать миграцию на новый `npm install openai`. Инструкция по миграции - https://github.com/openai/openai-node/blob/master/MIGRATION.md
-- [ ] Tool change_access_settings, for add/remove users to/from adminUsers, privateUsers - 
 - [ ] В проекте есть скрытые замены "confirm", "noconfirm"
-- [ ] В addToHistory инициализируется threads, это неочевидно. Нужно вынести инициализацию threads в отдельную функцию
-- [x] Убрать showTelegramNames
 - [ ] В llm.ts localModel передаётся 2 способами, нужно оставить только один
 - [ ] При выполнении forget в конце ответа, в langfuse не попадает окончательный ответ
+- [ ] При сохранении конфига не добавлять в tools change_chat_settings

@@ -79,21 +79,21 @@ export async function llmCall({
     apiFunc = observeOpenAI(api, { generationName, parent: trace });
   }
   try {
+    const options = {signal};
+    const isStreaming = chatConfig?.chatParams?.streaming && !noSendTelegram;
     const useResponses =
       !localModel &&
       !chatConfig?.local_model &&
       chatConfig?.chatParams?.useResponsesApi;
     const apiResponses = apiFunc as unknown as {
-      responses?: OpenAI.Responses;
+      responses: OpenAI.Responses;
     };
-    if (useResponses && apiResponses.responses?.create) {
-      const respParams = convertResponsesInput(
-        apiParams as OpenAI.Chat.Completions.ChatCompletionCreateParams
-      );
-      if (chatConfig?.chatParams?.streaming && !noSendTelegram) {
+    if (useResponses) {
+      const respParams = convertResponsesInput(apiParams);
+      if (isStreaming) {
         const stream = apiResponses.responses.stream(
           { ...respParams, stream: true } as never,
-          { signal }
+          options
         );
         const { res, webSearchDetails, images } = await handleResponseStream(
           stream,
@@ -102,20 +102,18 @@ export async function llmCall({
         );
         return { res, trace, webSearchDetails, images };
       }
-      const r = (await apiResponses.responses.create(respParams, {
-        signal,
-      })) as OpenAI.Responses.Response;
+      const r = (await apiResponses.responses.create(respParams, options)) as OpenAI.Responses.Response;
       const { res, webSearchDetails, images } = await convertResponsesOutput(r);
       return { res, trace, webSearchDetails, images };
     } else {
-      if (chatConfig?.chatParams?.streaming && !noSendTelegram) {
+      if (isStreaming) {
         const { stream } = apiFunc.chat.completions as unknown as {
           stream: (
             params: OpenAI.Chat.Completions.ChatCompletionCreateParams,
             options?: { signal?: AbortSignal }
           ) => ChatCompletionStream;
         };
-        const streamObj = stream({ ...apiParams, stream: true }, { signal });
+        const streamObj = stream({ ...apiParams, stream: true }, options);
         const { res } = await handleCompletionStream(
           streamObj,
           msg,
@@ -123,9 +121,7 @@ export async function llmCall({
         );
         return { res, trace };
       }
-      const res = (await apiFunc.chat.completions.create(apiParams, {
-        signal,
-      })) as OpenAI.ChatCompletion;
+      const res = (await apiFunc.chat.completions.create(apiParams, options)) as OpenAI.ChatCompletion;
       return { res, trace };
     }
   } catch (e) {
