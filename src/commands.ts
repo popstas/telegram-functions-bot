@@ -255,7 +255,7 @@ export async function getInfoMessage(
     lines.push("Streaming: yes");
   }
 
-  if (chatConfig.chatParams?.useResponsesApi) {
+  if (chatConfig.chatParams?.useResponsesApi && !chatConfig.local_model) {
     lines.push("Responses API: yes");
   }
 
