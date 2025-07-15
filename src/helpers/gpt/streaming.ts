@@ -149,6 +149,14 @@ export async function handleStream<T, R>(
   chatConfig: ConfigChatType | undefined,
   callbacks: {
     extractDelta(chunk: T): string | undefined;
+    extractToolCalls?(chunk: T):
+      | {
+          index: number;
+          id?: string;
+          function?: { arguments?: string; name?: string };
+          type?: string;
+        }[]
+      | undefined;
     onChunk?(chunk: T): void;
     finalize(
       fullText: string,
@@ -157,25 +165,62 @@ export async function handleStream<T, R>(
         safeEdit: (m: Message.TextMessage, t: string) => Promise<void>;
         safeDelete: (m: Message.TextMessage) => Promise<void>;
       },
+      toolCalls: {
+        index: number;
+        id?: string;
+        function: { arguments: string; name?: string };
+        type?: string;
+      }[],
     ): Promise<R>;
   },
 ): Promise<R & { sentMessages: Message.TextMessage[] }> {
   const bot = useBot(chatConfig?.bot_token);
   const flusher = createFlusher(bot, msg);
+  const finalToolCalls: Record<
+    number,
+    {
+      index: number;
+      id?: string;
+      function: { arguments: string; name?: string };
+      type?: string;
+    }
+  > = {};
 
   for await (const chunk of stream) {
     callbacks.onChunk?.(chunk);
     const delta = callbacks.extractDelta(chunk);
     if (delta) flusher.add(delta);
+    const toolCalls = callbacks.extractToolCalls?.(chunk) || [];
+    for (const toolCall of toolCalls) {
+      const { index } = toolCall;
+      if (!finalToolCalls[index]) {
+        finalToolCalls[index] = {
+          index,
+          id: toolCall.id,
+          type: toolCall.type,
+          function: { arguments: "", name: toolCall.function?.name },
+        };
+      }
+      const acc = finalToolCalls[index];
+      if (toolCall.id) acc.id = toolCall.id;
+      if (toolCall.type) acc.type = toolCall.type;
+      if (toolCall.function?.name) acc.function.name = toolCall.function.name;
+      if (toolCall.function?.arguments)
+        acc.function.arguments += toolCall.function.arguments;
+    }
   }
 
   const { fullText, sentMessages } = await flusher.finish();
 
-  const res = await callbacks.finalize(fullText, {
-    sentMessages,
-    safeEdit: (m, t) => safeEdit(bot, m, t),
-    safeDelete: (m) => safeDelete(bot, m),
-  });
+  const res = await callbacks.finalize(
+    fullText,
+    {
+      sentMessages,
+      safeEdit: (m, t) => safeEdit(bot, m, t),
+      safeDelete: (m) => safeDelete(bot, m),
+    },
+    Object.values(finalToolCalls),
+  );
 
   return { ...res, sentMessages };
 }
@@ -198,12 +243,41 @@ export async function handleResponseStream(
         ? (chunk as OpenAI.Responses.ResponseTextDeltaEvent).delta
         : undefined;
     },
+    extractToolCalls(chunk) {
+      return chunk.type === "response.function_call_arguments.delta"
+        ? [
+            {
+              index: chunk.output_index,
+              id: chunk.item_id,
+              type: "function",
+              function: {
+                arguments: (
+                  chunk as OpenAI.Responses.ResponseFunctionCallArgumentsDeltaEvent
+                ).delta,
+              },
+            },
+          ]
+        : chunk.type === "response.output_item.added" &&
+            chunk.item.type === "function_call"
+          ? [
+              {
+                index: chunk.output_index,
+                id: chunk.item.id,
+                type: "function",
+                function: {
+                  name: chunk.item.name,
+                  arguments: chunk.item.arguments ?? "",
+                },
+              },
+            ]
+          : [];
+    },
     onChunk(chunk) {
       if (chunk.type === "response.completed") {
         completed = (chunk as OpenAI.Responses.ResponseCompletedEvent).response;
       }
     },
-    async finalize(_fullText, helpers) {
+    async finalize(_fullText, helpers, toolCalls) {
       if (!completed) {
         throw new Error("No response.completed event received");
       }
@@ -220,6 +294,15 @@ export async function handleResponseStream(
         await helpers.safeDelete(m);
       }
       helpers.sentMessages.length = 0;
+      if (
+        !result.res.choices[0].message.tool_calls?.length &&
+        toolCalls.length
+      ) {
+        (
+          result.res.choices[0]
+            .message as OpenAI.ChatCompletionAssistantMessageParam
+        ).tool_calls = toolCalls as OpenAI.ChatCompletionMessageToolCall[];
+      }
       return result;
     },
   });
@@ -240,7 +323,10 @@ export async function handleCompletionStream(
     extractDelta(chunk: ChatCompletionChunk) {
       return chunk.choices?.[0]?.delta?.content ?? undefined;
     },
-    async finalize(fullText, helpers) {
+    extractToolCalls(chunk: ChatCompletionChunk) {
+      return chunk.choices?.[0]?.delta?.tool_calls || [];
+    },
+    async finalize(fullText, helpers, toolCalls) {
       let res: OpenAI.ChatCompletion;
       let finalOutput = "";
       const withFinalCC = stream as unknown as {
@@ -272,7 +358,13 @@ export async function handleCompletionStream(
           choices: [
             {
               index: 0,
-              message: { role: "assistant", content: fullText },
+              message: {
+                role: "assistant",
+                content: fullText,
+                tool_calls: toolCalls.length
+                  ? (toolCalls as unknown as OpenAI.ChatCompletionMessageToolCall[])
+                  : undefined,
+              } as OpenAI.ChatCompletionAssistantMessageParam,
             } as OpenAI.ChatCompletion.Choice,
           ],
         } as OpenAI.ChatCompletion;
