@@ -286,6 +286,11 @@ export async function sendTelegramDocument(
   chatConfig?: ConfigChatType,
 ): Promise<Message.DocumentMessage | undefined> {
   try {
+    // find match for filename like `2025-07-11_19_05_39_items`, replace to `2025-07-11_items`
+    const hasDatetime = fileName?.match(/\d{4}-\d{2}-\d{2}_\d{2}_\d{2}_\d{2}/);
+    if (hasDatetime && fileName) {
+      fileName = fileName.replace(/_\d{2}_\d{2}_\d{2}/, "");
+    }
     const document =
       file instanceof Buffer
         ? Input.fromBuffer(file, fileName)
