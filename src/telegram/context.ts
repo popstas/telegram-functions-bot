@@ -3,6 +3,7 @@ import { Context } from "telegraf";
 import { User } from "@telegraf/types/manage";
 import { useConfig } from "../config.ts";
 import { log } from "../helpers.ts";
+import { includesUser } from "../utils/users.ts";
 import {
   ChatParamsType,
   CompletionParamsType,
@@ -16,7 +17,7 @@ function isAccessAllowed(chatConfig: ConfigChatType, ctxChat: Chat) {
     ...(useConfig().adminUsers ?? []),
   ];
   const username = privateChat.username || "without_username";
-  return allowedUsers.includes(username);
+  return includesUser(allowedUsers, username);
 }
 
 function getChatConfig(

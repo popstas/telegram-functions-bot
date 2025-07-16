@@ -31,6 +31,13 @@ describe("isAdminUser", () => {
     expect(isAdminUser(msg)).toBe(false);
   });
 
+  it("ignores case", () => {
+    const msg = {
+      from: { username: "AdMiN" },
+    } as unknown as Message.TextMessage;
+    expect(isAdminUser(msg)).toBe(true);
+  });
+
   it("returns false when username missing", () => {
     const msg = { from: {} } as unknown as Message.TextMessage;
     expect(isAdminUser(msg)).toBe(false);

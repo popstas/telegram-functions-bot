@@ -18,6 +18,7 @@ import useLangfuse from "../useLangfuse.ts";
 import { isAdminUser } from "../../telegram/send.ts";
 import { useConfig } from "../../config.ts";
 import { requestGptAnswer } from "./llm.ts";
+import { includesUser } from "../../utils/users.ts";
 import { publishMqttProgress } from "../../mqtt.ts";
 
 export function prettifyKeyValue(
@@ -496,7 +497,8 @@ export async function resolveChatTools(
       );
       if (!agentConfig) return false;
       if (agentConfig.privateUsers) {
-        const isPrivateUser = agentConfig.privateUsers.includes(
+        const isPrivateUser = includesUser(
+          agentConfig.privateUsers,
           msg.from?.username || "without_username",
         );
         if (!isPrivateUser) return false;

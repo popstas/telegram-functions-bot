@@ -1,6 +1,7 @@
 import { Message } from "telegraf/types";
 import { useBot } from "../bot.ts";
 import { useConfig } from "../config.ts";
+import { includesUser } from "../utils/users.ts";
 import { ConfigChatButtonType, ConfigChatType } from "../types.ts";
 import { Context, Markup, Input } from "telegraf";
 import { User } from "@telegraf/types/manage";
@@ -208,7 +209,7 @@ export async function sendTelegramMessage(
 
 export function isAdminUser(msg: Message.TextMessage): boolean {
   if (!msg.from?.username) return false;
-  return (useConfig().adminUsers || []).includes(msg.from.username);
+  return includesUser(useConfig().adminUsers, msg.from.username);
 }
 
 export function buildButtonRows(buttons: ConfigChatButtonType[]) {
@@ -252,9 +253,14 @@ export function isOurUser(
   const chatPrivateUsers = chatConfig?.privateUsers || [];
   const isOurUser =
     username &&
-    [chatPrivateUsers, useConfig().privateUsers, useConfig().adminUsers]
-      .flat()
-      .includes(username);
+    includesUser(
+      [
+        ...chatPrivateUsers,
+        ...(useConfig().privateUsers || []),
+        ...(useConfig().adminUsers || []),
+      ],
+      username,
+    );
   return isOurUser;
 }
 
