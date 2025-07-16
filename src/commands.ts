@@ -18,6 +18,7 @@ import {
 import { forgetHistory } from "./helpers/history.ts";
 import { commandGoogleOauth } from "./helpers/google.ts";
 import useTools from "./helpers/useTools.ts";
+import { includesUser } from "./utils/users.ts";
 
 export async function handleForget(ctx: Context) {
   forgetHistory(ctx.chat!.id);
@@ -111,7 +112,7 @@ export async function commandAddTool(
         // check admin
         const { user } = getActionUserMsg(ctx);
         const username = user?.username || "without_username";
-        if (!user || !config.adminUsers?.includes(username)) return;
+        if (!user || !includesUser(config.adminUsers, username)) return;
 
         let chatConfig: ConfigChatType | undefined;
         if (ctx.chat?.type === "private") {
@@ -193,7 +194,8 @@ export async function getToolsInfo(
 
     // check access when privateUsers is set
     if (agentConfig.privateUsers) {
-      const isPrivateUser = agentConfig.privateUsers.includes(
+      const isPrivateUser = includesUser(
+        agentConfig.privateUsers,
         msg.from?.username || "without_username",
       );
       if (!isPrivateUser) return false;

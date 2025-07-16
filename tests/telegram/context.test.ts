@@ -77,6 +77,16 @@ describe("getCtxChatMsg", () => {
     expect(msg?.text).toBe("hi");
   });
 
+  it("ignores case when checking private users", () => {
+    mockUseConfig.mockReturnValue({
+      chats: [{ ...baseChat, privateUsers: ["User"] }],
+      privateUsers: [],
+    });
+    const ctx = createCtx({ message: createMsg("user") });
+    const { chat } = getCtxChatMsg(ctx);
+    expect(chat).toMatchObject(baseChat);
+  });
+
   it("returns undefined chat when user not allowed", () => {
     mockUseConfig.mockReturnValue({
       chats: [{ ...baseChat, privateUsers: ["other"] }],
