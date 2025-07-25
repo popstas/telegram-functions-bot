@@ -42,7 +42,15 @@ export default async function onPhoto(ctx: Context) {
 
   // Create a new message object with the recognized text
   const processPhoto = async () => {
-    const text = await recognizeImageText(msg, chat);
+    let text = '';
+    try {
+      text = await recognizeImageText(msg, chat);
+    } catch (error) {
+      await sendTelegramMessage(
+        msg.chat.id,
+        `Ошибка при распознавании текста: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`
+      );
+    }
     const caption = msg.caption ? `${msg.caption}\n` : "";
 
     log({

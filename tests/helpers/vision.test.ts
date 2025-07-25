@@ -39,10 +39,9 @@ function createMsg(caption?: string): Message.PhotoMessage {
 }
 
 describe("recognizeImageText", () => {
-  it("returns empty string when model missing", async () => {
+  it("throws error when model missing", async () => {
     const msg = createMsg();
-    const res = await vision.recognizeImageText(msg, {} as ConfigChatType);
-    expect(res).toBe("");
+    await expect(vision.recognizeImageText(msg, {} as ConfigChatType)).rejects.toThrow('Не указана модель для распознавания.');
     expect(mockGetFileLink).toHaveBeenCalledWith("f1");
     expect(mockLlCall).not.toHaveBeenCalled();
   });
@@ -69,12 +68,11 @@ describe("recognizeImageText", () => {
     expect(res).toBe("ok");
   });
 
-  it("returns empty string on error", async () => {
+  it("throws error on llmCall failure", async () => {
     mockUseConfig.mockReturnValue({ vision: { model: "m" } });
     mockGetFileLink.mockResolvedValue("http://file");
     mockLlCall.mockRejectedValue(new Error("bad"));
     const msg = createMsg();
-    const res = await vision.recognizeImageText(msg, {} as ConfigChatType);
-    expect(res).toBe("");
+    await expect(vision.recognizeImageText(msg, {} as ConfigChatType)).rejects.toThrow("bad");
   });
 });

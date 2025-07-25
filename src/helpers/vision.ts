@@ -9,11 +9,20 @@ export async function recognizeImageText(
   chatConfig: ConfigChatType,
 ): Promise<string> {
   const photo = msg.photo[msg.photo.length - 1];
-  const link = await useBot().telegram.getFileLink(photo.file_id);
+  let link;
+  try {
+    link = await useBot().telegram.getFileLink(photo.file_id);
+  } catch (error) {
+    const err = error as Error;
+    if (err.message.includes('wrong file_id') || err.message.includes('temporarily unavailable')) {
+      throw new Error('Не удалось получить изображение.');
+    }
+    throw error;
+  }
 
   const config = useConfig();
   const model = config?.vision?.model || "";
-  if (!model) return "";
+  if (!model) throw new Error('Не указана модель для распознавания.');
 
   let prompt = "Извлеки текст с изображения. Ответь только текстом.";
   if (msg.caption) prompt = msg.caption;
@@ -43,6 +52,6 @@ export async function recognizeImageText(
     return res.choices[0]?.message?.content?.trim() || "";
   } catch (e) {
     console.error("vision error", e);
-    return "";
+    throw e;
   }
 }
