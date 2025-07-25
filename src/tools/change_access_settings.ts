@@ -10,7 +10,7 @@ type ToolArgsType = {
   removePrivate?: string[];
 };
 
-export const description = "Update adminUsers and privateUsers in config.yml";
+export const description = "Update adminUsers and privateUsers in config.yml, usernames must be without @";
 export const details = `- Add or remove usernames from adminUsers and privateUsers`;
 
 export class ChangeAccessSettingsClient extends AIFunctionsProvider {
@@ -30,19 +30,19 @@ export class ChangeAccessSettingsClient extends AIFunctionsProvider {
       addAdmin: z
         .array(z.string())
         .optional()
-        .describe("Usernames to add to adminUsers"),
+        .describe("Admin Usernames to add to adminUsers, use only when explicitly specified `admin`"),
       removeAdmin: z
         .array(z.string())
         .optional()
-        .describe("Usernames to remove from adminUsers"),
+        .describe("Admin Usernames to remove from adminUsers, use only when explicitly specified `admin`"),
       addPrivate: z
         .array(z.string())
         .optional()
-        .describe("Usernames to add to privateUsers"),
+        .describe("User Usernames to add to privateUsers"),
       removePrivate: z
         .array(z.string())
         .optional()
-        .describe("Usernames to remove from privateUsers"),
+        .describe("User Usernames to remove from privateUsers"),
     }),
   })
   async change_access_settings(options: ToolArgsType) {
