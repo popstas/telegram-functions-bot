@@ -281,6 +281,8 @@ export async function executeTools(
     let toolParams = toolCall.function.arguments;
     const toolClient = chatTool.module.call(chatConfig, thread);
 
+    toolParams = removeNullsParams(toolParams);
+
     if (toolCall.function.name === "planfix_add_to_lead_task") {
       const firstMessage = thread.msgs[0];
       const from = firstMessage.from;
@@ -474,6 +476,13 @@ export async function executeTools(
   return Promise.all(toolPromises) as Promise<ToolResponse[]>;
 }
 
+export function removeNullsParams(params: string): string {
+  const filteredParams = Object.fromEntries(
+    Object.entries(JSON.parse(params)).filter(([, value]) => value !== null),
+  );
+  return JSON.stringify(filteredParams);
+}
+
 export async function resolveChatTools(
   msg: Message.TextMessage,
   chatConfig: ConfigChatType,
@@ -486,6 +495,11 @@ export async function resolveChatTools(
 
   let agentTools: ChatToolType[] = [];
   if (chatConfig.tools) {
+    if (chatConfig.tools.includes("change_access_settings") && !isAdminUser(msg)) {
+      chatConfig.tools = chatConfig.tools.filter((t) => t !== "change_access_settings");
+    }
+
+    // build agent tools
     const agentsToolsConfigs = chatConfig.tools.filter((t) => {
       const isAgent =
         typeof t === "object" && ("agent_name" in t || "bot_name" in t);

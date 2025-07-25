@@ -418,3 +418,65 @@ describe("prettifyKeyValue", () => {
     expect(result).toContain("*0:* 2");
   });
 });
+
+describe("removeNullsParams", () => {
+  it("removes null values and keeps non-null values", () => {
+    const input = JSON.stringify({
+      addAdmin: ["asd"],
+      removeAdmin: null,
+      addPrivate: null,
+      removePrivate: null,
+    });
+    
+    const result = tools.removeNullsParams(input);
+    const parsed = JSON.parse(result);
+    
+    expect(parsed).toEqual({
+      addAdmin: ["asd"],
+    });
+    expect(parsed).not.toHaveProperty("removeAdmin");
+    expect(parsed).not.toHaveProperty("addPrivate");
+    expect(parsed).not.toHaveProperty("removePrivate");
+  });
+
+  it("handles empty object", () => {
+    const input = JSON.stringify({});
+    const result = tools.removeNullsParams(input);
+    expect(JSON.parse(result)).toEqual({});
+  });
+
+  it("handles object with all null values", () => {
+    const input = JSON.stringify({
+      a: null,
+      b: null,
+      c: null,
+    });
+    const result = tools.removeNullsParams(input);
+    expect(JSON.parse(result)).toEqual({});
+  });
+
+  it("preserves non-null values of different types", () => {
+    const input = JSON.stringify({
+      string: "value",
+      number: 42,
+      boolean: true,
+      array: [1, 2, 3],
+      object: { nested: "value" },
+      nullValue: null,
+      undefinedValue: undefined,
+    });
+    
+    const result = tools.removeNullsParams(input);
+    const parsed = JSON.parse(result);
+    
+    expect(parsed).toEqual({
+      string: "value",
+      number: 42,
+      boolean: true,
+      array: [1, 2, 3],
+      object: { nested: "value" },
+      undefinedValue: undefined,
+    });
+    expect(parsed).not.toHaveProperty("nullValue");
+  });
+});
