@@ -89,14 +89,12 @@ async function launchBot(bot_token: string, bot_name: string) {
     bot.on(message("video_note"), onUnsupported);
     bot.on(message("document"), onUnsupported);
 
-    if ("catch" in bot && typeof (bot as any).catch === "function") {
-      bot.catch((err, ctx) => {
-        log({
-          msg: `[${bot_name}] Unhandled error for update ${ctx.update.update_id}: ${err instanceof Error ? err.message : String(err)}`,
-          logLevel: "error",
-        });
+    bot.catch((err, ctx) => {
+      log({
+        msg: `[${bot_name}] Unhandled error for update ${ctx.update.update_id}: ${err instanceof Error ? err.message : String(err)}`,
+        logLevel: "error",
       });
-    }
+    });
 
     // Set up chat action handler
     bot.action("add_chat", handleAddChat);

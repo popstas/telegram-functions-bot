@@ -3,7 +3,7 @@ import { useConfig } from "./config.ts";
 
 const bots: Record<string, Telegraf> = {};
 
-export function useBot(bot_token?: string) {
+export function useBot(bot_token?: string): Telegraf {
   bot_token = bot_token || useConfig().auth.bot_token;
   if (!bots[bot_token]) {
     const bot = new Telegraf(bot_token);
@@ -17,6 +17,6 @@ export function useBot(bot_token?: string) {
   return bots[bot_token];
 }
 
-export function getBots() {
+export function getBots(): Record<string, Telegraf> {
   return bots;
 }
