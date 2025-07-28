@@ -73,4 +73,21 @@ describe("onPhoto main flow", () => {
     expect(calledCtx.message.text).toBe("cap\nocr");
     expect(mockSendTelegramMessage).not.toHaveBeenCalled();
   });
+
+  it("skips ocr when caption is long", async () => {
+    const caption = "a".repeat(101);
+    const msg = {
+      chat: { id: 1, type: "private", title: "t" },
+      photo: [{ file_id: "f" }],
+      caption,
+    } as Message.PhotoMessage;
+    mockCheckAccessLevel.mockResolvedValue({ msg, chat: {} as ConfigChatType });
+    mockUseConfig.mockReturnValue({ vision: { model: "m" } });
+    const ctx = createCtx(msg);
+    await onPhoto(ctx);
+    expect(mockRecognizeImageText).not.toHaveBeenCalled();
+    expect(mockOnTextMessage).toHaveBeenCalled();
+    const calledCtx = mockOnTextMessage.mock.calls[0][0];
+    expect(calledCtx.message.text).toBe(caption);
+  });
 });

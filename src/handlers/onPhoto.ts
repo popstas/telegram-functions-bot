@@ -32,6 +32,34 @@ export default async function onPhoto(ctx: Context) {
     role: "user",
   });
 
+  if (msg.caption && msg.caption.length > 100) {
+    log({
+      msg: `[photo] caption too long, skip ocr: ${msg.caption.length}`,
+      logLevel: "info",
+      chatId: msg.chat.id,
+      chatTitle,
+    });
+
+    const newMsg = {
+      ...msg,
+      text: msg.caption,
+      entities: [],
+    } as const;
+
+    const contextWithCaption = Object.create(Object.getPrototypeOf(ctx), {
+      ...Object.getOwnPropertyDescriptors(ctx),
+      message: { value: newMsg, writable: true, configurable: true },
+      update: {
+        value: { ...ctx.update, message: newMsg },
+        writable: true,
+        configurable: true,
+      },
+    });
+
+    await onTextMessage(contextWithCaption);
+    return;
+  }
+
   const config = useConfig();
   const model = config?.vision?.model || "";
   if (!model)
@@ -42,13 +70,13 @@ export default async function onPhoto(ctx: Context) {
 
   // Create a new message object with the recognized text
   const processPhoto = async () => {
-    let text = '';
+    let text = "";
     try {
       text = await recognizeImageText(msg, chat);
     } catch (error) {
       await sendTelegramMessage(
         msg.chat.id,
-        `Ошибка при распознавании текста: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`
+        `Ошибка при распознавании текста: ${error instanceof Error ? error.message : "Неизвестная ошибка"}`,
       );
     }
     const caption = msg.caption ? `${msg.caption}\n` : "";
