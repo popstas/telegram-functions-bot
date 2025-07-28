@@ -67,10 +67,21 @@ export default async function onPhoto(ctx: Context) {
     try {
       text = await recognizeImageText(msg, chat);
     } catch (error) {
-      await sendTelegramMessage(
-        msg.chat.id,
-        `Ошибка при распознавании текста: ${error instanceof Error ? error.message : "Неизвестная ошибка"}`,
-      );
+      const chatId = ctx.chat?.id || msg.chat?.id || ctx.from?.id;
+      try {
+        await sendTelegramMessage(
+          chatId || 0,
+          `Ошибка при распознавании текста: ${error instanceof Error ? error.message : "Неизвестная ошибка"}`,
+        );
+      } catch (error) {
+        log({
+          msg: error instanceof Error ? error.message : 'Неизвестная ошибка',
+          logLevel: "error",
+          chatId,
+          chatTitle,
+          role: "user",
+        });
+      }
     }
     const caption = msg.caption ? `${msg.caption}\n` : "";
 

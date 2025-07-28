@@ -71,6 +71,13 @@ export async function sendTelegramMessage(
   ctx?: Context & ExtraCtx,
   chatConfig?: ConfigChatType,
 ): Promise<Message.TextMessage | undefined> {
+  if (!chat_id) {
+    log({
+      msg: `sendTelegramMessage: chat_id is undefined, text: ${text}`,
+      logLevel: "error",
+    });
+    return;
+  }
   chatConfig =
     chatConfig ||
     useConfig().chats.find((c) => c.bot_name === ctx?.botInfo.username) ||
