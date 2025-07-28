@@ -1,7 +1,8 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import type { Context, Update } from "telegraf";
-import type { Message } from "telegraf/types";
+import type { Context } from "telegraf";
+import type { Message, Update } from "telegraf/types";
 import type { ConfigChatType } from "../../src/types";
+import { createNewContext } from "../../src/telegram/context";
 
 const mockUseConfig = jest.fn();
 const mockLog = jest.fn();
@@ -33,6 +34,14 @@ function createCtx(update?: Partial<Update>, botName = "bot") {
   } as unknown as Context;
 }
 
+function createMsg(username: string): Message.TextMessage {
+  return {
+    chat: { id: 123, type: "private", username },
+    from: { username },
+    text: "hi",
+  } as unknown as Message.TextMessage;
+}
+
 describe("getActionUserMsg", () => {
   it("returns user and message from callback query", () => {
     const ctx = createCtx({
@@ -60,14 +69,6 @@ describe("getCtxChatMsg", () => {
     chatParams: {},
     toolParams: {},
   } as ConfigChatType;
-
-  function createMsg(username: string): Message.TextMessage {
-    return {
-      chat: { id: 123, type: "private", username },
-      from: { username },
-      text: "hi",
-    } as unknown as Message.TextMessage;
-  }
 
   it("returns chat when user allowed", () => {
     mockUseConfig.mockReturnValue({ chats: [baseChat], privateUsers: [] });
@@ -112,5 +113,15 @@ describe("getCtxChatMsg", () => {
     const ctx = createCtx({ message: createMsg("admin") });
     const { chat } = getCtxChatMsg(ctx);
     expect(chat).toMatchObject(baseChat);
+  });
+});
+
+describe("createNewContext", () => {
+  it("creates new context with new message", () => {
+    const ctx = createCtx({ message: createMsg("u") });
+    const newMsg = createMsg("new");
+    const newCtx = createNewContext(ctx, newMsg);
+    expect(newCtx.message).toEqual(newMsg);
+    expect(newCtx.update).toEqual({ message: newMsg });
   });
 });

@@ -6,6 +6,7 @@ import { recognizeImageText } from "../helpers/vision.ts";
 import { log } from "../helpers";
 import { useConfig } from "../config.ts";
 import { sendTelegramMessage } from "../telegram/send.ts";
+import { createNewContext } from "../telegram/context.ts";
 
 // Type guard to check if update has a message
 function isMessageUpdate(update: Update): update is Update.MessageUpdate {
@@ -32,6 +33,26 @@ export default async function onPhoto(ctx: Context) {
     role: "user",
   });
 
+  if (msg.caption && msg.caption.length > 100) {
+    log({
+      msg: `[photo] caption too long, skip ocr: ${msg.caption.length}`,
+      logLevel: "info",
+      chatId: msg.chat.id,
+      chatTitle,
+    });
+
+    const newMsg = {
+      ...msg,
+      text: msg.caption,
+      entities: [],
+    } as const;
+
+    const contextWithCaption = createNewContext(ctx, newMsg);
+
+    await onTextMessage(contextWithCaption);
+    return;
+  }
+
   const config = useConfig();
   const model = config?.vision?.model || "";
   if (!model)
@@ -42,13 +63,13 @@ export default async function onPhoto(ctx: Context) {
 
   // Create a new message object with the recognized text
   const processPhoto = async () => {
-    let text = '';
+    let text = "";
     try {
       text = await recognizeImageText(msg, chat);
     } catch (error) {
       await sendTelegramMessage(
         msg.chat.id,
-        `Ошибка при распознавании текста: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`
+        `Ошибка при распознавании текста: ${error instanceof Error ? error.message : "Неизвестная ошибка"}`,
       );
     }
     const caption = msg.caption ? `${msg.caption}\n` : "";
@@ -69,15 +90,7 @@ export default async function onPhoto(ctx: Context) {
     } as const;
 
     // Create a new context by extending the original context
-    const contextWithNewMessage = Object.create(Object.getPrototypeOf(ctx), {
-      ...Object.getOwnPropertyDescriptors(ctx),
-      message: { value: newMsg, writable: true, configurable: true },
-      update: {
-        value: { ...ctx.update, message: newMsg },
-        writable: true,
-        configurable: true,
-      },
-    });
+    const contextWithNewMessage = createNewContext(ctx, newMsg);
 
     await onTextMessage(contextWithNewMessage);
   };
