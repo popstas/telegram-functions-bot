@@ -13,6 +13,7 @@ const botInstance = {
   help: jest.fn(),
   on: jest.fn(),
   action: jest.fn(),
+  catch: jest.fn(),
   launch: jest.fn().mockResolvedValue(undefined),
   botInfo: { username: "bot" },
 };
