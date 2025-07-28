@@ -6,6 +6,7 @@ import { recognizeImageText } from "../helpers/vision.ts";
 import { log } from "../helpers";
 import { useConfig } from "../config.ts";
 import { sendTelegramMessage } from "../telegram/send.ts";
+import { createNewContext } from "../telegram/context.ts";
 
 // Type guard to check if update has a message
 function isMessageUpdate(update: Update): update is Update.MessageUpdate {
@@ -46,15 +47,7 @@ export default async function onPhoto(ctx: Context) {
       entities: [],
     } as const;
 
-    const contextWithCaption = Object.create(Object.getPrototypeOf(ctx), {
-      ...Object.getOwnPropertyDescriptors(ctx),
-      message: { value: newMsg, writable: true, configurable: true },
-      update: {
-        value: { ...ctx.update, message: newMsg },
-        writable: true,
-        configurable: true,
-      },
-    });
+    const contextWithCaption = createNewContext(ctx, newMsg);
 
     await onTextMessage(contextWithCaption);
     return;
@@ -97,15 +90,7 @@ export default async function onPhoto(ctx: Context) {
     } as const;
 
     // Create a new context by extending the original context
-    const contextWithNewMessage = Object.create(Object.getPrototypeOf(ctx), {
-      ...Object.getOwnPropertyDescriptors(ctx),
-      message: { value: newMsg, writable: true, configurable: true },
-      update: {
-        value: { ...ctx.update, message: newMsg },
-        writable: true,
-        configurable: true,
-      },
-    });
+    const contextWithNewMessage = createNewContext(ctx, newMsg);
 
     await onTextMessage(contextWithNewMessage);
   };

@@ -142,3 +142,15 @@ export function getCtxChatMsg(ctx: Context): {
 
   return { chat, msg };
 }
+
+export function createNewContext(ctx: Context, newMsg: Message) {
+  return Object.create(Object.getPrototypeOf(ctx), {
+    ...Object.getOwnPropertyDescriptors(ctx),
+    message: { value: newMsg, writable: true, configurable: true },
+    update: {
+      value: { ...ctx.update, message: newMsg },
+      writable: true,
+      configurable: true,
+    },
+  });
+}
