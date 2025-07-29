@@ -22,3 +22,4 @@ config-*
 
 .history/
 coverage/
+tsconfig.tsbuildinfo

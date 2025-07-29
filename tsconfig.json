@@ -8,6 +8,8 @@
     "moduleResolution": "node",
     "allowImportingTsExtensions": true,
     "esModuleInterop": true,
+    "skipLibCheck": true,
+    "incremental": true,
     "noEmit": true,
     "isolatedModules": true,
     "typeRoots": ["node_modules/@types", "src/@types"]
