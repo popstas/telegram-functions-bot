@@ -44,11 +44,14 @@ jest.unstable_mockModule("../src/bot", () => ({
 
 let config: unknown;
 
+const mockReadConfig = jest.fn();
+
 jest.unstable_mockModule("../src/config.ts", () => ({
   __esModule: true,
   useConfig: () => mockUseConfig(),
   writeConfig: (...args: unknown[]) => mockWriteConfig(...args),
   generatePrivateChatConfig: (u: string) => mockGeneratePrivateChatConfig(u),
+  readConfig: () => mockReadConfig(),
 }));
 
 jest.unstable_mockModule("../src/telegram/context.ts", () => ({
@@ -89,6 +92,8 @@ beforeEach(async () => {
   mockUseTools.mockResolvedValue([]);
   mockSendTelegramMessage.mockReset();
   mockWriteConfig.mockReset();
+  mockReadConfig.mockReset();
+  mockReadConfig.mockReturnValue(config);
   mockUseConfig.mockReset().mockReturnValue(config);
   mockGeneratePrivateChatConfig.mockReset().mockImplementation((u) => ({
     name: `Private ${u}`,
@@ -315,14 +320,20 @@ describe("handleStart", () => {
     };
     const msg = createMsg();
     const chat: ConfigChatType = {
+      id: 1,
       completionParams: {},
       chatParams: {},
       toolParams: {},
       deeplinks: [{ name: "from" }],
     } as ConfigChatType;
     mockGetCtxChatMsg.mockReturnValue({ msg, chat });
+    (config as { chats: ConfigChatType[] }).chats.push(chat);
     await commands.handleStart(ctx);
-    expect(chat.user_vars?.[0]).toEqual({
+    expect(mockReadConfig).toHaveBeenCalled();
+    expect(mockWriteConfig).toHaveBeenCalledWith(undefined, config);
+    expect(
+      (config as { chats: ConfigChatType[] }).chats[0].user_vars?.[0],
+    ).toEqual({
       username: "user",
       vars: { from: "pop" },
     });

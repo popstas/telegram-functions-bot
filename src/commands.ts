@@ -6,7 +6,12 @@ import {
   ToolParamsType,
   ToolBotType,
 } from "./types";
-import { generatePrivateChatConfig, useConfig, writeConfig } from "./config";
+import {
+  generatePrivateChatConfig,
+  useConfig,
+  writeConfig,
+  readConfig,
+} from "./config";
 import { useBot } from "./bot";
 import { getActionUserMsg, getCtxChatMsg } from "./telegram/context.ts";
 import { sendTelegramMessage } from "./telegram/send.ts";
@@ -64,21 +69,35 @@ export async function handleStart(ctx: Context) {
   const rawPayload =
     (ctx as unknown as { startPayload?: string }).startPayload ||
     msg?.text?.split(" ")[1];
-  if (!chat || !msg || !rawPayload) return;
+  if (!msg || !chat || !rawPayload) return;
+
+  const config = readConfig();
+  let configChat: ConfigChatType | undefined;
+  if (chat?.id) {
+    configChat = config.chats.find(
+      (c) => c.id === chat.id || c.ids?.includes(chat.id),
+    );
+  }
+  if (!configChat && chat?.username) {
+    configChat = config.chats.find((c) => c.username === chat.username);
+  }
+  if (!configChat) return;
+
   const decoded = Buffer.from(rawPayload, "base64").toString();
   const parsedPayload = decoded || rawPayload;
   const [name, value] = parsedPayload.split(":");
   if (!name || !value) return;
-  if (!chat.deeplinks?.some((d) => d.name === name)) return;
-  if (!chat.user_vars) chat.user_vars = [];
+  if (!configChat.deeplinks?.some((d) => d.name === name)) return;
+  if (!configChat.user_vars) configChat.user_vars = [];
   const username = msg.from?.username;
   if (!username) return;
-  let user = chat.user_vars.find((u) => u.username === username);
+  let user = configChat.user_vars.find((u) => u.username === username);
   if (!user) {
     user = { username, vars: {} };
-    chat.user_vars.push(user);
+    configChat.user_vars.push(user);
   }
   user.vars[name] = value;
+  writeConfig(undefined, config);
 }
 
 export async function initCommands(bot: Telegraf) {
