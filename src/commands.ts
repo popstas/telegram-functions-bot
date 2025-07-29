@@ -75,7 +75,7 @@ export async function handleStart(ctx: Context) {
   let configChat: ConfigChatType | undefined;
   if (chat?.id) {
     configChat = config.chats.find(
-      (c) => c.id === chat.id || c.ids?.includes(chat.id),
+      (c) => c.id === chat.id || c.ids?.includes(chat.id!),
     );
   }
   if (!configChat && chat?.username) {
