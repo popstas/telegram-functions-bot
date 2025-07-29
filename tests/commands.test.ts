@@ -304,3 +304,25 @@ describe("handleAddChat", () => {
     expect(ctx.reply).toHaveBeenCalledWith("Chat added: t");
   });
 });
+
+describe("handleStart", () => {
+  it("stores vars from deeplink", async () => {
+    const ctx = { chat: { id: 1 } } as unknown as Context & {
+      startPayload?: string;
+    };
+    const msg = createMsg();
+    msg.text = "/start from:pop";
+    const chat: ConfigChatType = {
+      completionParams: {},
+      chatParams: {},
+      toolParams: {},
+      deeplinks: [{ name: "from" }],
+    } as ConfigChatType;
+    mockGetCtxChatMsg.mockReturnValue({ msg, chat });
+    await commands.handleStart(ctx);
+    expect(chat.user_vars?.[0]).toEqual({
+      username: "user",
+      vars: { from: "pop" },
+    });
+  });
+});

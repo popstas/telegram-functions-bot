@@ -50,6 +50,7 @@ jest.unstable_mockModule("../../src/helpers/gpt/messages.ts", () => ({
 jest.unstable_mockModule("../../src/helpers/placeholders.ts", () => ({
   replaceUrlPlaceholders: (...args: unknown[]) => mockReplaceUrl(...args),
   replaceToolPlaceholders: (...args: unknown[]) => mockReplaceTool(...args),
+  replaceVarsPlaceholders: (s: string, v: Record<string, string>) => s,
 }));
 
 jest.unstable_mockModule("../../src/helpers/useApi.ts", () => ({

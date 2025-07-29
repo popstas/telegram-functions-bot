@@ -105,6 +105,21 @@ export function __clearToolCache() {
   }
 }
 
+export function replaceVarsPlaceholders(
+  text: string,
+  vars: Record<string, string>,
+) {
+  text = text.replace(
+    /<vars:([^>]+)>([\s\S]*?)<\/vars:\1>/g,
+    (_, name, content) => {
+      const val = vars[name];
+      if (val === undefined) return "";
+      return content.replace(new RegExp(`{vars:${name}}`, "g"), val);
+    },
+  );
+  return text.replace(/\{vars:([^}]+)}/g, (_, name) => vars[name] || "");
+}
+
 // For tests
 export function __clearUrlCache() {
   for (const key of Object.keys(urlCache)) {

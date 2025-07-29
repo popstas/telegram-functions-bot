@@ -59,7 +59,28 @@ export async function handleAddChat(ctx: Context) {
   await ctx.reply(`Chat added: ${chatName}`);
 }
 
+export async function handleStart(ctx: Context) {
+  const { msg, chat } = getCtxChatMsg(ctx);
+  const payload =
+    (ctx as unknown as { startPayload?: string }).startPayload ||
+    msg?.text?.split(" ")[1];
+  if (!chat || !msg || !payload) return;
+  const [name, value] = payload.split(":");
+  if (!name || !value) return;
+  if (!chat.deeplinks?.some((d) => d.name === name)) return;
+  if (!chat.user_vars) chat.user_vars = [];
+  const username = msg.from?.username;
+  if (!username) return;
+  let user = chat.user_vars.find((u) => u.username === username);
+  if (!user) {
+    user = { username, vars: {} };
+    chat.user_vars.push(user);
+  }
+  user.vars[name] = value;
+}
+
 export async function initCommands(bot: Telegraf) {
+  bot.command("start", handleStart);
   bot.command("forget", handleForget);
 
   bot.command("info", handleInfo);
@@ -69,6 +90,10 @@ export async function initCommands(bot: Telegraf) {
   bot.command("add_tool", handleAddTool);
 
   await bot.telegram.setMyCommands([
+    {
+      command: "/start",
+      description: "Start with deeplink",
+    },
     {
       command: "/forget",
       description: "Забыть историю сообщений",

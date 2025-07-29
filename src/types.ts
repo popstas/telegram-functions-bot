@@ -58,6 +58,8 @@ export type ConfigChatType = {
   buttons?: ConfigChatButtonType[];
   buttonsSync?: ButtonsSyncConfigType;
   buttonsSynced?: ConfigChatButtonType[];
+  deeplinks?: { name: string }[];
+  user_vars?: { username: string; vars: Record<string, string> }[];
   http_token?: string;
   tools?: (string | ToolBotType)[];
   evaluators?: ChatEvaluatorType[];

@@ -167,6 +167,13 @@ export function generateConfig(): ConfigType {
           sheetName: "sheet_name",
         },
         buttonsSynced: [{ name: "button_name", prompt: "button_prompt" }],
+        deeplinks: [{ name: "from" }],
+        user_vars: [
+          {
+            username: "myuser",
+            vars: { from: "popstas" },
+          },
+        ],
         http_token: "change_me",
         tools: ["javascript_interpreter", "brainstorm", "fetch"],
         evaluators: [

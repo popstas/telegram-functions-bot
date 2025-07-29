@@ -416,6 +416,7 @@ describe("requestGptAnswer", () => {
   jest.unstable_mockModule("../../src/helpers/placeholders.ts", () => ({
     replaceUrlPlaceholders: (...args: unknown[]) => mockReplaceUrl(...args),
     replaceToolPlaceholders: (...args: unknown[]) => mockReplaceTool(...args),
+    replaceVarsPlaceholders: (s: string, v: Record<string, string>) => s,
   }));
   jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
     getTelegramForwardedUser: (...args: unknown[]) => mockForward(...args),
