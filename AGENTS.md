@@ -2,6 +2,11 @@
 
 This project is a TypeScript Telegram bot. The codebase uses Node.js tooling with lint, formatting and tests.
 
+## Rules on new features:
+- Add tests for new features.
+- Add documentation for new features.
+- If config type was changed, change config.ts generateConfig function.
+
 ## Rules before commit
 - Always run `npm run typecheck` before commit.
 - Run `npm run test-full` before commit.
