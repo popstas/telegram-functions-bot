@@ -307,11 +307,13 @@ describe("handleAddChat", () => {
 
 describe("handleStart", () => {
   it("stores vars from deeplink", async () => {
-    const ctx = { chat: { id: 1 } } as unknown as Context & {
+    const ctx = {
+      chat: { id: 1 },
+      startPayload: Buffer.from("from:pop").toString("base64"),
+    } as unknown as Context & {
       startPayload?: string;
     };
     const msg = createMsg();
-    msg.text = "/start from:pop";
     const chat: ConfigChatType = {
       completionParams: {},
       chatParams: {},
