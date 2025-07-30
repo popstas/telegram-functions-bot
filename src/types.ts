@@ -212,6 +212,7 @@ export type ToolParamsType = {
   vectorMemory?: {
     dbPath: string;
     dimension: number;
+    alwaysSearch?: boolean;
   };
 };
 

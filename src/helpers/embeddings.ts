@@ -1,11 +1,12 @@
 import Database from "better-sqlite3";
+import type * as DB from "better-sqlite3";
 import { load } from "sqlite-vec";
 import path from "node:path";
 import { useApi } from "./useApi.ts";
 import { useConfig } from "../config.ts";
 import type { ConfigChatType } from "../types.ts";
 
-const dbCache: Record<string, Database> = {};
+const dbCache: Record<string, DB.Database> = {};
 
 function initDb(dbPath: string, dimension: number) {
   if (!dbCache[dbPath]) {

@@ -145,6 +145,7 @@ export function generateConfig(): ConfigType {
           vectorMemory: {
             dbPath: "data/memory.sqlite",
             dimension: 1536,
+            alwaysSearch: false,
           },
         },
       },
@@ -201,6 +202,7 @@ export function generateConfig(): ConfigType {
           vectorMemory: {
             dbPath: "data/memory.sqlite",
             dimension: 1536,
+            alwaysSearch: false,
           },
         },
       },

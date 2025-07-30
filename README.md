@@ -26,7 +26,7 @@ Telegram bot with functions tools.
 - Automatic history cleanup with `forgetTimeout`
 - Abort previous answer if user sends a new message
 - Optional delay between split messages
-- Vector memory and `search_memory` tool
+- Vector memory and `search_memory` tool (optional automatic search)
 
 ## Pipeline
 
@@ -436,7 +436,7 @@ Other useful chat parameters include:
 
 ## Vector memory
 
-Enable semantic memory with `chatParams.vectorMemory`. Messages starting with `запомни` are embedded and stored in a SQLite database using `sqlite-vec`. Use the `search_memory` tool to find related snippets.
+Enable semantic memory with `chatParams.vectorMemory`. Messages starting with `запомни` are embedded and stored in a SQLite database using `sqlite-vec`. Use the `search_memory` tool to find related snippets. Set `toolParams.vectorMemory.alwaysSearch` to automatically search memory before answering.
 
 ```yaml
 chatParams:
@@ -445,6 +445,7 @@ toolParams:
   vectorMemory:
     dbPath: data/memory.sqlite
     dimension: 1536
+    alwaysSearch: false
 ```
 
 - The available tool names are fetched from the MCP servers listed in `config.mcpServers`.

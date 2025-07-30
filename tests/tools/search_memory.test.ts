@@ -2,7 +2,7 @@ import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import type { ConfigChatType } from "../../src/types";
+import type { ConfigChatType, ThreadStateType } from "../../src/types";
 
 jest.unstable_mockModule("../../src/helpers/useApi.ts", () => ({
   useApi: () => ({
@@ -36,8 +36,14 @@ describe("search_memory", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vec-"));
     const db = path.join(dir, "db.sqlite");
     const chat = cfg(db);
+    const thread: ThreadStateType = {
+      id: 1,
+      msgs: [],
+      messages: [],
+      completionParams: {},
+    } as ThreadStateType;
     await embeddings.saveEmbedding({ text: "hello world", metadata: {}, chat });
-    const client = new mod.SearchMemoryClient(chat);
+    const client = new mod.SearchMemoryClient(chat, thread);
     const res = await client.search_memory({ query: "hello", limit: 1 });
     expect(res.content).toContain("hello world");
     fs.rmSync(dir, { recursive: true, force: true });
