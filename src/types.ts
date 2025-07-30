@@ -93,6 +93,7 @@ export type ChatParamsType = {
   placeholderCacheTime?: number;
   useResponsesApi?: boolean;
   streaming?: boolean;
+  vectorMemory?: boolean;
 };
 
 export type CompletionParamsType = {
@@ -207,6 +208,10 @@ export type ToolParamsType = {
     titleCol: string;
     textCol: string;
     cacheTime: number;
+  };
+  vectorMemory?: {
+    dbPath: string;
+    dimension: number;
   };
 };
 

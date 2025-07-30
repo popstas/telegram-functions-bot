@@ -10,6 +10,7 @@ import {
   forgetHistory,
   initThread,
 } from "../helpers/history.ts";
+import { saveEmbedding } from "../helpers/embeddings.ts";
 import { setLastCtx } from "../helpers/lastCtx.ts";
 import { addOauthToThread, ensureAuth } from "../helpers/google.ts";
 import { requestGptAnswer } from "../helpers/gpt.ts";
@@ -64,6 +65,24 @@ export default async function onTextMessage(
     extraMessageParams,
   );
   if (buttonResponse) return buttonResponse;
+
+  if (
+    chat.chatParams?.vectorMemory &&
+    msg.text?.toLowerCase().startsWith("запомни")
+  ) {
+    const text = msg.text.replace(/^запомни\s*/i, "");
+    await saveEmbedding({
+      text,
+      metadata: {
+        chatId: msg.chat.id,
+        userId: msg.from?.id,
+        messageId: msg.message_id,
+      },
+      chat,
+    });
+    await sendTelegramMessage(msg.chat.id, "Запомнил", undefined, ctx, chat);
+    return;
+  }
 
   // addToHistory should be after replace msg.text
   addToHistory(msg, chat);

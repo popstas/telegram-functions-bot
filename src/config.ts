@@ -135,11 +135,16 @@ export function generateConfig(): ConfigType {
           showToolMessages: true,
           useResponsesApi: false,
           streaming: false,
+          vectorMemory: false,
         },
         toolParams: {
           brainstorm: {
             promptBefore: "Составь только краткий план действий.",
             promptAfter: "Выше написан краткий план действий. Полный ответ:",
+          },
+          vectorMemory: {
+            dbPath: "data/memory.sqlite",
+            dimension: 1536,
           },
         },
       },
@@ -186,11 +191,16 @@ export function generateConfig(): ConfigType {
           showToolMessages: true,
           useResponsesApi: false,
           streaming: false,
+          vectorMemory: false,
         },
         toolParams: {
           brainstorm: {
             promptBefore: "Составь только краткий план действий.",
             promptAfter: "Выше написан краткий план действий. Полный ответ:",
+          },
+          vectorMemory: {
+            dbPath: "data/memory.sqlite",
+            dimension: 1536,
           },
         },
       },
