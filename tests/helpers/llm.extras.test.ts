@@ -263,6 +263,48 @@ describe("llmCall", () => {
     ]);
   });
 
+  it("converts vision messages for responses api", async () => {
+    mockUseLangfuse.mockReturnValue({ trace: undefined });
+    const api = {
+      responses: {
+        create: jest.fn().mockResolvedValue({ output_text: "r" }),
+      },
+    };
+    mockUseApi.mockReturnValue(api);
+    const params = {
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "hi" },
+            { type: "image_url", image_url: { url: "http://u" } },
+          ],
+        },
+      ],
+      model: "m",
+    } as OpenAI.ChatCompletionCreateParams;
+    await llm.llmCall({
+      apiParams: params,
+      msg: { ...baseMsg },
+      chatConfig: {
+        ...chatConfig,
+        local_model: undefined,
+        chatParams: { useResponsesApi: true, streaming: false },
+      },
+    });
+    const calledParams = (api.responses.create as jest.Mock).mock.calls[0][0];
+    expect(calledParams.input).toEqual([
+      {
+        role: "user",
+        content: [
+          { type: "input_text", text: "hi" },
+          { type: "input_image", image_url: "http://u", detail: "auto" },
+        ],
+        type: "message",
+      },
+    ]);
+  });
+
   it("uses responses streaming when enabled", async () => {
     mockUseLangfuse.mockReturnValue({ trace: undefined });
     const events = [

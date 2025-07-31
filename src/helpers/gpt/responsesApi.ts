@@ -44,11 +44,32 @@ export function convertResponsesInput(
         output: msg.content as string,
       } as OpenAI.Responses.ResponseInputItem.FunctionCallOutput);
     } else {
-      input.push({
-        role: msg.role as "user" | "assistant" | "system" | "developer",
-        content: (msg as { content?: string }).content as string,
-        type: "message",
-      } as OpenAI.Responses.EasyInputMessage);
+      if (Array.isArray((msg as { content?: unknown }).content)) {
+        const contentItems: OpenAI.Responses.ResponseInputContent[] = [];
+        for (const item of (msg as { content?: unknown })
+          .content as OpenAI.ChatCompletionContentPart[]) {
+          if (item.type === "text") {
+            contentItems.push({ type: "input_text", text: item.text });
+          } else if (item.type === "image_url") {
+            contentItems.push({
+              type: "input_image",
+              image_url: item.image_url.url,
+              detail: "auto",
+            });
+          }
+        }
+        input.push({
+          role: msg.role as "user" | "assistant" | "system" | "developer",
+          content: contentItems,
+          type: "message",
+        } as OpenAI.Responses.ResponseInputItem.Message);
+      } else {
+        input.push({
+          role: msg.role as "user" | "assistant" | "system" | "developer",
+          content: (msg as { content?: string }).content as string,
+          type: "message",
+        } as OpenAI.Responses.EasyInputMessage);
+      }
     }
   }
   const respParams: Record<string, unknown> = { ...rest, input };
