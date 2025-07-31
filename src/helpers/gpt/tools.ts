@@ -154,7 +154,7 @@ export function chatAsTool({
               },
             },
           },
-          prompt_append() {
+          async prompt_append() {
             return prompt_append;
           },
           configChat: agentChatConfig,

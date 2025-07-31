@@ -26,7 +26,7 @@ import useLangfuse from "../useLangfuse.ts";
 import { observeOpenAI } from "langfuse";
 import { useConfig } from "../../config.ts";
 import { log } from "../../helpers.ts";
-import { executeTools, resolveChatTools, getToolsPrompts } from "./tools.ts";
+import { executeTools, resolveChatTools } from "./tools.ts";
 import { buildMessages, getSystemMessage } from "./messages.ts";
 import { APIUserAbortError } from "openai";
 import {
@@ -512,7 +512,6 @@ export async function requestGptAnswer(
   }
 
   const chatTools = await resolveChatTools(msg, chatConfig);
-  const prompts = await getToolsPrompts(chatTools, chatConfig, thread);
 
   const builtInToolNames = (chatConfig.tools || []).filter(
     (t) =>
@@ -537,7 +536,7 @@ export async function requestGptAnswer(
       ? (allTools as OpenAI.Chat.Completions.ChatCompletionTool[])
       : undefined;
 
-  let systemMessage = await getSystemMessage(chatConfig, chatTools);
+  let systemMessage = await getSystemMessage(chatConfig, chatTools, thread);
   const date = new Date().toISOString();
   systemMessage = systemMessage.replace(/\{date}/g, date);
   systemMessage = await replaceUrlPlaceholders(
@@ -614,7 +613,6 @@ export async function requestGptAnswer(
     messages,
     systemMessage,
     chatTools,
-    prompts,
     tools,
   };
 

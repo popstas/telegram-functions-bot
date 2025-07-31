@@ -46,6 +46,7 @@ describe("search_memory", () => {
     const client = new mod.SearchMemoryClient(chat, thread);
     const res = await client.search_memory({ query: "hello", limit: 1 });
     expect(res.content).toContain("hello world");
+    embeddings.closeDb(db);
     fs.rmSync(dir, { recursive: true, force: true });
   });
 });

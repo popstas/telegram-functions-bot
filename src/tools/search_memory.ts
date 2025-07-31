@@ -63,7 +63,7 @@ export class SearchMemoryClient extends AIFunctionsProvider {
     if (!query) return;
     const res = await this.search_memory({ query, limit: 3 });
     if (!res.content) return;
-    return `## Related memory\n${res.content}`;
+    return `## Related memory: <memory>${res.content}</memory>`;
   }
 }
 

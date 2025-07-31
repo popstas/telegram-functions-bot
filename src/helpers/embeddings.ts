@@ -80,3 +80,10 @@ export async function searchEmbedding(params: {
   }[];
   return rows;
 }
+
+export function closeDb(dbPath: string) {
+  if (dbCache[dbPath]) {
+    dbCache[dbPath].close();
+    delete dbCache[dbPath];
+  }
+}
