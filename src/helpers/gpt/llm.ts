@@ -81,11 +81,16 @@ export async function llmCall({
   }
   try {
     const options = { signal };
-    const isStreaming = chatConfig?.chatParams?.streaming && !noSendTelegram;
+    const hasImages = apiParams.messages.some((m) =>
+      Array.isArray(m.content) && m.content.some((c) => c.type === "image_url"),
+    );
+    const isStreaming =
+      chatConfig?.chatParams?.streaming && !noSendTelegram && !hasImages;
     const useResponses =
       !localModel &&
       !chatConfig?.local_model &&
-      chatConfig?.chatParams?.useResponsesApi;
+      chatConfig?.chatParams?.useResponsesApi &&
+      !hasImages;
     const apiResponses = apiFunc as unknown as {
       responses: OpenAI.Responses;
     };

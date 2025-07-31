@@ -29,6 +29,7 @@ process.on("uncaughtException", (error, source) => {
   console.log("source:", source);
 });
 
+process.env.DOTENV_CONFIG_QUIET = "true";
 if (process.env.NODE_ENV !== "test") {
   void start();
 }

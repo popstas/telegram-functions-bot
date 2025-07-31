@@ -70,7 +70,7 @@ describe("onPhoto main flow", () => {
     expect(mockRecognizeImageText).toHaveBeenCalledWith(msg, chat);
     expect(mockOnTextMessage).toHaveBeenCalled();
     const calledCtx = mockOnTextMessage.mock.calls[0][0];
-    expect(calledCtx.message.text).toBe("cap\nocr");
+    expect(calledCtx.message.text).toBe("cap\n\nImage contents: ocr");
     expect(mockSendTelegramMessage).not.toHaveBeenCalled();
   });
 

@@ -11,7 +11,7 @@ export async function recognizeImageText(
   const photo = msg.photo[msg.photo.length - 1];
   let link;
   try {
-    link = await useBot().telegram.getFileLink(photo.file_id);
+    link = await useBot(chatConfig.bot_token).telegram.getFileLink(photo.file_id);
   } catch (error) {
     const err = error as Error;
     if (

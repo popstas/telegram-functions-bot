@@ -66,14 +66,13 @@ export default async function onPhoto(ctx: Context) {
     let text = "";
     try {
       text = await recognizeImageText(msg, chat);
-      text = `<image-recognized-text>${text}</image-recognized-text>`;
+      text = `Image contents: ${text}`;
     } catch (error) {
-      const chatId = ctx.chat?.id || msg.chat?.id || ctx.from?.id;
+      const chatId = ctx.chat?.id || msg.chat?.id;
       try {
-        await sendTelegramMessage(
-          chatId || 0,
-          `Ошибка при распознавании текста: ${error instanceof Error ? error.message : "Неизвестная ошибка"}`,
-        );
+        const errText = `Ошибка при распознавании изображения: ${error instanceof Error ? error.message : "Неизвестная ошибка"}`;
+        await sendTelegramMessage(chatId || 0, errText, undefined, ctx, chat);
+        return;
       } catch (error) {
         log({
           msg: error instanceof Error ? error.message : "Неизвестная ошибка",
@@ -84,7 +83,7 @@ export default async function onPhoto(ctx: Context) {
         });
       }
     }
-    const caption = msg.caption ? `${msg.caption}\n` : "";
+    const caption = msg.caption ? `${msg.caption}\n\n` : "";
 
     log({
       msg: text,
