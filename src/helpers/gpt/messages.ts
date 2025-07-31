@@ -65,11 +65,12 @@ export async function buildMessages(
 export async function getSystemMessage(
   chatConfig: ConfigChatType,
   chatTools: ChatToolType[],
+  thread: ThreadStateType = {messages: [], msgs: [], id: 0},
 ): Promise<string> {
   const systemMessages = await getToolsSystemMessages(
     chatTools,
     chatConfig,
-    {} as ThreadStateType,
+    thread,
   );
   const system =
     chatConfig.systemMessage ||
@@ -78,7 +79,7 @@ export async function getSystemMessage(
   const prompts = await getToolsPrompts(
     chatTools,
     chatConfig,
-    {} as ThreadStateType,
+    thread,
   );
   return system + (prompts.length ? `\n\n${prompts.join("\n\n")}` : "");
 }

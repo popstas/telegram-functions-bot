@@ -26,6 +26,7 @@ Telegram bot with functions tools.
 - Automatic history cleanup with `forgetTimeout`
 - Abort previous answer if user sends a new message
 - Optional delay between split messages
+- Vector memory and `search_memory` tool (optional automatic search)
 
 ## Pipeline
 
@@ -47,6 +48,7 @@ Telegram bot with functions tools.
 - `read_google_sheet` - read Google Sheet
 - `read_knowledge_google_sheet` - questions and answers from Google Sheet
 - `read_knowledge_json` - questions and answers from json file/url
+- `search_memory` - search messages saved with vector memory
 - `ssh_command` - exec ssh shell command, single server from config
 - `web_search_preview` - use OpenAI internal web search tool (only for Responses API)
 - `image_generation` - generate images using OpenAI image model (only for Responses API)
@@ -429,8 +431,23 @@ Other useful chat parameters include:
       - delete_relations
       - read_graph
       - search_nodes
-      - open_nodes
+  - open_nodes
   ```
+
+## Vector memory
+
+Enable semantic memory with `chatParams.vectorMemory`. Messages starting with `запомни` are embedded and stored in a SQLite database using `sqlite-vec`. Use the `search_memory` tool to find related snippets. Set `toolParams.vectorMemory.alwaysSearch` to automatically search memory before answering.
+
+```yaml
+chatParams:
+  vectorMemory: true
+toolParams:
+  vectorMemory:
+    dbPath: data/memory.sqlite
+    dimension: 1536
+    alwaysSearch: false
+```
+
 - The available tool names are fetched from the MCP servers listed in `config.mcpServers`.
 
 Refer to the MCP and Claude Desktop documentation for further details on server configuration and tool discovery.

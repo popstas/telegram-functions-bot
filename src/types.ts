@@ -93,6 +93,7 @@ export type ChatParamsType = {
   placeholderCacheTime?: number;
   useResponsesApi?: boolean;
   streaming?: boolean;
+  vectorMemory?: boolean;
 };
 
 export type CompletionParamsType = {
@@ -169,7 +170,7 @@ export type ModuleType = {
   agent?: boolean;
   options_string?: (args: string) => string;
   systemMessage?: () => string;
-  prompt_append?: () => string;
+  prompt_append?: () => Promise<string | undefined>;
   thread?: ThreadStateType;
   configChat?: ConfigChatType;
 };
@@ -188,7 +189,6 @@ export type GptContextType = {
   messages: OpenAI.ChatCompletionMessageParam[];
   systemMessage: string;
   chatTools: ChatToolType[];
-  prompts: string[];
   tools: OpenAI.ChatCompletionTool[] | undefined;
 };
 
@@ -207,6 +207,11 @@ export type ToolParamsType = {
     titleCol: string;
     textCol: string;
     cacheTime: number;
+  };
+  vectorMemory?: {
+    dbPath: string;
+    dimension: number;
+    alwaysSearch?: boolean;
   };
 };
 
