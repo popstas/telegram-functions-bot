@@ -14,15 +14,18 @@ export async function recognizeImageText(
     link = await useBot().telegram.getFileLink(photo.file_id);
   } catch (error) {
     const err = error as Error;
-    if (err.message.includes('wrong file_id') || err.message.includes('temporarily unavailable')) {
-      throw new Error('Не удалось получить изображение.');
+    if (
+      err.message.includes("wrong file_id") ||
+      err.message.includes("temporarily unavailable")
+    ) {
+      throw new Error("Не удалось получить изображение.");
     }
     throw error;
   }
 
   const config = useConfig();
   const model = config?.vision?.model || "";
-  if (!model) throw new Error('Не указана модель для распознавания.');
+  if (!model) throw new Error("Не указана модель для распознавания.");
 
   let prompt = "Извлеки текст с изображения. Ответь только текстом.";
   if (msg.caption) prompt = msg.caption;

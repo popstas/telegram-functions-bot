@@ -65,7 +65,7 @@ export async function buildMessages(
 export async function getSystemMessage(
   chatConfig: ConfigChatType,
   chatTools: ChatToolType[],
-  thread: ThreadStateType = {messages: [], msgs: [], id: 0},
+  thread: ThreadStateType = { messages: [], msgs: [], id: 0 },
 ): Promise<string> {
   const systemMessages = await getToolsSystemMessages(
     chatTools,
@@ -76,11 +76,7 @@ export async function getSystemMessage(
     chatConfig.systemMessage ||
     systemMessages[0] ||
     "You are using functions to answer the questions. Current date: {date}";
-  const prompts = await getToolsPrompts(
-    chatTools,
-    chatConfig,
-    thread,
-  );
+  const prompts = await getToolsPrompts(chatTools, chatConfig, thread);
   return system + (prompts.length ? `\n\n${prompts.join("\n\n")}` : "");
 }
 

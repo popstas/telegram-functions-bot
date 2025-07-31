@@ -76,7 +76,7 @@ export default async function onPhoto(ctx: Context) {
         );
       } catch (error) {
         log({
-          msg: error instanceof Error ? error.message : 'Неизвестная ошибка',
+          msg: error instanceof Error ? error.message : "Неизвестная ошибка",
           logLevel: "error",
           chatId,
           chatTitle,

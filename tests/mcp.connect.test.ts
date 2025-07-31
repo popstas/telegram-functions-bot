@@ -80,7 +80,9 @@ describe("connectMcp", () => {
     const res = await connectMcp("m2", cfg, clients as any);
     expect(StreamableTransportMock).toHaveBeenCalledWith(
       new URL("http://srv"),
-      { sessionId: undefined },
+      {
+        sessionId: undefined,
+      },
     );
     expect(mockClientConnect).toHaveBeenCalledWith(transport);
     expect(res.connected).toBe(true);

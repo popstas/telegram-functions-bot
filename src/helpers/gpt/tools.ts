@@ -495,8 +495,13 @@ export async function resolveChatTools(
 
   let agentTools: ChatToolType[] = [];
   if (chatConfig.tools) {
-    if (chatConfig.tools.includes("change_access_settings") && !isAdminUser(msg)) {
-      chatConfig.tools = chatConfig.tools.filter((t) => t !== "change_access_settings");
+    if (
+      chatConfig.tools.includes("change_access_settings") &&
+      !isAdminUser(msg)
+    ) {
+      chatConfig.tools = chatConfig.tools.filter(
+        (t) => t !== "change_access_settings",
+      );
     }
 
     // build agent tools

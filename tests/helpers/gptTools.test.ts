@@ -427,10 +427,10 @@ describe("removeNullsParams", () => {
       addPrivate: null,
       removePrivate: null,
     });
-    
+
     const result = tools.removeNullsParams(input);
     const parsed = JSON.parse(result);
-    
+
     expect(parsed).toEqual({
       addAdmin: ["asd"],
     });
@@ -465,10 +465,10 @@ describe("removeNullsParams", () => {
       nullValue: null,
       undefinedValue: undefined,
     });
-    
+
     const result = tools.removeNullsParams(input);
     const parsed = JSON.parse(result);
-    
+
     expect(parsed).toEqual({
       string: "value",
       number: 42,
