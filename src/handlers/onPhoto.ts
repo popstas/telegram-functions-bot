@@ -66,6 +66,7 @@ export default async function onPhoto(ctx: Context) {
     let text = "";
     try {
       text = await recognizeImageText(msg, chat);
+      text = `<image-recognized-text>${text}</image-recognized-text>`;
     } catch (error) {
       const chatId = ctx.chat?.id || msg.chat?.id || ctx.from?.id;
       try {
