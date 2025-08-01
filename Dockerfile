@@ -1,5 +1,5 @@
 # Stage 1: application build
-FROM node:20-alpine AS builder
+FROM node:20-bookworm-slim AS builder
 
 # install dependencies and build
 WORKDIR /build
@@ -7,11 +7,13 @@ COPY package*.json ./
 RUN npm install
 
 # Stage 2: runtime image with uvx
-FROM node:20-alpine
+FROM node:20-bookworm-slim
 
 # install ssh, Python and pip, then uv (includes uvx)
-RUN apk update \
-   && apk add --no-cache openssh ffmpeg
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+      openssh-client ffmpeg wget \
+    && rm -rf /var/lib/apt/lists/*
 #   python3 py3-pip \
 #    && python3 -m pip install --upgrade pip \
 #    && pip install uv
