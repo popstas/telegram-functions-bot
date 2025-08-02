@@ -13,7 +13,7 @@ jest.unstable_mockModule("../../src/helpers/useApi.ts", () => ({
 }));
 
 let embeddings: typeof import("../../src/helpers/embeddings.ts");
-let mod: typeof import("../../src/tools/search_memory.ts");
+let mod: typeof import("../../src/tools/memory_search.ts");
 
 function cfg(dbPath: string): ConfigChatType {
   return {
@@ -28,10 +28,10 @@ function cfg(dbPath: string): ConfigChatType {
 beforeEach(async () => {
   jest.resetModules();
   embeddings = await import("../../src/helpers/embeddings.ts");
-  mod = await import("../../src/tools/search_memory.ts");
+  mod = await import("../../src/tools/memory_search.ts");
 });
 
-describe("search_memory", () => {
+describe("memory_search", () => {
   it("inserts and searches", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vec-"));
     const db = path.join(dir, "db.sqlite");
@@ -43,8 +43,8 @@ describe("search_memory", () => {
       completionParams: {},
     } as ThreadStateType;
     await embeddings.saveEmbedding({ text: "hello world", metadata: {}, chat });
-    const client = new mod.SearchMemoryClient(chat, thread);
-    const res = await client.search_memory({ query: "hello", limit: 1 });
+    const client = new mod.MemorySearchClient(chat, thread);
+    const res = await client.memory_search({ query: "hello", limit: 1 });
     expect(res.content).toContain("hello world");
     embeddings.closeDb(db);
     fs.rmSync(dir, { recursive: true, force: true });

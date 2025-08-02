@@ -109,6 +109,29 @@ export async function searchEmbedding(params: {
   return rows;
 }
 
+export async function deleteEmbedding(params: {
+  query: string;
+  limit: number;
+  chat: ConfigChatType;
+}): Promise<{ text: string; date: string }[]> {
+  const { query, limit, chat } = params;
+  const dbPath = resolveDbPath(chat);
+  const dimension = chat.toolParams?.vector_memory?.dimension || 1536;
+  const db = initDb(dbPath, dimension);
+  const embedding = await embedText(query, chat);
+  const stmt = db.prepare(
+    "select rowid, text, date from memory where embedding match json(?) order by distance limit ?",
+  );
+  const rows = stmt.all(JSON.stringify(embedding), limit) as {
+    rowid: number;
+    text: string;
+    date: string;
+  }[];
+  const del = db.prepare("delete from memory where rowid = ?");
+  for (const row of rows) del.run(row.rowid);
+  return rows.map(({ text, date }) => ({ text, date }));
+}
+
 export function closeDb(dbPath: string) {
   if (dbCache[dbPath]) {
     dbCache[dbPath].close();
