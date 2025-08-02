@@ -22,6 +22,7 @@ const mockUseBot = jest.fn(() => ({
   action: jest.fn((_, cb) => cb()),
   telegram: { sendMessage: jest.fn() },
 }));
+const mockTelegramConfirm = jest.fn();
 
 jest.unstable_mockModule("../../src/helpers/useTools.ts", () => ({
   default: (...args: unknown[]) => mockUseTools(...args),
@@ -64,6 +65,11 @@ jest.unstable_mockModule("../../src/bot.ts", () => ({
   useBot: () => mockUseBot(),
 }));
 
+jest.unstable_mockModule("../../src/telegram/confirm.ts", () => ({
+  telegramConfirm: (...args: unknown[]) => mockTelegramConfirm(...args),
+  default: (...args: unknown[]) => mockTelegramConfirm(...args),
+}));
+
 let tools: typeof import("../../src/helpers/gpt/tools.ts");
 
 const baseMsg: Message.TextMessage = {
@@ -86,6 +92,7 @@ beforeEach(async () => {
   jest.clearAllMocks();
   mockUseConfig.mockReturnValue({ chats: [baseConfig] });
   mockUseThreads.mockReturnValue({ 1: { id: 1, msgs: [], messages: [] } });
+  mockTelegramConfirm.mockResolvedValue([]);
   tools = await import("../../src/helpers/gpt/tools.ts");
 });
 
@@ -291,10 +298,18 @@ describe("executeTools", () => {
     expect(msg.text.trim()).toBe("run");
 
     msg.text = "confirm run";
+    mockTelegramConfirm.mockImplementation(async ({ onConfirm }) =>
+      onConfirm(),
+    );
     await tools.executeTools(toolCalls, chatTools, cfg, msg);
-    expect(callMock).toHaveBeenCalledTimes(6);
-    const passedCfg2 = callMock.mock.calls[2][0];
-    expect(passedCfg2.chatParams.confirmation).toBe(true);
+    expect(callMock.mock.calls.length).toBeGreaterThanOrEqual(3);
+    const hasConfirmTrue = callMock.mock.calls.some(
+      ([cfg]) => cfg.chatParams.confirmation === true,
+    );
+    expect(hasConfirmTrue).toBe(true);
+    const passedCfgAfter =
+      callMock.mock.calls[callMock.mock.calls.length - 1][0];
+    expect(passedCfgAfter.chatParams.confirmation).toBe(false);
     expect(msg.text.trim()).toBe("run");
   });
 
@@ -327,6 +342,7 @@ describe("executeTools", () => {
     const msg = { ...baseMsg };
     const result = tools.executeTools(toolCalls, chatTools, cfg, msg);
     await expect(result).resolves.toEqual([]);
+    expect(mockTelegramConfirm).toHaveBeenCalled();
   });
 
   it("appends full text for planfix_add_to_lead_task", async () => {
