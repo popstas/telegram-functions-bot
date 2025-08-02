@@ -9,7 +9,6 @@ import {
   ToolBotType,
   ToolResponse,
 } from "../../types.ts";
-import { useBot } from "../../bot.ts";
 import { useThreads } from "../../threads.ts";
 import { sendTelegramMessage } from "../../telegram/send.ts";
 import { log, sendToHttp } from "../../helpers.ts";
@@ -20,6 +19,7 @@ import { useConfig } from "../../config.ts";
 import { requestGptAnswer } from "./llm.ts";
 import { includesUser } from "../../utils/users.ts";
 import { publishMqttProgress } from "../../mqtt.ts";
+import { telegramConfirm } from "../../telegram/confirm.ts";
 
 export function prettifyKeyValue(
   key: string,
@@ -184,8 +184,7 @@ export async function executeTools(
     chatConfig.chatParams.confirmation = true;
     msg.text = msg.text.replace("confirm", "");
   }
-
-  const uniqueId = Date.now().toString();
+  const toolParamsList: string[] = [];
 
   const toolPromises = toolCalls.map(async (toolCall) => {
     const chatTool = chatTools.find((f) => f.name === toolCall.function.name);
@@ -329,11 +328,13 @@ export async function executeTools(
       toolParamsStr = toolClient.options_string(toolParams);
     }
 
+    toolParamsList.push(toolParamsStr);
+
     const chatTitle = (msg.chat as Chat.TitleChat).title;
     const chatId = msg.chat.id;
     const showMessages = chatConfig.chatParams?.showToolMessages !== false;
 
-    if (toolParams && !chatConfig.chatParams?.confirmation) {
+    if (!chatConfig.chatParams?.confirmation && toolParams) {
       log({
         msg: `${toolCall.function.name}: ${toolParams}`,
         chatId,
@@ -409,57 +410,42 @@ export async function executeTools(
       }
       return result;
     }
-
-    sendToHttp(expressRes, `${toolParamsStr}\nDo you want to proceed?`);
-    if (!noSendTelegram)
-      await sendTelegramMessage(
-        msg.chat.id,
-        `${toolParamsStr}\n\nDo you want to proceed?`,
-        {
-          reply_markup: {
-            inline_keyboard: [
-              [
-                { text: "Yes", callback_data: `confirm_tool_${uniqueId}` },
-                { text: "No", callback_data: `cancel_tool_${uniqueId}` },
-              ],
-            ],
-          },
-        },
-        undefined,
-        chatConfig,
-      );
-    return ""; // TODO: fix, show progress?
+    return { content: "" };
   });
-
   if (chatConfig.chatParams?.confirmation) {
-    return new Promise((resolve) => {
-      useBot(chatConfig.bot_token!).action(
-        `confirm_tool_${uniqueId}`,
-        async () => {
-          sendToHttp(expressRes, `Yes`);
-          const configConfirmed = JSON.parse(JSON.stringify(chatConfig));
-          configConfirmed.chatParams.confirmation = false;
-          const res = await executeTools(
-            toolCalls,
-            chatTools,
-            configConfirmed,
-            msg,
-          );
-          const chatTitle = (msg.chat as Chat.TitleChat).title;
-          log({
-            msg: "tools called",
-            logLevel: "info",
-            chatId: msg.chat.id,
-            chatTitle,
-            role: "tool",
-          });
-          return resolve(res);
-        },
-      );
-      useBot(chatConfig.bot_token!).action(
-        `cancel_tool_${uniqueId}`,
-        async () => {
-          sendToHttp(expressRes, `Tool execution canceled`);
+    const confirmText =
+      toolParamsList.join("\n\n") + "\n\nDo you want to proceed?";
+    sendToHttp(expressRes, confirmText);
+    return telegramConfirm<ToolResponse[]>({
+      chatId: msg.chat.id,
+      msg,
+      chatConfig,
+      text: confirmText,
+      noSendTelegram,
+      onConfirm: async () => {
+        const configConfirmed = JSON.parse(JSON.stringify(chatConfig));
+        configConfirmed.chatParams.confirmation = false;
+        const res = await executeTools(
+          toolCalls,
+          chatTools,
+          configConfirmed,
+          msg,
+          expressRes,
+          noSendTelegram,
+        );
+        const chatTitle = (msg.chat as Chat.TitleChat).title;
+        log({
+          msg: "tools called",
+          logLevel: "info",
+          chatId: msg.chat.id,
+          chatTitle,
+          role: "tool",
+        });
+        return res;
+      },
+      onCancel: async () => {
+        sendToHttp(expressRes, `Tool execution canceled`);
+        if (!noSendTelegram) {
           await sendTelegramMessage(
             msg.chat.id,
             "Tool execution canceled.",
@@ -467,9 +453,9 @@ export async function executeTools(
             undefined,
             chatConfig,
           );
-          return resolve([]);
-        },
-      );
+        }
+        return [];
+      },
     });
   }
 
