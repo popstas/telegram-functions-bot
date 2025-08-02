@@ -95,6 +95,9 @@ async function launchBot(bot_token: string, bot_name: string) {
         msg: `[${bot_name}] Unhandled error for update ${ctx.update.update_id}: ${err instanceof Error ? err.message : String(err)}`,
         logLevel: "error",
       });
+      if (err instanceof Error){
+        console.error(err.stack);
+      }
     });
 
     // Set up chat action handler
