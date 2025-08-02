@@ -18,7 +18,7 @@ export const defaultParams = {
   },
 };
 
-export class SearchMemoryClient extends AIFunctionsProvider {
+export class MemorySearchClient extends AIFunctionsProvider {
   protected readonly configChat: ConfigChatType;
   protected readonly thread: ThreadStateType;
 
@@ -29,14 +29,14 @@ export class SearchMemoryClient extends AIFunctionsProvider {
   }
 
   @aiFunction({
-    name: "search_memory",
+    name: "memory_search",
     description,
     inputSchema: z.object({
       query: z.string().describe("Search query"),
       limit: z.number().optional().default(3),
     }),
   })
-  async search_memory({
+  async memory_search({
     query,
     limit = 3,
   }: {
@@ -50,8 +50,8 @@ export class SearchMemoryClient extends AIFunctionsProvider {
 
   options_string(str: string) {
     const { query } = JSON.parse(str) as { query: string };
-    if (!query) return str;
-    return `**Memory search:** \`${query}\``;
+    const text = query || "all";
+    return `**Memory search:** \`${text}\``;
   }
 
   async prompt_append(): Promise<string | undefined> {
@@ -61,12 +61,12 @@ export class SearchMemoryClient extends AIFunctionsProvider {
       | undefined;
     const query = last?.text;
     if (!query) return;
-    const res = await this.search_memory({ query, limit: 3 });
+    const res = await this.memory_search({ query, limit: 3 });
     if (!res.content) return;
     return `## Related memory: <memory>${res.content}</memory>`;
   }
 }
 
 export function call(configChat: ConfigChatType, thread: ThreadStateType) {
-  return new SearchMemoryClient(configChat, thread);
+  return new MemorySearchClient(configChat, thread);
 }

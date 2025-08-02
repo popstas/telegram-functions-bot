@@ -70,7 +70,7 @@ export default async function onTextMessage(
     chat.chatParams?.vector_memory &&
     msg.text?.toLowerCase().startsWith("запомни")
   ) {
-    const text = msg.text.replace(/^запомни\s*/i, "");
+    const text = msg.text.replace(/^запомни[\s\p{P}]*/iu, "");
     await saveEmbedding({
       text,
       metadata: {
