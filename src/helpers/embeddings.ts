@@ -74,6 +74,14 @@ export async function saveEmbedding(params: {
   const dimension = chat.toolParams?.vector_memory?.dimension || 1536;
   const db = initDb(dbPath, dimension);
   const embedding = await embedText(text, chat);
+  const existing = db
+    .prepare(
+      "select text, distance from memory where embedding match json(?) order by distance limit 1",
+    )
+    .get(JSON.stringify(embedding)) as
+    | { text: string; distance: number }
+    | undefined;
+  if (existing && (existing.text === text || existing.distance < 0.01)) return;
   const stmt = db.prepare(
     "insert into memory(embedding, text, date, metadata) values (json(?), ?, ?, json(?))",
   );
