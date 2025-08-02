@@ -69,7 +69,9 @@ beforeEach(async () => {
     arrayBuffer: async () => Buffer.from("data"),
   }) as unknown as typeof fetch;
   jest.spyOn(fs.promises, "writeFile").mockResolvedValue();
-  jest.spyOn(fs, "existsSync").mockReturnValue(true);
+  jest
+    .spyOn(fs, "existsSync")
+    .mockImplementation((p) => !String(p).startsWith("data"));
   jest.spyOn(fs, "unlinkSync").mockImplementation(() => {});
   mockConvertToMp3.mockResolvedValue("file.mp3");
   mockSendAudioWhisper.mockResolvedValue({ text: "hello" });

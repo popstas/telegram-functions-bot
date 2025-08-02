@@ -34,6 +34,7 @@ jest.unstable_mockModule("../src/helpers.ts", () => ({
     }
     return Math.abs(hash);
   },
+  safeFilename: jest.fn(),
 }));
 
 // Import the function to test after setting up mocks

@@ -13,6 +13,7 @@ const mockDump = jest.fn((obj) => JSON.stringify(obj));
 
 jest.unstable_mockModule("../src/helpers.ts", () => ({
   log: mockLog,
+  safeFilename: jest.fn(),
 }));
 
 jest.unstable_mockModule("lodash.debounce", () => ({

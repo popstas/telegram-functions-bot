@@ -143,7 +143,7 @@ export function generateConfig(): ConfigType {
             promptAfter: "Выше написан краткий план действий. Полный ответ:",
           },
           vectorMemory: {
-            dbPath: "data/memory.sqlite",
+            dbPath: "data/memory/default.sqlite",
             dimension: 1536,
             alwaysSearch: false,
           },
@@ -200,7 +200,7 @@ export function generateConfig(): ConfigType {
             promptAfter: "Выше написан краткий план действий. Полный ответ:",
           },
           vectorMemory: {
-            dbPath: "data/memory.sqlite",
+            dbPath: "data/memory/default.sqlite",
             dimension: 1536,
             alwaysSearch: false,
           },

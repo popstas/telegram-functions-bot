@@ -13,7 +13,7 @@ export const details = `- searches vector memory for similar snippets\n- dbPath:
 
 export const defaultParams = {
   vectorMemory: {
-    dbPath: "data/memory.sqlite",
+    dbPath: "data/memory/default.sqlite",
     dimension: 1536,
   },
 };
