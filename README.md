@@ -437,7 +437,7 @@ Other useful chat parameters include:
 
 ## Vector memory
 
-Enable semantic memory with `chatParams.vector_memory`. Messages starting with `запомни` (any punctuation immediately after the keyword is ignored) are embedded and stored in a SQLite database using `sqlite-vec`. Use the `memory_search` tool to find related snippets or `memory_delete` to remove them after a preview and confirmation. Set `toolParams.vector_memory.alwaysSearch` to automatically search memory before answering.
+Enable semantic memory with `chatParams.vector_memory`. Messages starting with `запомни` (any punctuation immediately after the keyword is ignored) are embedded and stored in a SQLite database using `sqlite-vec`. Use the `memory_search` tool to find related snippets or `memory_delete` to remove them after a preview and confirmation. Set `toolParams.vector_memory.alwaysSearch` to automatically search memory before answering. Adjust `toolParams.vector_memory.deleteMaxDistance` (default `1.1`) to limit how far results can be for deletions.
 
 ```yaml
 chatParams:
@@ -447,6 +447,7 @@ toolParams:
     dbPath: data/memory/default.sqlite
     dimension: 1536
     alwaysSearch: false
+    deleteMaxDistance: 1.1
 ```
 
 By default, databases are stored under `data/memory/`:
@@ -484,19 +485,19 @@ This will execute all unit and integration tests in the `tests` directory using 
 
 ## Telegram utilities
 
-### telegram_confirm
+### telegramConfirm
 
 Helper to ask a user for confirmation with inline Yes/No buttons.
 
 ```ts
-import { telegram_confirm } from "./telegram/confirm";
+import { telegramConfirm } from "./telegram/confirm";
 
-await telegram_confirm(
+await telegramConfirm({
   chatId,
-  message,
+  msg: message,
   chatConfig,
-  "Are you sure?",
-  async () => {/* confirmed */},
-  async () => {/* canceled */},
-);
+  text: "Are you sure?",
+  onConfirm: async () => {/* confirmed */},
+  onCancel: async () => {/* canceled */},
+});
 ```

@@ -7,7 +7,7 @@ import type {
 } from "../types.ts";
 import { deleteEmbedding, searchEmbedding } from "../helpers/embeddings.ts";
 import { sendTelegramMessage } from "../telegram/send.ts";
-import { telegram_confirm } from "../telegram/confirm.ts";
+import { telegramConfirm } from "../telegram/confirm.ts";
 import type { Message } from "telegraf/types";
 
 export const description = "Delete stored chat memory";
@@ -57,18 +57,19 @@ export class MemoryDeleteClient extends AIFunctionsProvider {
     const preview =
       previewRows.map((r) => `${r.date} ${r.text}`).join("\n") || "No entries";
     const lastMsg = this.thread.msgs.at(-1) as Message.TextMessage;
-    return telegram_confirm<ToolResponse>(
-      this.thread.id,
-      lastMsg,
-      this.configChat,
-      `Delete memory entries?\n${preview}`,
-      async () => {
+    return telegramConfirm<ToolResponse>({
+      chatId: this.thread.id,
+      msg: lastMsg,
+      chatConfig: this.configChat,
+      text: `Delete memory entries?\n${preview}`,
+      onConfirm: async () => {
         const rows = await deleteEmbedding({
           query,
           limit,
           chat: this.configChat,
         });
-        const content = rows.map((r) => `${r.date} ${r.text}`).join("\n");
+        const content =
+          "Deleted:\n" + rows.map((r) => `${r.date} ${r.text}`).join("\n");
         await sendTelegramMessage(
           this.thread.id,
           `Удалено записей: ${rows.length}`,
@@ -78,17 +79,10 @@ export class MemoryDeleteClient extends AIFunctionsProvider {
         );
         return { content };
       },
-      async () => {
-        await sendTelegramMessage(
-          this.thread.id,
-          "Deletion canceled",
-          undefined,
-          undefined,
-          this.configChat,
-        );
+      onCancel: async () => {
         return { content: "Deletion canceled" };
       },
-    );
+    });
   }
 
   options_string(str: string) {

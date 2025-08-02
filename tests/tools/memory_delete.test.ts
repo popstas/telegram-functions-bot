@@ -19,7 +19,7 @@ jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
 }));
 
 jest.unstable_mockModule("../../src/telegram/confirm.ts", () => ({
-  telegram_confirm: (...args: unknown[]) => mockConfirm(...args),
+  telegramConfirm: (...args: unknown[]) => mockConfirm(...args),
 }));
 
 jest.unstable_mockModule("../../src/helpers/embeddings.ts", () => ({
@@ -61,9 +61,7 @@ describe("memory_delete", () => {
     const rows = [{ date: "d", text: "hello world" }];
     mockSearchEmbedding.mockResolvedValue(rows);
     mockDeleteEmbedding.mockResolvedValue(rows);
-    mockConfirm.mockImplementation((_chatId, _msg, _cfg, _text, onConfirm) =>
-      onConfirm(),
-    );
+    mockConfirm.mockImplementation(({ onConfirm }) => onConfirm());
     const client = new mod.MemoryDeleteClient(chat, thread);
     const res = await client.memory_delete({ query: "hello", limit: 1 });
     expect(mockSearchEmbedding).toHaveBeenCalledWith({
@@ -76,7 +74,7 @@ describe("memory_delete", () => {
       limit: 1,
       chat,
     });
-    expect(res.content).toContain("hello world");
+    expect(res.content).toBe("Deleted:\nd hello world");
     expect(mockSendTelegramMessage).toHaveBeenCalledWith(
       1,
       expect.stringContaining("Удалено"),
@@ -97,19 +95,11 @@ describe("memory_delete", () => {
     const rows = [{ date: "d", text: "hello world" }];
     mockSearchEmbedding.mockResolvedValue(rows);
     mockDeleteEmbedding.mockResolvedValue(rows);
-    mockConfirm.mockImplementation(
-      (_chatId, _msg, _cfg, _text, _onConfirm, onCancel) => onCancel(),
-    );
+    mockConfirm.mockImplementation(({ onCancel }) => onCancel());
     const client = new mod.MemoryDeleteClient(chat, thread);
     const res = await client.memory_delete({ query: "hello", limit: 1 });
     expect(res.content).toBe("Deletion canceled");
     expect(mockDeleteEmbedding).not.toHaveBeenCalled();
-    expect(mockSendTelegramMessage).toHaveBeenCalledWith(
-      1,
-      "Deletion canceled",
-      undefined,
-      undefined,
-      chat,
-    );
+    expect(mockSendTelegramMessage).not.toHaveBeenCalled();
   });
 });

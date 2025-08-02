@@ -19,7 +19,7 @@ jest.unstable_mockModule("../../src/bot.ts", () => ({
   }),
 }));
 
-let telegram_confirm: typeof import("../../src/telegram/confirm.ts").telegram_confirm;
+let telegramConfirm: typeof import("../../src/telegram/confirm.ts").telegramConfirm;
 
 function createMsg(): Message.TextMessage {
   return {
@@ -43,21 +43,21 @@ beforeEach(async () => {
   mockSendTelegramMessage.mockReset();
   mockSendTelegramMessage.mockResolvedValue(undefined);
   Object.keys(actions).forEach((k) => delete actions[k]);
-  ({ telegram_confirm } = await import("../../src/telegram/confirm.ts"));
+  ({ telegramConfirm } = await import("../../src/telegram/confirm.ts"));
 });
 
-describe("telegram_confirm", () => {
+describe("telegramConfirm", () => {
   it("resolves with onConfirm on yes", async () => {
     const msg = createMsg();
     const chatConfig = createChat();
-    const resultPromise = telegram_confirm(
-      1,
+    const resultPromise = telegramConfirm({
+      chatId: 1,
       msg,
       chatConfig,
-      "Are you sure?",
-      async () => 42,
-      async () => 0,
-    );
+      text: "Are you sure?",
+      onConfirm: async () => 42,
+      onCancel: async () => 0,
+    });
     await Promise.resolve();
     expect(mockSendTelegramMessage).toHaveBeenCalled();
     const confirmName = Object.keys(actions).find((n) =>
@@ -71,17 +71,17 @@ describe("telegram_confirm", () => {
     await expect(resultPromise).resolves.toBe(42);
   });
 
-  it("resolves with onCancel on no and notifies", async () => {
+  it("resolves with onCancel on no", async () => {
     const msg = createMsg();
     const chatConfig = createChat();
-    const resultPromise = telegram_confirm(
-      1,
+    const resultPromise = telegramConfirm({
+      chatId: 1,
       msg,
       chatConfig,
-      "Are you sure?",
-      async () => 1,
-      async () => -1,
-    );
+      text: "Are you sure?",
+      onConfirm: async () => 1,
+      onCancel: async () => -1,
+    });
     await Promise.resolve();
     const cancelName = Object.keys(actions).find((n) =>
       n.startsWith("cancel_"),
@@ -92,7 +92,6 @@ describe("telegram_confirm", () => {
       answerCbQuery: jest.fn(),
     });
     await expect(resultPromise).resolves.toBe(-1);
-    expect(mockSendTelegramMessage).toHaveBeenCalledTimes(2);
-    expect(mockSendTelegramMessage.mock.calls[1][1]).toBe("Action canceled.");
+    expect(mockSendTelegramMessage).toHaveBeenCalledTimes(1);
   });
 });

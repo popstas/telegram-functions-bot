@@ -188,6 +188,7 @@ export type VectorMemoryParamsType = {
   dbPath: string;
   dimension: number;
   alwaysSearch?: boolean;
+  deleteMaxDistance?: number;
 };
 
 export type GptContextType = {
