@@ -481,3 +481,22 @@ npm test
 ```
 
 This will execute all unit and integration tests in the `tests` directory using the `jest` framework.
+
+## Telegram utilities
+
+### telegram_confirm
+
+Helper to ask a user for confirmation with inline Yes/No buttons.
+
+```ts
+import { telegram_confirm } from "./telegram/confirm";
+
+await telegram_confirm(
+  chatId,
+  message,
+  chatConfig,
+  "Are you sure?",
+  async () => {/* confirmed */},
+  async () => {/* canceled */},
+);
+```
