@@ -109,6 +109,15 @@ export async function searchEmbedding(params: {
   return rows;
 }
 
+export function previewEmbedding(row: {
+  date: string;
+  text: string;
+  distance: number;
+}): string {
+  const date = new Date(row.date).toISOString().slice(0, 16).replace("T", " ");
+  return `${date} ${row.text} (${row.distance.toFixed(2)})`;
+}
+
 export async function deleteEmbedding(params: {
   query: string;
   limit: number;

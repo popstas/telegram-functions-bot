@@ -35,7 +35,7 @@ function chat(): ConfigChatType {
     id: 1,
     name: "c",
     completionParams: {},
-    chatParams: { vector_memory: true } as any,
+    chatParams: { vector_memory: true } as ConfigChatType["chatParams"],
     toolParams: { vector_memory: { dbPath, dimension: 3 } },
   } as ConfigChatType;
 }

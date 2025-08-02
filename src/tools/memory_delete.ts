@@ -5,7 +5,11 @@ import type {
   ToolResponse,
   ThreadStateType,
 } from "../types.ts";
-import { deleteEmbedding, searchEmbedding } from "../helpers/embeddings.ts";
+import {
+  deleteEmbedding,
+  searchEmbedding,
+  previewEmbedding,
+} from "../helpers/embeddings.ts";
 import { sendTelegramMessage } from "../telegram/send.ts";
 import { telegramConfirm } from "../telegram/confirm.ts";
 import type { Message } from "telegraf/types";
@@ -54,25 +58,31 @@ export class MemoryDeleteClient extends AIFunctionsProvider {
       limit,
       chat: this.configChat,
     });
-    const preview =
-      previewRows.map((r) => `${r.date} ${r.text}`).join("\n") || "No entries";
+    const maxDistance =
+      this.configChat.toolParams?.vector_memory?.deleteMaxDistance ?? 1.1;
+    const toDelete = previewRows.filter((r) => r.distance <= maxDistance);
+    const tooFar = previewRows.filter((r) => r.distance > maxDistance);
+    const preview_for_delete =
+      toDelete.map(previewEmbedding).join("\n") || "No entries";
+    const preview_too_far =
+      tooFar.map(previewEmbedding).join("\n") || "No entries";
     const lastMsg = this.thread.msgs.at(-1) as Message.TextMessage;
     return telegramConfirm<ToolResponse>({
       chatId: this.thread.id,
       msg: lastMsg,
       chatConfig: this.configChat,
-      text: `Delete memory entries?\n${preview}`,
+      text: `Delete memory entries?\n${preview_for_delete}\n\nToo far entries:\n${preview_too_far}`,
       onConfirm: async () => {
-        const rows = await deleteEmbedding({
+        await deleteEmbedding({
           query,
           limit,
           chat: this.configChat,
         });
         const content =
-          "Deleted:\n" + rows.map((r) => `${r.date} ${r.text}`).join("\n");
+          "Deleted:\n" + toDelete.map(previewEmbedding).join("\n");
         await sendTelegramMessage(
           this.thread.id,
-          `Удалено записей: ${rows.length}`,
+          `Удалено записей: ${toDelete.length}`,
           undefined,
           undefined,
           this.configChat,
