@@ -9,7 +9,6 @@ import {
   ToolBotType,
   ToolResponse,
 } from "../../types.ts";
-import { useBot } from "../../bot.ts";
 import { useThreads } from "../../threads.ts";
 import { sendTelegramMessage } from "../../telegram/send.ts";
 import { log, sendToHttp } from "../../helpers.ts";
