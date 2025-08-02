@@ -93,7 +93,7 @@ export type ChatParamsType = {
   placeholderCacheTime?: number;
   useResponsesApi?: boolean;
   streaming?: boolean;
-  vectorMemory?: boolean;
+  vector_memory?: boolean;
 };
 
 export type CompletionParamsType = {
@@ -184,6 +184,12 @@ export type BrainstormParamsType = {
   promptAfter?: string;
 };
 
+export type VectorMemoryParamsType = {
+  dbPath: string;
+  dimension: number;
+  alwaysSearch?: boolean;
+};
+
 export type GptContextType = {
   thread: ThreadStateType;
   messages: OpenAI.ChatCompletionMessageParam[];
@@ -208,11 +214,7 @@ export type ToolParamsType = {
     textCol: string;
     cacheTime: number;
   };
-  vectorMemory?: {
-    dbPath: string;
-    dimension: number;
-    alwaysSearch?: boolean;
-  };
+  vector_memory?: VectorMemoryParamsType;
 };
 
 // MCP tool configuration

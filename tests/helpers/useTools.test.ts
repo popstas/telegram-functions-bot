@@ -28,6 +28,7 @@ jest.unstable_mockModule("../../src/helpers.ts", () => ({
 
 jest.unstable_mockModule("../../src/config.ts", () => ({
   readConfig: () => mockReadConfig(),
+  updateChatInConfig: jest.fn(),
 }));
 
 jest.unstable_mockModule("../../src/mcp.ts", () => ({

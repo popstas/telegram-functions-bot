@@ -3,9 +3,9 @@ import type * as DB from "better-sqlite3";
 import { load } from "sqlite-vec";
 import path from "node:path";
 import { useApi } from "./useApi.ts";
-import { useConfig } from "../config.ts";
+import { updateChatInConfig, useConfig } from "../config.ts";
 import { ensureDirectoryExists, safeFilename } from "../helpers.ts";
-import type { ConfigChatType } from "../types.ts";
+import type { ConfigChatType, VectorMemoryParamsType } from "../types.ts";
 
 const dbCache: Record<string, DB.Database> = {};
 
@@ -20,17 +20,19 @@ export function defaultMemoryDbPath(chat: ConfigChatType): string {
 
 function resolveDbPath(chat: ConfigChatType): string {
   const toolParams = (chat.toolParams = chat.toolParams || {});
-  let vectorMemory = toolParams.vectorMemory as
-    | { dbPath: string; dimension: number; alwaysSearch?: boolean }
+  let vectorMemory = toolParams.vector_memory as
+    | VectorMemoryParamsType
     | undefined;
   if (!vectorMemory) {
     vectorMemory = {
       dbPath: defaultMemoryDbPath(chat),
       dimension: 1536,
     };
-    toolParams.vectorMemory = vectorMemory;
+    toolParams.vector_memory = vectorMemory;
+    updateChatInConfig(chat);
   } else if (!vectorMemory.dbPath) {
     vectorMemory.dbPath = defaultMemoryDbPath(chat);
+    updateChatInConfig(chat);
   }
   return vectorMemory.dbPath;
 }
@@ -69,7 +71,7 @@ export async function saveEmbedding(params: {
 }) {
   const { text, metadata, chat } = params;
   const dbPath = resolveDbPath(chat);
-  const dimension = chat.toolParams?.vectorMemory?.dimension || 1536;
+  const dimension = chat.toolParams?.vector_memory?.dimension || 1536;
   const db = initDb(dbPath, dimension);
   const embedding = await embedText(text, chat);
   const stmt = db.prepare(
@@ -92,7 +94,7 @@ export async function searchEmbedding(params: {
 > {
   const { query, limit, chat } = params;
   const dbPath = resolveDbPath(chat);
-  const dimension = chat.toolParams?.vectorMemory?.dimension || 1536;
+  const dimension = chat.toolParams?.vector_memory?.dimension || 1536;
   const db = initDb(dbPath, dimension);
   const embedding = await embedText(query, chat);
   const stmt = db.prepare(

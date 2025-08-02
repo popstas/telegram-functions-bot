@@ -436,13 +436,13 @@ Other useful chat parameters include:
 
 ## Vector memory
 
-Enable semantic memory with `chatParams.vectorMemory`. Messages starting with `запомни` are embedded and stored in a SQLite database using `sqlite-vec`. Use the `search_memory` tool to find related snippets. Set `toolParams.vectorMemory.alwaysSearch` to automatically search memory before answering.
+Enable semantic memory with `chatParams.vector_memory`. Messages starting with `запомни` are embedded and stored in a SQLite database using `sqlite-vec`. Use the `search_memory` tool to find related snippets. Set `toolParams.vector_memory.alwaysSearch` to automatically search memory before answering.
 
 ```yaml
 chatParams:
-  vectorMemory: true
+  vector_memory: true
 toolParams:
-  vectorMemory:
+  vector_memory:
     dbPath: data/memory/default.sqlite
     dimension: 1536
     alwaysSearch: false

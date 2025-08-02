@@ -46,6 +46,7 @@ jest.unstable_mockModule("../../src/helpers/google.ts", () => ({
 jest.unstable_mockModule("../../src/config.ts", () => ({
   useConfig: () => mockUseConfig(),
   syncButtons: mockSyncButtons,
+  updateChatInConfig: jest.fn(),
 }));
 
 jest.unstable_mockModule("../../src/helpers/gpt.ts", () => ({

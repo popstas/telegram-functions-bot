@@ -12,6 +12,7 @@ jest.unstable_mockModule("../../src/config.ts", () => ({
   __esModule: true,
   readConfig: () => mockReadConfig(),
   writeConfig: (...args: unknown[]) => mockWriteConfig(...args),
+  updateChatInConfig: jest.fn(),
 }));
 
 let CreateAgentClient: typeof import("../../src/tools/create_agent.ts").CreateAgentClient;

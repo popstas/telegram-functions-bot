@@ -26,6 +26,7 @@ jest.unstable_mockModule("../../src/config.ts", () => ({
   checkConfigSchema: jest.fn(),
   logConfigChanges: jest.fn(),
   setConfigPath: jest.fn(),
+  updateChatInConfig: jest.fn(),
 }));
 
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({

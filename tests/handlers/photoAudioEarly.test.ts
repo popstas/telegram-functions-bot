@@ -24,6 +24,7 @@ jest.unstable_mockModule("../../src/config.ts", () => ({
   useConfig: () => mockUseConfig(),
   readConfig: jest.fn(),
   syncButtons: jest.fn(),
+  updateChatInConfig: jest.fn(),
 }));
 
 const { default: onPhoto } = await import("../../src/handlers/onPhoto.ts");

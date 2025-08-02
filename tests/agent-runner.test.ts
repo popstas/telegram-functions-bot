@@ -13,6 +13,7 @@ afterEach(() => {
 
 jest.unstable_mockModule("../src/config.ts", () => ({
   readConfig: () => mockReadConfig(),
+  updateChatInConfig: jest.fn(),
 }));
 
 jest.unstable_mockModule("../src/helpers/gpt/llm.ts", () => ({

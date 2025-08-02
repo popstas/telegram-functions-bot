@@ -6,6 +6,7 @@ import type { ConfigChatType } from "../../src/types";
 
 jest.unstable_mockModule("../../src/config.ts", () => ({
   readConfig: () => ({ auth: {}, chats: [] }),
+  updateChatInConfig: jest.fn(),
 }));
 
 let mod: typeof import("../../src/tools/read_knowledge_json.ts");

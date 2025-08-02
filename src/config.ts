@@ -135,14 +135,14 @@ export function generateConfig(): ConfigType {
           showToolMessages: true,
           useResponsesApi: false,
           streaming: false,
-          vectorMemory: false,
+          vector_memory: false,
         },
         toolParams: {
           brainstorm: {
             promptBefore: "Составь только краткий план действий.",
             promptAfter: "Выше написан краткий план действий. Полный ответ:",
           },
-          vectorMemory: {
+          vector_memory: {
             dbPath: "data/memory/default.sqlite",
             dimension: 1536,
             alwaysSearch: false,
@@ -192,14 +192,14 @@ export function generateConfig(): ConfigType {
           showToolMessages: true,
           useResponsesApi: false,
           streaming: false,
-          vectorMemory: false,
+          vector_memory: false,
         },
         toolParams: {
           brainstorm: {
             promptBefore: "Составь только краткий план действий.",
             promptAfter: "Выше написан краткий план действий. Полный ответ:",
           },
-          vectorMemory: {
+          vector_memory: {
             dbPath: "data/memory/default.sqlite",
             dimension: 1536,
             alwaysSearch: false,
@@ -230,6 +230,27 @@ export function generatePrivateChatConfig(username: string) {
     toolParams: {} as ToolParamsType,
     chatParams: {} as ChatParamsType,
   } as ConfigChatType;
+}
+
+export function updateChatInConfig(chatConfig: ConfigChatType) {
+  const config = readConfig();
+  let idx = -1;
+  if (chatConfig.id) {
+    idx = config.chats.findIndex(
+      (c) => c.id === chatConfig.id || c.ids?.includes(chatConfig.id!),
+    );
+  }
+  if (idx === -1 && chatConfig.username) {
+    idx = config.chats.findIndex((c) => c.username === chatConfig.username);
+  }
+  if (idx === -1) {
+    idx = config.chats.findIndex((c) => c.name === chatConfig.name);
+  }
+  if (idx === -1) {
+    throw new Error("Chat not found in config");
+  }
+  config.chats[idx] = chatConfig;
+  writeConfig(configPath, config);
 }
 
 export function checkConfigSchema(config: ConfigType) {

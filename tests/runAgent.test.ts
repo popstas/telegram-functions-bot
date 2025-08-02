@@ -10,6 +10,7 @@ jest.unstable_mockModule("../src/helpers/gpt/llm.ts", () => ({
 jest.unstable_mockModule("../src/config.ts", () => ({
   readConfig: mockReadConfig,
   useConfig: () => mockReadConfig(),
+  updateChatInConfig: jest.fn(),
 }));
 
 import type { runAgent } from "../src/agent-runner.ts";
