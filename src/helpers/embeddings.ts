@@ -117,6 +117,15 @@ export async function searchEmbedding(params: {
   return rows;
 }
 
+export function previewEmbedding(row: {
+  date: string;
+  text: string;
+  distance: number;
+}): string {
+  const date = new Date(row.date).toISOString().slice(0, 16).replace("T", " ");
+  return `${date} ${row.text} (${row.distance.toFixed(2)})`;
+}
+
 export async function deleteEmbedding(params: {
   query: string;
   limit: number;
@@ -128,16 +137,24 @@ export async function deleteEmbedding(params: {
   const db = initDb(dbPath, dimension);
   const embedding = await embedText(query, chat);
   const stmt = db.prepare(
-    "select rowid, text, date from memory where embedding match json(?) order by distance limit ?",
+    "select rowid, text, date, distance from memory where embedding match json(?) order by distance limit ?",
   );
   const rows = stmt.all(JSON.stringify(embedding), limit) as {
     rowid: number;
     text: string;
     date: string;
+    distance: number;
   }[];
+  const maxDistance = chat.toolParams?.vector_memory?.deleteMaxDistance ?? 1.1;
   const del = db.prepare("delete from memory where rowid = ?");
-  for (const row of rows) del.run(row.rowid);
-  return rows.map(({ text, date }) => ({ text, date }));
+  const deleted: { text: string; date: string }[] = [];
+  for (const row of rows) {
+    if (row.distance <= maxDistance) {
+      del.run(row.rowid);
+      deleted.push({ text: row.text, date: row.date });
+    }
+  }
+  return deleted;
 }
 
 export function closeDb(dbPath: string) {

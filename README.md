@@ -26,7 +26,7 @@ Telegram bot with functions tools.
 - Automatic history cleanup with `forgetTimeout`
 - Abort previous answer if user sends a new message
 - Optional delay between split messages
-- Vector memory with `memory_search` and `memory_delete` tools (optional automatic search)
+- Vector memory with `memory_search` and `memory_delete` tools (confirmation required for delete, optional automatic search)
 
 ## Pipeline
 
@@ -49,7 +49,7 @@ Telegram bot with functions tools.
 - `read_knowledge_google_sheet` - questions and answers from Google Sheet
 - `read_knowledge_json` - questions and answers from json file/url
 - `memory_search` - search messages saved with vector memory
-- `memory_delete` - delete messages from vector memory
+- `memory_delete` - delete messages from vector memory after confirmation
 - `ssh_command` - exec ssh shell command, single server from config
 - `web_search_preview` - use OpenAI internal web search tool (only for Responses API)
 - `image_generation` - generate images using OpenAI image model (only for Responses API)
@@ -437,7 +437,7 @@ Other useful chat parameters include:
 
 ## Vector memory
 
-Enable semantic memory with `chatParams.vector_memory`. Messages starting with `запомни` (any punctuation immediately after the keyword is ignored) are embedded and stored in a SQLite database using `sqlite-vec`. Use the `memory_search` tool to find related snippets or `memory_delete` to remove them. Set `toolParams.vector_memory.alwaysSearch` to automatically search memory before answering.
+Enable semantic memory with `chatParams.vector_memory`. Messages starting with `запомни` (any punctuation immediately after the keyword is ignored) are embedded and stored in a SQLite database using `sqlite-vec`. Use the `memory_search` tool to find related snippets or `memory_delete` to remove them after a preview and confirmation. Set `toolParams.vector_memory.alwaysSearch` to automatically search memory before answering. Adjust `toolParams.vector_memory.deleteMaxDistance` (default `1.1`) to limit how far results can be for deletions.
 
 To prevent duplicates, each new entry is compared against existing memories; if the text is already present or the closest embedding is nearly identical, the save is skipped.
 
@@ -449,6 +449,7 @@ toolParams:
     dbPath: data/memory/default.sqlite
     dimension: 1536
     alwaysSearch: false
+    deleteMaxDistance: 1.1
 ```
 
 By default, databases are stored under `data/memory/`:
@@ -486,19 +487,19 @@ This will execute all unit and integration tests in the `tests` directory using 
 
 ## Telegram utilities
 
-### telegram_confirm
+### telegramConfirm
 
 Helper to ask a user for confirmation with inline Yes/No buttons.
 
 ```ts
-import { telegram_confirm } from "./telegram/confirm";
+import { telegramConfirm } from "./telegram/confirm";
 
-await telegram_confirm(
+await telegramConfirm({
   chatId,
-  message,
+  msg: message,
   chatConfig,
-  "Are you sure?",
-  async () => {/* confirmed */},
-  async () => {/* canceled */},
-);
+  text: "Are you sure?",
+  onConfirm: async () => {/* confirmed */},
+  onCancel: async () => {/* canceled */},
+});
 ```

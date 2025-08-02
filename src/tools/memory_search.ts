@@ -5,7 +5,7 @@ import type {
   ToolResponse,
   ThreadStateType,
 } from "../types.ts";
-import { searchEmbedding } from "../helpers/embeddings.ts";
+import { previewEmbedding, searchEmbedding } from "../helpers/embeddings.ts";
 import type { Message } from "telegraf/types";
 
 export const description = "Search stored chat memory";
@@ -44,7 +44,7 @@ export class MemorySearchClient extends AIFunctionsProvider {
     limit?: number;
   }): Promise<ToolResponse> {
     const rows = await searchEmbedding({ query, limit, chat: this.configChat });
-    const content = rows.map((r) => `${r.date} ${r.text}`).join("\n");
+    const content = rows.map(previewEmbedding).join("\n");
     return { content };
   }
 
@@ -63,7 +63,7 @@ export class MemorySearchClient extends AIFunctionsProvider {
     if (!query) return;
     const res = await this.memory_search({ query, limit: 3 });
     if (!res.content) return;
-    return `## Related memory: <memory>${res.content}</memory>`;
+    return `## Related memory:\n<memory>\n${res.content}\n</memory>`;
   }
 }
 
