@@ -50,8 +50,8 @@ export class MemorySearchClient extends AIFunctionsProvider {
 
   options_string(str: string) {
     const { query } = JSON.parse(str) as { query: string };
-    if (!query) return str;
-    return `**Memory search:** \`${query}\``;
+    const text = query || "all";
+    return `**Memory search:** \`${text}\``;
   }
 
   async prompt_append(): Promise<string | undefined> {

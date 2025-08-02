@@ -33,33 +33,32 @@ export class MemoryDeleteClient extends AIFunctionsProvider {
     description,
     inputSchema: z.object({
       query: z.string().describe("Delete query"),
-      limit: z.number().optional().default(3),
+      limit: z.number().describe("Limit, set to 1 if not specified").optional().default(1),
     }),
   })
   async memory_delete({
     query,
-    limit = 3,
+    limit = 1,
   }: {
     query: string;
     limit?: number;
   }): Promise<ToolResponse> {
     const rows = await deleteEmbedding({ query, limit, chat: this.configChat });
     const content = rows.map((r) => `${r.date} ${r.text}`).join("\n");
-    if (this.configChat.id)
-      await sendTelegramMessage(
-        this.configChat.id,
-        `Удалено ${rows.length} записей`,
-        undefined,
-        undefined,
-        this.configChat,
-      );
+    await sendTelegramMessage(
+      this.thread.id,
+      `Удалено записей: ${rows.length}`,
+      undefined,
+      undefined,
+      this.configChat,
+    );
     return { content };
   }
 
   options_string(str: string) {
     const { query } = JSON.parse(str) as { query: string };
-    if (!query) return str;
-    return `**Memory delete:** \`${query}\``;
+    const text = query || "all";
+    return `**Memory delete:** \`${text}\``;
   }
 }
 

@@ -34,19 +34,19 @@ function baseChat(): ConfigChatType {
 function writeChat(chat: ConfigChatType) {
   const config = generateConfig();
   config.chats.push(chat);
-  writeConfig("test-config.yml", config);
+  writeConfig("data/test-config.yml", config);
 }
 
 beforeEach(async () => {
   jest.resetModules();
-  process.env.CONFIG = "test-config.yml";
-  setConfigPath("test-config.yml");
+  process.env.CONFIG = "data/test-config.yml";
+  setConfigPath("data/test-config.yml");
   embeddings = await import("../src/helpers/embeddings.ts");
 });
 
 afterEach(() => {
-  fs.rmSync("data", { recursive: true, force: true });
-  fs.rmSync("test-config.yml", { force: true });
+  // Don't remove directories, only clean up specific files
+  fs.rmSync("data/test-config.yml", { force: true });
   delete process.env.CONFIG;
   setConfigPath("config.yml");
 });
@@ -60,6 +60,8 @@ describe("defaultMemoryDbPath", () => {
     expect(fs.existsSync(expected)).toBe(true);
     expect(chat.toolParams?.vector_memory?.dbPath).toBe(expected);
     embeddings.closeDb(expected);
+    // Clean up the specific database file for this test
+    fs.rmSync(expected, { force: true });
   });
 
   it("uses bot_name for bot chats", async () => {
@@ -70,6 +72,8 @@ describe("defaultMemoryDbPath", () => {
     expect(fs.existsSync(expected)).toBe(true);
     expect(chat.toolParams?.vector_memory?.dbPath).toBe(expected);
     embeddings.closeDb(expected);
+    // Clean up the specific database file for this test
+    fs.rmSync(expected, { force: true });
   });
 
   it("uses sanitized group name for group chats", async () => {
@@ -80,6 +84,8 @@ describe("defaultMemoryDbPath", () => {
     expect(fs.existsSync(expected)).toBe(true);
     expect(chat.toolParams?.vector_memory?.dbPath).toBe(expected);
     embeddings.closeDb(expected);
+    // Clean up the specific database file for this test
+    fs.rmSync(expected, { force: true });
   });
 
   it("allows Cyrillic characters in group name", async () => {
@@ -90,6 +96,8 @@ describe("defaultMemoryDbPath", () => {
     expect(fs.existsSync(expected)).toBe(true);
     expect(chat.toolParams?.vector_memory?.dbPath).toBe(expected);
     embeddings.closeDb(expected);
+    // Clean up the specific database file for this test
+    fs.rmSync(expected, { force: true });
   });
 
   it("falls back to chat id when name sanitizes empty", async () => {
@@ -100,5 +108,7 @@ describe("defaultMemoryDbPath", () => {
     expect(fs.existsSync(expected)).toBe(true);
     expect(chat.toolParams?.vector_memory?.dbPath).toBe(expected);
     embeddings.closeDb(expected);
+    // Clean up the specific database file for this test
+    fs.rmSync(expected, { force: true });
   });
 });
