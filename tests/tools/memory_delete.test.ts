@@ -12,6 +12,12 @@ jest.unstable_mockModule("../../src/helpers/useApi.ts", () => ({
   }),
 }));
 
+const mockSendTelegramMessage = jest.fn();
+
+jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
+  sendTelegramMessage: (...args: unknown[]) => mockSendTelegramMessage(...args),
+}));
+
 let embeddings: typeof import("../../src/helpers/embeddings.ts");
 let mod: typeof import("../../src/tools/memory_delete.ts");
 
@@ -19,6 +25,7 @@ function cfg(dbPath: string): ConfigChatType {
   return {
     name: "c",
     agent_name: "a",
+    id: 1,
     completionParams: {},
     chatParams: { vector_memory: true },
     toolParams: { vector_memory: { dbPath, dimension: 3 } },
@@ -27,6 +34,7 @@ function cfg(dbPath: string): ConfigChatType {
 
 beforeEach(async () => {
   jest.resetModules();
+  mockSendTelegramMessage.mockClear();
   embeddings = await import("../../src/helpers/embeddings.ts");
   mod = await import("../../src/tools/memory_delete.ts");
 });
@@ -46,6 +54,13 @@ describe("memory_delete", () => {
     const client = new mod.MemoryDeleteClient(chat, thread);
     const res = await client.memory_delete({ query: "hello", limit: 1 });
     expect(res.content).toContain("hello world");
+    expect(mockSendTelegramMessage).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("Удалено"),
+      undefined,
+      undefined,
+      chat,
+    );
     const rows = await embeddings.searchEmbedding({
       query: "hello",
       limit: 1,

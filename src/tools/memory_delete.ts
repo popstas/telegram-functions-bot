@@ -6,6 +6,7 @@ import type {
   ThreadStateType,
 } from "../types.ts";
 import { deleteEmbedding } from "../helpers/embeddings.ts";
+import { sendTelegramMessage } from "../telegram/send.ts";
 
 export const description = "Delete stored chat memory";
 export const details = `- deletes vector memory for similar snippets\n- dbPath: toolParams.vector_memory.dbPath`;
@@ -44,6 +45,14 @@ export class MemoryDeleteClient extends AIFunctionsProvider {
   }): Promise<ToolResponse> {
     const rows = await deleteEmbedding({ query, limit, chat: this.configChat });
     const content = rows.map((r) => `${r.date} ${r.text}`).join("\n");
+    if (this.configChat.id)
+      await sendTelegramMessage(
+        this.configChat.id,
+        `Удалено ${rows.length} записей`,
+        undefined,
+        undefined,
+        this.configChat,
+      );
     return { content };
   }
 
