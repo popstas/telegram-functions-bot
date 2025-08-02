@@ -1,8 +1,10 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import fs from "fs";
-import os from "os";
-import path from "path";
 import type { ConfigChatType, ThreadStateType } from "../../src/types";
+
+const mockSendTelegramMessage = jest.fn();
+const mockConfirm = jest.fn();
+const mockDeleteEmbedding = jest.fn();
+const mockSearchEmbedding = jest.fn();
 
 jest.unstable_mockModule("../../src/helpers/useApi.ts", () => ({
   useApi: () => ({
@@ -12,47 +14,68 @@ jest.unstable_mockModule("../../src/helpers/useApi.ts", () => ({
   }),
 }));
 
-const mockSendTelegramMessage = jest.fn();
-
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   sendTelegramMessage: (...args: unknown[]) => mockSendTelegramMessage(...args),
 }));
 
-let embeddings: typeof import("../../src/helpers/embeddings.ts");
+jest.unstable_mockModule("../../src/telegram/confirm.ts", () => ({
+  telegram_confirm: (...args: unknown[]) => mockConfirm(...args),
+}));
+
+jest.unstable_mockModule("../../src/helpers/embeddings.ts", () => ({
+  deleteEmbedding: (...args: unknown[]) => mockDeleteEmbedding(...args),
+  searchEmbedding: (...args: unknown[]) => mockSearchEmbedding(...args),
+}));
+
 let mod: typeof import("../../src/tools/memory_delete.ts");
 
-function cfg(dbPath: string): ConfigChatType {
+function cfg(): ConfigChatType {
   return {
     name: "c",
     agent_name: "a",
     id: 1,
     completionParams: {},
     chatParams: { vector_memory: true },
-    toolParams: { vector_memory: { dbPath, dimension: 3 } },
+    toolParams: { vector_memory: { dbPath: "", dimension: 3 } },
   } as ConfigChatType;
 }
 
 beforeEach(async () => {
   jest.resetModules();
   mockSendTelegramMessage.mockClear();
-  embeddings = await import("../../src/helpers/embeddings.ts");
+  mockConfirm.mockReset();
+  mockDeleteEmbedding.mockReset();
+  mockSearchEmbedding.mockReset();
   mod = await import("../../src/tools/memory_delete.ts");
 });
 
 describe("memory_delete", () => {
   it("deletes matching entries", async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vec-"));
-    const db = path.join(dir, "db.sqlite");
-    const chat = cfg(db);
+    const chat = cfg();
     const thread: ThreadStateType = {
       id: 1,
       msgs: [],
       messages: [],
       completionParams: {},
     } as ThreadStateType;
-    await embeddings.saveEmbedding({ text: "hello world", metadata: {}, chat });
+    const rows = [{ date: "d", text: "hello world" }];
+    mockSearchEmbedding.mockResolvedValue(rows);
+    mockDeleteEmbedding.mockResolvedValue(rows);
+    mockConfirm.mockImplementation((_chatId, _msg, _cfg, _text, onConfirm) =>
+      onConfirm(),
+    );
     const client = new mod.MemoryDeleteClient(chat, thread);
     const res = await client.memory_delete({ query: "hello", limit: 1 });
+    expect(mockSearchEmbedding).toHaveBeenCalledWith({
+      query: "hello",
+      limit: 1,
+      chat,
+    });
+    expect(mockDeleteEmbedding).toHaveBeenCalledWith({
+      query: "hello",
+      limit: 1,
+      chat,
+    });
     expect(res.content).toContain("hello world");
     expect(mockSendTelegramMessage).toHaveBeenCalledWith(
       1,
@@ -61,13 +84,32 @@ describe("memory_delete", () => {
       undefined,
       chat,
     );
-    const rows = await embeddings.searchEmbedding({
-      query: "hello",
-      limit: 1,
+  });
+
+  it("cancels deletion", async () => {
+    const chat = cfg();
+    const thread: ThreadStateType = {
+      id: 1,
+      msgs: [],
+      messages: [],
+      completionParams: {},
+    } as ThreadStateType;
+    const rows = [{ date: "d", text: "hello world" }];
+    mockSearchEmbedding.mockResolvedValue(rows);
+    mockDeleteEmbedding.mockResolvedValue(rows);
+    mockConfirm.mockImplementation(
+      (_chatId, _msg, _cfg, _text, _onConfirm, onCancel) => onCancel(),
+    );
+    const client = new mod.MemoryDeleteClient(chat, thread);
+    const res = await client.memory_delete({ query: "hello", limit: 1 });
+    expect(res.content).toBe("Deletion canceled");
+    expect(mockDeleteEmbedding).not.toHaveBeenCalled();
+    expect(mockSendTelegramMessage).toHaveBeenCalledWith(
+      1,
+      "Deletion canceled",
+      undefined,
+      undefined,
       chat,
-    });
-    expect(rows).toHaveLength(0);
-    embeddings.closeDb(db);
-    fs.rmSync(dir, { recursive: true, force: true });
+    );
   });
 });

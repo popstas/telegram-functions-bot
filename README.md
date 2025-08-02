@@ -26,7 +26,7 @@ Telegram bot with functions tools.
 - Automatic history cleanup with `forgetTimeout`
 - Abort previous answer if user sends a new message
 - Optional delay between split messages
-- Vector memory with `memory_search` and `memory_delete` tools (optional automatic search)
+- Vector memory with `memory_search` and `memory_delete` tools (confirmation required for delete, optional automatic search)
 
 ## Pipeline
 
@@ -49,7 +49,7 @@ Telegram bot with functions tools.
 - `read_knowledge_google_sheet` - questions and answers from Google Sheet
 - `read_knowledge_json` - questions and answers from json file/url
 - `memory_search` - search messages saved with vector memory
-- `memory_delete` - delete messages from vector memory
+- `memory_delete` - delete messages from vector memory after confirmation
 - `ssh_command` - exec ssh shell command, single server from config
 - `web_search_preview` - use OpenAI internal web search tool (only for Responses API)
 - `image_generation` - generate images using OpenAI image model (only for Responses API)
@@ -437,7 +437,7 @@ Other useful chat parameters include:
 
 ## Vector memory
 
-Enable semantic memory with `chatParams.vector_memory`. Messages starting with `запомни` (any punctuation immediately after the keyword is ignored) are embedded and stored in a SQLite database using `sqlite-vec`. Use the `memory_search` tool to find related snippets or `memory_delete` to remove them. Set `toolParams.vector_memory.alwaysSearch` to automatically search memory before answering.
+Enable semantic memory with `chatParams.vector_memory`. Messages starting with `запомни` (any punctuation immediately after the keyword is ignored) are embedded and stored in a SQLite database using `sqlite-vec`. Use the `memory_search` tool to find related snippets or `memory_delete` to remove them after a preview and confirmation. Set `toolParams.vector_memory.alwaysSearch` to automatically search memory before answering.
 
 ```yaml
 chatParams:

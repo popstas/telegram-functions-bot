@@ -5,8 +5,10 @@ import type {
   ToolResponse,
   ThreadStateType,
 } from "../types.ts";
-import { deleteEmbedding } from "../helpers/embeddings.ts";
+import { deleteEmbedding, searchEmbedding } from "../helpers/embeddings.ts";
 import { sendTelegramMessage } from "../telegram/send.ts";
+import { telegram_confirm } from "../telegram/confirm.ts";
+import type { Message } from "telegraf/types";
 
 export const description = "Delete stored chat memory";
 export const details = `- deletes vector memory for similar snippets\n- dbPath: toolParams.vector_memory.dbPath`;
@@ -33,7 +35,11 @@ export class MemoryDeleteClient extends AIFunctionsProvider {
     description,
     inputSchema: z.object({
       query: z.string().describe("Delete query"),
-      limit: z.number().describe("Limit, set to 1 if not specified").optional().default(1),
+      limit: z
+        .number()
+        .describe("Limit, set to 1 if not specified")
+        .optional()
+        .default(1),
     }),
   })
   async memory_delete({
@@ -43,22 +49,52 @@ export class MemoryDeleteClient extends AIFunctionsProvider {
     query: string;
     limit?: number;
   }): Promise<ToolResponse> {
-    const rows = await deleteEmbedding({ query, limit, chat: this.configChat });
-    const content = rows.map((r) => `${r.date} ${r.text}`).join("\n");
-    await sendTelegramMessage(
+    const previewRows = await searchEmbedding({
+      query,
+      limit,
+      chat: this.configChat,
+    });
+    const preview =
+      previewRows.map((r) => `${r.date} ${r.text}`).join("\n") || "No entries";
+    const lastMsg = this.thread.msgs.at(-1) as Message.TextMessage;
+    return telegram_confirm<ToolResponse>(
       this.thread.id,
-      `Удалено записей: ${rows.length}`,
-      undefined,
-      undefined,
+      lastMsg,
       this.configChat,
+      `Delete memory entries?\n${preview}`,
+      async () => {
+        const rows = await deleteEmbedding({
+          query,
+          limit,
+          chat: this.configChat,
+        });
+        const content = rows.map((r) => `${r.date} ${r.text}`).join("\n");
+        await sendTelegramMessage(
+          this.thread.id,
+          `Удалено записей: ${rows.length}`,
+          undefined,
+          undefined,
+          this.configChat,
+        );
+        return { content };
+      },
+      async () => {
+        await sendTelegramMessage(
+          this.thread.id,
+          "Deletion canceled",
+          undefined,
+          undefined,
+          this.configChat,
+        );
+        return { content: "Deletion canceled" };
+      },
     );
-    return { content };
   }
 
   options_string(str: string) {
     const { query } = JSON.parse(str) as { query: string };
     const text = query || "all";
-    return `**Memory delete:** \`${text}\``;
+    return `**Memory delete (confirm):** \`${text}\``;
   }
 }
 
