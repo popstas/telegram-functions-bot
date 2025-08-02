@@ -5,6 +5,7 @@ const mockReadConfig = jest.fn();
 
 jest.unstable_mockModule("../../src/config.ts", () => ({
   readConfig: () => mockReadConfig(),
+  updateChatInConfig: jest.fn(),
 }));
 
 let mod: typeof import("../../src/tools/get_next_offday.ts");

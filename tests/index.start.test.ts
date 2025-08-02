@@ -27,6 +27,7 @@ jest.unstable_mockModule("../src/config.ts", () => ({
   readConfig: jest.fn(),
   generatePrivateChatConfig: jest.fn(),
   syncButtons: jest.fn(),
+  updateChatInConfig: jest.fn(),
 }));
 
 jest.unstable_mockModule("../src/mqtt.ts", () => ({
@@ -70,6 +71,8 @@ jest.unstable_mockModule("../src/helpers.ts", () => ({
   log: (...args: unknown[]) => mockLog(...args),
   agentNameToId: jest.fn(),
   sendToHttp: jest.fn(),
+  ensureDirectoryExists: jest.fn(),
+  safeFilename: jest.fn(),
 }));
 
 jest.unstable_mockModule("express", () => ({

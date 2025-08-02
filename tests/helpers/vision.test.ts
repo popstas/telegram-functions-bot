@@ -19,6 +19,7 @@ jest.unstable_mockModule("../../src/helpers/gpt.ts", () => ({
 
 jest.unstable_mockModule("../../src/config.ts", () => ({
   useConfig: () => mockUseConfig(),
+  updateChatInConfig: jest.fn(),
 }));
 
 let vision: typeof import("../../src/helpers/vision.ts");

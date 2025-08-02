@@ -10,6 +10,7 @@ const mockLog = jest.fn();
 // Mock the modules
 jest.unstable_mockModule("../src/config.ts", () => ({
   useConfig: () => mockUseConfig(),
+  updateChatInConfig: jest.fn(),
 }));
 
 jest.unstable_mockModule("../src/helpers/gpt/tools.ts", () => ({
@@ -34,6 +35,7 @@ jest.unstable_mockModule("../src/helpers.ts", () => ({
     }
     return Math.abs(hash);
   },
+  safeFilename: jest.fn(),
 }));
 
 // Import the function to test after setting up mocks

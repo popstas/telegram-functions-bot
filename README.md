@@ -170,18 +170,18 @@ import { OpenAI } from "openai";
 const client = new OpenAI();
 
 const stream = await client.responses.create({
-    model: "gpt-4.1",
-    input: [
-        {
-            role: "user",
-            content: "Say 'double bubble bath' ten times fast.",
-        },
-    ],
-    stream: true,
+  model: "gpt-4.1",
+  input: [
+    {
+      role: "user",
+      content: "Say 'double bubble bath' ten times fast.",
+    },
+  ],
+  stream: true,
 });
 
 for await (const event of stream) {
-    console.log(event);
+  console.log(event);
 }
 ```
 
@@ -190,7 +190,7 @@ The Responses API uses semantic events for streaming. Each event is typed with a
 For a full list of event types, see the [API reference for streaming](/docs/api-reference/responses-streaming). Here are a few examples:
 
 ```python
-type StreamingEvent = 
+type StreamingEvent =
 | ResponseCreatedEvent
 | ResponseInProgressEvent
 | ResponseFailedEvent
@@ -236,8 +236,8 @@ For a full list of events you can listen for, see the [API reference for streami
 
 For more advanced use cases, like streaming tool calls, check out the following dedicated guides:
 
-*   [Streaming function calls](/docs/guides/function-calling#streaming)
-*   [Streaming structured output](/docs/guides/structured-outputs#streaming)
+- [Streaming function calls](/docs/guides/function-calling#streaming)
+- [Streaming structured output](/docs/guides/structured-outputs#streaming)
 
 ### Moderation risk
 
@@ -436,17 +436,23 @@ Other useful chat parameters include:
 
 ## Vector memory
 
-Enable semantic memory with `chatParams.vectorMemory`. Messages starting with `запомни` are embedded and stored in a SQLite database using `sqlite-vec`. Use the `search_memory` tool to find related snippets. Set `toolParams.vectorMemory.alwaysSearch` to automatically search memory before answering.
+Enable semantic memory with `chatParams.vector_memory`. Messages starting with `запомни` are embedded and stored in a SQLite database using `sqlite-vec`. Use the `search_memory` tool to find related snippets. Set `toolParams.vector_memory.alwaysSearch` to automatically search memory before answering.
 
 ```yaml
 chatParams:
-  vectorMemory: true
+  vector_memory: true
 toolParams:
-  vectorMemory:
-    dbPath: data/memory.sqlite
+  vector_memory:
+    dbPath: data/memory/default.sqlite
     dimension: 1536
     alwaysSearch: false
 ```
+
+By default, databases are stored under `data/memory/`:
+
+- private chats: `data/memory/private/{username}.sqlite`
+- chats for specific bots: `data/memory/bots/{bot_name}.sqlite`
+- group chats: `data/memory/groups/{chat_name_or_id_safe}.sqlite`
 
 - The available tool names are fetched from the MCP servers listed in `config.mcpServers`.
 

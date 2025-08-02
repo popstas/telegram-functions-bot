@@ -17,6 +17,7 @@ jest.unstable_mockModule("../src/config.ts", () => ({
   __esModule: true,
   useConfig: () => mockUseConfig(),
   readConfig: () => ({}),
+  updateChatInConfig: jest.fn(),
 }));
 
 jest.unstable_mockModule("../src/helpers/gpt/llm.ts", () => ({
@@ -35,6 +36,7 @@ jest.unstable_mockModule("../src/helpers.ts", () => ({
   log: (...args: unknown[]) => mockLog(...args),
   agentNameToId: (name: string) => name.length,
   sendToHttp: jest.fn(),
+  safeFilename: jest.fn(),
 }));
 
 let agentPostHandler: typeof import("../src/httpHandlers.ts").agentPostHandler;

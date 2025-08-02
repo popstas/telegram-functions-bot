@@ -46,6 +46,7 @@ jest.unstable_mockModule("@modelcontextprotocol/sdk/types.js", () => ({
 
 jest.unstable_mockModule("../src/helpers.ts", () => ({
   log: (...args: unknown[]) => mockLog(...args),
+  safeFilename: jest.fn(),
 }));
 
 let connectMcp: typeof import("../src/mcp.ts").connectMcp;

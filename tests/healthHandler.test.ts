@@ -8,6 +8,7 @@ const mockIsMqttConnected = jest.fn();
 jest.unstable_mockModule("../src/config.ts", () => ({
   __esModule: true,
   useConfig: () => mockUseConfig(),
+  updateChatInConfig: jest.fn(),
 }));
 
 jest.unstable_mockModule("../src/bot", () => ({

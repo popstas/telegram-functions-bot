@@ -67,7 +67,7 @@ export default async function onTextMessage(
   if (buttonResponse) return buttonResponse;
 
   if (
-    chat.chatParams?.vectorMemory &&
+    chat.chatParams?.vector_memory &&
     msg.text?.toLowerCase().startsWith("запомни")
   ) {
     const text = msg.text.replace(/^запомни\s*/i, "");

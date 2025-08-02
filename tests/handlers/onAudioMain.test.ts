@@ -26,6 +26,7 @@ jest.unstable_mockModule("../../src/config.ts", () => ({
   checkConfigSchema: jest.fn(),
   logConfigChanges: jest.fn(),
   setConfigPath: jest.fn(),
+  updateChatInConfig: jest.fn(),
 }));
 
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
@@ -69,7 +70,9 @@ beforeEach(async () => {
     arrayBuffer: async () => Buffer.from("data"),
   }) as unknown as typeof fetch;
   jest.spyOn(fs.promises, "writeFile").mockResolvedValue();
-  jest.spyOn(fs, "existsSync").mockReturnValue(true);
+  jest
+    .spyOn(fs, "existsSync")
+    .mockImplementation((p) => !String(p).startsWith("data"));
   jest.spyOn(fs, "unlinkSync").mockImplementation(() => {});
   mockConvertToMp3.mockResolvedValue("file.mp3");
   mockSendAudioWhisper.mockResolvedValue({ text: "hello" });

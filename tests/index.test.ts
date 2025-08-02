@@ -39,6 +39,7 @@ jest.unstable_mockModule("../src/config.ts", () => ({
   writeConfig: (...args: unknown[]) => mockWriteConfig(...args),
   watchConfigChanges: (...args: unknown[]) => mockWatchConfigChanges(...args),
   readConfig: jest.fn(),
+  updateChatInConfig: jest.fn(),
 }));
 
 jest.unstable_mockModule("../src/bot", () => ({
@@ -58,6 +59,7 @@ jest.unstable_mockModule("../src/helpers.ts", () => ({
   log: (...args: unknown[]) => mockLog(...args),
   agentNameToId: jest.fn(),
   sendToHttp: jest.fn(),
+  safeFilename: jest.fn(),
 }));
 
 jest.unstable_mockModule("../src/mqtt.ts", () => ({

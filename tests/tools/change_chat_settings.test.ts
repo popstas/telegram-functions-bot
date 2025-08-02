@@ -15,6 +15,7 @@ jest.unstable_mockModule("../../src/config.ts", () => ({
   writeConfig: (...args: unknown[]) => mockWriteConfig(...args),
   generatePrivateChatConfig: (...args: unknown[]) =>
     mockGeneratePrivateChatConfig(...args),
+  updateChatInConfig: jest.fn(),
 }));
 
 let ChangeChatSettingsClient: typeof import("../../src/tools/change_chat_settings.ts").ChangeChatSettingsClient;

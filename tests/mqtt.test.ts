@@ -20,6 +20,7 @@ jest.unstable_mockModule("mqtt", () => ({
 
 jest.unstable_mockModule("../src/config.ts", () => ({
   useConfig: () => mockUseConfig(),
+  updateChatInConfig: jest.fn(),
 }));
 
 jest.unstable_mockModule("../src/agent-runner.ts", () => ({
@@ -28,6 +29,7 @@ jest.unstable_mockModule("../src/agent-runner.ts", () => ({
 
 jest.unstable_mockModule("../src/helpers.ts", () => ({
   log: (...args: unknown[]) => mockLog(...args),
+  safeFilename: jest.fn(),
 }));
 
 let useMqtt: typeof import("../src/mqtt.ts").useMqtt;

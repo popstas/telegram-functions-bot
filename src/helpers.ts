@@ -67,6 +67,14 @@ export function ensureDirectoryExists(filePath: string) {
   }
 }
 
+export function safeFilename(filename: string, def: string): string {
+  const safe = filename
+    .toLowerCase()
+    .replace(/[^a-z0-9а-яё]+/g, "_")
+    .replace(/^_|_$/g, "");
+  return safe || def;
+}
+
 export function sendToHttp(res: express.Response | undefined, text: string) {
   if (!res) return;
   res.write(text + "\n");

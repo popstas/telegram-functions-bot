@@ -13,6 +13,7 @@ jest.unstable_mockModule("../../src/helpers/gpt.ts", () => ({
 
 jest.unstable_mockModule("../../src/config.ts", () => ({
   readConfig: () => mockReadConfig(),
+  updateChatInConfig: jest.fn(),
 }));
 
 let mod: typeof import("../../src/tools/brainstorm.ts");

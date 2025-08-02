@@ -9,11 +9,11 @@ import { searchEmbedding } from "../helpers/embeddings.ts";
 import type { Message } from "telegraf/types";
 
 export const description = "Search stored chat memory";
-export const details = `- searches vector memory for similar snippets\n- dbPath: toolParams.vectorMemory.dbPath`;
+export const details = `- searches vector memory for similar snippets\n- dbPath: toolParams.vector_memory.dbPath`;
 
 export const defaultParams = {
-  vectorMemory: {
-    dbPath: "data/memory.sqlite",
+  vector_memory: {
+    dbPath: "data/memory/default.sqlite",
     dimension: 1536,
   },
 };
@@ -55,7 +55,7 @@ export class SearchMemoryClient extends AIFunctionsProvider {
   }
 
   async prompt_append(): Promise<string | undefined> {
-    if (!this.configChat.toolParams?.vectorMemory?.alwaysSearch) return;
+    if (!this.configChat.toolParams?.vector_memory?.alwaysSearch) return;
     const last = this.thread.msgs[this.thread.msgs.length - 1] as
       | Message.TextMessage
       | undefined;

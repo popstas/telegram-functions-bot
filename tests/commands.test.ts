@@ -52,6 +52,7 @@ jest.unstable_mockModule("../src/config.ts", () => ({
   writeConfig: (...args: unknown[]) => mockWriteConfig(...args),
   generatePrivateChatConfig: (u: string) => mockGeneratePrivateChatConfig(u),
   readConfig: () => mockReadConfig(),
+  updateChatInConfig: jest.fn(),
 }));
 
 jest.unstable_mockModule("../src/telegram/context.ts", () => ({

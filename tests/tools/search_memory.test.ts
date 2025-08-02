@@ -20,8 +20,8 @@ function cfg(dbPath: string): ConfigChatType {
     name: "c",
     agent_name: "a",
     completionParams: {},
-    chatParams: { vectorMemory: true },
-    toolParams: { vectorMemory: { dbPath, dimension: 3 } },
+    chatParams: { vector_memory: true },
+    toolParams: { vector_memory: { dbPath, dimension: 3 } },
   } as ConfigChatType;
 }
 

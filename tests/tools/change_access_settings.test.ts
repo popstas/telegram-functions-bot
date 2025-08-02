@@ -8,6 +8,7 @@ jest.unstable_mockModule("../../src/config.ts", () => ({
   __esModule: true,
   readConfig: () => mockReadConfig(),
   writeConfig: (...args: unknown[]) => mockWriteConfig(...args),
+  updateChatInConfig: jest.fn(),
 }));
 
 let mod: typeof import("../../src/tools/change_access_settings.ts");
