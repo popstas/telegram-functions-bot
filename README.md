@@ -18,6 +18,7 @@ Telegram bot with functions tools.
 - Incoming audio transcription using Whisper service
 - Prompt placeholders: `{url:...}` and `{tool:...}` for dynamic content
 - Photo messages are processed with OCR to extract text
+- Image documents are processed with OCR; other document types are unsupported
 - Dedicated log files for HTTP and MQTT activity
 - Docker healthcheck endpoint for container monitoring
 - GET `/agent/:agent` returns agent status

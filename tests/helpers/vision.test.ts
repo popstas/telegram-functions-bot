@@ -13,9 +13,10 @@ jest.unstable_mockModule("../../src/bot.ts", () => ({
   useBot: (...args: unknown[]) => mockUseBot(...args),
 }));
 
-jest.unstable_mockModule("../../src/helpers/gpt.ts", () => ({
-  llmCall: (...args: unknown[]) => mockLlCall(...args),
-}));
+jest.unstable_mockModule("../../src/helpers/gpt.ts", async () => {
+  const actual = await import("../../src/helpers/gpt.ts");
+  return { ...actual, llmCall: (...args: unknown[]) => mockLlCall(...args) };
+});
 
 jest.unstable_mockModule("../../src/config.ts", () => ({
   useConfig: () => mockUseConfig(),
@@ -43,7 +44,7 @@ describe("recognizeImageText", () => {
   it("throws error when model missing", async () => {
     const msg = createMsg();
     await expect(
-      vision.recognizeImageText(msg, {} as ConfigChatType),
+      vision.recognizeImageText("f1", msg, {} as ConfigChatType),
     ).rejects.toThrow("Не указана модель для распознавания.");
     expect(mockGetFileLink).toHaveBeenCalledWith("f1");
     expect(mockLlCall).not.toHaveBeenCalled();
@@ -57,7 +58,7 @@ describe("recognizeImageText", () => {
     });
     const msg = createMsg("cap");
     const chat = {} as ConfigChatType;
-    const res = await vision.recognizeImageText(msg, chat);
+    const res = await vision.recognizeImageText("f1", msg, chat);
     expect(mockGetFileLink).toHaveBeenCalledWith("f1");
     expect(mockLlCall).toHaveBeenCalledWith({
       generationName: "llm-vision",
@@ -77,7 +78,7 @@ describe("recognizeImageText", () => {
     mockLlCall.mockRejectedValue(new Error("bad"));
     const msg = createMsg();
     await expect(
-      vision.recognizeImageText(msg, {} as ConfigChatType),
+      vision.recognizeImageText("f1", msg, {} as ConfigChatType),
     ).rejects.toThrow("bad");
   });
 });

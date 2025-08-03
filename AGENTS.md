@@ -39,7 +39,7 @@ Use the npm scripts for development:
 
 
 
-  - `index.ts` регистрирует обработчики `onTextMessage`, `onPhoto`, `onAudio` и `onUnsupported`.
+- `index.ts` регистрирует обработчики `onTextMessage`, `onPhoto`, `onDocument`, `onAudio` и `onUnsupported`.
   - Если сообщение аудио — выполняется speech-to-text (распознавание речи), результат добавляется в историю сообщений, как текст.
   - Если сообщение фото — извлекается текст с картинки (OCR); если к фото есть подпись (caption), она используется как промпт для задачи над изображением.
   - `checkAccessLevel` из `src/helpers/access.ts` проверяет уровень доступа и упоминание бота.

@@ -19,9 +19,10 @@ jest.unstable_mockModule("../../src/handlers/access.ts", () => ({
   default: mockCheckAccessLevel,
 }));
 
-jest.unstable_mockModule("../../src/helpers/vision.ts", () => ({
-  recognizeImageText: jest.fn(),
-}));
+jest.unstable_mockModule("../../src/helpers/vision.ts", async () => {
+  const actual = await import("../../src/helpers/vision.ts");
+  return { ...actual, recognizeImageText: jest.fn() };
+});
 
 jest.unstable_mockModule("../../src/helpers/stt.ts", () => ({
   convertToMp3: jest.fn(),
@@ -30,6 +31,9 @@ jest.unstable_mockModule("../../src/helpers/stt.ts", () => ({
 
 const { default: onPhoto } = await import("../../src/handlers/onPhoto.ts");
 const { default: onAudio } = await import("../../src/handlers/onAudio.ts");
+const { default: onDocument } = await import(
+  "../../src/handlers/onDocument.ts"
+);
 const { default: onUnsupported } = await import(
   "../../src/handlers/onUnsupported.ts"
 );
@@ -75,12 +79,24 @@ describe("ignore unmentioned messages", () => {
     expect(mockSendTelegramMessage).not.toHaveBeenCalled();
   });
 
+  it("onDocument", async () => {
+    const msg = {
+      chat: { id: 1, type: "group" },
+      from: { username: "u" },
+      document: { file_id: "d", mime_type: "image/png" },
+    } as unknown as Message.DocumentMessage;
+    mockCheckAccessLevel.mockResolvedValue(false);
+    const ctx = createCtx(msg);
+    await onDocument(ctx);
+    expect(mockSendTelegramMessage).not.toHaveBeenCalled();
+  });
+
   it("onUnsupported", async () => {
     const msg = {
       chat: { id: 1, type: "group" },
       from: { username: "u" },
-      document: { file_id: "d" },
-    } as unknown as Message.DocumentMessage;
+      video: { file_id: "v" },
+    } as unknown as Message.VideoMessage;
     mockCheckAccessLevel.mockResolvedValue(false);
     const ctx = createCtx(msg);
     await onUnsupported(ctx);

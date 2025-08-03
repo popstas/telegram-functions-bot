@@ -7,6 +7,7 @@ const mockRecognizeImageText = jest.fn();
 const mockUseConfig = jest.fn();
 const mockSendTelegramMessage = jest.fn();
 const mockOnTextMessage = jest.fn();
+const mockOnUnsupported = jest.fn();
 
 jest.unstable_mockModule("../../src/handlers/access.ts", () => ({
   __esModule: true,
@@ -36,7 +37,12 @@ jest.unstable_mockModule("../../src/handlers/onTextMessage.ts", () => ({
   default: (...args: unknown[]) => mockOnTextMessage(...args),
 }));
 
-let onPhoto: typeof import("../../src/handlers/onPhoto.ts").default;
+jest.unstable_mockModule("../../src/handlers/onUnsupported.ts", () => ({
+  __esModule: true,
+  default: (...args: unknown[]) => mockOnUnsupported(...args),
+}));
+
+let onDocument: typeof import("../../src/handlers/onDocument.ts").default;
 
 function createCtx(message: Record<string, unknown>): Context {
   return {
@@ -51,16 +57,16 @@ function createCtx(message: Record<string, unknown>): Context {
 beforeEach(async () => {
   jest.clearAllMocks();
   jest.resetModules();
-  onPhoto = (await import("../../src/handlers/onPhoto.ts")).default;
+  onDocument = (await import("../../src/handlers/onDocument.ts")).default;
 });
 
-describe("onPhoto main flow", () => {
+describe("onDocument", () => {
   it("recognizes text and forwards", async () => {
     const msg = {
       chat: { id: 1, type: "private", title: "t" },
-      photo: [{ file_id: "f" }],
+      document: { file_id: "f", mime_type: "image/png" },
       caption: "cap",
-    } as Message.PhotoMessage;
+    } as Message.DocumentMessage;
     const chat: ConfigChatType = {
       name: "c",
       completionParams: {},
@@ -71,28 +77,40 @@ describe("onPhoto main flow", () => {
     mockUseConfig.mockReturnValue({ vision: { model: "m" } });
     mockRecognizeImageText.mockResolvedValue("ocr");
     const ctx = createCtx(msg);
-    await onPhoto(ctx);
-    expect(mockRecognizeImageText).toHaveBeenCalledWith(msg, chat);
+    await onDocument(ctx);
+    expect(mockRecognizeImageText).toHaveBeenCalledWith("f", msg, chat);
     expect(mockOnTextMessage).toHaveBeenCalled();
     const calledCtx = mockOnTextMessage.mock.calls[0][0];
     expect(calledCtx.message.text).toBe("cap\n\nImage contents: ocr");
-    expect(mockSendTelegramMessage).not.toHaveBeenCalled();
+    expect(mockOnUnsupported).not.toHaveBeenCalled();
   });
 
   it("skips ocr when caption is long", async () => {
     const caption = "a".repeat(101);
     const msg = {
       chat: { id: 1, type: "private", title: "t" },
-      photo: [{ file_id: "f" }],
+      document: { file_id: "f", mime_type: "image/png" },
       caption,
-    } as Message.PhotoMessage;
+    } as Message.DocumentMessage;
     mockCheckAccessLevel.mockResolvedValue({ msg, chat: {} as ConfigChatType });
     mockUseConfig.mockReturnValue({ vision: { model: "m" } });
     const ctx = createCtx(msg);
-    await onPhoto(ctx);
+    await onDocument(ctx);
     expect(mockRecognizeImageText).not.toHaveBeenCalled();
     expect(mockOnTextMessage).toHaveBeenCalled();
     const calledCtx = mockOnTextMessage.mock.calls[0][0];
     expect(calledCtx.message.text).toBe(caption);
+  });
+
+  it("calls onUnsupported for non image", async () => {
+    const msg = {
+      chat: { id: 1, type: "private", title: "t" },
+      document: { file_id: "f", mime_type: "application/pdf" },
+    } as Message.DocumentMessage;
+    mockCheckAccessLevel.mockResolvedValue({ msg, chat: {} as ConfigChatType });
+    const ctx = createCtx(msg);
+    await onDocument(ctx);
+    expect(mockOnUnsupported).toHaveBeenCalled();
+    expect(mockRecognizeImageText).not.toHaveBeenCalled();
   });
 });

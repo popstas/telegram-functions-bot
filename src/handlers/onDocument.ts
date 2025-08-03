@@ -2,23 +2,28 @@ import { Context } from "telegraf";
 import { Message, Update } from "telegraf/types";
 import checkAccessLevel from "./access.ts";
 import { handleImageMessage } from "../helpers/vision.ts";
+import onUnsupported from "./onUnsupported.ts";
 
-// Type guard to check if update has a message
 function isMessageUpdate(update: Update): update is Update.MessageUpdate {
   return "message" in update;
 }
 
-export default async function onPhoto(ctx: Context) {
+export default async function onDocument(ctx: Context) {
   if (!("message" in ctx.update) || !isMessageUpdate(ctx.update)) {
-    return; // Not a message update
+    return;
   }
 
   const access = await checkAccessLevel(ctx);
   if (!access) return;
 
   const { msg: accessMsg, chat } = access;
-  const msg = accessMsg as unknown as Message.PhotoMessage;
-  if (!msg.photo?.length) return;
-  const photo = msg.photo[msg.photo.length - 1];
-  await handleImageMessage(ctx, msg, photo.file_id, chat, "photo");
+  const msg = accessMsg as unknown as Message.DocumentMessage;
+  if (!msg.document) return;
+
+  if (!msg.document.mime_type?.startsWith("image/")) {
+    await onUnsupported(ctx);
+    return;
+  }
+
+  await handleImageMessage(ctx, msg, msg.document.file_id, chat, "document");
 }

@@ -12,6 +12,7 @@ const mockUseMqtt = jest.fn();
 const mockOnTextMessage = jest.fn();
 const mockOnPhoto = jest.fn();
 const mockOnAudio = jest.fn();
+const mockOnDocument = jest.fn();
 const mockOnUnsupported = jest.fn();
 const mockUseLastCtx = jest.fn();
 
@@ -84,6 +85,11 @@ jest.unstable_mockModule("../src/handlers/onAudio.ts", () => ({
   default: (...args: unknown[]) => mockOnAudio(...args),
 }));
 
+jest.unstable_mockModule("../src/handlers/onDocument.ts", () => ({
+  __esModule: true,
+  default: (...args: unknown[]) => mockOnDocument(...args),
+}));
+
 jest.unstable_mockModule("../src/handlers/onUnsupported.ts", () => ({
   __esModule: true,
   default: (...args: unknown[]) => mockOnUnsupported(...args),
@@ -124,6 +130,7 @@ beforeEach(async () => {
     .mockImplementation(async (_ctx, _o, cb) => cb({ text: "ok" }));
   mockOnPhoto.mockReset();
   mockOnAudio.mockReset();
+  mockOnDocument.mockReset();
   mockOnUnsupported.mockReset();
   mockUseLastCtx.mockReset();
   mockExpress.mockClear();
