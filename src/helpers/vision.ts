@@ -42,7 +42,8 @@ export async function recognizeImageText(
   const model = config?.vision?.model || "";
   if (!model) throw new Error("Не указана модель для распознавания.");
 
-  let prompt = "Извлеки текст с изображения. Ответь только текстом.";
+  let prompt =
+    "Извлеки текст с изображения. Ответь только текстом. Если текста нет, опиши изображение.";
   if (msg.caption) prompt = msg.caption;
 
   try {
