@@ -21,6 +21,7 @@ jest.unstable_mockModule("../../src/handlers/access.ts", () => ({
 
 jest.unstable_mockModule("../../src/helpers/vision.ts", () => ({
   recognizeImageText: jest.fn(),
+  processImageMessage: jest.fn(),
 }));
 
 jest.unstable_mockModule("../../src/helpers/stt.ts", () => ({
