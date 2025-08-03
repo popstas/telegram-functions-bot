@@ -11,6 +11,7 @@ import onTextMessage from "./handlers/onTextMessage.ts";
 import onPhoto from "./handlers/onPhoto.ts";
 import onAudio from "./handlers/onAudio.ts";
 import onUnsupported from "./handlers/onUnsupported.ts";
+import onDocument from "./handlers/onDocument.ts";
 import { useLastCtx } from "./helpers/lastCtx.ts";
 import {
   agentGetHandler,
@@ -88,14 +89,14 @@ async function launchBot(bot_token: string, bot_name: string) {
     bot.on(message("sticker"), onUnsupported);
     bot.on(message("video"), onUnsupported);
     bot.on(message("video_note"), onUnsupported);
-    bot.on(message("document"), onUnsupported);
+    bot.on(message("document"), onDocument);
 
     bot.catch((err, ctx) => {
       log({
         msg: `[${bot_name}] Unhandled error for update ${ctx.update.update_id}: ${err instanceof Error ? err.message : String(err)}`,
         logLevel: "error",
       });
-      if (err instanceof Error){
+      if (err instanceof Error) {
         console.error(err.stack);
       }
     });
