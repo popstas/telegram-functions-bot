@@ -11,7 +11,7 @@ import {
 } from "../../types.ts";
 import { useThreads } from "../../threads.ts";
 import { sendTelegramMessage } from "../../telegram/send.ts";
-import { log, sendToHttp } from "../../helpers.ts";
+import { log, sendToHttp, safeFilename } from "../../helpers.ts";
 import useTools from "../useTools.ts";
 import useLangfuse from "../useLangfuse.ts";
 import { isAdminUser } from "../../telegram/send.ts";
@@ -62,6 +62,7 @@ export function chatAsTool({
   prompt_append,
   msg,
 }: ToolBotType & { msg: Message.TextMessage }): ChatToolType {
+  name = agent_name || safeFilename(name, "agent");
   return {
     name,
     module: {
