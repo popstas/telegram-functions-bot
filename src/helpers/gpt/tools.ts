@@ -62,7 +62,7 @@ export function chatAsTool({
   prompt_append,
   msg,
 }: ToolBotType & { msg: Message.TextMessage }): ChatToolType {
-  name = agent_name || safeFilename(name, "agent");
+  name = safeFilename(name || agent_name || "", "agent");
   return {
     name,
     module: {
