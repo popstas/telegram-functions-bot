@@ -1,5 +1,7 @@
 import { jest } from "@jest/globals";
 import path from "path";
+import { mkdtempSync, readFileSync as fsReadFileSync } from "node:fs";
+import os from "os";
 import { ConfigChatType } from "../src/types.ts";
 
 const mockExistsSync = jest.fn();
@@ -112,5 +114,56 @@ describe("convertChatConfig", () => {
     });
     expect(mockWriteFileSync).toHaveBeenCalledWith("config.yml", "cfgOut");
     expect(mockMkdirSync).not.toHaveBeenCalled();
+  });
+});
+
+describe("convertChatConfig real fs", () => {
+  it("splits and merges config using temp files", async () => {
+    jest.resetModules();
+    jest.unstable_mockModule("fs", () => import("fs"));
+    jest.unstable_mockModule("js-yaml", () => import("js-yaml"));
+    jest.unstable_mockModule("../src/helpers/readGoogleSheet", () => ({
+      readGoogleSheet: jest.fn(),
+    }));
+    jest.unstable_mockModule(
+      "google-auth-library/build/src/auth/oauth2client",
+      () => ({ OAuth2Client: class {} }),
+    );
+    jest.unstable_mockModule("google-auth-library", () => ({
+      GoogleAuth: class {},
+    }));
+    const mod = await import("../src/config.ts");
+    const yaml = await import("js-yaml");
+    const tmp = mkdtempSync(path.join(os.tmpdir(), "cfg-"));
+    const configPath = path.join(tmp, "config.yml");
+    const chatsDir = path.join(tmp, "data", "chats");
+    const cfg = mod.generateConfig();
+    cfg.useChatsDir = false;
+    cfg.chatsDir = chatsDir;
+    cfg.chats = [
+      {
+        name: "chat1",
+        agent_name: "chat1",
+        completionParams: {},
+        chatParams: {},
+        toolParams: {},
+      } as ConfigChatType,
+    ];
+    mod.writeConfig(configPath, cfg);
+    mod.setConfigPath(configPath);
+
+    mod.convertChatConfig("split");
+
+    const splitCfg = yaml.load(fsReadFileSync(configPath, "utf8")) as any;
+    expect(splitCfg.useChatsDir).toBe(true);
+    expect(splitCfg.chats).toBeUndefined();
+    const chatFile = path.join(chatsDir, "chat1.yml");
+    const saved = yaml.load(fsReadFileSync(chatFile, "utf8")) as ConfigChatType;
+    expect(saved.name).toBe("chat1");
+
+    mod.convertChatConfig("merge");
+    const mergedCfg = yaml.load(fsReadFileSync(configPath, "utf8")) as any;
+    expect(mergedCfg.useChatsDir).toBe(false);
+    expect(mergedCfg.chats[0].name).toBe("chat1");
   });
 });
