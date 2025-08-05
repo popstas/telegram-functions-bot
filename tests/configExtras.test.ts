@@ -10,6 +10,8 @@ const mockDebounce = jest.fn((fn) => fn);
 const mockUseThreads = jest.fn(() => ({}));
 const mockLoad = jest.fn();
 const mockDump = jest.fn((obj) => JSON.stringify(obj));
+const mockReaddirSync = jest.fn();
+const mockMkdirSync = jest.fn();
 
 jest.unstable_mockModule("../src/helpers.ts", () => ({
   log: mockLog,
@@ -43,11 +45,15 @@ jest.unstable_mockModule("fs", () => ({
     existsSync: mockExistsSync,
     readFileSync: mockReadFileSync,
     watchFile: mockWatchFile,
+    readdirSync: mockReaddirSync,
+    mkdirSync: mockMkdirSync,
   },
   writeFileSync: mockWriteFile,
   existsSync: mockExistsSync,
   readFileSync: mockReadFileSync,
   watchFile: mockWatchFile,
+  readdirSync: mockReaddirSync,
+  mkdirSync: mockMkdirSync,
 }));
 
 let mod: typeof import("../src/config.ts");
@@ -61,6 +67,8 @@ beforeEach(async () => {
   mockWatchFile.mockClear();
   mockExistsSync.mockClear();
   mockReadFileSync.mockClear();
+  mockReaddirSync.mockClear();
+  mockMkdirSync.mockClear();
   mod = await import("../src/config.ts");
 });
 

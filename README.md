@@ -65,8 +65,10 @@ Empty `config.yml` should be generated. Fill it with your data:
 - auth.chatgpt_api_key
 - stt.whisperBaseUrl
 - http.http_token (per-chat tokens use chat.http_token)
-- useChatsDir (optional, default `false`)
-- chatsDir (optional, default `data/chats`)
+- useChatsDir (optional, default `false`) – when enabled, chat configs are loaded from separate files
+  inside `chatsDir` instead of the `chats` section of `config.yml`.
+- chatsDir (optional, default `data/chats`) – directory where per-chat YAML files are stored when
+  `useChatsDir` is turned on.
 
 ### Multiple Bots / Secondary bot_token
 
