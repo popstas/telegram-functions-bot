@@ -70,6 +70,13 @@ Empty `config.yml` should be generated. Fill it with your data:
 - chatsDir (optional, default `data/chats`) – directory where per-chat YAML files are stored when
   `useChatsDir` is turned on.
 
+You can convert your configuration between a single `config.yml` and per-chat files:
+
+```bash
+npm run config:convert split   # save chats to data/chats and enable useChatsDir
+npm run config:convert merge   # read chats from data/chats and merge into config.yml
+```
+
 ### Multiple Bots / Secondary bot_token
 
 You can run multiple Telegram bots from a single instance using the `bot_token` field in each chat config.
