@@ -16,6 +16,7 @@
     "format": "prettier -l --write \"src/**/*.{ts,js,json,md}\" \"tests/**/*.{ts,js,json,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,js,json,md}\" \"tests/**/*.{ts,js,json,md}\"",
     "agent": "tsx src/cli-agent.ts",
+    "config:convert": "tsx src/cli-config.ts",
     "healthcheck": "tsx src/healthcheck.ts"
   },
   "author": "",

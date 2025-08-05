@@ -53,6 +53,22 @@ export function saveChatsToDir(dir: string, chats: ConfigChatType[]) {
   });
 }
 
+export function convertChatConfig(mode: "split" | "merge") {
+  const cfg = readConfig(configPath);
+  const dir = cfg.chatsDir || "data/chats";
+
+  if (mode === "split") {
+    cfg.useChatsDir = true;
+    cfg.chatsDir = dir;
+  } else {
+    cfg.chats = loadChatsFromDir(dir);
+    cfg.useChatsDir = false;
+  }
+
+  writeConfig(configPath, cfg);
+  return cfg;
+}
+
 export function readConfig(path?: string): ConfigType {
   if (!path) path = process.env.CONFIG || "config.yml";
   if (!existsSync(path)) {
