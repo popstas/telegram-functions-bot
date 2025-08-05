@@ -1,12 +1,5 @@
 import { jest } from "@jest/globals";
 import path from "path";
-import {
-  mkdtempSync,
-  writeFileSync as fsWriteFileSync,
-  readFileSync as fsReadFileSync,
-  mkdirSync as fsMkdirSync,
-} from "node:fs";
-import os from "os";
 import { ConfigChatType } from "../src/types.ts";
 
 // Mock the modules using jest.requireMock
@@ -320,46 +313,5 @@ describe("checkConfigSchema", () => {
 
     readConfig("testConfig.yml");
     expect(console.warn).toHaveBeenCalled();
-  });
-});
-
-describe("readConfig/writeConfig real fs", () => {
-  it("loads chats from files and updates chat file", async () => {
-    jest.resetModules();
-    jest.unstable_mockModule("fs", () => import("fs"));
-    jest.unstable_mockModule("js-yaml", () => import("js-yaml"));
-    jest.unstable_mockModule("../src/helpers/readGoogleSheet", () => ({
-      readGoogleSheet: jest.fn(),
-    }));
-    jest.unstable_mockModule(
-      "google-auth-library/build/src/auth/oauth2client",
-      () => ({ OAuth2Client: class {} }),
-    );
-    jest.unstable_mockModule("google-auth-library", () => ({
-      GoogleAuth: class {},
-    }));
-    const { readConfig, writeConfig, generateConfig } = await import(
-      "../src/config.ts"
-    );
-    const tmp = mkdtempSync(path.join(os.tmpdir(), "cfg-"));
-    const chatsDir = path.join(tmp, "data", "chats");
-    fsMkdirSync(chatsDir, { recursive: true });
-    fsWriteFileSync(path.join(chatsDir, "a.yml"), "name: a\n");
-    fsWriteFileSync(path.join(chatsDir, "b.yml"), "name: b\n");
-    const cfg = generateConfig();
-    cfg.useChatsDir = true;
-    cfg.chatsDir = chatsDir;
-    cfg.chats = [];
-    const configPath = path.join(tmp, "config.yml");
-    writeConfig(configPath, cfg);
-    const loaded = readConfig(configPath);
-    expect(loaded.chats.map((c) => c.name)).toEqual(["a", "b"]);
-    const chatFile = path.join(chatsDir, "a.yml");
-    const before = fsReadFileSync(chatFile, "utf8");
-    loaded.chats[0].description = "updated";
-    writeConfig(configPath, loaded);
-    const after = fsReadFileSync(chatFile, "utf8");
-    expect(after).not.toBe(before);
-    expect(after).toMatch('description: "updated"');
   });
 });

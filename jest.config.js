@@ -4,6 +4,7 @@ const config = {
   testEnvironment: 'node',
   silent: true,
   forceExit: true,
+  maxWorkers: 1,
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   extensionsToTreatAsEsm: ['.ts'],
   testMatch: ['**/__tests__/**/*.+(ts|tsx|js)', '**/?(*.)+(spec|test).+(ts|tsx|js)'],
