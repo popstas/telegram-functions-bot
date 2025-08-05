@@ -95,6 +95,7 @@ export type ChatParamsType = {
   placeholderCacheTime?: number;
   useResponsesApi?: boolean;
   streaming?: boolean;
+  responseButtons?: boolean;
   vector_memory?: boolean;
 };
 
@@ -145,6 +146,7 @@ export type ThreadStateType = {
   activeButton?: ConfigChatButtonType;
   nextSystemMessage?: string;
   authClient?: OAuth2Client | GoogleAuth;
+  dynamicButtons?: ConfigChatButtonType[];
 };
 
 export type ConfigChatButtonType = {
@@ -179,6 +181,7 @@ export type ModuleType = {
 
 export interface ToolResponse {
   content: string;
+  buttons?: ConfigChatButtonType[];
 }
 
 export type BrainstormParamsType = {

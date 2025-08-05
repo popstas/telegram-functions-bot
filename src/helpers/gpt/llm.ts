@@ -12,6 +12,7 @@ import {
   GptContextType,
   ToolResponse,
   ThreadStateType,
+  ConfigChatButtonType,
 } from "../../types.ts";
 import { addToHistory, forgetHistory } from "../history.ts";
 import {
@@ -81,8 +82,10 @@ export async function llmCall({
   }
   try {
     const options = { signal };
-    const hasImages = apiParams.messages.some((m) =>
-      Array.isArray(m.content) && m.content.some((c) => c.type === "image_url"),
+    const hasImages = apiParams.messages.some(
+      (m) =>
+        Array.isArray(m.content) &&
+        m.content.some((c) => c.type === "image_url"),
     );
     const isStreaming =
       chatConfig?.chatParams?.streaming && !noSendTelegram && !hasImages;
@@ -271,7 +274,20 @@ export async function handleModelAnswer({
     }
   }
 
-  const answer = res.choices[0]?.message.content || "";
+  let answer = res.choices[0]?.message.content || "";
+  let buttons: ConfigChatButtonType[] | undefined;
+  if (chatConfig.chatParams?.responseButtons) {
+    try {
+      const parsed = JSON.parse(answer) as {
+        message?: string;
+        buttons?: ConfigChatButtonType[];
+      };
+      if (parsed.message) answer = parsed.message;
+      if (Array.isArray(parsed.buttons)) buttons = parsed.buttons;
+    } catch {
+      // ignore parse errors, treat as plain text
+    }
+  }
   addToHistory(msg, chatConfig, answer);
 
   if (trace) {
@@ -289,7 +305,7 @@ export async function handleModelAnswer({
     forgetHistory(msg.chat.id);
   }
 
-  return { content: answer };
+  return { content: answer, buttons };
 }
 
 function parseToolContent(content: string) {

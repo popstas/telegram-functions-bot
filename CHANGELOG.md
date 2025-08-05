@@ -10,6 +10,7 @@
 ### Features
 
 * markOurUsers ([0a71520](https://github.com/popstas/telegram-functions-bot/commit/0a71520002d62783db7d0f7af90ae74781bd5a7d))
+* allow LLM to return dynamic reply buttons via `chatParams.responseButtons`
 
 
 
