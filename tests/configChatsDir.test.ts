@@ -69,7 +69,7 @@ describe("chats dir mode", () => {
       ...mod.useConfig().chats[0],
       buttonsSync: { sheetId: "id", sheetName: "name" },
     } as ConfigChatType;
-    await mod.syncButtons(chat, {} as any);
+    await mod.syncButtons(chat, {} as unknown as Record<string, unknown>);
     const afterCfg = yaml.load(readFileSync(configPath, "utf8")) as Record<
       string,
       unknown
