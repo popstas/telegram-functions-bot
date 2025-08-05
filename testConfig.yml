@@ -16,6 +16,8 @@ stt:
 vision:
   model: gpt-4.1-mini
 local_models: []
+useChatsDir: false
+chatsDir: data/chats
 chats:
   - name: default
     completionParams:

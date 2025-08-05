@@ -41,6 +41,14 @@ jest.unstable_mockModule("js-yaml", () => ({
 const configMod = await import("../src/config.ts");
 const { readConfig, writeConfig, generateConfig } = configMod;
 
+describe("generateConfig", () => {
+  it("sets defaults for chat directory fields", () => {
+    const cfg = generateConfig();
+    expect(cfg.useChatsDir).toBe(false);
+    expect(cfg.chatsDir).toBe("data/chats");
+  });
+});
+
 describe("readConfig", () => {
   beforeEach(() => {
     jest.clearAllMocks();
