@@ -1,4 +1,5 @@
 import { jest } from "@jest/globals";
+import path from "path";
 import { ConfigChatType } from "../src/types.ts";
 
 // Mock the modules using jest.requireMock
@@ -9,6 +10,8 @@ const mockWatchFile = jest.fn();
 const mockAppendFileSync = jest.fn();
 const mockDump = jest.fn();
 const mockLoad = jest.fn();
+const mockReaddirSync = jest.fn();
+const mockMkdirSync = jest.fn();
 
 // Mock the modules before importing the module under test
 jest.unstable_mockModule("fs", () => ({
@@ -19,12 +22,16 @@ jest.unstable_mockModule("fs", () => ({
     writeFileSync: mockWriteFileSync,
     watchFile: mockWatchFile,
     appendFileSync: mockAppendFileSync,
+    readdirSync: mockReaddirSync,
+    mkdirSync: mockMkdirSync,
   },
   existsSync: mockExistsSync,
   readFileSync: mockReadFileSync,
   writeFileSync: mockWriteFileSync,
   watchFile: mockWatchFile,
   appendFileSync: mockAppendFileSync,
+  readdirSync: mockReaddirSync,
+  mkdirSync: mockMkdirSync,
 }));
 
 jest.unstable_mockModule("js-yaml", () => ({
@@ -39,7 +46,13 @@ jest.unstable_mockModule("js-yaml", () => ({
 
 // Import the module under test after setting up mocks
 const configMod = await import("../src/config.ts");
-const { readConfig, writeConfig, generateConfig } = configMod;
+const {
+  readConfig,
+  writeConfig,
+  generateConfig,
+  loadChatsFromDir,
+  saveChatsToDir,
+} = configMod;
 
 describe("generateConfig", () => {
   it("sets defaults for chat directory fields", () => {
@@ -84,6 +97,29 @@ describe("readConfig", () => {
     expect(mockLoad).toHaveBeenCalledWith("mockYaml");
     expect(config).toEqual(mockConfig);
   });
+
+  it("loads chats from directory when useChatsDir enabled", () => {
+    mockExistsSync.mockReturnValue(true);
+    const cfg = generateConfig();
+    cfg.useChatsDir = true;
+    cfg.chatsDir = "chats";
+    mockReadFileSync
+      .mockReturnValueOnce("cfgYaml")
+      .mockReturnValueOnce("c1yaml")
+      .mockReturnValueOnce("c2yaml");
+    const chat1 = { name: "c1", agent_name: "c1" } as ConfigChatType;
+    const chat2 = { name: "c2", agent_name: "c2" } as ConfigChatType;
+    mockLoad
+      .mockReturnValueOnce(cfg)
+      .mockReturnValueOnce(chat1)
+      .mockReturnValueOnce(chat2);
+    mockReaddirSync.mockReturnValue(["c1.yml", "c2.yml"]);
+
+    const res = readConfig("testConfig.yml");
+
+    expect(mockReaddirSync).toHaveBeenCalledWith("chats");
+    expect(res.chats).toEqual([chat1, chat2]);
+  });
 });
 
 describe("writeConfig", () => {
@@ -127,6 +163,100 @@ describe("writeConfig", () => {
 
     // Clean up
     consoleErrorSpy.mockRestore();
+  });
+
+  it("saves chats to directory when useChatsDir enabled", () => {
+    const cfg = generateConfig();
+    cfg.useChatsDir = true;
+    cfg.chatsDir = "chats";
+    cfg.chats = [
+      {
+        name: "c1",
+        completionParams: {},
+        chatParams: {},
+        toolParams: {},
+      } as ConfigChatType,
+    ];
+    mockDump.mockReturnValueOnce("chatYaml").mockReturnValueOnce("mainYaml");
+    mockExistsSync.mockReturnValue(true);
+
+    const res = writeConfig("cfg.yml", cfg);
+
+    expect(mockWriteFileSync).toHaveBeenCalledWith(
+      path.join("chats", "c1.yml"),
+      "chatYaml",
+    );
+    expect(mockWriteFileSync).toHaveBeenCalledWith("cfg.yml", "mainYaml");
+    const mainDumpCall = mockDump.mock.calls.find((c) => c[0].auth);
+    expect(mainDumpCall[0].chats).toBeUndefined();
+    expect(res).toEqual(cfg);
+  });
+});
+
+describe("loadChatsFromDir", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("reads yaml files from directory", () => {
+    mockExistsSync.mockReturnValue(true);
+    mockReaddirSync.mockReturnValue(["a.yml", "b.yaml", "c.txt"]);
+    mockReadFileSync.mockReturnValueOnce("ayaml").mockReturnValueOnce("byaml");
+    const chatA = { name: "a" } as ConfigChatType;
+    const chatB = { name: "b" } as ConfigChatType;
+    mockLoad.mockReturnValueOnce(chatA).mockReturnValueOnce(chatB);
+    const res = loadChatsFromDir("dir");
+    expect(res).toEqual([chatA, chatB]);
+    expect(mockReadFileSync).toHaveBeenCalledWith(
+      path.join("dir", "a.yml"),
+      "utf8",
+    );
+    expect(mockReadFileSync).toHaveBeenCalledWith(
+      path.join("dir", "b.yaml"),
+      "utf8",
+    );
+  });
+
+  it("returns empty array when directory missing", () => {
+    mockExistsSync.mockReturnValue(false);
+    const res = loadChatsFromDir("dir");
+    expect(res).toEqual([]);
+    expect(mockReaddirSync).not.toHaveBeenCalled();
+  });
+});
+
+describe("saveChatsToDir", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("writes chats to files", () => {
+    mockExistsSync.mockReturnValue(false);
+    const chats = [
+      {
+        name: "a",
+        completionParams: {},
+        chatParams: {},
+        toolParams: {},
+      } as ConfigChatType,
+      {
+        name: "b",
+        completionParams: {},
+        chatParams: {},
+        toolParams: {},
+      } as ConfigChatType,
+    ];
+    mockDump.mockReturnValueOnce("ayaml").mockReturnValueOnce("byaml");
+    saveChatsToDir("dir", chats);
+    expect(mockMkdirSync).toHaveBeenCalledWith("dir", { recursive: true });
+    expect(mockWriteFileSync).toHaveBeenCalledWith(
+      path.join("dir", "a.yml"),
+      "ayaml",
+    );
+    expect(mockWriteFileSync).toHaveBeenCalledWith(
+      path.join("dir", "b.yml"),
+      "byaml",
+    );
   });
 });
 

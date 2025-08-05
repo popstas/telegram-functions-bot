@@ -1,5 +1,13 @@
 import * as yaml from "js-yaml";
-import { readFileSync, writeFileSync, existsSync, watchFile } from "fs";
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  watchFile,
+  readdirSync,
+  mkdirSync,
+} from "fs";
+import path from "path";
 import {
   ChatParamsType,
   ConfigChatType,
@@ -8,12 +16,42 @@ import {
   ButtonsSyncConfigType,
   ConfigChatButtonType,
 } from "./types.js";
-import { log } from "./helpers.ts";
+import { log, safeFilename } from "./helpers.ts";
 import { readGoogleSheet } from "./helpers/readGoogleSheet";
 import { OAuth2Client } from "google-auth-library/build/src/auth/oauth2client";
 import { GoogleAuth } from "google-auth-library";
 import debounce from "lodash.debounce";
 import { useThreads } from "./threads";
+
+export function loadChatsFromDir(dir: string): ConfigChatType[] {
+  if (!existsSync(dir)) return [];
+  const files = readdirSync(dir).filter(
+    (f) => f.endsWith(".yml") || f.endsWith(".yaml"),
+  );
+  const chats: ConfigChatType[] = [];
+  for (const file of files) {
+    const content = readFileSync(path.join(dir, file), "utf8");
+    const chat = yaml.load(content) as ConfigChatType;
+    chats.push(chat);
+  }
+  return chats;
+}
+
+export function saveChatsToDir(dir: string, chats: ConfigChatType[]) {
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
+  chats.forEach((chat) => {
+    const safe = safeFilename(`${chat.name || chat.id}`, `${chat.id || 0}`);
+    const filePath = path.join(dir, `${safe}.yml`);
+    const yamlRaw = yaml.dump(chat, {
+      lineWidth: -1,
+      noCompatMode: true,
+      quotingType: '"',
+    });
+    writeFileSync(filePath, yamlRaw);
+  });
+}
 
 export function readConfig(path?: string): ConfigType {
   if (!path) path = process.env.CONFIG || "config.yml";
@@ -26,6 +64,11 @@ export function readConfig(path?: string): ConfigType {
     return config;
   }
   const config = yaml.load(readFileSync(path, "utf8")) as ConfigType;
+
+  if (config.useChatsDir) {
+    const dir = config.chatsDir || "data/chats";
+    config.chats = loadChatsFromDir(dir);
+  }
 
   if (config.auth.proxy_url === generateConfig().auth.proxy_url) {
     delete config.auth.proxy_url;
@@ -65,7 +108,15 @@ export function writeConfig(
   config: ConfigType,
 ): ConfigType {
   try {
-    const yamlRaw = yaml.dump(config, {
+    let cfgToSave: ConfigType | Omit<ConfigType, "chats"> = config;
+    if (config.useChatsDir) {
+      const dir = config.chatsDir || "data/chats";
+      saveChatsToDir(dir, config.chats);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { chats, ...rest } = config;
+      cfgToSave = rest;
+    }
+    const yamlRaw = yaml.dump(cfgToSave, {
       lineWidth: -1,
       noCompatMode: true,
       quotingType: '"',
