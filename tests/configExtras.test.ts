@@ -130,6 +130,21 @@ describe("logConfigChanges", () => {
     expect(mockLog).not.toHaveBeenCalled();
     expect(mockWriteFile).not.toHaveBeenCalled();
   });
+
+  it("logs diff for chats when useChatsDir", () => {
+    const oldCfg = mod.generateConfig();
+    oldCfg.useChatsDir = true;
+    oldCfg.chats = [{ name: "test", agent_name: "a" } as ConfigChatType];
+    const newCfg = mod.generateConfig();
+    newCfg.useChatsDir = true;
+    newCfg.chats = [{ name: "test", agent_name: "b" } as ConfigChatType];
+    mod.logConfigChanges(oldCfg, newCfg);
+    expect(mockLog).toHaveBeenCalled();
+    expect(mockWriteFile).toHaveBeenCalledWith(
+      "data/last-config-change.diff",
+      expect.any(String),
+    );
+  });
 });
 
 describe("getGoogleButtons", () => {

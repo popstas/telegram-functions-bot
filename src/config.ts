@@ -53,6 +53,12 @@ export function saveChatsToDir(dir: string, chats: ConfigChatType[]) {
   });
 }
 
+export function writeChatConfig(chat: ConfigChatType) {
+  const config = useConfig();
+  const dir = config.chatsDir || "data/chats";
+  saveChatsToDir(dir, [chat]);
+}
+
 export function convertChatConfig(mode: "split" | "merge") {
   const cfg = readConfig(configPath);
   const dir = cfg.chatsDir || "data/chats";
@@ -304,7 +310,7 @@ export function generatePrivateChatConfig(username: string) {
 }
 
 export function updateChatInConfig(chatConfig: ConfigChatType) {
-  const config = readConfig();
+  const config = useConfig();
   let idx = -1;
   if (chatConfig.id) {
     idx = config.chats.findIndex(
@@ -321,7 +327,12 @@ export function updateChatInConfig(chatConfig: ConfigChatType) {
     throw new Error("Chat not found in config");
   }
   config.chats[idx] = chatConfig;
-  writeConfig(configPath, config);
+  if (config.useChatsDir) {
+    writeChatConfig(chatConfig);
+    writeConfig(configPath, { ...config, chats: [] });
+  } else {
+    writeConfig(configPath, config);
+  }
 }
 
 export function checkConfigSchema(config: ConfigType) {
@@ -375,6 +386,37 @@ export function checkConfigSchema(config: ConfigType) {
 }
 
 export function logConfigChanges(oldConfig: ConfigType, newConfig: ConfigType) {
+  if (oldConfig.useChatsDir || newConfig.useChatsDir) {
+    const oldChats = oldConfig.chats || [];
+    const newChats = newConfig.chats || [];
+    const names = new Set<unknown>();
+    oldChats.forEach((c) => names.add(c.name || c.id));
+    newChats.forEach((c) => names.add(c.name || c.id));
+    let fullDiff = "";
+    names.forEach((name) => {
+      const oldChat = oldChats.find((c) => (c.name || c.id) === name);
+      const newChat = newChats.find((c) => (c.name || c.id) === name);
+      const oldYaml = yaml.dump(oldChat || {}, {
+        lineWidth: -1,
+        noCompatMode: true,
+        quotingType: '"',
+      });
+      const newYaml = yaml.dump(newChat || {}, {
+        lineWidth: -1,
+        noCompatMode: true,
+        quotingType: '"',
+      });
+      if (oldYaml !== newYaml) {
+        fullDiff += `# ${name}\n${generateDiff(oldYaml, newYaml)}\n`;
+      }
+    });
+    if (fullDiff) {
+      log({ msg: `Config changes:\n${fullDiff}` });
+      writeFileSync("data/last-config-change.diff", fullDiff);
+    }
+    return;
+  }
+
   const oldConfigYaml = yaml.dump(oldConfig, {
     lineWidth: -1,
     noCompatMode: true,
@@ -429,7 +471,12 @@ export async function syncButtons(
   const chatIndex = config.chats.findIndex((c) => c.name === chat.name);
 
   config.chats[chatIndex] = chat;
-  writeConfig(configPath, config);
+  if (config.useChatsDir) {
+    writeChatConfig(chat);
+    writeConfig(configPath, { ...config, chats: [] });
+  } else {
+    writeConfig(configPath, config);
+  }
 
   return buttons;
 }
