@@ -65,6 +65,8 @@ Empty `config.yml` should be generated. Fill it with your data:
 - auth.chatgpt_api_key
 - stt.whisperBaseUrl
 - http.http_token (per-chat tokens use chat.http_token)
+- useChatsDir (optional, default `false`)
+- chatsDir (optional, default `data/chats`)
 
 ### Multiple Bots / Secondary bot_token
 
@@ -499,7 +501,11 @@ await telegramConfirm({
   msg: message,
   chatConfig,
   text: "Are you sure?",
-  onConfirm: async () => {/* confirmed */},
-  onCancel: async () => {/* canceled */},
+  onConfirm: async () => {
+    /* confirmed */
+  },
+  onCancel: async () => {
+    /* canceled */
+  },
 });
 ```

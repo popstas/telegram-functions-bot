@@ -118,6 +118,8 @@ export function generateConfig(): ConfigType {
       publicKey: "",
       baseUrl: "",
     },
+    useChatsDir: false,
+    chatsDir: "data/chats",
     chats: [
       {
         name: "default",

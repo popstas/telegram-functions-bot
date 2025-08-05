@@ -38,6 +38,8 @@ export type ConfigType = {
     publicKey: string;
     baseUrl: string;
   };
+  useChatsDir?: boolean;
+  chatsDir?: string;
   chats: ConfigChatType[];
 };
 
