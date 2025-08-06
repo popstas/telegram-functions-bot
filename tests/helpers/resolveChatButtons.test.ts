@@ -52,6 +52,7 @@ describe("resolveChatButtons", () => {
       msgs: [],
       messages: [],
       completionParams: {},
+      dynamicButtons: undefined,
     };
 
     const res = await resolveChatButtons(
@@ -76,6 +77,7 @@ describe("resolveChatButtons", () => {
       msgs: [],
       messages: [],
       completionParams: {},
+      dynamicButtons: undefined,
     };
 
     await resolveChatButtons({} as unknown as Context, msg, chat, thread, {});
@@ -92,10 +94,27 @@ describe("resolveChatButtons", () => {
       messages: [{ role: "user", content: "" }],
       completionParams: {},
       activeButton: { name: "b", prompt: "p" },
+      dynamicButtons: undefined,
     } as ThreadStateType;
 
     await resolveChatButtons({} as unknown as Context, msg, chat, thread, {});
     expect(thread.activeButton).toBeUndefined();
     expect(thread.nextSystemMessage).toBe("p");
+  });
+
+  it("matches dynamic buttons before config buttons", async () => {
+    const dynButton: ConfigChatButtonType = { name: "d", prompt: "pd" };
+    const chat = { ...baseChat, buttons: [{ name: "d", prompt: "pc" }] };
+    const msg = createMsg("d");
+    const thread: ThreadStateType = {
+      id: 1,
+      msgs: [],
+      messages: [],
+      completionParams: {},
+      dynamicButtons: [dynButton],
+    };
+    await resolveChatButtons({} as unknown as Context, msg, chat, thread, {});
+    expect(msg.text).toBe("pd");
+    expect(thread.dynamicButtons).toBeUndefined();
   });
 });

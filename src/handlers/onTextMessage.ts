@@ -194,19 +194,51 @@ export async function answerToMessage(
         return;
       }
 
+      const responseFormat = chat.chatParams?.responseButtons
+        ? {
+            type: "json_schema" as const,
+            json_schema: {
+              name: "response",
+              schema: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  message: { type: "string" },
+                  buttons: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      additionalProperties: false,
+                      properties: {
+                        name: { type: "string", description: "Short name" },
+                        prompt: { type: "string" },
+                      },
+                      required: ["name", "prompt"],
+                    },
+                  },
+                },
+                required: ["message", "buttons"],
+              },
+            },
+          }
+        : undefined;
+
       const res = await requestGptAnswer(msg, chat, ctx, {
         signal: extraMessageParams.signal,
+        responseFormat,
       });
 
       if (extraMessageParams.signal?.aborted) {
         return;
       }
 
+      const thread = useThreads()[msg.chat.id];
       const text = res?.content || "бот не ответил";
       const extraParams: Record<string, unknown> = {
         ...extraMessageParams,
       };
-      const buttons = chat.buttonsSynced || chat.buttons;
+      const buttons = res?.buttons || chat.buttonsSynced || chat.buttons;
+      thread.dynamicButtons = res?.buttons;
       if (buttons) {
         const extraParamsButtons = Markup.keyboard(
           buttons.map((b) => b.name),

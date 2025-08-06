@@ -12,6 +12,7 @@ import {
   GptContextType,
   ToolResponse,
   ThreadStateType,
+  ConfigChatButtonType,
 } from "../../types.ts";
 import { addToHistory, forgetHistory } from "../history.ts";
 import {
@@ -81,8 +82,10 @@ export async function llmCall({
   }
   try {
     const options = { signal };
-    const hasImages = apiParams.messages.some((m) =>
-      Array.isArray(m.content) && m.content.some((c) => c.type === "image_url"),
+    const hasImages = apiParams.messages.some(
+      (m) =>
+        Array.isArray(m.content) &&
+        m.content.some((c) => c.type === "image_url"),
     );
     const isStreaming =
       chatConfig?.chatParams?.streaming && !noSendTelegram && !hasImages;
@@ -154,6 +157,7 @@ export type HandleModelAnswerParams = {
   gptContext: GptContextType;
   level?: number;
   trace?: unknown;
+  responseFormat?: OpenAI.Chat.Completions.ChatCompletionCreateParams["response_format"];
 };
 
 export type EvaluatorResult = {
@@ -206,6 +210,7 @@ export type ProcessToolResultsParams = {
   noSendTelegram?: boolean;
   gptContext: GptContextType;
   level: number;
+  responseFormat?: OpenAI.Chat.Completions.ChatCompletionCreateParams["response_format"];
 };
 
 export async function handleModelAnswer({
@@ -217,6 +222,7 @@ export async function handleModelAnswer({
   gptContext,
   level = 1,
   trace,
+  responseFormat,
 }: HandleModelAnswerParams): Promise<ToolResponse> {
   if (!res || !res?.choices?.[0]) {
     return { content: "" };
@@ -267,11 +273,25 @@ export async function handleModelAnswer({
         noSendTelegram,
         gptContext,
         level,
+        responseFormat,
       });
     }
   }
 
-  const answer = res.choices[0]?.message.content || "";
+  let answer = res.choices[0]?.message.content || "";
+  let buttons: ConfigChatButtonType[] | undefined;
+  if (chatConfig.chatParams?.responseButtons) {
+    try {
+      const parsed = JSON.parse(answer) as {
+        message?: string;
+        buttons?: ConfigChatButtonType[];
+      };
+      if (parsed.message) answer = parsed.message;
+      if (Array.isArray(parsed.buttons)) buttons = parsed.buttons;
+    } catch {
+      // ignore parse errors, treat as plain text
+    }
+  }
   addToHistory(msg, chatConfig, answer);
 
   if (trace) {
@@ -289,7 +309,7 @@ export async function handleModelAnswer({
     forgetHistory(msg.chat.id);
   }
 
-  return { content: answer };
+  return { content: answer, buttons };
 }
 
 function parseToolContent(content: string) {
@@ -314,6 +334,7 @@ export async function processToolResults({
   noSendTelegram,
   gptContext,
   level,
+  responseFormat,
 }: ProcessToolResultsParams): Promise<ToolResponse> {
   gptContext.thread.messages.push(messageAgent);
 
@@ -434,6 +455,7 @@ export async function processToolResults({
     tool_choice: isNoTool
       ? undefined
       : ("auto" as OpenAI.Chat.Completions.ChatCompletionToolChoiceOption),
+    response_format: responseFormat,
   };
 
   const { res, trace, webSearchDetails, images } = await llmCall({
@@ -477,6 +499,7 @@ export async function processToolResults({
     gptContext,
     level: level + 1,
     trace,
+    responseFormat,
   });
 }
 
@@ -629,6 +652,7 @@ export async function requestGptAnswer(
     noSendTelegram: ctx?.noSendTelegram,
     gptContext,
     trace,
+    responseFormat: options?.responseFormat,
   });
 
   if (!options?.skipEvaluators && chatConfig.evaluators?.length) {

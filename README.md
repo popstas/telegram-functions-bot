@@ -27,6 +27,7 @@ Telegram bot with functions tools.
 - Abort previous answer if user sends a new message
 - Optional delay between split messages
 - Vector memory with `memory_search` and `memory_delete` tools (confirmation required for delete, optional automatic search)
+- Dynamic reply buttons returned from LLM responses (enable with `chatParams.responseButtons`)
 
 ## Pipeline
 
@@ -472,6 +473,19 @@ By default, databases are stored under `data/memory/`:
 - The available tool names are fetched from the MCP servers listed in `config.mcpServers`.
 
 Refer to the MCP and Claude Desktop documentation for further details on server configuration and tool discovery.
+
+## Dynamic buttons
+
+Enable the bot to return temporary reply buttons from the model's response. When `chatParams.responseButtons` is `true`, the model must return JSON with `message` and `buttons` fields (use an empty array if no buttons), which are shown to the user as a keyboard.
+
+This feature works both with the OpenAI Responses API and with streaming mode; the JSON envelope is hidden from users.
+
+```yaml
+chatParams:
+  responseButtons: true
+```
+
+Each button should contain `name` and `prompt`. When a user clicks a button, its `prompt` is sent as their next message.
 
 ## Langfuse Setup
 

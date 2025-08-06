@@ -3,7 +3,7 @@ import OpenAI from "openai";
 export function convertResponsesInput(
   apiParams: OpenAI.Chat.Completions.ChatCompletionCreateParams,
 ): Record<string, unknown> {
-  const { messages, ...rest } = apiParams;
+  const { messages, response_format, ...rest } = apiParams;
   const input: OpenAI.Responses.ResponseInputItem[] = [];
   for (const m of (messages || []) as (OpenAI.ChatCompletionMessageParam & {
     name?: string;
@@ -52,6 +52,20 @@ export function convertResponsesInput(
     }
   }
   const respParams: Record<string, unknown> = { ...rest, input };
+  if (response_format) {
+    if (response_format.type === "json_schema") {
+      const json = response_format.json_schema || {};
+      respParams.text = {
+        format: {
+          type: "json_schema",
+          name: json.name,
+          schema: json.schema,
+        },
+      };
+    } else {
+      respParams.text = { format: response_format };
+    }
+  }
   if (apiParams.tools) {
     respParams.tools = (apiParams.tools as OpenAI.ChatCompletionTool[]).map(
       (t) => {

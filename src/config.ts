@@ -210,6 +210,7 @@ export function generateConfig(): ConfigType {
           showToolMessages: true,
           useResponsesApi: false,
           streaming: false,
+          responseButtons: false,
           vector_memory: false,
         },
         toolParams: {
@@ -268,6 +269,7 @@ export function generateConfig(): ConfigType {
           showToolMessages: true,
           useResponsesApi: false,
           streaming: false,
+          responseButtons: false,
           vector_memory: false,
         },
         toolParams: {

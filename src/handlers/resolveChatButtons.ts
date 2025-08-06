@@ -16,22 +16,32 @@ export default async function resolveChatButtons(
 ): Promise<Message.TextMessage | undefined> {
   let matchedButton: ConfigChatButtonType | undefined;
   const msgTextOrig = msg.text || "";
-  const buttons = chat.buttonsSynced || chat.buttons;
-  if (buttons) {
-    matchedButton = buttons.find((b) => b.name === msgTextOrig);
-    if (matchedButton) {
-      if (matchedButton.waitMessage) {
-        thread.activeButton = matchedButton;
-        return await sendTelegramMessage(
-          msg.chat.id,
-          matchedButton.waitMessage,
-          extraParams,
-          ctx,
-          chat,
-        );
-      }
-      msg.text = matchedButton.prompt || "";
+
+  const dynamicButtons = thread.dynamicButtons;
+  if (dynamicButtons) {
+    matchedButton = dynamicButtons.find((b) => b.name === msgTextOrig);
+    thread.dynamicButtons = undefined;
+  }
+
+  if (!matchedButton) {
+    const buttons = chat.buttonsSynced || chat.buttons;
+    if (buttons) {
+      matchedButton = buttons.find((b) => b.name === msgTextOrig);
     }
+  }
+
+  if (matchedButton) {
+    if (matchedButton.waitMessage) {
+      thread.activeButton = matchedButton;
+      return await sendTelegramMessage(
+        msg.chat.id,
+        matchedButton.waitMessage,
+        extraParams,
+        ctx,
+        chat,
+      );
+    }
+    msg.text = matchedButton.prompt || "";
   }
 
   const activeButton = thread?.activeButton;

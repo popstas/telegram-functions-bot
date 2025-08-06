@@ -19,7 +19,13 @@ const threads: Record<
     completionParams: Record<string, unknown>;
   }
 > = {
-  1: { id: 1, msgs: [], messages: [], completionParams: {} },
+  1: {
+    id: 1,
+    msgs: [],
+    messages: [],
+    completionParams: {},
+    dynamicButtons: undefined,
+  },
 };
 
 const mockEnsureAuth = jest.fn();
@@ -170,9 +176,12 @@ describe("answerToMessage", () => {
     });
 
     // Verify requestGptAnswer was called correctly
-    expect(mockRequestGptAnswer).toHaveBeenCalledWith(msg, chat, ctx, {
-      signal: abortController.signal,
-    });
+    expect(mockRequestGptAnswer).toHaveBeenCalledWith(
+      msg,
+      chat,
+      ctx,
+      expect.objectContaining({ signal: abortController.signal }),
+    );
 
     // Verify sendTelegramMessage was called correctly
     expect(mockSendTelegramMessage).toHaveBeenCalledWith(
@@ -208,6 +217,64 @@ describe("answerToMessage", () => {
       expect.anything(),
       ctx,
       chat,
+    );
+  });
+
+  it("shows dynamic buttons from model response", async () => {
+    mockUseConfig.mockReturnValue({ auth: {} });
+    mockRequestGptAnswer.mockResolvedValueOnce({
+      content: "hi",
+      buttons: [{ name: "B", prompt: "p" }],
+    });
+    mockSendTelegramMessage.mockResolvedValueOnce({
+      chat: { id: 1 },
+    } as unknown as Message.TextMessage);
+    const msg = {
+      chat: { id: 1, title: "t" },
+      from: { id: 1 },
+      text: "hello",
+      message_id: 1,
+      date: 0,
+    } as Message.TextMessage;
+    const ctx = createCtx(msg);
+    const chat = { ...baseChat, chatParams: { responseButtons: true } };
+
+    await handlers.answerToMessage(ctx, msg, chat, {});
+
+    const extraParams = mockSendTelegramMessage.mock.calls[0][2];
+    expect(extraParams.reply_markup.keyboard.flat()).toContain("B");
+    expect(threads[1].dynamicButtons).toEqual([{ name: "B", prompt: "p" }]);
+    const expectedFormat = {
+      type: "json_schema",
+      json_schema: {
+        name: "response",
+        schema: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            message: { type: "string" },
+            buttons: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  name: { type: "string", description: "Short name" },
+                  prompt: { type: "string" },
+                },
+                required: ["name", "prompt"],
+              },
+            },
+          },
+          required: ["message", "buttons"],
+        },
+      },
+    };
+    expect(mockRequestGptAnswer).toHaveBeenCalledWith(
+      msg,
+      chat,
+      ctx,
+      expect.objectContaining({ responseFormat: expectedFormat }),
     );
   });
 

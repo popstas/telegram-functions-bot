@@ -235,6 +235,20 @@ export async function handleResponseStream(
   images?: { id?: string; result: string }[];
   sentMessages: Message.TextMessage[];
 }> {
+  if (chatConfig?.chatParams?.responseButtons) {
+    let completed: OpenAI.Responses.Response | undefined;
+    for await (const chunk of stream) {
+      if (chunk.type === "response.completed") {
+        completed = (chunk as OpenAI.Responses.ResponseCompletedEvent).response;
+      }
+    }
+    if (!completed) {
+      throw new Error("No response.completed event received");
+    }
+    const result = await convertResponsesOutput(completed);
+    return { ...result, sentMessages: [] };
+  }
+
   let completed: OpenAI.Responses.Response | undefined;
 
   return handleStream(stream, msg, chatConfig, {
@@ -319,6 +333,90 @@ export async function handleCompletionStream(
   res: OpenAI.ChatCompletion;
   sentMessages: Message.TextMessage[];
 }> {
+  if (chatConfig?.chatParams?.responseButtons) {
+    let fullText = "";
+    const finalToolCalls: Record<
+      number,
+      {
+        index: number;
+        id?: string;
+        function: { arguments: string; name?: string };
+        type?: string;
+      }
+    > = {};
+    for await (const chunk of stream) {
+      const delta = chunk.choices?.[0]?.delta;
+      if (delta?.content) fullText += delta.content;
+      for (const toolCall of delta?.tool_calls || []) {
+        const { index } = toolCall;
+        if (!finalToolCalls[index]) {
+          finalToolCalls[index] = {
+            index,
+            id: toolCall.id,
+            type: toolCall.type,
+            function: { arguments: "", name: toolCall.function?.name },
+          };
+        }
+        const acc = finalToolCalls[index];
+        if (toolCall.id) acc.id = toolCall.id;
+        if (toolCall.type) acc.type = toolCall.type;
+        if (toolCall.function?.name) acc.function.name = toolCall.function.name;
+        if (toolCall.function?.arguments)
+          acc.function.arguments += toolCall.function.arguments;
+      }
+    }
+    let res: OpenAI.ChatCompletion;
+    const withFinalCC = stream as unknown as {
+      finalChatCompletion?: () => Promise<OpenAI.ChatCompletion>;
+      finalMessage?: () => Promise<OpenAI.ChatCompletionMessageParam>;
+      finalContent?: () => Promise<string | null | undefined>;
+    };
+    if (typeof withFinalCC.finalChatCompletion === "function") {
+      res = await withFinalCC.finalChatCompletion();
+    } else if (typeof withFinalCC.finalMessage === "function") {
+      const message = await withFinalCC.finalMessage();
+      res = { choices: [{ index: 0, message }] } as OpenAI.ChatCompletion;
+    } else if (typeof withFinalCC.finalContent === "function") {
+      const content = await withFinalCC.finalContent();
+      res = {
+        choices: [
+          {
+            index: 0,
+            message: { role: "assistant", content: content ?? "" },
+          } as OpenAI.ChatCompletion.Choice,
+        ],
+      } as OpenAI.ChatCompletion;
+    } else {
+      res = {
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: "assistant",
+              content: fullText,
+              tool_calls: Object.keys(finalToolCalls).length
+                ? (Object.values(
+                    finalToolCalls,
+                  ) as unknown as OpenAI.ChatCompletionMessageToolCall[])
+                : undefined,
+            } as OpenAI.ChatCompletionAssistantMessageParam,
+          } as OpenAI.ChatCompletion.Choice,
+        ],
+      } as OpenAI.ChatCompletion;
+    }
+    if (
+      !res.choices[0].message.tool_calls?.length &&
+      Object.keys(finalToolCalls).length
+    ) {
+      (
+        res.choices[0].message as OpenAI.ChatCompletionAssistantMessageParam
+      ).tool_calls = Object.values(
+        finalToolCalls,
+      ) as OpenAI.ChatCompletionMessageToolCall[];
+    }
+    return { res, sentMessages: [] };
+  }
+
   return handleStream(stream, msg, chatConfig, {
     extractDelta(chunk: ChatCompletionChunk) {
       return chunk.choices?.[0]?.delta?.content ?? undefined;
