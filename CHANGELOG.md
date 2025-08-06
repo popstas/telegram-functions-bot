@@ -1,19 +1,80 @@
-# [](https://github.com/popstas/telegram-functions-bot/compare/v2025.6.1...v) (2025-07-02)
+# [](https://github.com/popstas/telegram-functions-bot/compare/v2025.8.1...v) (2025-08-06)
 
 
 ### Bug Fixes
 
-* Remove deprecated showTelegramNames ([#100](https://github.com/popstas/telegram-functions-bot/issues/100)) ([84b6544](https://github.com/popstas/telegram-functions-bot/commit/84b65443fe468351dee627b79a2f95d9615aed49))
-* restore buttons prompts working ([6f43251](https://github.com/popstas/telegram-functions-bot/commit/6f432519892eda7cfa217307a878de611b8bd601))
+* add image contents recognigion when no text ([6ca4a64](https://github.com/popstas/telegram-functions-bot/commit/6ca4a64dcd18781423d40f10956f12642a679083))
+* deduplicate vector memory when add new entries ([#141](https://github.com/popstas/telegram-functions-bot/issues/141)) ([58ed576](https://github.com/popstas/telegram-functions-bot/commit/58ed5763bb0de0e92b8f23c5d5d4a179f9012cca))
+* safe agentAsTool name ([dad51a8](https://github.com/popstas/telegram-functions-bot/commit/dad51a879dd6b7df972a873abf4f88830c004494))
 
 
 ### Features
 
+* add chat config converter ([#149](https://github.com/popstas/telegram-functions-bot/issues/149)) ([c20e30c](https://github.com/popstas/telegram-functions-bot/commit/c20e30c979c2f2545dcd7084241d965ab1242a10))
+* add chatsDir, useChatsDir config options ([#147](https://github.com/popstas/telegram-functions-bot/issues/147)) ([2855e9e](https://github.com/popstas/telegram-functions-bot/commit/2855e9e18e594d00d0042d7deb7e1f8e7f5d067d))
+* add confirmation for memory_delete, prettify output ([#142](https://github.com/popstas/telegram-functions-bot/issues/142)) ([84f70e6](https://github.com/popstas/telegram-functions-bot/commit/84f70e6a1acd3f0f02e9b61fd51b4cc09cd8bdc0))
+* add memory_delete tool and rename search_memory to memory_search ([#139](https://github.com/popstas/telegram-functions-bot/issues/139)) ([f005d97](https://github.com/popstas/telegram-functions-bot/commit/f005d9781b6d571d1b7ffc49d54fccbf40fb6599))
+* allow dynamic buttons from responses, responseButtons ([#152](https://github.com/popstas/telegram-functions-bot/issues/152)) ([af400f4](https://github.com/popstas/telegram-functions-bot/commit/af400f438ef542cdc1c8d484254d9fc584ce9316))
+* **config:** support chat configs directory ([#148](https://github.com/popstas/telegram-functions-bot/issues/148)) ([8aa63f9](https://github.com/popstas/telegram-functions-bot/commit/8aa63f9513c384cd9d0539c37980a348fc5c7a33))
+* **config:** watch chat files and avoid redundant writes ([#153](https://github.com/popstas/telegram-functions-bot/issues/153)) ([73f5ded](https://github.com/popstas/telegram-functions-bot/commit/73f5dede7b8d4f5532348bb14c9531a9e2b221e4))
+* per-chat vector_memory with optional dbPath ([#138](https://github.com/popstas/telegram-functions-bot/issues/138)) ([09980d9](https://github.com/popstas/telegram-functions-bot/commit/09980d921b8f307e060af2bdd9d9335b427ca027))
+* support image documents ([#144](https://github.com/popstas/telegram-functions-bot/issues/144)) ([ad46e0b](https://github.com/popstas/telegram-functions-bot/commit/ad46e0b4cc6e7ad643bcd0efdcfd7821513321b1))
+
+
+
+## [2025.8.1](https://github.com/popstas/telegram-functions-bot/compare/v2025.7.1...v2025.8.1) (2025-08-01)
+
+
+### Bug Fixes
+
+* add output to langfuse when forget tool was used ([293f7ab](https://github.com/popstas/telegram-functions-bot/commit/293f7ab3e445e7ab0fe2ca1486e30cedb1e6e51a))
+* allow change_access_settings only for adminUsers ([60c3171](https://github.com/popstas/telegram-functions-bot/commit/60c3171443d9433b5c7f8aa353bfaba70a76b003))
+* better handling of image recongition error ([73a65e1](https://github.com/popstas/telegram-functions-bot/commit/73a65e15b2a006440a5046f8cbf5c2e7a410765e))
+* better image recognition error handling ([a51d73c](https://github.com/popstas/telegram-functions-bot/commit/a51d73cd4a8a43d7ae28edbececd74d94f55c726))
+* better markdownv2 handling ([8b8751f](https://github.com/popstas/telegram-functions-bot/commit/8b8751f6890e9b32d70dd0f35cd84dbf09819860))
+* better tool result logging ([2bcd699](https://github.com/popstas/telegram-functions-bot/commit/2bcd69975a47f3f41bd45ff583ea3a59ed91d127))
+* don't use proxy for local models ([c2c216b](https://github.com/popstas/telegram-functions-bot/commit/c2c216b548ff16fd10f6704e0583607a82b9e04e))
+* escape markdown in code blocks ([#111](https://github.com/popstas/telegram-functions-bot/issues/111)) ([baa6e2b](https://github.com/popstas/telegram-functions-bot/commit/baa6e2b5f1f0b5fd1d8e44557475234ff9eeda63))
+* Fix docker runtime for sqlite ([#137](https://github.com/popstas/telegram-functions-bot/issues/137)) ([4347b2c](https://github.com/popstas/telegram-functions-bot/commit/4347b2ce9b996c239ba8559b029c476beab232a7))
+* image recognition when chat has bot_name, when png given ([783498f](https://github.com/popstas/telegram-functions-bot/commit/783498f4c9405ae31065172063a73d2ccd37a0b6))
+* improve error handling ([#129](https://github.com/popstas/telegram-functions-bot/issues/129)) ([b4acb29](https://github.com/popstas/telegram-functions-bot/commit/b4acb2937c48ea7906d5bfbeb6fa92cf88d5548a))
+* Init tools during startup instead of on first message ([#106](https://github.com/popstas/telegram-functions-bot/issues/106)) ([4d99844](https://github.com/popstas/telegram-functions-bot/commit/4d99844e15ec63a6d415859aa59e3c44c79f7dd3))
+* markdown indentation in code blocks ([#109](https://github.com/popstas/telegram-functions-bot/issues/109)) ([4dcbaf2](https://github.com/popstas/telegram-functions-bot/commit/4dcbaf2018c401b3d0769f24db7edc8a176d2118))
+* merge with default chatParams ([915982c](https://github.com/popstas/telegram-functions-bot/commit/915982cb031d9ae1a51e45016d1fd866e2dd8f23))
+* preserve blank lines in messages ([#108](https://github.com/popstas/telegram-functions-bot/issues/108)) ([b8a2dcf](https://github.com/popstas/telegram-functions-bot/commit/b8a2dcfee27d50d7f3f4a0db192e28fa717a1edb))
+* preserve prettyText punctuation and audio progress ([#110](https://github.com/popstas/telegram-functions-bot/issues/110)) ([0960908](https://github.com/popstas/telegram-functions-bot/commit/09609081c31aea6da8da944ad9f2a47a7102ab11))
+* prevent multiple initTools ([852e832](https://github.com/popstas/telegram-functions-bot/commit/852e832270e1519e4af9d866c5eec80a8affb8d2))
+* Remove deprecated showTelegramNames ([#100](https://github.com/popstas/telegram-functions-bot/issues/100)) ([84b6544](https://github.com/popstas/telegram-functions-bot/commit/84b65443fe468351dee627b79a2f95d9615aed49))
+* remove null params from mcp query ([508a148](https://github.com/popstas/telegram-functions-bot/commit/508a148638a23273662adec904f5d8fee9da99c0))
+* remove time from datetime filename ([ae8073e](https://github.com/popstas/telegram-functions-bot/commit/ae8073ea1b6af09371968be6c876f81b4fdef288))
+* restore buttons prompts working ([6f43251](https://github.com/popstas/telegram-functions-bot/commit/6f432519892eda7cfa217307a878de611b8bd601))
+* skip image recognition on caption > 100 ([#130](https://github.com/popstas/telegram-functions-bot/issues/130)) ([9a3f6fd](https://github.com/popstas/telegram-functions-bot/commit/9a3f6fdcd216e34d19438e8cb7f345fe4cd9ec77))
+* wait for tools init on first message after start ([#120](https://github.com/popstas/telegram-functions-bot/issues/120)) ([e059abc](https://github.com/popstas/telegram-functions-bot/commit/e059abcf87a2d38622aeba944f463b85778b9fd5))
+* wrap image recognized text ([34c4748](https://github.com/popstas/telegram-functions-bot/commit/34c47480a1116028be4cb5012a3876edb2c2e4cd))
+
+
+### Features
+
+* Add change_access_settings tool ([#107](https://github.com/popstas/telegram-functions-bot/issues/107)) ([1d9bb6b](https://github.com/popstas/telegram-functions-bot/commit/1d9bb6bee80b0563d5a31f3c8fd15b1aeacb3467))
+* add image_generation tool support (wip) ([#121](https://github.com/popstas/telegram-functions-bot/issues/121)) ([1070979](https://github.com/popstas/telegram-functions-bot/commit/1070979780079a412f9fe476afd5ba82a355b7a8))
+* Add openai web_search_preview tool support ([#117](https://github.com/popstas/telegram-functions-bot/issues/117)) ([2edb798](https://github.com/popstas/telegram-functions-bot/commit/2edb7983d08d205e6583d6e3f191564c18ded1dc))
+* Add optional Responses API ([#114](https://github.com/popstas/telegram-functions-bot/issues/114)) ([b508e14](https://github.com/popstas/telegram-functions-bot/commit/b508e14cc21b292223377560b0d08398d6e5625c))
+* Add send document (resource) support for tools ([#112](https://github.com/popstas/telegram-functions-bot/issues/112)) ([35a5877](https://github.com/popstas/telegram-functions-bot/commit/35a5877abc9876cc3699cb593c96f8fa32ed09d7))
+* Add streaming support (wip) ([#119](https://github.com/popstas/telegram-functions-bot/issues/119)) ([5ab137d](https://github.com/popstas/telegram-functions-bot/commit/5ab137dc4239a56f0a01e1cee149c860c328647f))
+* add Streaming, Responses API to /info ([878e479](https://github.com/popstas/telegram-functions-bot/commit/878e479baaf214b3bbcd585889bb73c64c06c83e))
+* Add user vars support via start deeplink ([#132](https://github.com/popstas/telegram-functions-bot/issues/132)) ([635f4b1](https://github.com/popstas/telegram-functions-bot/commit/635f4b162ae14c70b43f8c19730e0fda12758920))
+* Add vector memory and search_memory tool ([#135](https://github.com/popstas/telegram-functions-bot/issues/135)) ([f22356f](https://github.com/popstas/telegram-functions-bot/commit/f22356f13b035c09343d555300d93389a42a3496))
+* Handle streamed tool_calls ([#127](https://github.com/popstas/telegram-functions-bot/issues/127)) ([d914e33](https://github.com/popstas/telegram-functions-bot/commit/d914e33835566e61fbb17654d118433aefcb8d6e))
+* ignore case for user lists ([#128](https://github.com/popstas/telegram-functions-bot/issues/128)) ([5b337c5](https://github.com/popstas/telegram-functions-bot/commit/5b337c59db958e950003fd97bd09e275d3119b7d))
+* Implement streaming message updates for responsesApi ([#124](https://github.com/popstas/telegram-functions-bot/issues/124)) ([cd48339](https://github.com/popstas/telegram-functions-bot/commit/cd48339fced4ddd913758d1b1e5fc3c5cd12bc64))
 * markOurUsers ([0a71520](https://github.com/popstas/telegram-functions-bot/commit/0a71520002d62783db7d0f7af90ae74781bd5a7d))
+* **mcp:** log loading time ([8142846](https://github.com/popstas/telegram-functions-bot/commit/8142846e02ec5aa3f748eeb7ce224d23111e9696))
+* split recognized audio by paragraphs, split big text without newlines ([c190a6a](https://github.com/popstas/telegram-functions-bot/commit/c190a6ab20d3951387338ac87e24c215c5975f39))
+* Streaming support in Telegram for all models and apis ([#126](https://github.com/popstas/telegram-functions-bot/issues/126)) ([3aac41f](https://github.com/popstas/telegram-functions-bot/commit/3aac41f5dcacb6992d53faba49da25707ffe9142))
 
 
 
-## [2025.6.1](https://github.com/popstas/telegram-functions-bot/compare/v2025.6.5...v2025.6.1) (2025-07-01)
+## [2025.7.1](https://github.com/popstas/telegram-functions-bot/compare/v2025.6.1...v2025.7.1) (2025-07-01)
 
 
 ### Bug Fixes
