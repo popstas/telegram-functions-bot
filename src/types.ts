@@ -1,7 +1,7 @@
 import { Message } from "telegraf/types";
 import OpenAI from "openai";
 import { GoogleAuth, OAuth2Client } from "google-auth-library";
-import { CredentialBody } from "google-auth-library/build/src/auth/credentials";
+import type { CredentialBody } from "google-auth-library";
 
 export type ConfigType = {
   bot_name: string;

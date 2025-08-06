@@ -3,7 +3,7 @@ import OpenAI from "openai";
 import {
   convertResponsesInput,
   convertResponsesOutput,
-} from "../../src/helpers/gpt/responsesApi";
+} from "../../src/helpers/gpt/responsesApi.ts";
 
 describe("responsesApi helpers", () => {
   it("converts chat params to responses input", () => {

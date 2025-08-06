@@ -1,6 +1,5 @@
-import { Chat, Message, Update } from "telegraf/types";
+import { Chat, Message, Update, User } from "telegraf/types";
 import { Context } from "telegraf";
-import { User } from "@telegraf/types/manage";
 import { useConfig } from "../config.ts";
 import { log } from "../helpers.ts";
 import { includesUser } from "../utils/users.ts";

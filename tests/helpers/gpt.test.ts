@@ -6,14 +6,14 @@ import {
   beforeEach,
   afterEach,
 } from "@jest/globals";
-import { executeTools } from "../../src/helpers/gpt";
+import { executeTools } from "../../src/helpers/gpt.ts";
 import {
   ConfigChatType,
   ChatToolType,
   ModuleType,
   ThreadStateType,
   ToolResponse,
-} from "../../src/types";
+} from "../../src/types.ts";
 import { Message } from "telegraf/types";
 import { OpenAI } from "openai";
 

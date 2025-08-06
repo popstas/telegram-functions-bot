@@ -5,14 +5,14 @@ import {
   ChatToolType,
   ToolParamsType,
   ToolBotType,
-} from "./types";
+} from "./types.ts";
 import {
   generatePrivateChatConfig,
   useConfig,
   writeConfig,
   readConfig,
-} from "./config";
-import { useBot } from "./bot";
+} from "./config.ts";
+import { useBot } from "./bot.ts";
 import { getActionUserMsg, getCtxChatMsg } from "./telegram/context.ts";
 import { sendTelegramMessage } from "./telegram/send.ts";
 import {

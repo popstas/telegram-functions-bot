@@ -6,7 +6,7 @@ import { initCommands, handleAddChat } from "./commands.ts";
 import { log } from "./helpers.ts";
 import { initTools } from "./helpers/useTools.ts";
 import express from "express";
-import { useBot } from "./bot";
+import { useBot } from "./bot.ts";
 import onTextMessage from "./handlers/onTextMessage.ts";
 import onPhoto from "./handlers/onPhoto.ts";
 import onAudio from "./handlers/onAudio.ts";

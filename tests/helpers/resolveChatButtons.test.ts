@@ -4,7 +4,7 @@ import {
   ConfigChatType,
   ConfigChatButtonType,
   ThreadStateType,
-} from "../../src/types";
+} from "../../src/types.ts";
 
 const mockSendTelegramMessage = jest.fn();
 

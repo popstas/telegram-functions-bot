@@ -5,7 +5,7 @@ import type {
   ConfigChatType,
   GptContextType,
   ToolResponse,
-} from "../../src/types";
+} from "../../src/types.ts";
 
 const mockExecuteTools = jest.fn();
 const mockAddToHistory = jest.fn();

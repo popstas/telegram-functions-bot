@@ -1,7 +1,7 @@
 import { aiFunction, AIFunctionsProvider } from "@agentic/core";
 import { z } from "zod";
-import { ConfigChatType, ConfigType, ToolResponse } from "../types";
-import { readConfig } from "../config";
+import { ConfigChatType, ConfigType, ToolResponse } from "../types.ts";
+import { readConfig } from "../config.ts";
 import { readFileSync } from "fs";
 
 interface JsonRow {

@@ -1,5 +1,5 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import type { ConfigType } from "../../src/types";
+import type { ConfigType } from "../../src/types.ts";
 
 const mockReadConfig = jest.fn();
 const mockWriteConfig = jest.fn();

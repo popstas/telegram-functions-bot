@@ -2,8 +2,12 @@ import { jest } from "@jest/globals";
 import {
   replaceToolPlaceholders,
   __clearToolCache,
-} from "../../src/helpers/placeholders";
-import { ConfigChatType, ThreadStateType, ChatToolType } from "../../src/types";
+} from "../../src/helpers/placeholders.ts";
+import {
+  ConfigChatType,
+  ThreadStateType,
+  ChatToolType,
+} from "../../src/types.ts";
 
 const chatConfig: ConfigChatType = {
   name: "test",

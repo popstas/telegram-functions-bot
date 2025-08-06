@@ -11,7 +11,7 @@ jest.mock("../../src/helpers/gpt", () => ({
 }));
 
 // Import after setting up the mock
-import { executeTools } from "../../src/helpers/gpt";
+import { executeTools } from "../../src/helpers/gpt.ts";
 
 describe.skip("executeTools retry logic", () => {
   // Mock data

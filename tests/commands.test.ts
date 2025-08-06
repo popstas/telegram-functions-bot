@@ -1,7 +1,7 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import type { Message } from "telegraf/types";
 import type { Context } from "telegraf";
-import type { ConfigChatType } from "../src/types";
+import type { ConfigChatType } from "../src/types.ts";
 
 const mockUseTools = jest.fn();
 const mockSendTelegramMessage = jest.fn();

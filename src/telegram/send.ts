@@ -1,16 +1,16 @@
-import { Message } from "telegraf/types";
+import {
+  Message,
+  User,
+  InlineKeyboardMarkup,
+  ReplyKeyboardMarkup,
+  ReplyKeyboardRemove,
+  ForceReply,
+} from "telegraf/types";
 import { useBot } from "../bot.ts";
 import { useConfig } from "../config.ts";
 import { includesUser } from "../utils/users.ts";
 import { ConfigChatButtonType, ConfigChatType } from "../types.ts";
 import { Context, Markup, Input } from "telegraf";
-import { User } from "@telegraf/types/manage";
-import {
-  InlineKeyboardMarkup,
-  ReplyKeyboardMarkup,
-  ReplyKeyboardRemove,
-  ForceReply,
-} from "telegraf/typings/core/types/typegram";
 import { log } from "../helpers.ts";
 import telegramifyMarkdown from "telegramify-markdown";
 import { splitBigMessage } from "../utils/text.ts";

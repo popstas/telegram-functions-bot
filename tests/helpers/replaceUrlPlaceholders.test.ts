@@ -2,7 +2,7 @@ import { jest } from "@jest/globals";
 import {
   replaceUrlPlaceholders,
   __clearUrlCache,
-} from "../../src/helpers/placeholders";
+} from "../../src/helpers/placeholders.ts";
 
 describe("replaceUrlPlaceholders", () => {
   beforeEach(() => {

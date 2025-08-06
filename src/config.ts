@@ -16,13 +16,12 @@ import {
   ToolParamsType,
   ButtonsSyncConfigType,
   ConfigChatButtonType,
-} from "./types.js";
+} from "./types.ts";
 import { log, safeFilename } from "./helpers.ts";
-import { readGoogleSheet } from "./helpers/readGoogleSheet";
-import { OAuth2Client } from "google-auth-library/build/src/auth/oauth2client";
-import { GoogleAuth } from "google-auth-library";
+import { readGoogleSheet } from "./helpers/readGoogleSheet.ts";
+import { OAuth2Client, GoogleAuth } from "google-auth-library";
 import debounce from "lodash.debounce";
-import { useThreads } from "./threads";
+import { useThreads } from "./threads.ts";
 
 function writeFileIfChanged(path: string, content: string) {
   try {

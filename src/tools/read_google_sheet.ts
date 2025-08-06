@@ -6,8 +6,8 @@ import {
   ConfigType,
   ThreadStateType,
   ToolResponse,
-} from "../types";
-import { readConfig } from "../config";
+} from "../types.ts";
+import { readConfig } from "../config.ts";
 import readGoogleSheetToRows from "../helpers/readGoogleSheet.ts";
 
 type ToolArgsType = {

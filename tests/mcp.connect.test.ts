@@ -1,5 +1,5 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import type { McpToolConfig } from "../src/types";
+import type { McpToolConfig } from "../src/types.ts";
 
 const mockLog = jest.fn();
 const mockClientConnect = jest.fn();

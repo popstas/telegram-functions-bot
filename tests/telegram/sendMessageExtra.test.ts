@@ -1,5 +1,5 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import type { ConfigChatType } from "../../src/types";
+import type { ConfigChatType } from "../../src/types.ts";
 
 const mockSendMessage = jest.fn();
 const mockDeleteMessage = jest.fn();
