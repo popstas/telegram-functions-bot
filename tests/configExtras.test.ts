@@ -121,8 +121,12 @@ describe("logConfigChanges", () => {
     const oldCfg = mod.generateConfig();
     const newCfg = mod.generateConfig();
     newCfg.bot_name = "new";
-    mod.logConfigChanges(oldCfg, newCfg);
-    expect(mockLog).toHaveBeenCalled();
+    mod.logConfigChanges(oldCfg, newCfg, "config.yml");
+    expect(mockLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        msg: expect.stringContaining("config.yml"),
+      }),
+    );
     expect(mockWriteFile).toHaveBeenCalledWith(
       "data/last-config-change.diff",
       expect.any(String),
@@ -131,7 +135,7 @@ describe("logConfigChanges", () => {
 
   it("does nothing when configs equal", () => {
     const cfg = mod.generateConfig();
-    mod.logConfigChanges(cfg, cfg);
+    mod.logConfigChanges(cfg, cfg, "config.yml");
     expect(mockLog).not.toHaveBeenCalled();
     expect(mockWriteFile).not.toHaveBeenCalled();
   });
@@ -143,8 +147,12 @@ describe("logConfigChanges", () => {
     const newCfg = mod.generateConfig();
     newCfg.useChatsDir = true;
     newCfg.chats = [{ name: "test", agent_name: "b" } as ConfigChatType];
-    mod.logConfigChanges(oldCfg, newCfg);
-    expect(mockLog).toHaveBeenCalled();
+    mod.logConfigChanges(oldCfg, newCfg, "data/chats/test.yml");
+    expect(mockLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        msg: expect.stringContaining("data/chats/test.yml"),
+      }),
+    );
     expect(mockWriteFile).toHaveBeenCalledWith(
       "data/last-config-change.diff",
       expect.any(String),
