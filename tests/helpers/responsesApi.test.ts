@@ -60,6 +60,17 @@ describe("responsesApi helpers", () => {
     ]);
   });
 
+  it("moves response_format to text.format", () => {
+    const params: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
+      messages: [],
+      model: "m",
+      response_format: { type: "json_object" },
+    };
+    const res = convertResponsesInput(params);
+    expect(res).not.toHaveProperty("response_format");
+    expect(res.text).toEqual({ format: { type: "json_object" } });
+  });
+
   it("converts responses output with function_call", async () => {
     const r: OpenAI.Responses.Response = {
       output_text: "",

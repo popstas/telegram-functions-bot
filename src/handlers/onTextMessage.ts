@@ -208,7 +208,7 @@ export async function answerToMessage(
                     items: {
                       type: "object",
                       properties: {
-                        name: { type: "string" },
+                        name: { type: "string", description: "Short name" },
                         prompt: { type: "string" },
                       },
                       required: ["name", "prompt"],
