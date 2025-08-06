@@ -244,11 +244,37 @@ describe("answerToMessage", () => {
     const extraParams = mockSendTelegramMessage.mock.calls[0][2];
     expect(extraParams.reply_markup.keyboard.flat()).toContain("B");
     expect(threads[1].dynamicButtons).toEqual([{ name: "B", prompt: "p" }]);
+    const expectedFormat = {
+      type: "json_schema",
+      json_schema: {
+        name: "response",
+        schema: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            message: { type: "string" },
+            buttons: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  name: { type: "string", description: "Short name" },
+                  prompt: { type: "string" },
+                },
+                required: ["name", "prompt"],
+              },
+            },
+          },
+          required: ["message"],
+        },
+      },
+    };
     expect(mockRequestGptAnswer).toHaveBeenCalledWith(
       msg,
       chat,
       ctx,
-      expect.objectContaining({ responseFormat: expect.anything() }),
+      expect.objectContaining({ responseFormat: expectedFormat }),
     );
   });
 

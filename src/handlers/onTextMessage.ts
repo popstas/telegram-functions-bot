@@ -201,12 +201,14 @@ export async function answerToMessage(
               name: "response",
               schema: {
                 type: "object",
+                additionalProperties: false,
                 properties: {
                   message: { type: "string" },
                   buttons: {
                     type: "array",
                     items: {
                       type: "object",
+                      additionalProperties: false,
                       properties: {
                         name: { type: "string", description: "Short name" },
                         prompt: { type: "string" },
