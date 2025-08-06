@@ -1,4 +1,5 @@
 import { jest, describe, it, beforeEach, expect } from "@jest/globals";
+import path from "path";
 import type { OAuth2Client } from "google-auth-library";
 import { ConfigChatType } from "../src/types.ts";
 const mockLog = jest.fn();
@@ -6,6 +7,7 @@ const mockWriteFile = jest.fn();
 const mockExistsSync = jest.fn().mockReturnValue(true);
 const mockReadFileSync = jest.fn().mockReturnValue("");
 const mockWatchFile = jest.fn();
+const mockWatch = jest.fn();
 const mockDebounce = jest.fn((fn) => fn);
 const mockUseThreads = jest.fn(() => ({}));
 const mockLoad = jest.fn();
@@ -45,6 +47,7 @@ jest.unstable_mockModule("fs", () => ({
     existsSync: mockExistsSync,
     readFileSync: mockReadFileSync,
     watchFile: mockWatchFile,
+    watch: mockWatch,
     readdirSync: mockReaddirSync,
     mkdirSync: mockMkdirSync,
   },
@@ -52,6 +55,7 @@ jest.unstable_mockModule("fs", () => ({
   existsSync: mockExistsSync,
   readFileSync: mockReadFileSync,
   watchFile: mockWatchFile,
+  watch: mockWatch,
   readdirSync: mockReaddirSync,
   mkdirSync: mockMkdirSync,
 }));
@@ -65,6 +69,7 @@ beforeEach(async () => {
   mockDebounce.mockClear();
   mockUseThreads.mockClear();
   mockWatchFile.mockClear();
+  mockWatch.mockClear();
   mockExistsSync.mockClear();
   mockReadFileSync.mockClear();
   mockReaddirSync.mockClear();
@@ -219,6 +224,87 @@ describe("watchConfigChanges", () => {
     cb();
 
     expect(mockWatchFile).toHaveBeenCalled();
+    expect(threads[1].completionParams).toEqual({ model: "new" });
+  });
+
+  it("watches chat files when useChatsDir", async () => {
+    const threads = { 1: { completionParams: { model: "old" } } } as Record<
+      number,
+      { completionParams: Record<string, unknown> }
+    >;
+    mockUseThreads.mockReturnValue(threads);
+    mod = await import("../src/config.ts");
+    const cfgFile = mod.generateConfig();
+    cfgFile.useChatsDir = true;
+    cfgFile.chatsDir = "chats";
+    const chatOld = { name: "test", id: 1, completionParams: { model: "old" } };
+    const chatNew = { name: "test", id: 1, completionParams: { model: "new" } };
+
+    mockExistsSync.mockReturnValue(true);
+    mockReaddirSync.mockReturnValue(["test.yml"]);
+    mockLoad
+      .mockReturnValueOnce(cfgFile)
+      .mockReturnValueOnce(chatOld)
+      .mockReturnValueOnce(cfgFile)
+      .mockReturnValueOnce(chatNew);
+    mod.reloadConfig();
+    mockWatchFile.mockClear();
+
+    mod.watchConfigChanges();
+
+    const chatPath = path.join("chats", "test.yml");
+    expect(mockWatchFile).toHaveBeenCalledWith(
+      "config.yml",
+      expect.any(Function),
+    );
+    expect(mockWatchFile).toHaveBeenCalledWith(chatPath, expect.any(Function));
+
+    const cb = mockWatchFile.mock.calls.find(
+      (c) => c[0] === chatPath,
+    )?.[1] as () => void;
+    cb();
+    expect(threads[1].completionParams).toEqual({ model: "new" });
+  });
+
+  it("adds watchers for newly created chat files", async () => {
+    const threads = { 1: { completionParams: { model: "old" } } } as Record<
+      number,
+      { completionParams: Record<string, unknown> }
+    >;
+    mockUseThreads.mockReturnValue(threads);
+    mod = await import("../src/config.ts");
+
+    const cfgFile = mod.generateConfig();
+    cfgFile.useChatsDir = true;
+    cfgFile.chatsDir = "chats";
+    const chatNew = { name: "test", id: 1, completionParams: { model: "new" } };
+
+    mockExistsSync.mockReturnValue(true);
+    mockReaddirSync.mockReturnValueOnce([]).mockReturnValueOnce(["test.yml"]);
+    mockLoad
+      .mockReturnValueOnce(cfgFile) // initial reloadConfig
+      .mockReturnValueOnce(cfgFile) // reload in handler
+      .mockReturnValueOnce(chatNew);
+    mockReadFileSync
+      .mockReturnValueOnce("cfgYaml")
+      .mockReturnValueOnce("cfgYaml")
+      .mockReturnValueOnce("chatYaml");
+
+    mod.reloadConfig();
+    mockWatchFile.mockClear();
+    mockWatch.mockImplementation(() => ({}));
+
+    mod.watchConfigChanges();
+
+    const dirCb = mockWatch.mock.calls[0][1] as (
+      event: string,
+      filename: string,
+    ) => void;
+    const chatPath = path.join("chats", "test.yml");
+    dirCb("rename", "test.yml");
+
+    expect(mockWatchFile).toHaveBeenCalledWith(chatPath, expect.any(Function));
+
     expect(threads[1].completionParams).toEqual({ model: "new" });
   });
 });

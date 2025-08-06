@@ -6,6 +6,7 @@ const mockExistsSync = jest.fn();
 const mockReadFileSync = jest.fn();
 const mockWriteFileSync = jest.fn();
 const mockWatchFile = jest.fn();
+const mockWatch = jest.fn();
 const mockMkdirSync = jest.fn();
 const mockReaddirSync = jest.fn();
 
@@ -16,6 +17,7 @@ jest.unstable_mockModule("fs", () => ({
     readFileSync: mockReadFileSync,
     writeFileSync: mockWriteFileSync,
     watchFile: mockWatchFile,
+    watch: mockWatch,
     mkdirSync: mockMkdirSync,
     readdirSync: mockReaddirSync,
   },
@@ -23,6 +25,7 @@ jest.unstable_mockModule("fs", () => ({
   readFileSync: mockReadFileSync,
   writeFileSync: mockWriteFileSync,
   watchFile: mockWatchFile,
+  watch: mockWatch,
   mkdirSync: mockMkdirSync,
   readdirSync: mockReaddirSync,
 }));
@@ -36,6 +39,7 @@ beforeEach(async () => {
   mockWriteFileSync.mockReset();
   mockMkdirSync.mockReset();
   mockReaddirSync.mockReset();
+  mockWatch.mockReset();
   googleHelpers = await import("../src/helpers/google.ts");
 });
 

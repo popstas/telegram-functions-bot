@@ -4,6 +4,7 @@ import {
   writeFileSync,
   existsSync,
   watchFile,
+  watch,
   readdirSync,
   mkdirSync,
 } from "fs";
@@ -22,6 +23,18 @@ import { OAuth2Client } from "google-auth-library/build/src/auth/oauth2client";
 import { GoogleAuth } from "google-auth-library";
 import debounce from "lodash.debounce";
 import { useThreads } from "./threads";
+
+function writeFileIfChanged(path: string, content: string) {
+  try {
+    if (existsSync(path)) {
+      const old = readFileSync(path, "utf8");
+      if (old === content) return;
+    }
+    writeFileSync(path, content);
+  } catch (e) {
+    console.error("writeFileIfChanged error:", e);
+  }
+}
 
 export function loadChatsFromDir(dir: string): ConfigChatType[] {
   if (!existsSync(dir)) return [];
@@ -49,7 +62,7 @@ export function saveChatsToDir(dir: string, chats: ConfigChatType[]) {
       noCompatMode: true,
       quotingType: '"',
     });
-    writeFileSync(filePath, yamlRaw);
+    writeFileIfChanged(filePath, yamlRaw);
   });
 }
 
@@ -144,7 +157,7 @@ export function writeConfig(
       quotingType: '"',
     });
     // console.log('yamlRaw:', yamlRaw)
-    writeFileSync(path, yamlRaw);
+    writeFileIfChanged(path, yamlRaw);
   } catch (e) {
     console.error("Error in writeConfig(): ", e);
   }
@@ -512,21 +525,43 @@ export async function getGoogleButtons(
 }
 
 export function watchConfigChanges() {
-  watchFile(
-    configPath,
-    debounce(() => {
-      const configOld = useConfig();
-      const config = reloadConfig();
-      logConfigChanges(configOld, config);
+  const handler = debounce(() => {
+    const configOld = useConfig();
+    const config = reloadConfig();
+    logConfigChanges(configOld, config);
 
-      config.chats
-        .filter((c) => c.id && useThreads()[c.id])
-        .forEach((c) => {
-          const id = c.id as number;
-          useThreads()[id].completionParams = c.completionParams;
-        });
-    }, 2000),
-  );
+    config.chats
+      .filter((c) => c.id && useThreads()[c.id])
+      .forEach((c) => {
+        const id = c.id as number;
+        useThreads()[id].completionParams = c.completionParams;
+      });
+  }, 2000);
+
+  watchFile(configPath, handler);
+
+  const cfg = useConfig();
+  if (cfg.useChatsDir) {
+    const dir = cfg.chatsDir || "data/chats";
+    if (existsSync(dir)) {
+      const watchChat = (f: string) => watchFile(path.join(dir, f), handler);
+
+      readdirSync(dir)
+        .filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"))
+        .forEach(watchChat);
+
+      watch(dir, (event, filename) => {
+        if (!filename) return;
+        if (!filename.toString().match(/\.ya?ml$/i)) return;
+        const file = filename.toString();
+        const full = path.join(dir, file);
+        if (event === "rename" && existsSync(full)) {
+          watchChat(file);
+          handler();
+        }
+      });
+    }
+  }
 }
 
 let config = {} as ConfigType;

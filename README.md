@@ -70,6 +70,11 @@ Empty `config.yml` should be generated. Fill it with your data:
 - chatsDir (optional, default `data/chats`) – directory where per-chat YAML files are stored when
   `useChatsDir` is turned on.
 
+When `useChatsDir` is enabled, the bot watches both `config.yml` and each chat file for changes and
+automatically reloads updated settings. New chat files placed in the directory are also watched
+automatically. Configuration files are written only when their content changes to avoid unnecessary
+reloads.
+
 You can convert your configuration between a single `config.yml` and per-chat files:
 
 ```bash
