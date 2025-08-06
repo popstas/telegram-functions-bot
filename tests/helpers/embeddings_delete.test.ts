@@ -8,7 +8,7 @@ import {
 } from "@jest/globals";
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { ConfigChatType } from "../../src/types";
+import type { ConfigChatType } from "../../src/types.ts";
 
 const mockEmbeddings: Record<string, number[]> = {
   existing: [0, 0, 0],

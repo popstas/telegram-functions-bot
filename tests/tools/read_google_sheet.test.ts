@@ -4,7 +4,7 @@ import type {
   ConfigChatType,
   ThreadStateType,
   ToolResponse,
-} from "../../src/types";
+} from "../../src/types.ts";
 
 const mockReadConfig = jest.fn();
 const mockReadSheet = jest.fn();

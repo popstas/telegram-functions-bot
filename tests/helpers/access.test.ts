@@ -1,6 +1,6 @@
 import { jest } from "@jest/globals";
 import { Message } from "telegraf/types";
-import { ConfigChatType } from "../../src/types";
+import { ConfigChatType } from "../../src/types.ts";
 
 const mockGetCtxChatMsg = jest.fn();
 const mockSendTelegramMessage = jest.fn();

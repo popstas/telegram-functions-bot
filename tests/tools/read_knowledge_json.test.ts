@@ -2,7 +2,7 @@ import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import fs from "fs";
 import path from "path";
 import os from "os";
-import type { ConfigChatType } from "../../src/types";
+import type { ConfigChatType } from "../../src/types.ts";
 
 jest.unstable_mockModule("../../src/config.ts", () => ({
   readConfig: () => ({ auth: {}, chats: [] }),

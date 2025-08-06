@@ -8,11 +8,8 @@ import { ConfigChatType, ConfigType } from "../src/types.ts";
 jest.unstable_mockModule("../src/helpers/readGoogleSheet", () => ({
   readGoogleSheet: jest.fn(),
 }));
-jest.unstable_mockModule(
-  "google-auth-library/build/src/auth/oauth2client",
-  () => ({ OAuth2Client: class {} }),
-);
 jest.unstable_mockModule("google-auth-library", () => ({
+  OAuth2Client: class {},
   GoogleAuth: class {},
 }));
 

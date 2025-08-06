@@ -515,6 +515,19 @@ npm test
 
 This will execute all unit and integration tests in the `tests` directory using the `jest` framework.
 
+## Development
+
+The project uses a TypeScript configuration optimized for fast type checking:
+
+- **NodeNext modules** – `module` and `moduleResolution` are set to `NodeNext`.
+  All relative imports therefore require explicit file extensions (e.g. `import { x } from "./file.ts"`).
+- **allowImportingTsExtensions** – enables importing `.ts` files directly during development.
+- **incremental** and **assumeChangesOnlyAffectDirectDependencies** – cache build info in
+  `node_modules/.cache/tsconfig.tsbuildinfo` and speed up subsequent runs of `tsc --noEmit`.
+- **skipLibCheck** – skips type checking of declaration files.
+
+Run `npm run typecheck` to perform a fast type-only build using these settings.
+
 ## Telegram utilities
 
 ### telegramConfirm

@@ -1,4 +1,4 @@
-import { replaceVarsPlaceholders } from "../../src/helpers/placeholders";
+import { replaceVarsPlaceholders } from "../../src/helpers/placeholders.ts";
 
 describe("replaceVarsPlaceholders", () => {
   it("replaces vars and blocks", () => {

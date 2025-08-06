@@ -1,13 +1,17 @@
 import { aiFunction, AIFunctionsProvider } from "@agentic/core";
 import { z } from "zod";
-import { generatePrivateChatConfig, readConfig, writeConfig } from "../config";
+import {
+  generatePrivateChatConfig,
+  readConfig,
+  writeConfig,
+} from "../config.ts";
 import {
   ConfigChatType,
   ConfigType,
   ChatParamsType,
   ToolResponse,
   ThreadStateType,
-} from "../types";
+} from "../types.ts";
 
 type ToolArgsType = ChatParamsType;
 

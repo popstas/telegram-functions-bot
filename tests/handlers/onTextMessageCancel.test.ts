@@ -7,7 +7,7 @@ import {
   afterEach,
 } from "@jest/globals";
 import type { Context, Message } from "telegraf/types";
-import type { ConfigChatType } from "../../src/types";
+import type { ConfigChatType } from "../../src/types.ts";
 
 // Extend the global namespace
 declare global {

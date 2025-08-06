@@ -3,7 +3,7 @@ import { Message, Update } from "telegraf/types";
 import onTextMessage from "./onTextMessage.ts";
 import checkAccessLevel from "./access.ts";
 import { processImageMessage } from "../helpers/vision.ts";
-import { log } from "../helpers";
+import { log } from "../helpers.ts";
 import { createNewContext } from "../telegram/context.ts";
 
 // Type guard to check if update has a message

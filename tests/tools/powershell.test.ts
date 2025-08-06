@@ -1,5 +1,5 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import type { ToolResponse } from "../../src/types";
+import type { ToolResponse } from "../../src/types.ts";
 
 const mockExec = jest.fn();
 

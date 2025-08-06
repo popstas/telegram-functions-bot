@@ -4,7 +4,7 @@ import type {
   ConfigChatType,
   ChatToolType,
   ThreadStateType,
-} from "../../src/types";
+} from "../../src/types.ts";
 import type { ChatCompletionMessageToolCall } from "openai/resources/chat/completions";
 
 // Mocks

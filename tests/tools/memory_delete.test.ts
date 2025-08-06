@@ -1,5 +1,5 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import type { ConfigChatType, ThreadStateType } from "../../src/types";
+import type { ConfigChatType, ThreadStateType } from "../../src/types.ts";
 
 const mockSendTelegramMessage = jest.fn();
 const mockConfirm = jest.fn();

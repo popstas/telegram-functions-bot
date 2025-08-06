@@ -3,7 +3,7 @@ import { fileURLToPath } from "url";
 import { resolve } from "path";
 import type express from "express";
 import { useConfig } from "./config.ts";
-import { getBots } from "./bot";
+import { getBots } from "./bot.ts";
 import { isMqttConnected } from "./mqtt.ts";
 
 export type HealthResponse = {

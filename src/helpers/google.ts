@@ -1,14 +1,11 @@
 import { google } from "googleapis";
 import { useThreads } from "../threads.ts";
-import { Credentials } from "google-auth-library/build/src/auth/credentials";
+import { OAuth2Client, Credentials, GoogleAuth } from "google-auth-library";
 import fs from "fs";
 import { useConfig } from "../config.ts";
-import { OAuth2Client } from "google-auth-library/build/src/auth/oauth2client";
 import { Message } from "telegraf/types";
 import http from "http";
 import url from "url";
-import { GaxiosError } from "gaxios";
-import { GoogleAuth } from "google-auth-library";
 import { ThreadStateType } from "../types.ts";
 import { sendTelegramMessage } from "../telegram/send.ts";
 
@@ -110,30 +107,27 @@ export function createAuthServer(
       const code = qs.get("code");
       if (code) {
         // Exchange code for tokens
-        oauth2Client.getToken(
-          code,
-          (err: GaxiosError | null, creds: Credentials | null | undefined) => {
-            if (err) {
-              console.error("Error retrieving access creds", err);
-              res.end("Error retrieving access creds");
-              server.close();
-              return;
-            }
-            oauth2Client.setCredentials(creds!);
-            console.log("Token acquired:");
-            // console.log(creds);
-            void saveUserGoogleCreds(creds, msg?.from?.id);
-
-            res.end("Authentication successful! You can close this window.");
+        oauth2Client.getToken(code, (err, creds) => {
+          if (err) {
+            console.error("Error retrieving access creds", err);
+            res.end("Error retrieving access creds");
             server.close();
+            return;
+          }
+          oauth2Client.setCredentials(creds!);
+          console.log("Token acquired:");
+          // console.log(creds);
+          void saveUserGoogleCreds(creds, msg?.from?.id);
 
-            addOauthToThread(oauth2Client, useThreads(), msg);
-            void sendTelegramMessage(
-              msg.chat.id,
-              "Google auth successful, you can use google functions",
-            );
-          },
-        );
+          res.end("Authentication successful! You can close this window.");
+          server.close();
+
+          addOauthToThread(oauth2Client, useThreads(), msg);
+          void sendTelegramMessage(
+            msg.chat.id,
+            "Google auth successful, you can use google functions",
+          );
+        });
       } else {
         res.end("No code found in the query string.");
       }

@@ -2,7 +2,7 @@ import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import type { ConfigChatType, ThreadStateType } from "../../src/types";
+import type { ConfigChatType, ThreadStateType } from "../../src/types.ts";
 
 jest.unstable_mockModule("../../src/helpers/useApi.ts", () => ({
   useApi: () => ({

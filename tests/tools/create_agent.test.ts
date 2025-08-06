@@ -3,7 +3,7 @@ import type {
   ConfigChatType,
   ConfigType,
   ThreadStateType,
-} from "../../src/types";
+} from "../../src/types.ts";
 
 const mockReadConfig = jest.fn();
 const mockWriteConfig = jest.fn();

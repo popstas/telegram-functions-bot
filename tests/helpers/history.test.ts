@@ -1,6 +1,6 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import type { Message } from "telegraf/types";
-import type { ConfigChatType, ThreadStateType } from "../../src/types";
+import type { ConfigChatType, ThreadStateType } from "../../src/types.ts";
 
 const threads: Record<number, ThreadStateType> = {};
 

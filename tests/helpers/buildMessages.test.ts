@@ -1,5 +1,5 @@
 import { describe, it, expect } from "@jest/globals";
-import { buildMessages } from "../../src/helpers/gpt";
+import { buildMessages } from "../../src/helpers/gpt.ts";
 import { OpenAI } from "openai";
 
 describe("buildMessages", () => {

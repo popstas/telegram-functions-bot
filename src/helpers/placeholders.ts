@@ -42,9 +42,9 @@ const toolCache: Record<string, ToolCacheEntry> = {};
 
 export async function replaceToolPlaceholders(
   text: string,
-  chatTools: import("../types").ChatToolType[],
-  chatConfig: import("../types").ConfigChatType,
-  thread: import("../types").ThreadStateType,
+  chatTools: import("../types.ts").ChatToolType[],
+  chatConfig: import("../types.ts").ConfigChatType,
+  thread: import("../types.ts").ThreadStateType,
   cacheTime = 0,
 ): Promise<string> {
   const regex = /{tool:([^()]+)\(([^)]*)\)}/g;
@@ -78,7 +78,12 @@ export async function replaceToolPlaceholders(
           : JSON.stringify(parsedArgs);
       const res = await fn(argString);
       content = res.content;
-      toolCache[cacheKey] = { content, expiry: Date.now() + cacheTime * 1000 };
+      if (content !== undefined) {
+        toolCache[cacheKey] = {
+          content,
+          expiry: Date.now() + cacheTime * 1000,
+        };
+      }
     }
     if (content !== undefined) {
       try {

@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { ProxyAgent } from "undici";
-import { useConfig } from "../config";
+import { useConfig } from "../config.ts";
 
 const apiCache: Record<string, OpenAI> = {};
 
