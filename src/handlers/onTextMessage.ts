@@ -217,7 +217,7 @@ export async function answerToMessage(
                     },
                   },
                 },
-                required: ["message"],
+                required: ["message", "buttons"],
               },
             },
           }

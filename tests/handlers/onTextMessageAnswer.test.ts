@@ -266,7 +266,7 @@ describe("answerToMessage", () => {
               },
             },
           },
-          required: ["message"],
+          required: ["message", "buttons"],
         },
       },
     };
