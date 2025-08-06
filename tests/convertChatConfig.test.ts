@@ -9,6 +9,7 @@ const mockReaddirSync = jest.fn();
 const mockMkdirSync = jest.fn();
 const mockDump = jest.fn();
 const mockLoad = jest.fn();
+const mockWatch = jest.fn();
 
 jest.unstable_mockModule("fs", () => ({
   __esModule: true,
@@ -19,6 +20,7 @@ jest.unstable_mockModule("fs", () => ({
     readdirSync: mockReaddirSync,
     mkdirSync: mockMkdirSync,
     watchFile: jest.fn(),
+    watch: mockWatch,
     appendFileSync: jest.fn(),
   },
   existsSync: mockExistsSync,
@@ -27,6 +29,7 @@ jest.unstable_mockModule("fs", () => ({
   readdirSync: mockReaddirSync,
   mkdirSync: mockMkdirSync,
   watchFile: jest.fn(),
+  watch: mockWatch,
   appendFileSync: jest.fn(),
 }));
 

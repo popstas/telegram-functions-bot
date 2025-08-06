@@ -4,6 +4,7 @@ import {
   writeFileSync,
   existsSync,
   watchFile,
+  watch,
   readdirSync,
   mkdirSync,
 } from "fs";
@@ -22,6 +23,18 @@ import { OAuth2Client } from "google-auth-library/build/src/auth/oauth2client";
 import { GoogleAuth } from "google-auth-library";
 import debounce from "lodash.debounce";
 import { useThreads } from "./threads";
+
+function writeFileIfChanged(path: string, content: string) {
+  try {
+    if (existsSync(path)) {
+      const old = readFileSync(path, "utf8");
+      if (old === content) return;
+    }
+    writeFileSync(path, content);
+  } catch (e) {
+    console.error("writeFileIfChanged error:", e);
+  }
+}
 
 export function loadChatsFromDir(dir: string): ConfigChatType[] {
   if (!existsSync(dir)) return [];
@@ -49,7 +62,7 @@ export function saveChatsToDir(dir: string, chats: ConfigChatType[]) {
       noCompatMode: true,
       quotingType: '"',
     });
-    writeFileSync(filePath, yamlRaw);
+    writeFileIfChanged(filePath, yamlRaw);
   });
 }
 
@@ -144,7 +157,7 @@ export function writeConfig(
       quotingType: '"',
     });
     // console.log('yamlRaw:', yamlRaw)
-    writeFileSync(path, yamlRaw);
+    writeFileIfChanged(path, yamlRaw);
   } catch (e) {
     console.error("Error in writeConfig(): ", e);
   }
@@ -387,7 +400,13 @@ export function checkConfigSchema(config: ConfigType) {
   });
 }
 
-export function logConfigChanges(oldConfig: ConfigType, newConfig: ConfigType) {
+export function logConfigChanges(
+  oldConfig: ConfigType,
+  newConfig: ConfigType,
+  file?: string,
+) {
+  const filename = file || configPath;
+
   if (oldConfig.useChatsDir || newConfig.useChatsDir) {
     const oldChats = oldConfig.chats || [];
     const newChats = newConfig.chats || [];
@@ -413,7 +432,7 @@ export function logConfigChanges(oldConfig: ConfigType, newConfig: ConfigType) {
       }
     });
     if (fullDiff) {
-      log({ msg: `Config changes:\n${fullDiff}` });
+      log({ msg: `Config changes in ${filename}:\n${fullDiff}` });
       writeFileSync("data/last-config-change.diff", fullDiff);
     }
     return;
@@ -431,7 +450,7 @@ export function logConfigChanges(oldConfig: ConfigType, newConfig: ConfigType) {
   });
   if (oldConfigYaml !== newConfigYaml) {
     const diff = generateDiff(oldConfigYaml, newConfigYaml);
-    log({ msg: `Config changes:\n${diff}` });
+    log({ msg: `Config changes in ${filename}:\n${diff}` });
     writeFileSync("data/last-config-change.diff", diff);
   }
 }
@@ -514,21 +533,44 @@ export async function getGoogleButtons(
 }
 
 export function watchConfigChanges() {
-  watchFile(
-    configPath,
-    debounce(() => {
-      const configOld = useConfig();
-      const config = reloadConfig();
-      logConfigChanges(configOld, config);
+  const handler = debounce((file?: string) => {
+    const configOld = useConfig();
+    const config = reloadConfig();
+    logConfigChanges(configOld, config, file);
 
-      config.chats
-        .filter((c) => c.id && useThreads()[c.id])
-        .forEach((c) => {
-          const id = c.id as number;
-          useThreads()[id].completionParams = c.completionParams;
-        });
-    }, 2000),
-  );
+    config.chats
+      .filter((c) => c.id && useThreads()[c.id])
+      .forEach((c) => {
+        const id = c.id as number;
+        useThreads()[id].completionParams = c.completionParams;
+      });
+  }, 2000);
+
+  watchFile(configPath, () => handler(configPath));
+
+  const cfg = useConfig();
+  if (cfg.useChatsDir) {
+    const dir = cfg.chatsDir || "data/chats";
+    if (existsSync(dir)) {
+      const watchChat = (f: string) =>
+        watchFile(path.join(dir, f), () => handler(path.join(dir, f)));
+
+      readdirSync(dir)
+        .filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"))
+        .forEach(watchChat);
+
+      watch(dir, (event, filename) => {
+        if (!filename) return;
+        if (!filename.toString().match(/\.ya?ml$/i)) return;
+        const file = filename.toString();
+        const full = path.join(dir, file);
+        if (event === "rename" && existsSync(full)) {
+          watchChat(file);
+          handler(full);
+        }
+      });
+    }
+  }
 }
 
 let config = {} as ConfigType;

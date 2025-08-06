@@ -7,6 +7,7 @@ const mockExistsSync = jest.fn();
 const mockReadFileSync = jest.fn();
 const mockWriteFileSync = jest.fn();
 const mockWatchFile = jest.fn();
+const mockWatch = jest.fn();
 const mockAppendFileSync = jest.fn();
 const mockDump = jest.fn();
 const mockLoad = jest.fn();
@@ -21,6 +22,7 @@ jest.unstable_mockModule("fs", () => ({
     readFileSync: mockReadFileSync,
     writeFileSync: mockWriteFileSync,
     watchFile: mockWatchFile,
+    watch: mockWatch,
     appendFileSync: mockAppendFileSync,
     readdirSync: mockReaddirSync,
     mkdirSync: mockMkdirSync,
@@ -29,6 +31,7 @@ jest.unstable_mockModule("fs", () => ({
   readFileSync: mockReadFileSync,
   writeFileSync: mockWriteFileSync,
   watchFile: mockWatchFile,
+  watch: mockWatch,
   appendFileSync: mockAppendFileSync,
   readdirSync: mockReaddirSync,
   mkdirSync: mockMkdirSync,
@@ -129,6 +132,7 @@ describe("writeConfig", () => {
 
   it("should write the config to the specified file", () => {
     const mockConfig = generateConfig();
+    mockExistsSync.mockReturnValue(false);
     mockDump.mockReturnValue("mockYaml");
     mockWriteFileSync.mockImplementation(() => {});
 
@@ -190,6 +194,15 @@ describe("writeConfig", () => {
     const mainDumpCall = mockDump.mock.calls.find((c) => c[0].auth);
     expect(mainDumpCall[0].chats).toBeUndefined();
     expect(res).toEqual(cfg);
+  });
+
+  it("skips writing when config content unchanged", () => {
+    const cfg = generateConfig();
+    mockDump.mockReturnValueOnce("same");
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue("same");
+    writeConfig("cfg.yml", cfg);
+    expect(mockWriteFileSync).not.toHaveBeenCalled();
   });
 });
 
@@ -257,6 +270,22 @@ describe("saveChatsToDir", () => {
       path.join("dir", "b.yml"),
       "byaml",
     );
+  });
+
+  it("skips write when chat file unchanged", () => {
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue("ayaml");
+    mockDump.mockReturnValue("ayaml");
+    const chats = [
+      {
+        name: "a",
+        completionParams: {},
+        chatParams: {},
+        toolParams: {},
+      } as ConfigChatType,
+    ];
+    saveChatsToDir("dir", chats);
+    expect(mockWriteFileSync).not.toHaveBeenCalled();
   });
 });
 
