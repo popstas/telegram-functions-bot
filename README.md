@@ -479,6 +479,8 @@ Refer to the MCP and Claude Desktop documentation for further details on server 
 Enable the bot to return temporary reply buttons from the model's response. When `chatParams.responseButtons` is `true`, the model
 must return JSON with `message` and optional `buttons` fields, which are shown to the user as a keyboard.
 
+This feature works both with the OpenAI Responses API and with streaming mode; the JSON envelope is hidden from users.
+
 ```yaml
 chatParams:
   responseButtons: true

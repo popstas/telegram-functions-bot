@@ -61,6 +61,7 @@ beforeEach(async () => {
   mockUseApi.mockReset();
   mockUseLangfuse.mockReset();
   mockObserveOpenAI.mockReset();
+  mockUseBot.mockReset();
   mockUseLangfuse.mockReturnValue({ trace: undefined });
   const api = {
     chat: {
@@ -309,6 +310,62 @@ describe("llmCall", () => {
     expect(result.res.choices[0].message.content).toBe("r");
   });
 
+  it("skips telegram streaming for responses api when responseButtons enabled", async () => {
+    const events = [
+      {
+        type: "response.created",
+        sequence_number: 0,
+        response: { output: [], output_text: "" },
+      },
+      {
+        type: "response.output_text.delta",
+        sequence_number: 1,
+        delta: '{"message":"hi"}',
+        output_index: 0,
+        item_id: "1",
+      },
+      {
+        type: "response.completed",
+        sequence_number: 2,
+        response: { output_text: '{"message":"hi"}', output: [] },
+      },
+    ];
+    const stream = {
+      async *[Symbol.asyncIterator]() {
+        for (const e of events)
+          yield e as unknown as OpenAI.Responses.ResponseStreamEvent;
+      },
+      controller: { signal: undefined },
+      on: jest.fn(),
+    } as unknown as AsyncIterable<OpenAI.Responses.ResponseStreamEvent>;
+    const api = {
+      responses: {
+        stream: jest.fn().mockReturnValue(stream),
+        create: jest.fn(),
+      },
+    };
+    mockUseApi.mockReturnValue(api);
+    const params = {
+      messages: [{ role: "user", content: "hi" }],
+      model: "m",
+    } as OpenAI.ChatCompletionCreateParams;
+    await llm.llmCall({
+      apiParams: params,
+      msg: { ...baseMsg },
+      chatConfig: {
+        ...chatConfig,
+        local_model: undefined,
+        chatParams: {
+          useResponsesApi: true,
+          streaming: true,
+          responseButtons: true,
+        },
+      },
+    });
+    expect(api.responses.stream).toHaveBeenCalled();
+    expect(mockUseBot).not.toHaveBeenCalled();
+  });
+
   it("uses completions streaming when enabled", async () => {
     const events = [
       { choices: [{ delta: { content: "r" } }] } as ChatCompletionChunk,
@@ -347,6 +404,46 @@ describe("llmCall", () => {
     });
     expect(api.chat.completions.stream).toHaveBeenCalled();
     expect(result.res.choices[0].message.content).toBe("r");
+  });
+
+  it("skips telegram streaming for completions when responseButtons enabled", async () => {
+    const events = [
+      {
+        choices: [{ delta: { content: '{"message":"hi"}' } }],
+      } as ChatCompletionChunk,
+    ];
+    const stream = {
+      async *[Symbol.asyncIterator]() {
+        for (const e of events) yield e as ChatCompletionChunk;
+      },
+      finalContent: jest.fn().mockResolvedValue('{"message":"hi"}'),
+      controller: { signal: undefined },
+      on: jest.fn(),
+    } as unknown as ChatCompletionStream;
+    const api = {
+      chat: {
+        completions: {
+          stream: jest.fn().mockReturnValue(stream),
+          create: jest.fn(),
+        },
+      },
+    };
+    mockUseApi.mockReturnValue(api);
+    const params = {
+      messages: [{ role: "user", content: "hi" }],
+      model: "m",
+    } as OpenAI.ChatCompletionCreateParams;
+    await llm.llmCall({
+      apiParams: params,
+      msg: { ...baseMsg },
+      chatConfig: {
+        ...chatConfig,
+        local_model: undefined,
+        chatParams: { streaming: true, responseButtons: true },
+      },
+    });
+    expect(api.chat.completions.stream).toHaveBeenCalled();
+    expect(mockUseBot).not.toHaveBeenCalled();
   });
 
   it("falls back when finalChatCompletion missing", async () => {
