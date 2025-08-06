@@ -53,7 +53,18 @@ export function convertResponsesInput(
   }
   const respParams: Record<string, unknown> = { ...rest, input };
   if (response_format) {
-    respParams.text = { format: response_format };
+    if (response_format.type === "json_schema") {
+      const json = response_format.json_schema || {};
+      respParams.text = {
+        format: {
+          type: "json_schema",
+          name: json.name,
+          schema: json.schema,
+        },
+      };
+    } else {
+      respParams.text = { format: response_format };
+    }
   }
   if (apiParams.tools) {
     respParams.tools = (apiParams.tools as OpenAI.ChatCompletionTool[]).map(

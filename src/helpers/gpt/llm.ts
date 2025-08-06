@@ -157,6 +157,7 @@ export type HandleModelAnswerParams = {
   gptContext: GptContextType;
   level?: number;
   trace?: unknown;
+  responseFormat?: OpenAI.Chat.Completions.ChatCompletionCreateParams["response_format"];
 };
 
 export type EvaluatorResult = {
@@ -209,6 +210,7 @@ export type ProcessToolResultsParams = {
   noSendTelegram?: boolean;
   gptContext: GptContextType;
   level: number;
+  responseFormat?: OpenAI.Chat.Completions.ChatCompletionCreateParams["response_format"];
 };
 
 export async function handleModelAnswer({
@@ -220,6 +222,7 @@ export async function handleModelAnswer({
   gptContext,
   level = 1,
   trace,
+  responseFormat,
 }: HandleModelAnswerParams): Promise<ToolResponse> {
   if (!res || !res?.choices?.[0]) {
     return { content: "" };
@@ -270,6 +273,7 @@ export async function handleModelAnswer({
         noSendTelegram,
         gptContext,
         level,
+        responseFormat,
       });
     }
   }
@@ -330,6 +334,7 @@ export async function processToolResults({
   noSendTelegram,
   gptContext,
   level,
+  responseFormat,
 }: ProcessToolResultsParams): Promise<ToolResponse> {
   gptContext.thread.messages.push(messageAgent);
 
@@ -450,6 +455,7 @@ export async function processToolResults({
     tool_choice: isNoTool
       ? undefined
       : ("auto" as OpenAI.Chat.Completions.ChatCompletionToolChoiceOption),
+    response_format: responseFormat,
   };
 
   const { res, trace, webSearchDetails, images } = await llmCall({
@@ -493,6 +499,7 @@ export async function processToolResults({
     gptContext,
     level: level + 1,
     trace,
+    responseFormat,
   });
 }
 
@@ -645,6 +652,7 @@ export async function requestGptAnswer(
     noSendTelegram: ctx?.noSendTelegram,
     gptContext,
     trace,
+    responseFormat: options?.responseFormat,
   });
 
   if (!options?.skipEvaluators && chatConfig.evaluators?.length) {
