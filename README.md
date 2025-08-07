@@ -527,6 +527,7 @@ The project uses a TypeScript configuration optimized for fast type checking:
 - **skipLibCheck** – skips type checking of declaration files.
 
 Run `npm run typecheck` to perform a fast type-only build using these settings.
+Run `npm run typecheck:native` to experiment with the TypeScript Native preview (`tsgo`) compiler.
 
 ## Telegram utilities
 
