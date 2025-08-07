@@ -69,7 +69,7 @@ Empty `config.yml` should be generated. Fill it with your data:
 - useChatsDir (optional, default `false`) – when enabled, chat configs are loaded from separate files
   inside `chatsDir` instead of the `chats` section of `config.yml`.
 - chatsDir (optional, default `data/chats`) – directory where per-chat YAML files are stored when
-  `useChatsDir` is turned on.
+  `useChatsDir` is turned on. Private chats are saved as `private_<username>.yml`.
 
 When `useChatsDir` is enabled, the bot watches both `config.yml` and each chat file for changes and
 automatically reloads updated settings. New chat files placed in the directory are also watched

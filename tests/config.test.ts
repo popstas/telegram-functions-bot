@@ -287,6 +287,26 @@ describe("saveChatsToDir", () => {
     saveChatsToDir("dir", chats);
     expect(mockWriteFileSync).not.toHaveBeenCalled();
   });
+
+  it("uses private_<username>.yml for private chats", () => {
+    mockExistsSync.mockReturnValue(false);
+    const chats = [
+      {
+        name: "Private alice",
+        username: "alice",
+        completionParams: {},
+        chatParams: {},
+        toolParams: {},
+      } as ConfigChatType,
+    ];
+    mockDump.mockReturnValueOnce("ayaml");
+    saveChatsToDir("dir", chats);
+    expect(mockMkdirSync).toHaveBeenCalledWith("dir", { recursive: true });
+    expect(mockWriteFileSync).toHaveBeenCalledWith(
+      path.join("dir", "private_alice.yml"),
+      "ayaml",
+    );
+  });
 });
 
 describe("readConfig agent_name", () => {
