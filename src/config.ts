@@ -54,7 +54,10 @@ export function saveChatsToDir(dir: string, chats: ConfigChatType[]) {
     mkdirSync(dir, { recursive: true });
   }
   chats.forEach((chat) => {
-    const safe = safeFilename(`${chat.name || chat.id}`, `${chat.id || 0}`);
+    const nameForFile = chat.username
+      ? `private_${chat.username}`
+      : `${chat.name || chat.id}`;
+    const safe = safeFilename(nameForFile, `${chat.id || 0}`);
     const filePath = path.join(dir, `${safe}.yml`);
     const yamlRaw = yaml.dump(chat, {
       lineWidth: -1,
