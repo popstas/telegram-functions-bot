@@ -18,15 +18,11 @@ beforeEach(async () => {
 describe("PowershellCommandClient", () => {
   it("executes command and returns output", async () => {
     mockExec.mockImplementation(
-      (cmd: string, cb: (e: Error | null, out: string, err: string) => void) =>
-        cb(null, "ok", ""),
+      (cmd: string, cb: (e: Error | null, out: string, err: string) => void) => cb(null, "ok", ""),
     );
     const client = new mod.PowershellCommandClient();
     const res = await client.powershell({ command: "Get" });
-    expect(mockExec).toHaveBeenCalledWith(
-      'powershell -Command "Get"',
-      expect.any(Function),
-    );
+    expect(mockExec).toHaveBeenCalledWith('powershell -Command "Get"', expect.any(Function));
     expect(res).toEqual({ content: "```\nok\n```" } as ToolResponse);
   });
 
@@ -34,11 +30,7 @@ describe("PowershellCommandClient", () => {
     mockExec.mockImplementation(
       (
         cmd: string,
-        cb: (
-          e: (Error & { code?: number }) | null,
-          out: string,
-          err: string,
-        ) => void,
+        cb: (e: (Error & { code?: number }) | null, out: string, err: string) => void,
       ) => {
         const err: Error & { code?: number } = new Error("fail");
         err.code = 1;
@@ -52,8 +44,7 @@ describe("PowershellCommandClient", () => {
 
   it("returns exit code 0 when no output", async () => {
     mockExec.mockImplementation(
-      (cmd: string, cb: (e: Error | null, out: string, err: string) => void) =>
-        cb(null, "", ""),
+      (cmd: string, cb: (e: Error | null, out: string, err: string) => void) => cb(null, "", ""),
     );
     const client = new mod.PowershellCommandClient();
     const res = await client.powershell({ command: "None" });
@@ -62,8 +53,7 @@ describe("PowershellCommandClient", () => {
 
   it("rejects on stderr", async () => {
     mockExec.mockImplementation(
-      (cmd: string, cb: (e: Error | null, out: string, err: string) => void) =>
-        cb(null, "", "err"),
+      (cmd: string, cb: (e: Error | null, out: string, err: string) => void) => cb(null, "", "err"),
     );
     const client = new mod.PowershellCommandClient();
     await expect(client.powershell({ command: "Bad" })).rejects.toBe("err");

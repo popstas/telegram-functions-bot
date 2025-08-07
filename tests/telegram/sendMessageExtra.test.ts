@@ -44,13 +44,7 @@ describe("sendTelegramMessage", () => {
 
   it("sanitizes HTML and sets parse_mode", async () => {
     mockSplit.mockImplementation((t) => [t]);
-    await sendTelegramMessage(
-      1,
-      "<p>Hello&nbsp;world</p><br>Next",
-      {},
-      undefined,
-      chatConfig,
-    );
+    await sendTelegramMessage(1, "<p>Hello&nbsp;world</p><br>Next", {}, undefined, chatConfig);
     expect(mockSendMessage).toHaveBeenCalledWith(
       1,
       "Hello world\n\nNext",
@@ -60,18 +54,10 @@ describe("sendTelegramMessage", () => {
 
   it("handles think tag", async () => {
     mockSplit.mockImplementation((t) => [t]);
-    await sendTelegramMessage(
-      1,
-      "<think>foo</think> result",
-      {},
-      undefined,
-      chatConfig,
-    );
+    await sendTelegramMessage(1, "<think>foo</think> result", {}, undefined, chatConfig);
     expect(mockSendMessage).toHaveBeenCalledTimes(2);
     const texts = mockSendMessage.mock.calls.map((c) => c[1]);
-    expect(texts.some((t) => t.includes("`think:`") && t.includes("foo"))).toBe(
-      true,
-    );
+    expect(texts.some((t) => t.includes("`think:`") && t.includes("foo"))).toBe(true);
     expect(texts.some((t) => t.includes("result"))).toBe(true);
   });
 

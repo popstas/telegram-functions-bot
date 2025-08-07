@@ -57,19 +57,10 @@ export default async function onTextMessage(
     : {};
 
   // may replace msg.text
-  const buttonResponse = await resolveChatButtons(
-    ctx,
-    msg,
-    chat,
-    thread,
-    extraMessageParams,
-  );
+  const buttonResponse = await resolveChatButtons(ctx, msg, chat, thread, extraMessageParams);
   if (buttonResponse) return buttonResponse;
 
-  if (
-    chat.chatParams?.vector_memory &&
-    msg.text?.toLowerCase().startsWith("запомни")
-  ) {
+  if (chat.chatParams?.vector_memory && msg.text?.toLowerCase().startsWith("запомни")) {
     const text = msg.text.replace(/^запомни[\s\p{P}]*/iu, "");
     await saveEmbedding({
       text,
@@ -171,17 +162,9 @@ export async function answerToMessage(
           return;
         }
 
-        const extraParams = Markup.keyboard(
-          buttons.map((b) => b.name),
-        ).resize();
+        const extraParams = Markup.keyboard(buttons.map((b) => b.name)).resize();
         const answer = `Готово: ${buttons.map((b) => b.name).join(", ")}`;
-        syncResult = await sendTelegramMessage(
-          msg.chat.id,
-          answer,
-          extraParams,
-          ctx,
-          chat,
-        );
+        syncResult = await sendTelegramMessage(msg.chat.id, answer, extraParams, ctx, chat);
       });
       return syncResult;
     }
@@ -240,9 +223,7 @@ export async function answerToMessage(
       const buttons = res?.buttons || chat.buttonsSynced || chat.buttons;
       thread.dynamicButtons = res?.buttons;
       if (buttons) {
-        const extraParamsButtons = Markup.keyboard(
-          buttons.map((b) => b.name),
-        ).resize();
+        const extraParamsButtons = Markup.keyboard(buttons.map((b) => b.name)).resize();
         Object.assign(extraParams, extraParamsButtons);
       }
       const chatTitle = (msg.chat as Chat.TitleChat).title;
@@ -253,13 +234,7 @@ export async function answerToMessage(
         chatTitle,
         role: "system",
       });
-      msgSent = await sendTelegramMessage(
-        msg.chat.id,
-        text,
-        extraParams,
-        ctx,
-        chat,
-      );
+      msgSent = await sendTelegramMessage(msg.chat.id, text, extraParams, ctx, chat);
       if (msgSent?.chat.id) useThreads()[msgSent.chat.id].msgs.push(msgSent);
     });
     return msgSent;

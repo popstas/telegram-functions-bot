@@ -27,10 +27,7 @@ export async function safeSend(
 ): Promise<Message.TextMessage> {
   for (;;) {
     try {
-      return (await bot.telegram.sendMessage(
-        chatId,
-        text,
-      )) as Message.TextMessage;
+      return (await bot.telegram.sendMessage(chatId, text)) as Message.TextMessage;
     } catch (err) {
       const wait = getRetryAfter(err);
       if (wait) {
@@ -50,12 +47,7 @@ export async function safeEdit(
 ): Promise<void> {
   for (;;) {
     try {
-      await bot.telegram.editMessageText(
-        m.chat.id,
-        m.message_id,
-        undefined,
-        text,
-      );
+      await bot.telegram.editMessageText(m.chat.id, m.message_id, undefined, text);
       return;
     } catch (err) {
       const wait = getRetryAfter(err);
@@ -89,10 +81,7 @@ export async function safeDelete(
   }
 }
 
-function createFlusher(
-  bot: ReturnType<typeof useBot>,
-  msg: Message.TextMessage,
-) {
+function createFlusher(bot: ReturnType<typeof useBot>, msg: Message.TextMessage) {
   const sentMessages: Message.TextMessage[] = [];
   const lastChunks: string[] = [];
   let fullText = "";
@@ -205,8 +194,7 @@ export async function handleStream<T, R>(
       if (toolCall.id) acc.id = toolCall.id;
       if (toolCall.type) acc.type = toolCall.type;
       if (toolCall.function?.name) acc.function.name = toolCall.function.name;
-      if (toolCall.function?.arguments)
-        acc.function.arguments += toolCall.function.arguments;
+      if (toolCall.function?.arguments) acc.function.arguments += toolCall.function.arguments;
     }
   }
 
@@ -265,14 +253,12 @@ export async function handleResponseStream(
               id: chunk.item_id,
               type: "function",
               function: {
-                arguments: (
-                  chunk as OpenAI.Responses.ResponseFunctionCallArgumentsDeltaEvent
-                ).delta,
+                arguments: (chunk as OpenAI.Responses.ResponseFunctionCallArgumentsDeltaEvent)
+                  .delta,
               },
             },
           ]
-        : chunk.type === "response.output_item.added" &&
-            chunk.item.type === "function_call"
+        : chunk.type === "response.output_item.added" && chunk.item.type === "function_call"
           ? [
               {
                 index: chunk.output_index,
@@ -308,14 +294,9 @@ export async function handleResponseStream(
         await helpers.safeDelete(m);
       }
       helpers.sentMessages.length = 0;
-      if (
-        !result.res.choices[0].message.tool_calls?.length &&
-        toolCalls.length
-      ) {
-        (
-          result.res.choices[0]
-            .message as OpenAI.ChatCompletionAssistantMessageParam
-        ).tool_calls = toolCalls as OpenAI.ChatCompletionMessageToolCall[];
+      if (!result.res.choices[0].message.tool_calls?.length && toolCalls.length) {
+        (result.res.choices[0].message as OpenAI.ChatCompletionAssistantMessageParam).tool_calls =
+          toolCalls as OpenAI.ChatCompletionMessageToolCall[];
       }
       return result;
     },
@@ -361,8 +342,7 @@ export async function handleCompletionStream(
         if (toolCall.id) acc.id = toolCall.id;
         if (toolCall.type) acc.type = toolCall.type;
         if (toolCall.function?.name) acc.function.name = toolCall.function.name;
-        if (toolCall.function?.arguments)
-          acc.function.arguments += toolCall.function.arguments;
+        if (toolCall.function?.arguments) acc.function.arguments += toolCall.function.arguments;
       }
     }
     let res: OpenAI.ChatCompletion;
@@ -404,15 +384,9 @@ export async function handleCompletionStream(
         ],
       } as OpenAI.ChatCompletion;
     }
-    if (
-      !res.choices[0].message.tool_calls?.length &&
-      Object.keys(finalToolCalls).length
-    ) {
-      (
-        res.choices[0].message as OpenAI.ChatCompletionAssistantMessageParam
-      ).tool_calls = Object.values(
-        finalToolCalls,
-      ) as OpenAI.ChatCompletionMessageToolCall[];
+    if (!res.choices[0].message.tool_calls?.length && Object.keys(finalToolCalls).length) {
+      (res.choices[0].message as OpenAI.ChatCompletionAssistantMessageParam).tool_calls =
+        Object.values(finalToolCalls) as OpenAI.ChatCompletionMessageToolCall[];
     }
     return { res, sentMessages: [] };
   }
@@ -438,8 +412,7 @@ export async function handleCompletionStream(
       } else if (typeof withFinalCC.finalMessage === "function") {
         const message = await withFinalCC.finalMessage();
         res = { choices: [{ index: 0, message }] } as OpenAI.ChatCompletion;
-        finalOutput =
-          typeof message?.content === "string" ? message.content : "";
+        finalOutput = typeof message?.content === "string" ? message.content : "";
       } else if (typeof withFinalCC.finalContent === "function") {
         const content = await withFinalCC.finalContent();
         res = {

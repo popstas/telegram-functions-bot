@@ -1,10 +1,6 @@
 import { jest, describe, it, beforeEach, expect } from "@jest/globals";
 import type { Message } from "telegraf/types";
-import type {
-  ConfigChatType,
-  ChatToolType,
-  ThreadStateType,
-} from "../../src/types.ts";
+import type { ConfigChatType, ChatToolType, ThreadStateType } from "../../src/types.ts";
 import type { ChatCompletionMessageToolCall } from "openai/resources/chat/completions";
 
 // Mocks
@@ -181,11 +177,7 @@ describe("getToolsSystemMessages", () => {
       },
     ];
     const thread: ThreadStateType = { id: 1, msgs: [], messages: [] };
-    const msgs = await tools.getToolsSystemMessages(
-      chatTools,
-      baseConfig,
-      thread,
-    );
+    const msgs = await tools.getToolsSystemMessages(chatTools, baseConfig, thread);
     expect(msgs).toEqual(["s1"]);
   });
 });
@@ -251,10 +243,7 @@ describe("executeTools", () => {
     ];
     const error = new Error("Invalid parameter");
     (error as Error & { status: number }).status = 400;
-    const toolFn = jest
-      .fn()
-      .mockRejectedValueOnce(error)
-      .mockResolvedValue({ content: "done" });
+    const toolFn = jest.fn().mockRejectedValueOnce(error).mockResolvedValue({ content: "done" });
     const chatTools: ChatToolType[] = [
       {
         name: "foo",
@@ -299,17 +288,14 @@ describe("executeTools", () => {
     expect(msg.text.trim()).toBe("run");
 
     msg.text = "confirm run";
-    mockTelegramConfirm.mockImplementation(async ({ onConfirm }) =>
-      onConfirm(),
-    );
+    mockTelegramConfirm.mockImplementation(async ({ onConfirm }) => onConfirm());
     await tools.executeTools(toolCalls, chatTools, cfg, msg);
     expect(callMock.mock.calls.length).toBeGreaterThanOrEqual(3);
     const hasConfirmTrue = callMock.mock.calls.some(
       ([cfg]) => cfg.chatParams.confirmation === true,
     );
     expect(hasConfirmTrue).toBe(true);
-    const passedCfgAfter =
-      callMock.mock.calls[callMock.mock.calls.length - 1][0];
+    const passedCfgAfter = callMock.mock.calls[callMock.mock.calls.length - 1][0];
     expect(passedCfgAfter.chatParams.confirmation).toBe(false);
     expect(msg.text.trim()).toBe("run");
   });
@@ -397,9 +383,9 @@ describe("chatAsTool", () => {
       msg,
       prompt_append: "",
     });
-    expect(() =>
-      chatTool.module.call(baseConfig, { id: 1 } as ThreadStateType),
-    ).toThrow("Agent not found: missing");
+    expect(() => chatTool.module.call(baseConfig, { id: 1 } as ThreadStateType)).toThrow(
+      "Agent not found: missing",
+    );
   });
 
   it("sends answer and stops on first tool", async () => {

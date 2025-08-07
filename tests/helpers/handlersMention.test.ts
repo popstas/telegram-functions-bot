@@ -31,9 +31,7 @@ jest.unstable_mockModule("../../src/helpers/stt.ts", () => ({
 
 const { default: onPhoto } = await import("../../src/handlers/onPhoto.ts");
 const { default: onAudio } = await import("../../src/handlers/onAudio.ts");
-const { default: onUnsupported } = await import(
-  "../../src/handlers/onUnsupported.ts"
-);
+const { default: onUnsupported } = await import("../../src/handlers/onUnsupported.ts");
 
 function createCtx(message: Record<string, unknown>): Context {
   return {

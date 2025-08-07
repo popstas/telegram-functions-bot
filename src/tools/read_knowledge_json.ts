@@ -131,17 +131,13 @@ export class KnowledgeJsonClient extends AIFunctionsProvider {
 
   async prompt_append(): Promise<string | undefined> {
     const data = await this.read_json();
-    const titleCol =
-      this.configChat.toolParams?.knowledge_json?.titleCol || "title";
+    const titleCol = this.configChat.toolParams?.knowledge_json?.titleCol || "title";
     const titles = data?.map((row: JsonRow) => {
       const value = row[titleCol];
       return typeof value === "string" ? value : String(value);
     });
     if (titles)
-      return (
-        "## JSON Knowledge base titles:\n" +
-        titles.map((f: string) => `- ${f}`).join("\n")
-      );
+      return "## JSON Knowledge base titles:\n" + titles.map((f: string) => `- ${f}`).join("\n");
   }
 }
 

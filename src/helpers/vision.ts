@@ -29,10 +29,7 @@ export async function recognizeImageText(
     link = await useBot(chatConfig.bot_token).telegram.getFileLink(fileId);
   } catch (error) {
     const err = error as Error;
-    if (
-      err.message.includes("wrong file_id") ||
-      err.message.includes("temporarily unavailable")
-    ) {
+    if (err.message.includes("wrong file_id") || err.message.includes("temporarily unavailable")) {
       throw new Error("Не удалось получить изображение.");
     }
     throw error;

@@ -1,11 +1,4 @@
-import {
-  jest,
-  describe,
-  it,
-  expect,
-  beforeEach,
-  afterEach,
-} from "@jest/globals";
+import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import type { Request, Response } from "express";
 
 const mockUseConfig = jest.fn();
@@ -58,9 +51,7 @@ beforeEach(async () => {
   mockRequestGptAnswer.mockReset();
   mockAddToHistory.mockReset();
   mockLog.mockReset();
-  ({ agentPostHandler, agentGetHandler } = await import(
-    "../src/httpHandlers.ts"
-  ));
+  ({ agentPostHandler, agentGetHandler } = await import("../src/httpHandlers.ts"));
 });
 
 afterEach(() => {
@@ -70,13 +61,8 @@ afterEach(() => {
 describe("agentGetHandler", () => {
   it("responds with status info", async () => {
     const res = createRes();
-    await agentGetHandler(
-      { params: { agentName: "a" } } as unknown as Request,
-      res,
-    );
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "a", status: "online" }),
-    );
+    await agentGetHandler({ params: { agentName: "a" } } as unknown as Request, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ name: "a", status: "online" }));
   });
 });
 

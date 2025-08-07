@@ -3,10 +3,7 @@ import { jest } from "@jest/globals";
 
 describe("retryLogicSimple", () => {
   // A simplified version of the retry logic
-  async function callWithRetry<T>(
-    fn: () => Promise<T>,
-    maxRetries: number = 1,
-  ): Promise<T> {
+  async function callWithRetry<T>(fn: () => Promise<T>, maxRetries: number = 1): Promise<T> {
     try {
       return await fn();
     } catch (error: any) {

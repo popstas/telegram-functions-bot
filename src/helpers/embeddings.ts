@@ -10,19 +10,15 @@ import type { ConfigChatType, VectorMemoryParamsType } from "../types.ts";
 const dbCache: Record<string, DB.Database> = {};
 
 export function defaultMemoryDbPath(chat: ConfigChatType): string {
-  if (chat.username)
-    return path.join("data", "memory", "private", `${chat.username}.sqlite`);
-  if (chat.bot_name)
-    return path.join("data", "memory", "bots", `${chat.bot_name}.sqlite`);
+  if (chat.username) return path.join("data", "memory", "private", `${chat.username}.sqlite`);
+  if (chat.bot_name) return path.join("data", "memory", "bots", `${chat.bot_name}.sqlite`);
   const safe = safeFilename(`${chat.name || chat.id}`, `${chat.id}`);
   return path.join("data", "memory", "groups", `${safe}.sqlite`);
 }
 
 function resolveDbPath(chat: ConfigChatType): string {
   const toolParams = (chat.toolParams = chat.toolParams || {});
-  let vectorMemory = toolParams.vector_memory as
-    | VectorMemoryParamsType
-    | undefined;
+  let vectorMemory = toolParams.vector_memory as VectorMemoryParamsType | undefined;
   if (!vectorMemory) {
     vectorMemory = {
       dbPath: defaultMemoryDbPath(chat),
@@ -50,10 +46,7 @@ function initDb(dbPath: string, dimension: number) {
   return dbCache[dbPath];
 }
 
-export async function embedText(
-  text: string,
-  chat?: ConfigChatType,
-): Promise<number[]> {
+export async function embedText(text: string, chat?: ConfigChatType): Promise<number[]> {
   const api = useApi(chat?.local_model);
   const config = useConfig();
   const model = chat?.local_model
@@ -78,28 +71,19 @@ export async function saveEmbedding(params: {
     .prepare(
       "select text, distance from memory where embedding match json(?) order by distance limit 1",
     )
-    .get(JSON.stringify(embedding)) as
-    | { text: string; distance: number }
-    | undefined;
+    .get(JSON.stringify(embedding)) as { text: string; distance: number } | undefined;
   if (existing && (existing.text === text || existing.distance < 0.01)) return;
   const stmt = db.prepare(
     "insert into memory(embedding, text, date, metadata) values (json(?), ?, ?, json(?))",
   );
-  stmt.run(
-    JSON.stringify(embedding),
-    text,
-    new Date().toISOString(),
-    JSON.stringify(metadata),
-  );
+  stmt.run(JSON.stringify(embedding), text, new Date().toISOString(), JSON.stringify(metadata));
 }
 
 export async function searchEmbedding(params: {
   query: string;
   limit: number;
   chat: ConfigChatType;
-}): Promise<
-  { text: string; date: string; metadata: unknown; distance: number }[]
-> {
+}): Promise<{ text: string; date: string; metadata: unknown; distance: number }[]> {
   const { query, limit, chat } = params;
   const dbPath = resolveDbPath(chat);
   const dimension = chat.toolParams?.vector_memory?.dimension || 1536;
@@ -117,11 +101,7 @@ export async function searchEmbedding(params: {
   return rows;
 }
 
-export function previewEmbedding(row: {
-  date: string;
-  text: string;
-  distance: number;
-}): string {
+export function previewEmbedding(row: { date: string; text: string; distance: number }): string {
   const date = new Date(row.date).toISOString().slice(0, 16).replace("T", " ");
   return `${date} ${row.text} (${row.distance.toFixed(2)})`;
 }

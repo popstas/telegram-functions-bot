@@ -1,12 +1,7 @@
 import { GoogleAuth, OAuth2Client } from "google-auth-library";
 import { aiFunction, AIFunctionsProvider } from "@agentic/core";
 import { z } from "zod";
-import {
-  ConfigChatType,
-  ConfigType,
-  ThreadStateType,
-  ToolResponse,
-} from "../types.ts";
+import { ConfigChatType, ConfigType, ThreadStateType, ToolResponse } from "../types.ts";
 import { readConfig } from "../config.ts";
 import readGoogleSheetToRows from "../helpers/readGoogleSheet.ts";
 

@@ -52,10 +52,7 @@ describe("BrainstormClient", () => {
     const client = new mod.BrainstormClient(cfg, thread);
     const res = await client.brainstorm({ systemMessage: "SYS" });
 
-    expect(mockBuildMessages).toHaveBeenCalledWith(
-      "SYS\n\nBEFORE",
-      thread.messages,
-    );
+    expect(mockBuildMessages).toHaveBeenCalledWith("SYS\n\nBEFORE", thread.messages);
     expect(mockLlmCall).toHaveBeenCalled();
     expect(res.content).toBe("RES\n\nAFTER");
   });
@@ -65,9 +62,7 @@ describe("BrainstormClient", () => {
       {} as ConfigChatType,
       { id: 1, msgs: [], messages: [] } as ThreadStateType,
     );
-    expect(client.options_string('{"systemMessage":"p"}')).toBe(
-      "**Brainstorm:** `p`",
-    );
+    expect(client.options_string('{"systemMessage":"p"}')).toBe("**Brainstorm:** `p`");
     expect(client.options_string("{}" as string)).toBe("{}");
   });
 

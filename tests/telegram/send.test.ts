@@ -9,8 +9,9 @@ jest.unstable_mockModule("../../src/config.ts", () => ({
   updateChatInConfig: jest.fn(),
 }));
 
-const { isAdminUser, buildButtonRows, getFullName, getTelegramForwardedUser } =
-  await import("../../src/telegram/send.ts");
+const { isAdminUser, buildButtonRows, getFullName, getTelegramForwardedUser } = await import(
+  "../../src/telegram/send.ts"
+);
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -102,9 +103,7 @@ describe("getTelegramForwardedUser", () => {
         sender_user: { first_name: "John", username: "john" },
       },
     } as unknown as Message.TextMessage;
-    expect(getTelegramForwardedUser(msg, baseChat)).toBe(
-      "John, Telegram: @john",
-    );
+    expect(getTelegramForwardedUser(msg, baseChat)).toBe("John, Telegram: @john");
   });
 
   it("returns empty when user is private", () => {

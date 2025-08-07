@@ -1,10 +1,7 @@
 import { jest, describe, it, beforeEach, expect } from "@jest/globals";
 
 const mockUseConfig = jest.fn();
-const mockOpenAI = jest.fn(function (
-  this: Record<string, unknown>,
-  opts: Record<string, unknown>,
-) {
+const mockOpenAI = jest.fn(function (this: Record<string, unknown>, opts: Record<string, unknown>) {
   Object.assign(this, { opts });
 });
 

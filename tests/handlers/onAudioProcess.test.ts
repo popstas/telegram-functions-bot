@@ -63,12 +63,7 @@ describe("processAudio", () => {
     mockSendAudioWhisper.mockResolvedValue({ text: "hello" });
     const ctx = createCtx();
     await processAudio(ctx as Context, { file_id: "f" }, 1);
-    expect(mockSendTelegramMessage).toHaveBeenCalledWith(
-      1,
-      "hello.",
-      undefined,
-      ctx,
-    );
+    expect(mockSendTelegramMessage).toHaveBeenCalledWith(1, "hello.", undefined, ctx);
     expect(mockOnTextMessage).toHaveBeenCalled();
   });
 

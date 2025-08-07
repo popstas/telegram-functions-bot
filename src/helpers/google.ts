@@ -30,10 +30,7 @@ export function loadGoogleCreds(): GoogleCredsMap {
   return JSON.parse(data);
 }
 
-export function saveUserGoogleCreds(
-  creds?: Credentials | null,
-  user_id?: number,
-) {
+export function saveUserGoogleCreds(creds?: Credentials | null, user_id?: number) {
   if (!user_id) {
     console.error("No user_id to save creds");
     return;
@@ -50,16 +47,10 @@ export function saveUserGoogleCreds(
   existingCreds[user_id] = creds;
 
   // Save the updated credentials back to the file
-  fs.writeFileSync(
-    credsFilePath,
-    JSON.stringify(existingCreds, null, 2),
-    "utf-8",
-  );
+  fs.writeFileSync(credsFilePath, JSON.stringify(existingCreds, null, 2), "utf-8");
 }
 
-export async function ensureAuth(
-  user_id: number,
-): Promise<OAuth2Client | GoogleAuth> {
+export async function ensureAuth(user_id: number): Promise<OAuth2Client | GoogleAuth> {
   const creds = getUserGoogleCreds(user_id);
   const config = useConfig();
 
@@ -97,10 +88,7 @@ export async function ensureAuth(
   );
 }
 
-export function createAuthServer(
-  oauth2Client: OAuth2Client,
-  msg: Message.TextMessage,
-) {
+export function createAuthServer(oauth2Client: OAuth2Client, msg: Message.TextMessage) {
   const server = http.createServer((req, res) => {
     if (req.url) {
       const qs = new url.URL(req.url, "http://localhost:3000").searchParams;
@@ -174,10 +162,7 @@ export async function commandGoogleOauth(msg: Message.TextMessage) {
       scope: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
     });
 
-    await sendTelegramMessage(
-      msg?.chat?.id,
-      `Please authenticate with Google: ${authUrl}`,
-    );
+    await sendTelegramMessage(msg?.chat?.id, `Please authenticate with Google: ${authUrl}`);
 
     createAuthServer(oAuth2Client, msg);
     return;

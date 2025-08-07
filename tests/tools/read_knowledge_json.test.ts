@@ -86,8 +86,6 @@ describe("KnowledgeJsonClient", () => {
   });
 
   it("call returns instance", () => {
-    expect(mod.call(cfg({ jsonPath: "f" }))).toBeInstanceOf(
-      mod.KnowledgeJsonClient,
-    );
+    expect(mod.call(cfg({ jsonPath: "f" }))).toBeInstanceOf(mod.KnowledgeJsonClient);
   });
 });

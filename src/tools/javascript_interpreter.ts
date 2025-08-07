@@ -43,8 +43,7 @@ export class JavascriptInterpreterClient extends AIFunctionsProvider {
       // Run the script in the context
       result = script.runInContext(context);
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       result = `Error: ${errorMessage}`;
     }
 

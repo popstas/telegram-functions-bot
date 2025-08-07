@@ -1,21 +1,10 @@
-import {
-  jest,
-  describe,
-  it,
-  expect,
-  beforeEach,
-  afterEach,
-} from "@jest/globals";
+import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import fs from "fs";
 import path from "path";
 import Database from "better-sqlite3";
 import { load } from "sqlite-vec";
 import type { ConfigChatType } from "../../src/types.ts";
-import {
-  generateConfig,
-  setConfigPath,
-  writeConfig,
-} from "../../src/config.ts";
+import { generateConfig, setConfigPath, writeConfig } from "../../src/config.ts";
 
 jest.unstable_mockModule("../../src/helpers/useApi.ts", () => ({
   useApi: () => ({

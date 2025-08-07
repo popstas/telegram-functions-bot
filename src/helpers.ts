@@ -24,10 +24,7 @@ export function log({
   logPath = "data/messages.log",
 }: LogParams) {
   const tzoffset = new Date().getTimezoneOffset() * 60000; //offset in milliseconds
-  const timestamp = new Date(Date.now() - tzoffset)
-    .toISOString()
-    .slice(0, 19)
-    .replace("T", " ");
+  const timestamp = new Date(Date.now() - tzoffset).toISOString().slice(0, 19).replace("T", " ");
   const chatIdStr = chatId ? `[${chatId}] ` : "";
   if (msg.includes("\n")) {
     msg = msg.replace(/\n/g, " ");

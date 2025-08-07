@@ -1,12 +1,7 @@
 import * as fs from "fs";
 import { aiFunction, AIFunctionsProvider } from "@agentic/core";
 import { z } from "zod";
-import {
-  ConfigChatType,
-  ConfigType,
-  ObsidianConfigType,
-  ToolResponse,
-} from "../types.ts";
+import { ConfigChatType, ConfigType, ObsidianConfigType, ToolResponse } from "../types.ts";
 import { readConfig } from "../config.ts";
 import * as path from "path";
 

@@ -32,8 +32,7 @@ jest.unstable_mockModule("../../src/config.ts", () => ({
 }));
 
 jest.unstable_mockModule("../../src/mcp.ts", () => ({
-  init: (config: Parameters<typeof import("../../src/mcp").init>[0]) =>
-    mockInitMcp(config),
+  init: (config: Parameters<typeof import("../../src/mcp").init>[0]) => mockInitMcp(config),
   callMcp: (...args: unknown[]) => mockCallMcp(...args),
 }));
 
@@ -47,10 +46,7 @@ const fooPath = path.resolve("src/tools/foo.ts");
 const barPath = path.resolve("src/tools/bar.ts");
 
 beforeAll(() => {
-  fs.writeFileSync(
-    fooPath,
-    "export function call() { return { content: 'foo' }; }",
-  );
+  fs.writeFileSync(fooPath, "export function call() { return { content: 'foo' }; }");
   fs.writeFileSync(barPath, "export const notCall = true;\n");
 });
 
@@ -72,9 +68,7 @@ beforeEach(async () => {
       model: string;
     }>,
   );
-  ({ default: useTools, initTools } = await import(
-    "../../src/helpers/useTools.ts"
-  ));
+  ({ default: useTools, initTools } = await import("../../src/helpers/useTools.ts"));
 });
 
 describe("initTools", () => {
@@ -107,9 +101,7 @@ describe("initTools", () => {
     }> = [{ name: "mcp", description: "d", properties: {}, model: "m1" }];
 
     // Type the mock implementation
-    (mockInitMcp as unknown as jest.Mock).mockImplementation(() =>
-      Promise.resolve(mockTools),
-    );
+    (mockInitMcp as unknown as jest.Mock).mockImplementation(() => Promise.resolve(mockTools));
 
     const tools = await initTools();
     expect(tools).toHaveLength(2);
@@ -133,9 +125,7 @@ describe("initTools", () => {
     );
     mockReaddirSync.mockReturnValue(["delay.ts"]);
     jest.resetModules();
-    ({ default: useTools, initTools } = await import(
-      "../../src/helpers/useTools.ts"
-    ));
+    ({ default: useTools, initTools } = await import("../../src/helpers/useTools.ts"));
 
     const initPromise = initTools();
     const usePromise = useTools();

@@ -24,15 +24,7 @@ export async function telegramConfirm<T>(params: {
   onCancel: () => Promise<T> | T;
   noSendTelegram?: boolean;
 }): Promise<T> {
-  const {
-    chatId,
-    msg,
-    chatConfig,
-    text,
-    onConfirm,
-    onCancel,
-    noSendTelegram = false,
-  } = params;
+  const { chatId, msg, chatConfig, text, onConfirm, onCancel, noSendTelegram = false } = params;
   const id = Date.now().toString();
   const confirmAction = `confirm_${id}`;
   const cancelAction = `cancel_${id}`;
@@ -57,15 +49,12 @@ export async function telegramConfirm<T>(params: {
   }
 
   return new Promise<T>((resolve) => {
-    useBot(chatConfig.bot_token!).action(
-      confirmAction,
-      async (ctx: Context) => {
-        if (ctx.from?.id !== msg.from?.id) return;
-        await ctx.answerCbQuery();
-        const res = await onConfirm();
-        resolve(res);
-      },
-    );
+    useBot(chatConfig.bot_token!).action(confirmAction, async (ctx: Context) => {
+      if (ctx.from?.id !== msg.from?.id) return;
+      await ctx.answerCbQuery();
+      const res = await onConfirm();
+      resolve(res);
+    });
 
     useBot(chatConfig.bot_token!).action(cancelAction, async (ctx: Context) => {
       if (ctx.from?.id !== msg.from?.id) return;

@@ -21,11 +21,7 @@ import { includesUser } from "../../utils/users.ts";
 import { publishMqttProgress } from "../../mqtt.ts";
 import { telegramConfirm } from "../../telegram/confirm.ts";
 
-export function prettifyKeyValue(
-  key: string,
-  value: unknown,
-  level = 0,
-): string {
+export function prettifyKeyValue(key: string, value: unknown, level = 0): string {
   function prettifyKey(innerKey?: string): string {
     if (!innerKey) return "";
     innerKey = innerKey.replace(/[_-]/g, " ");
@@ -72,9 +68,7 @@ export function chatAsTool({
           (c) => c.agent_name === agent_name || c.bot_name === bot_name,
         );
         if (!agentChatConfig) {
-          throw new Error(
-            `Agent not found: ${agent_name || bot_name || "unknown"}`,
-          );
+          throw new Error(`Agent not found: ${agent_name || bot_name || "unknown"}`);
         }
         return {
           agent: true,
@@ -106,27 +100,14 @@ export function chatAsTool({
                 );
                 const res = await requestGptAnswer(msg, agentChatConfig);
                 const answer = res?.content || "";
-                sendTelegramMessage(
-                  msg.chat.id,
-                  answer,
-                  undefined,
-                  undefined,
-                  agentChatConfig,
-                );
+                sendTelegramMessage(msg.chat.id, answer, undefined, undefined, agentChatConfig);
                 if (tool_use_behavior === "stop_on_first_tool") {
-                  sendTelegramMessage(
-                    msg.chat.id,
-                    answer,
-                    undefined,
-                    undefined,
-                    configChat,
-                  );
+                  sendTelegramMessage(msg.chat.id, answer, undefined, undefined, configChat);
                   return { content: "" };
                 }
                 return { content: answer };
               } catch (err: unknown) {
-                const errorMessage =
-                  err instanceof Error ? err.message : String(err);
+                const errorMessage = err instanceof Error ? err.message : String(err);
                 return {
                   content: `Proxy tool error for agent '${
                     agent_name || bot_name
@@ -138,16 +119,13 @@ export function chatAsTool({
               type: "function",
               function: {
                 name,
-                description:
-                  description ||
-                  `Proxy tool for agent ${agent_name || bot_name}`,
+                description: description || `Proxy tool for agent ${agent_name || bot_name}`,
                 parameters: {
                   type: "object",
                   properties: {
                     input: {
                       type: "string",
-                      description:
-                        "Input text for the tool (task, query, etc.)",
+                      description: "Input text for the tool (task, query, etc.)",
                     },
                   },
                   required: ["input"],
@@ -189,12 +167,9 @@ export async function executeTools(
 
   const toolPromises = toolCalls.map(async (toolCall) => {
     const chatTool = chatTools.find((f) => f.name === toolCall.function.name);
-    if (!chatTool)
-      return { content: `Tool not found: ${toolCall.function.name}` };
+    if (!chatTool) return { content: `Tool not found: ${toolCall.function.name}` };
 
-    const tool = chatTool.module
-      .call(chatConfig, thread)
-      .functions.get(toolCall.function.name);
+    const tool = chatTool.module.call(chatConfig, thread).functions.get(toolCall.function.name);
     if (!tool) return { content: `Tool not found! ${toolCall.function.name}` };
 
     function joinWithOr(arr: string[]): string {
@@ -223,12 +198,8 @@ export async function executeTools(
       [key: string]: unknown;
     }
 
-    function prettifyExpertizemeSearchItems(
-      params: SearchParams,
-      toolName: string,
-    ): string {
-      const title =
-        toolName === "expertizeme_search_items" ? "Поиск СМИ:" : "Экспорт СМИ:";
+    function prettifyExpertizemeSearchItems(params: SearchParams, toolName: string): string {
+      const title = toolName === "expertizeme_search_items" ? "Поиск СМИ:" : "Экспорт СМИ:";
       const lines: string[] = ["`" + title + "`"];
       if (Array.isArray(params.filters)) {
         for (const filter of params.filters) {
@@ -248,16 +219,7 @@ export async function executeTools(
         }
       }
       for (const [key, value] of Object.entries(params)) {
-        if (
-          [
-            "filters",
-            "limit",
-            "sortField",
-            "sortDirection",
-            "groupBy",
-          ].includes(key)
-        )
-          continue;
+        if (["filters", "limit", "sortField", "sortDirection", "groupBy"].includes(key)) continue;
         if (Array.isArray(value)) {
           lines.push(`- **${prettifyKey(key)}**: ${joinWithOr(value)}`);
         } else {
@@ -305,15 +267,8 @@ export async function executeTools(
     }
 
     let toolParamsStr: string;
-    if (
-      ["expertizeme_search_items", "expertizeme_export_items"].includes(
-        chatTool.name,
-      )
-    ) {
-      toolParamsStr = prettifyExpertizemeSearchItems(
-        JSON.parse(toolParams),
-        chatTool.name,
-      );
+    if (["expertizeme_search_items", "expertizeme_export_items"].includes(chatTool.name)) {
+      toolParamsStr = prettifyExpertizemeSearchItems(JSON.parse(toolParams), chatTool.name);
     } else {
       toolParamsStr = [
         "`" +
@@ -374,11 +329,7 @@ export async function executeTools(
           return (await tool(toolParams)) as ToolResponse;
         } catch (error: unknown) {
           const err = error as { status?: number; message?: string };
-          if (
-            err.status === 400 &&
-            err.message?.includes("Invalid parameter") &&
-            attempt === 0
-          ) {
+          if (err.status === 400 && err.message?.includes("Invalid parameter") && attempt === 0) {
             log({
               msg: `Retrying tool ${toolCall.function.name} after 400 error`,
               chatId: msg.chat.id,
@@ -414,8 +365,7 @@ export async function executeTools(
     return { content: "" };
   });
   if (chatConfig.chatParams?.confirmation) {
-    const confirmText =
-      toolParamsList.join("\n\n") + "\n\nDo you want to proceed?";
+    const confirmText = toolParamsList.join("\n\n") + "\n\nDo you want to proceed?";
     sendToHttp(expressRes, confirmText);
     return telegramConfirm<ToolResponse[]>({
       chatId: msg.chat.id,
@@ -470,10 +420,7 @@ export function removeNullsParams(params: string): string {
   return JSON.stringify(filteredParams);
 }
 
-export async function resolveChatTools(
-  msg: Message.TextMessage,
-  chatConfig: ConfigChatType,
-) {
+export async function resolveChatTools(msg: Message.TextMessage, chatConfig: ConfigChatType) {
   if (msg.chat.type === "private" || isAdminUser(msg)) {
     if (!chatConfig.tools) chatConfig.tools = [];
     if (!chatConfig.tools.includes("change_chat_settings"))
@@ -482,19 +429,13 @@ export async function resolveChatTools(
 
   let agentTools: ChatToolType[] = [];
   if (chatConfig.tools) {
-    if (
-      chatConfig.tools.includes("change_access_settings") &&
-      !isAdminUser(msg)
-    ) {
-      chatConfig.tools = chatConfig.tools.filter(
-        (t) => t !== "change_access_settings",
-      );
+    if (chatConfig.tools.includes("change_access_settings") && !isAdminUser(msg)) {
+      chatConfig.tools = chatConfig.tools.filter((t) => t !== "change_access_settings");
     }
 
     // build agent tools
     const agentsToolsConfigs = chatConfig.tools.filter((t) => {
-      const isAgent =
-        typeof t === "object" && ("agent_name" in t || "bot_name" in t);
+      const isAgent = typeof t === "object" && ("agent_name" in t || "bot_name" in t);
       if (!isAgent) return false;
       const agentConfig = useConfig().chats.find(
         (c) =>

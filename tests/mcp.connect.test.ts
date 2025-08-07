@@ -31,12 +31,9 @@ jest.unstable_mockModule("@modelcontextprotocol/sdk/client/stdio", () => ({
   StdioClientTransport: StdioTransportMock,
 }));
 
-jest.unstable_mockModule(
-  "@modelcontextprotocol/sdk/client/streamableHttp.js",
-  () => ({
-    StreamableHTTPClientTransport: StreamableTransportMock,
-  }),
-);
+jest.unstable_mockModule("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
+  StreamableHTTPClientTransport: StreamableTransportMock,
+}));
 
 jest.unstable_mockModule("@modelcontextprotocol/sdk/types.js", () => ({
   LoggingMessageNotificationSchema: {},
@@ -79,12 +76,9 @@ describe("connectMcp", () => {
     // Using type assertion to bypass type checking for tests
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await connectMcp("m2", cfg, clients as any);
-    expect(StreamableTransportMock).toHaveBeenCalledWith(
-      new URL("http://srv"),
-      {
-        sessionId: undefined,
-      },
-    );
+    expect(StreamableTransportMock).toHaveBeenCalledWith(new URL("http://srv"), {
+      sessionId: undefined,
+    });
     expect(mockClientConnect).toHaveBeenCalledWith(transport);
     expect(res.connected).toBe(true);
   });
@@ -135,9 +129,7 @@ describe("init", () => {
       m1: { serverUrl: "http://one" } as McpToolConfig,
       m2: { command: "cmd" } as McpToolConfig,
     });
-    expect(res).toEqual([
-      { name: "t1", description: "d", properties: {}, model: "m1" },
-    ]);
+    expect(res).toEqual([{ name: "t1", description: "d", properties: {}, model: "m1" }]);
   });
 
   it("logs loading time", async () => {

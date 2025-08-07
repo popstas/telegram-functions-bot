@@ -1,11 +1,4 @@
-import {
-  jest,
-  describe,
-  it,
-  expect,
-  beforeEach,
-  afterEach,
-} from "@jest/globals";
+import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import type { Context, Message } from "telegraf/types";
 import type { ConfigChatType } from "../../src/types.ts";
 
@@ -39,23 +32,14 @@ const threads: Record<number, Thread> = {
 
 // Mock functions with proper types
 const mockCheckAccessLevel = jest.fn<
-  Promise<
-    { msg: Message.TextMessage; chat: ConfigChatType } | false | undefined
-  >,
+  Promise<{ msg: Message.TextMessage; chat: ConfigChatType } | false | undefined>,
   [Context]
 >();
 const mockAddToHistory = jest.fn<Message.TextMessage, [Message.TextMessage]>();
-const mockResolveChatButtons = jest.fn<
-  Message.TextMessage,
-  [Message.TextMessage]
->();
+const mockResolveChatButtons = jest.fn<Message.TextMessage, [Message.TextMessage]>();
 // Mock function for requestGptAnswer with proper typing
 const mockRequestGptAnswer = jest.fn(
-  (
-    _msg: Message.TextMessage,
-    _chat: ConfigChatType,
-    options?: { signal?: AbortSignal },
-  ) => {
+  (_msg: Message.TextMessage, _chat: ConfigChatType, options?: { signal?: AbortSignal }) => {
     // Store the abort controller for testing
     const signal = options?.signal as unknown as {
       controller?: AbortController;
@@ -157,9 +141,7 @@ jest.unstable_mockModule("../../src/threads.ts", () => ({
 let handlers: typeof import("../../src/handlers/onTextMessage.ts");
 let onTextMessage: typeof import("../../src/handlers/onTextMessage.ts").default;
 
-function createCtx(
-  message: Record<string, unknown>,
-): Context & { secondTry?: boolean } {
+function createCtx(message: Record<string, unknown>): Context & { secondTry?: boolean } {
   return {
     message,
     update: { message },
@@ -198,9 +180,7 @@ beforeEach(async () => {
   mockResolveChatButtons.mockImplementation((msg) => msg);
   mockAddToHistory.mockImplementation((msg) => msg);
   mockCheckAccessLevel.mockImplementation(async (ctx) => {
-    const msg =
-      (ctx as { message?: Message.TextMessage }).message ||
-      ({} as Message.TextMessage);
+    const msg = (ctx as { message?: Message.TextMessage }).message || ({} as Message.TextMessage);
     return { msg, chat: baseChat };
   });
   mockRequestGptAnswer.mockResolvedValue({ content: "ok" });

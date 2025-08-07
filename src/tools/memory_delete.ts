@@ -1,15 +1,7 @@
 import { aiFunction, AIFunctionsProvider } from "@agentic/core";
 import { z } from "zod";
-import type {
-  ConfigChatType,
-  ToolResponse,
-  ThreadStateType,
-} from "../types.ts";
-import {
-  deleteEmbedding,
-  searchEmbedding,
-  previewEmbedding,
-} from "../helpers/embeddings.ts";
+import type { ConfigChatType, ToolResponse, ThreadStateType } from "../types.ts";
+import { deleteEmbedding, searchEmbedding, previewEmbedding } from "../helpers/embeddings.ts";
 import { sendTelegramMessage } from "../telegram/send.ts";
 import { telegramConfirm } from "../telegram/confirm.ts";
 import type { Message } from "telegraf/types";
@@ -39,11 +31,7 @@ export class MemoryDeleteClient extends AIFunctionsProvider {
     description,
     inputSchema: z.object({
       query: z.string().describe("Delete query"),
-      limit: z
-        .number()
-        .describe("Limit, set to 1 if not specified")
-        .optional()
-        .default(1),
+      limit: z.number().describe("Limit, set to 1 if not specified").optional().default(1),
     }),
   })
   async memory_delete({
@@ -58,14 +46,11 @@ export class MemoryDeleteClient extends AIFunctionsProvider {
       limit,
       chat: this.configChat,
     });
-    const maxDistance =
-      this.configChat.toolParams?.vector_memory?.deleteMaxDistance ?? 1.1;
+    const maxDistance = this.configChat.toolParams?.vector_memory?.deleteMaxDistance ?? 1.1;
     const toDelete = previewRows.filter((r) => r.distance <= maxDistance);
     const tooFar = previewRows.filter((r) => r.distance > maxDistance);
-    const preview_for_delete =
-      toDelete.map(previewEmbedding).join("\n") || "No entries";
-    const preview_too_far =
-      tooFar.map(previewEmbedding).join("\n") || "No entries";
+    const preview_for_delete = toDelete.map(previewEmbedding).join("\n") || "No entries";
+    const preview_too_far = tooFar.map(previewEmbedding).join("\n") || "No entries";
     const lastMsg = this.thread.msgs.at(-1) as Message.TextMessage;
     return telegramConfirm<ToolResponse>({
       chatId: this.thread.id,
@@ -78,8 +63,7 @@ export class MemoryDeleteClient extends AIFunctionsProvider {
           limit,
           chat: this.configChat,
         });
-        const content =
-          "Deleted:\n" + toDelete.map(previewEmbedding).join("\n");
+        const content = "Deleted:\n" + toDelete.map(previewEmbedding).join("\n");
         await sendTelegramMessage(
           this.thread.id,
           `Удалено записей: ${toDelete.length}`,

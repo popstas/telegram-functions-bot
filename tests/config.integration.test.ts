@@ -14,13 +14,7 @@ jest.unstable_mockModule("google-auth-library", () => ({
 }));
 
 const config = await import("../src/config.ts");
-const {
-  readConfig,
-  writeConfig,
-  generateConfig,
-  convertChatConfig,
-  setConfigPath,
-} = config;
+const { readConfig, writeConfig, generateConfig, convertChatConfig, setConfigPath } = config;
 const yaml = await import("js-yaml");
 
 describe("config integration", () => {

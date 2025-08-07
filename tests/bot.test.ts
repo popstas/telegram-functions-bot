@@ -1,9 +1,7 @@
 import { jest, describe, it, beforeEach, expect } from "@jest/globals";
 
 const mockStop = jest.fn();
-const mockGetMe = jest.fn(() =>
-  Promise.resolve({ id: 12345, username: "test_bot" }),
-);
+const mockGetMe = jest.fn(() => Promise.resolve({ id: 12345, username: "test_bot" }));
 const TelegrafMock = jest.fn().mockImplementation(() => ({
   stop: mockStop,
   telegram: {
@@ -33,9 +31,7 @@ beforeEach(async () => {
 describe("useBot", () => {
   it("creates bot with config token and caches instance", async () => {
     mockUseConfig.mockReturnValue({ auth: { bot_token: "token1" } });
-    const onceSpy = jest
-      .spyOn(process, "once")
-      .mockImplementation(() => process);
+    const onceSpy = jest.spyOn(process, "once").mockImplementation(() => process);
 
     const first = useBot();
     // Allow any pending promises to resolve

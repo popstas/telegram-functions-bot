@@ -33,9 +33,7 @@ describe("readGoogleSheetToRows", () => {
         ],
       },
     });
-    ({ default: readGoogleSheetToRows } = await import(
-      "../../src/helpers/readGoogleSheet.ts"
-    ));
+    ({ default: readGoogleSheetToRows } = await import("../../src/helpers/readGoogleSheet.ts"));
   });
 
   it("returns empty array when auth missing", async () => {

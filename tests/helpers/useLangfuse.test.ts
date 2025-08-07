@@ -41,9 +41,7 @@ describe("useLangfuse", () => {
 
   it("returns null when config missing", async () => {
     mockUseConfig.mockReturnValue({ langfuse: {}, bot_name: "bot" });
-    ({ default: useLangfuse } = await import(
-      "../../src/helpers/useLangfuse.ts"
-    ));
+    ({ default: useLangfuse } = await import("../../src/helpers/useLangfuse.ts"));
     const res = useLangfuse(baseMsg);
     expect(res).toEqual({ langfuse: null, trace: null });
   });
@@ -53,9 +51,7 @@ describe("useLangfuse", () => {
       langfuse: { secretKey: "s", publicKey: "p", baseUrl: "url" },
       bot_name: "bot",
     });
-    ({ default: useLangfuse } = await import(
-      "../../src/helpers/useLangfuse.ts"
-    ));
+    ({ default: useLangfuse } = await import("../../src/helpers/useLangfuse.ts"));
     const res = useLangfuse(baseMsg);
     expect(res.langfuse).toBeInstanceOf(MockLangfuse);
     expect(res.trace).toEqual({ name: "user private bot  1" });

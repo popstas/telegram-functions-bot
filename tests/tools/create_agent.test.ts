@@ -1,9 +1,5 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import type {
-  ConfigChatType,
-  ConfigType,
-  ThreadStateType,
-} from "../../src/types.ts";
+import type { ConfigChatType, ConfigType, ThreadStateType } from "../../src/types.ts";
 
 const mockReadConfig = jest.fn();
 const mockWriteConfig = jest.fn();
@@ -22,9 +18,7 @@ beforeEach(async () => {
   jest.resetModules();
   mockReadConfig.mockReset();
   mockWriteConfig.mockReset();
-  ({ CreateAgentClient, call: callFn } = await import(
-    "../../src/tools/create_agent.ts"
-  ));
+  ({ CreateAgentClient, call: callFn } = await import("../../src/tools/create_agent.ts"));
 });
 
 describe("CreateAgentClient", () => {

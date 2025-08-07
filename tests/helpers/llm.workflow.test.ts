@@ -35,8 +35,7 @@ jest.unstable_mockModule("../../src/helpers/history.ts", () => ({
 
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   sendTelegramMessage: (...args: unknown[]) => mockSendTelegramMessage(...args),
-  sendTelegramDocument: (...args: unknown[]) =>
-    mockSendTelegramDocument(...args),
+  sendTelegramDocument: (...args: unknown[]) => mockSendTelegramDocument(...args),
   getTelegramForwardedUser: jest.fn(),
   getFullName: jest.fn(),
   isAdminUser: jest.fn(),

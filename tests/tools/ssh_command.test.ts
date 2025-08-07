@@ -51,12 +51,9 @@ describe("SshCommandClient", () => {
       removeCallback: jest.fn(),
     });
     mockExec
-      .mockImplementationOnce((_cmd: string, cb: (e: unknown) => void) =>
-        cb(null),
-      )
-      .mockImplementationOnce(
-        (_cmd: string, cb: (e: unknown, out: string, err: string) => void) =>
-          cb(null, "ok", ""),
+      .mockImplementationOnce((_cmd: string, cb: (e: unknown) => void) => cb(null))
+      .mockImplementationOnce((_cmd: string, cb: (e: unknown, out: string, err: string) => void) =>
+        cb(null, "ok", ""),
       );
 
     const client = new mod.SshCommandClient(cfg);
@@ -74,16 +71,12 @@ describe("SshCommandClient", () => {
       removeCallback: remove,
     });
     mockExec
-      .mockImplementationOnce((_c: string, cb: (e: unknown) => void) =>
-        cb(null),
-      )
-      .mockImplementationOnce(
-        (_c: string, cb: (e: unknown, out: string, err: string) => void) => {
-          const err = new Error("Command failed: ssh boom");
-          (err as unknown as { code: number }).code = 1;
-          cb(err, "sout", "serr");
-        },
-      );
+      .mockImplementationOnce((_c: string, cb: (e: unknown) => void) => cb(null))
+      .mockImplementationOnce((_c: string, cb: (e: unknown, out: string, err: string) => void) => {
+        const err = new Error("Command failed: ssh boom");
+        (err as unknown as { code: number }).code = 1;
+        cb(err, "sout", "serr");
+      });
 
     const client = new mod.SshCommandClient(cfg);
     const res = await client.ssh_command({ command: "do" });

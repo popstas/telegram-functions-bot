@@ -22,10 +22,7 @@ export class ForgetClient extends AIFunctionsProvider {
     name: "forget",
     description,
     inputSchema: z.object({
-      message: z
-        .string()
-        .optional()
-        .describe("Optional final message to send to the user"),
+      message: z.string().optional().describe("Optional final message to send to the user"),
     }),
   })
   async forget({ message }: { message?: string }) {
@@ -39,8 +36,7 @@ export class ForgetClient extends AIFunctionsProvider {
       });
       return { content: message || "Forgot history" };
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       log({
         msg: `Failed to forget history: ${errorMessage}`,
         logLevel: "error",

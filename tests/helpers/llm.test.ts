@@ -1,11 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import type { Message } from "telegraf/types";
-import type {
-  ConfigChatType,
-  GptContextType,
-  ToolResponse,
-} from "../../src/types.ts";
+import type { ConfigChatType, GptContextType, ToolResponse } from "../../src/types.ts";
 
 const mockExecuteTools = jest.fn();
 const mockAddToHistory = jest.fn();
@@ -34,8 +30,7 @@ jest.unstable_mockModule("../../src/helpers/history.ts", () => ({
 
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   sendTelegramMessage: (...args: unknown[]) => mockSendTelegramMessage(...args),
-  sendTelegramDocument: (...args: unknown[]) =>
-    mockSendTelegramDocument(...args),
+  sendTelegramDocument: (...args: unknown[]) => mockSendTelegramDocument(...args),
   getTelegramForwardedUser: jest.fn(),
 }));
 

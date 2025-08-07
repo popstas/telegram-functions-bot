@@ -43,9 +43,7 @@ type ConnectMcpResult = {
  * Initialize MCP servers for each configured model using the MCP SDK.
  * Spawns and connects to external MCP server processes.
  */
-export async function init(
-  configs: Record<string, McpToolConfig>,
-): Promise<McpTool[]> {
+export async function init(configs: Record<string, McpToolConfig>): Promise<McpTool[]> {
   log({
     msg: `Connecting to ${Object.keys(configs).length} MCP servers...`,
     logLevel: "debug",
@@ -122,40 +120,34 @@ function initSseMcp(serverUrl: string, model: string, client: Client) {
   });
 
   // Set up notification handlers (logging and resources)
-  client.setNotificationHandler(
-    LoggingMessageNotificationSchema,
-    (notification) => {
-      log({
-        msg: `[${model}] notification: ${notification.params.level} - ${notification.params.data}`,
-        logLevel: "debug",
-      });
-    },
-  );
+  client.setNotificationHandler(LoggingMessageNotificationSchema, (notification) => {
+    log({
+      msg: `[${model}] notification: ${notification.params.level} - ${notification.params.data}`,
+      logLevel: "debug",
+    });
+  });
 
-  client.setNotificationHandler(
-    ResourceListChangedNotificationSchema,
-    async () => {
+  client.setNotificationHandler(ResourceListChangedNotificationSchema, async () => {
+    log({
+      msg: `[${model}] Resource list changed notification received!`,
+      logLevel: "debug",
+    });
+    try {
+      const resourcesResult = await client.request(
+        { method: "resources/list", params: {} },
+        ListResourcesResultSchema,
+      );
       log({
-        msg: `[${model}] Resource list changed notification received!`,
+        msg: `[${model}] Available resources count: ${resourcesResult.resources.length}`,
         logLevel: "debug",
       });
-      try {
-        const resourcesResult = await client.request(
-          { method: "resources/list", params: {} },
-          ListResourcesResultSchema,
-        );
-        log({
-          msg: `[${model}] Available resources count: ${resourcesResult.resources.length}`,
-          logLevel: "debug",
-        });
-      } catch (error) {
-        log({
-          msg: `[${model}] Failed to list resources after change notification: ${error}`,
-          logLevel: "error",
-        });
-      }
-    },
-  );
+    } catch (error) {
+      log({
+        msg: `[${model}] Failed to list resources after change notification: ${error}`,
+        logLevel: "error",
+      });
+    }
+  });
 
   return transport;
 }
@@ -189,8 +181,7 @@ export async function connectMcp(
         env: {
           ...process.env,
           ...cfg.env,
-          NODE_OPTIONS:
-            `--unhandled-rejections=warn ${process.env.NODE_OPTIONS || ""}`.trim(),
+          NODE_OPTIONS: `--unhandled-rejections=warn ${process.env.NODE_OPTIONS || ""}`.trim(),
         },
       });
     } else {
@@ -226,10 +217,7 @@ export async function callMcp(
       arguments: JSON.parse(args),
     });
     return {
-      content:
-        typeof result.content === "string"
-          ? result.content
-          : JSON.stringify(result.content),
+      content: typeof result.content === "string" ? result.content : JSON.stringify(result.content),
     };
   } catch (err: unknown) {
     let message;

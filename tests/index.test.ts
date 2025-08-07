@@ -28,9 +28,7 @@ const expressApp = {
   listen: jest.fn((_: number, cb: () => void) => cb()),
 };
 const mockExpress = jest.fn(() => expressApp);
-mockExpress.json = jest.fn(
-  () => (_req: Request, _res: Response, next: () => void) => next(),
-);
+mockExpress.json = jest.fn(() => (_req: Request, _res: Response, next: () => void) => next());
 
 jest.unstable_mockModule("../src/config.ts", () => ({
   __esModule: true,
@@ -119,9 +117,7 @@ beforeEach(async () => {
   mockWriteConfig.mockReset();
   mockLog.mockReset();
   mockUseMqtt.mockReset();
-  mockOnTextMessage
-    .mockReset()
-    .mockImplementation(async (_ctx, _o, cb) => cb({ text: "ok" }));
+  mockOnTextMessage.mockReset().mockImplementation(async (_ctx, _o, cb) => cb({ text: "ok" }));
   mockOnPhoto.mockReset();
   mockOnAudio.mockReset();
   mockOnUnsupported.mockReset();
@@ -164,10 +160,7 @@ function createRes() {
 describe("telegramPostHandler", () => {
   it("rejects missing text", async () => {
     const res = createRes();
-    await telegramPostHandler(
-      { params: { chatId: "1" }, body: {} } as unknown as Request,
-      res,
-    );
+    await telegramPostHandler({ params: { chatId: "1" }, body: {} } as unknown as Request, res);
     expect(res.status).toHaveBeenCalledWith(400);
   });
 

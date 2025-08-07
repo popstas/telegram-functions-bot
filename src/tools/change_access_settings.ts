@@ -40,10 +40,7 @@ export class ChangeAccessSettingsClient extends AIFunctionsProvider {
         .describe(
           "Admin Usernames to remove from adminUsers, use only when explicitly specified `admin`",
         ),
-      addPrivate: z
-        .array(z.string())
-        .optional()
-        .describe("User Usernames to add to privateUsers"),
+      addPrivate: z.array(z.string()).optional().describe("User Usernames to add to privateUsers"),
       removePrivate: z
         .array(z.string())
         .optional()
@@ -72,14 +69,10 @@ export class ChangeAccessSettingsClient extends AIFunctionsProvider {
     const opts = JSON.parse(str) as ToolArgsType;
     if (!opts) return str;
     const parts: string[] = [];
-    if (opts.addAdmin?.length)
-      parts.push(`addAdmin: ${opts.addAdmin.join(", ")}`);
-    if (opts.removeAdmin?.length)
-      parts.push(`removeAdmin: ${opts.removeAdmin.join(", ")}`);
-    if (opts.addPrivate?.length)
-      parts.push(`addPrivate: ${opts.addPrivate.join(", ")}`);
-    if (opts.removePrivate?.length)
-      parts.push(`removePrivate: ${opts.removePrivate.join(", ")}`);
+    if (opts.addAdmin?.length) parts.push(`addAdmin: ${opts.addAdmin.join(", ")}`);
+    if (opts.removeAdmin?.length) parts.push(`removeAdmin: ${opts.removeAdmin.join(", ")}`);
+    if (opts.addPrivate?.length) parts.push(`addPrivate: ${opts.addPrivate.join(", ")}`);
+    if (opts.removePrivate?.length) parts.push(`removePrivate: ${opts.removePrivate.join(", ")}`);
     if (!parts.length) return str;
     return `**Change access:** \`${parts.join("; ")}\``;
   }

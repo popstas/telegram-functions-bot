@@ -58,12 +58,7 @@ describe("onDocument", () => {
     });
     const ctx = createCtx(msg);
     await onDocument(ctx);
-    expect(mockProcessImageMessage).toHaveBeenCalledWith(
-      ctx,
-      msg,
-      chat,
-      "upload_document",
-    );
+    expect(mockProcessImageMessage).toHaveBeenCalledWith(ctx, msg, chat, "upload_document");
     expect(mockOnUnsupported).not.toHaveBeenCalled();
     expect(mockOnTextMessage).toHaveBeenCalled();
   });

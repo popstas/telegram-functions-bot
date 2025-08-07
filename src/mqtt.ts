@@ -36,9 +36,7 @@ export function useMqtt() {
       logPath: MQTT_LOG_PATH,
       username: "client",
     });
-    const answer = await runAgent(agent, text, (msg) =>
-      publishMqttProgress(msg, agent),
-    );
+    const answer = await runAgent(agent, text, (msg) => publishMqttProgress(msg, agent));
     client.publish(`${cfg.base}/${agent}/answer`, answer);
     log({
       msg: answer,

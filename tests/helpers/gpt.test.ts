@@ -1,11 +1,4 @@
-import {
-  jest,
-  describe,
-  it,
-  expect,
-  beforeEach,
-  afterEach,
-} from "@jest/globals";
+import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import { executeTools } from "../../src/helpers/gpt.ts";
 import {
   ConfigChatType,
@@ -26,9 +19,7 @@ beforeAll(() => {
 jest.mock("../../src/bot", () => ({
   useBot: () => ({
     telegram: {
-      sendMessage: jest
-        .fn()
-        .mockImplementation(() => Promise.resolve({ message_id: 1 })),
+      sendMessage: jest.fn().mockImplementation(() => Promise.resolve({ message_id: 1 })),
     },
   }),
 }));
@@ -68,9 +59,7 @@ const createMockConfig = (): ConfigChatType => ({
 });
 
 // Create a mock tool call
-const createMockToolCall = (
-  toolName: string,
-): OpenAI.ChatCompletionMessageToolCall => ({
+const createMockToolCall = (toolName: string): OpenAI.ChatCompletionMessageToolCall => ({
   id: "call_123",
   type: "function" as const,
   function: {
@@ -104,8 +93,7 @@ describe("executeTools", () => {
       // Prefix unused parameter with underscore to indicate it's intentionally unused
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const fn = async (_: string): Promise<ToolResponse> => ({
-        content:
-          name === toolName ? "test response" : `Tool not found: ${name}`,
+        content: name === toolName ? "test response" : `Tool not found: ${name}`,
       });
       return fn;
     };
@@ -195,12 +183,7 @@ describe("executeTools", () => {
     const moduleCall = mockChatTools[0].module.call as jest.Mock;
 
     // Execute the function under test
-    const result = await executeTools(
-      mockToolCalls,
-      mockChatTools,
-      mockChatConfig,
-      mockMsg,
-    );
+    const result = await executeTools(mockToolCalls, mockChatTools, mockChatConfig, mockMsg);
 
     // Verify the result
     expect(Array.isArray(result)).toBe(true);
@@ -245,12 +228,7 @@ describe("executeTools", () => {
     ];
 
     // Execute the function under test
-    const result = await executeTools(
-      toolCalls,
-      mockChatTools,
-      mockChatConfig,
-      mockMsg,
-    );
+    const result = await executeTools(toolCalls, mockChatTools, mockChatConfig, mockMsg);
 
     // Verify the result
     expect(Array.isArray(result)).toBe(true);

@@ -1,11 +1,6 @@
 import { aiFunction, AIFunctionsProvider } from "@agentic/core";
 import { z } from "zod";
-import {
-  ConfigChatType,
-  ConfigType,
-  ThreadStateType,
-  ToolResponse,
-} from "../types.ts";
+import { ConfigChatType, ConfigType, ThreadStateType, ToolResponse } from "../types.ts";
 import { readConfig } from "../config.ts";
 import readGoogleSheetToRows from "../helpers/readGoogleSheet.ts";
 import { GoogleAuth, OAuth2Client } from "google-auth-library";
@@ -44,10 +39,7 @@ export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
   private readonly authClient?: OAuth2Client | GoogleAuth;
   protected readonly details: string;
 
-  constructor(
-    configChat: ConfigChatType,
-    authClient?: OAuth2Client | GoogleAuth,
-  ) {
+  constructor(configChat: ConfigChatType, authClient?: OAuth2Client | GoogleAuth) {
     super();
     this.config = readConfig();
     this.configChat = configChat;
@@ -74,20 +66,14 @@ export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
       title: z.string().describe("Title of the question"),
     }),
   })
-  async read_knowledge_google_sheet(
-    options: ToolArgsType,
-  ): Promise<ToolResponse> {
+  async read_knowledge_google_sheet(options: ToolArgsType): Promise<ToolResponse> {
     const title = options.title;
 
     const data = (await this.read_sheet()) as Array<{ [key: string]: string }>;
     if (!data.length) return { content: "No data, auth with /google_auth" };
-    const titleCol =
-      this.configChat.toolParams?.knowledge_google_sheet?.titleCol || "title";
-    const textCol =
-      this.configChat.toolParams?.knowledge_google_sheet?.textCol || "text";
-    const found = data.find(
-      (row: { [key: string]: string }) => row[titleCol] === title,
-    );
+    const titleCol = this.configChat.toolParams?.knowledge_google_sheet?.titleCol || "title";
+    const textCol = this.configChat.toolParams?.knowledge_google_sheet?.textCol || "text";
+    const found = data.find((row: { [key: string]: string }) => row[titleCol] === title);
     const content = found ? found[textCol] : `No answer found for ${title}`;
     return { content };
   }
@@ -100,15 +86,11 @@ export class KnowledgeGoogleSheetClient extends AIFunctionsProvider {
 
   async prompt_append(): Promise<string | undefined> {
     const data = await this.read_sheet();
-    const titleCol =
-      this.configChat.toolParams?.knowledge_google_sheet?.titleCol || "title";
+    const titleCol = this.configChat.toolParams?.knowledge_google_sheet?.titleCol || "title";
     // @ts-expect-error: headers are dynamic
     const titles = data?.map((row: { [key: string]: string }) => row[titleCol]);
     if (titles)
-      return (
-        "## Google Sheet Knowledge base titles:\n" +
-        titles.map((f) => `- ${f}`).join("\n")
-      );
+      return "## Google Sheet Knowledge base titles:\n" + titles.map((f) => `- ${f}`).join("\n");
   }
 }
 

@@ -4,10 +4,7 @@ import { isOurUser } from "../telegram/send.ts";
 import OpenAI from "openai";
 import { useThreads } from "../threads.ts";
 
-export function initThread(
-  msg: Message.TextMessage,
-  chatConfig: ConfigChatType,
-) {
+export function initThread(msg: Message.TextMessage, chatConfig: ConfigChatType) {
   const threads = useThreads();
   const key = msg.chat?.id || 0;
   if (!threads[key]) {
@@ -26,9 +23,7 @@ export function buildUserMessage(
   chatConfig: ConfigChatType,
 ): OpenAI.ChatCompletionMessageParam {
   const content = msg.text || "";
-  const sender =
-    (msg as Message.TextMessage & { forward_from?: User }).forward_from ||
-    msg.from;
+  const sender = (msg as Message.TextMessage & { forward_from?: User }).forward_from || msg.from;
   const isOur = isOurUser(sender, chatConfig);
   let name = sender?.first_name || sender?.last_name || sender?.username;
   if (isOur && chatConfig?.chatParams?.markOurUsers) {
@@ -67,17 +62,12 @@ export function forgetHistory(chatId: number) {
   }
 }
 
-export function forgetHistoryOnTimeout(
-  chat: ConfigChatType,
-  msg: Message.TextMessage,
-) {
+export function forgetHistoryOnTimeout(chat: ConfigChatType, msg: Message.TextMessage) {
   const threads = useThreads();
   const thread = threads[msg.chat.id];
   const forgetTimeout = chat.chatParams?.forgetTimeout;
   if (forgetTimeout && thread && thread.msgs.length > 1) {
-    const lastMessageTime = new Date(
-      thread.msgs[thread.msgs.length - 2].date * 1000,
-    ).getTime();
+    const lastMessageTime = new Date(thread.msgs[thread.msgs.length - 2].date * 1000).getTime();
     const currentTime = Date.now();
     const timeDelta = (currentTime - lastMessageTime) / 1000;
     if (timeDelta > forgetTimeout) {

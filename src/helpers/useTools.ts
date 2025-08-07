@@ -27,9 +27,7 @@ export async function initTools(): Promise<ChatToolType[]> {
   toolsInitPromise = (async () => {
     try {
       globalTools = [];
-      const files = readdirSync("src/tools").filter((file) =>
-        file.endsWith(".ts"),
-      );
+      const files = readdirSync("src/tools").filter((file) => file.endsWith(".ts"));
 
       for (const file of files) {
         const name = file.replace(".ts", "");
@@ -62,8 +60,7 @@ export async function initTools(): Promise<ChatToolType[]> {
                   description,
                   properties,
                   functions: {
-                    get: (toolName: string) => (args: string) =>
-                      callMcp(model, toolName, args),
+                    get: (toolName: string) => (args: string) => callMcp(model, toolName, args),
                     toolSpecs: {
                       type: "function" as const,
                       function: {

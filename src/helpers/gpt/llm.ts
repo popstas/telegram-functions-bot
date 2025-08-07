@@ -30,10 +30,7 @@ import { log } from "../../helpers.ts";
 import { executeTools, resolveChatTools } from "./tools.ts";
 import { buildMessages, getSystemMessage } from "./messages.ts";
 import { APIUserAbortError } from "openai";
-import {
-  convertResponsesInput,
-  convertResponsesOutput,
-} from "./responsesApi.ts";
+import { convertResponsesInput, convertResponsesOutput } from "./responsesApi.ts";
 import { handleResponseStream, handleCompletionStream } from "./streaming.ts";
 import type { ChatCompletionStream } from "openai/lib/ChatCompletionStream.js";
 
@@ -73,9 +70,7 @@ export async function llmCall({
   images?: { id?: string; result: string }[];
 }> {
   const api = useApi(localModel || chatConfig?.local_model);
-  const { trace } = chatConfig
-    ? useLangfuse(msg, chatConfig)
-    : { trace: undefined };
+  const { trace } = chatConfig ? useLangfuse(msg, chatConfig) : { trace: undefined };
   let apiFunc = api;
   if (trace) {
     apiFunc = observeOpenAI(api, { generationName, parent: trace });
@@ -83,12 +78,9 @@ export async function llmCall({
   try {
     const options = { signal };
     const hasImages = apiParams.messages.some(
-      (m) =>
-        Array.isArray(m.content) &&
-        m.content.some((c) => c.type === "image_url"),
+      (m) => Array.isArray(m.content) && m.content.some((c) => c.type === "image_url"),
     );
-    const isStreaming =
-      chatConfig?.chatParams?.streaming && !noSendTelegram && !hasImages;
+    const isStreaming = chatConfig?.chatParams?.streaming && !noSendTelegram && !hasImages;
     const useResponses =
       !localModel &&
       !chatConfig?.local_model &&
@@ -126,11 +118,7 @@ export async function llmCall({
           ) => ChatCompletionStream;
         };
         const streamObj = stream({ ...apiParams, stream: true }, options);
-        const { res } = await handleCompletionStream(
-          streamObj,
-          msg,
-          chatConfig,
-        );
+        const { res } = await handleCompletionStream(streamObj, msg, chatConfig);
         return { res, trace };
       }
       const res = (await apiFunc.chat.completions.create(
@@ -172,9 +160,7 @@ async function evaluateAnswer(
   task: string,
   answer: string,
 ): Promise<EvaluatorResult> {
-  const systemMessage = [EVALUATOR_PROMPT, evaluator.systemMessage]
-    .filter(Boolean)
-    .join("\n\n");
+  const systemMessage = [EVALUATOR_PROMPT, evaluator.systemMessage].filter(Boolean).join("\n\n");
   const userMessage = `User request:\n${task}\n\nAssistant answer:\n${answer}`;
   const apiParams: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
     messages: [
@@ -234,12 +220,9 @@ export async function handleModelAnswer({
   }
 
   if (!messageAgent.tool_calls || messageAgent.tool_calls.length === 0) {
-    const toolCallMatches = messageAgent.content?.matchAll(
-      /<tool_call>([\s\S]*?)<\/tool_call>/g,
-    );
+    const toolCallMatches = messageAgent.content?.matchAll(/<tool_call>([\s\S]*?)<\/tool_call>/g);
     if (toolCallMatches) {
-      const tool_calls =
-        [] as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
+      const tool_calls = [] as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
       for (const match of toolCallMatches) {
         try {
           const toolCallObj = JSON.parse(match[1]);
@@ -301,9 +284,7 @@ export async function handleModelAnswer({
   }
 
   if (
-    gptContext.thread.messages.find(
-      (m: OpenAI.ChatCompletionMessageParam) => m.role === "tool",
-    ) &&
+    gptContext.thread.messages.find((m: OpenAI.ChatCompletionMessageParam) => m.role === "tool") &&
     chatConfig.chatParams?.memoryless
   ) {
     forgetHistory(msg.chat.id);
@@ -348,12 +329,9 @@ export async function processToolResults({
         tool_calls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
       }
     ).tool_calls[i];
-    const chatTool = gptContext.chatTools.find(
-      (f) => f.name === toolCall.function.name,
-    );
+    const chatTool = gptContext.chatTools.find((f) => f.name === toolCall.function.name);
     const isMcp = chatTool?.module.call(chatConfig, gptContext.thread).mcp;
-    const showMessages =
-      chatConfig.chatParams?.showToolMessages !== false && !isMcp;
+    const showMessages = chatConfig.chatParams?.showToolMessages !== false && !isMcp;
     if (toolCall.function.name !== "forget") {
       const params = { deleteAfter: chatConfig.chatParams?.deleteToolAnswers };
       const toolResMessageLimit = 8000;
@@ -364,13 +342,7 @@ export async function processToolResults({
             part.text.length > toolResMessageLimit
               ? part.text.slice(0, toolResMessageLimit) + "..."
               : part.text;
-          await sendTelegramMessage(
-            msg.chat.id,
-            msgContentLimited,
-            params,
-            undefined,
-            chatConfig,
-          );
+          await sendTelegramMessage(msg.chat.id, msgContentLimited, params, undefined, chatConfig);
         } else if (part.type === "resource") {
           if (part.resource?.blob) {
             const buffer = Buffer.from(part.resource.blob, "base64");
@@ -423,9 +395,7 @@ export async function processToolResults({
 
   if (isForget) {
     forgetHistory(msg.chat.id);
-    const { trace } = chatConfig
-      ? useLangfuse(msg, chatConfig)
-      : { trace: undefined };
+    const { trace } = chatConfig ? useLangfuse(msg, chatConfig) : { trace: undefined };
     if (trace) {
       (trace as unknown as { update: (arg: unknown) => void }).update({
         output: forgetMessage || "Forgot history, task completed.",
@@ -434,10 +404,7 @@ export async function processToolResults({
     return { content: forgetMessage || "Forgot history, task completed." };
   }
 
-  gptContext.messages = await buildMessages(
-    gptContext.systemMessage,
-    gptContext.thread.messages,
-  );
+  gptContext.messages = await buildMessages(gptContext.systemMessage, gptContext.thread.messages);
 
   const isNoTool = level > 6 || !gptContext.tools?.length;
 
@@ -542,9 +509,7 @@ export async function requestGptAnswer(
   const chatTools = await resolveChatTools(msg, chatConfig);
 
   const builtInToolNames = (chatConfig.tools || []).filter(
-    (t) =>
-      typeof t === "string" &&
-      (t === "web_search_preview" || t === "image_generation"),
+    (t) => typeof t === "string" && (t === "web_search_preview" || t === "image_generation"),
   ) as string[];
   const builtInTools = builtInToolNames.map(
     (name) => ({ type: name }) as OpenAI.Chat.Completions.ChatCompletionTool,
@@ -560,9 +525,7 @@ export async function requestGptAnswer(
   }
 
   const tools =
-    allTools.length > 0
-      ? (allTools as OpenAI.Chat.Completions.ChatCompletionTool[])
-      : undefined;
+    allTools.length > 0 ? (allTools as OpenAI.Chat.Completions.ChatCompletionTool[]) : undefined;
 
   let systemMessage = await getSystemMessage(chatConfig, chatTools, thread);
   const date = new Date().toISOString();
@@ -578,9 +541,7 @@ export async function requestGptAnswer(
     thread,
     chatConfig.chatParams.placeholderCacheTime,
   );
-  const userVars =
-    chatConfig.user_vars?.find((u) => u.username === msg.from?.username)
-      ?.vars || {};
+  const userVars = chatConfig.user_vars?.find((u) => u.username === msg.from?.username)?.vars || {};
   systemMessage = replaceVarsPlaceholders(systemMessage, userVars);
   if (thread.nextSystemMessage) {
     systemMessage = thread.nextSystemMessage || "";
@@ -656,11 +617,7 @@ export async function requestGptAnswer(
   });
 
   if (!options?.skipEvaluators && chatConfig.evaluators?.length) {
-    result.content = await runEvaluatorWorkflow(
-      msg,
-      chatConfig,
-      result.content,
-    );
+    result.content = await runEvaluatorWorkflow(msg, chatConfig, result.content);
   }
 
   return result;
@@ -678,12 +635,7 @@ async function runEvaluatorWorkflow(
     if (!evalChat) continue;
     const threshold = ev.threshold ?? 4;
     const maxIter = ev.maxIterations ?? 2;
-    let evaluation = await evaluateAnswer(
-      msg,
-      evalChat,
-      msg.text || "",
-      finalAnswer,
-    );
+    let evaluation = await evaluateAnswer(msg, evalChat, msg.text || "", finalAnswer);
     log({
       msg: `evaluation 1: ${JSON.stringify(evaluation)}`,
       chatId: evalChat.id,
@@ -692,29 +644,17 @@ async function runEvaluatorWorkflow(
       role: "system",
     });
     let iter = 1;
-    while (
-      iter < maxIter + 1 &&
-      (!evaluation.is_complete || evaluation.score < threshold)
-    ) {
+    while (iter < maxIter + 1 && (!evaluation.is_complete || evaluation.score < threshold)) {
       iter++;
       const optimizeMsg: Message.TextMessage = {
         ...msg,
-        text:
-          msg.text +
-          "\n\nAuditor comment: " +
-          evaluation.justification +
-          "\n\nFix the answer:",
+        text: msg.text + "\n\nAuditor comment: " + evaluation.justification + "\n\nFix the answer:",
       };
       const res = await requestGptAnswer(optimizeMsg, chatConfig, undefined, {
         skipEvaluators: true,
       });
       finalAnswer = res?.content || finalAnswer;
-      evaluation = await evaluateAnswer(
-        msg,
-        evalChat,
-        msg.text || "",
-        finalAnswer,
-      );
+      evaluation = await evaluateAnswer(msg, evalChat, msg.text || "", finalAnswer);
       log({
         msg: `evaluation ${iter}: ${JSON.stringify(evaluation)}`,
         chatId: evalChat.id,

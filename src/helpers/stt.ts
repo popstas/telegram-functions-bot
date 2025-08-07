@@ -54,9 +54,7 @@ export async function detectAudioFileLanguage(mp3Path: string) {
         headers: Object.fromEntries(response.headers.entries()),
         body: responseText,
       });
-      throw new Error(
-        `HTTP error! status: ${response.status}, body: ${responseText}`,
-      );
+      throw new Error(`HTTP error! status: ${response.status}, body: ${responseText}`);
     }
 
     try {
@@ -114,9 +112,7 @@ export async function sendAudioWhisper({
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(
-      `HTTP error! status: ${response.status}, body: ${errorText}`,
-    );
+    throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
   }
 
   return await response.json();

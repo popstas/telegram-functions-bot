@@ -53,23 +53,13 @@ export async function processAudio(
     mp3Path = await convertToMp3(oggPath);
 
     progressTimer = setInterval(() => {
-      void sendTelegramMessage(
-        chatId,
-        "Распознавание продолжается...",
-        undefined,
-        ctx,
-      );
+      void sendTelegramMessage(chatId, "Распознавание продолжается...", undefined, ctx);
     }, 60_000);
 
     const res = (await sendAudioWhisper({ mp3Path })) as WhisperResponse;
 
     if (res.error) {
-      await sendTelegramMessage(
-        chatId,
-        `Ошибка распознавания: ${res.error}`,
-        undefined,
-        ctx,
-      );
+      await sendTelegramMessage(chatId, `Ошибка распознавания: ${res.error}`, undefined, ctx);
       return;
     }
 
@@ -88,12 +78,7 @@ export async function processAudio(
       "";
 
     if (!text) {
-      await sendTelegramMessage(
-        chatId,
-        "Не удалось распознать аудио",
-        undefined,
-        ctx,
-      );
+      await sendTelegramMessage(chatId, "Не удалось распознать аудио", undefined, ctx);
       return;
     }
 
@@ -139,20 +124,12 @@ export default async function onAudio(ctx: Context & { secondTry?: boolean }) {
   const { msg: accessMsg } = access;
 
   if (!useConfig().stt?.whisperBaseUrl) {
-    await sendTelegramMessage(
-      chatId,
-      "Аудио не поддерживается",
-      undefined,
-      ctx,
-    );
+    await sendTelegramMessage(chatId, "Аудио не поддерживается", undefined, ctx);
     return;
   }
-  const msg = accessMsg as unknown as
-    | Message.AudioMessage
-    | Message.VoiceMessage;
+  const msg = accessMsg as unknown as Message.AudioMessage | Message.VoiceMessage;
   const chatTitle = "title" in msg.chat ? msg.chat.title : "private_chat";
-  const voice =
-    (msg as Message.VoiceMessage).voice || (msg as Message.AudioMessage).audio;
+  const voice = (msg as Message.VoiceMessage).voice || (msg as Message.AudioMessage).audio;
   if (!voice) return;
 
   log({
@@ -162,7 +139,5 @@ export default async function onAudio(ctx: Context & { secondTry?: boolean }) {
     role: "user",
   });
 
-  await ctx.persistentChatAction("typing", async () =>
-    processAudio(ctx, voice, chatId),
-  );
+  await ctx.persistentChatAction("typing", async () => processAudio(ctx, voice, chatId));
 }

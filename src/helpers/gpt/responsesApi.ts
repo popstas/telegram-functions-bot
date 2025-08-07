@@ -12,12 +12,10 @@ export function convertResponsesInput(
     const { name: _unused, ...msg } = m;
     if (
       msg.role === "assistant" &&
-      (msg as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam)
-        .tool_calls?.length
+      (msg as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam).tool_calls?.length
     ) {
-      for (const call of (
-        msg as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam
-      ).tool_calls as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) {
+      for (const call of (msg as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam)
+        .tool_calls as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) {
         input.push({
           type: "function_call",
           name: call.function.name,
@@ -25,15 +23,11 @@ export function convertResponsesInput(
           call_id: call.id,
         } as OpenAI.Responses.ResponseFunctionToolCall);
       }
-      if (
-        (msg as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam)
-          .content
-      ) {
+      if ((msg as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam).content) {
         input.push({
           role: "assistant",
-          content: (
-            msg as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam
-          ).content as string,
+          content: (msg as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam)
+            .content as string,
           type: "message",
         } as OpenAI.Responses.EasyInputMessage);
       }
@@ -67,28 +61,24 @@ export function convertResponsesInput(
     }
   }
   if (apiParams.tools) {
-    respParams.tools = (apiParams.tools as OpenAI.ChatCompletionTool[]).map(
-      (t) => {
-        if (t.type === "function") {
-          const { function: fn, ...toolRest } = t;
-          return {
-            ...toolRest,
-            type: "function",
-            name: fn.name,
-            description: fn.description,
-            parameters: fn.parameters,
-          };
-        }
-        return t as unknown as Record<string, unknown>;
-      },
-    );
+    respParams.tools = (apiParams.tools as OpenAI.ChatCompletionTool[]).map((t) => {
+      if (t.type === "function") {
+        const { function: fn, ...toolRest } = t;
+        return {
+          ...toolRest,
+          type: "function",
+          name: fn.name,
+          description: fn.description,
+          parameters: fn.parameters,
+        };
+      }
+      return t as unknown as Record<string, unknown>;
+    });
   }
   return respParams;
 }
 
-export function getWebSearchDetails(
-  r: OpenAI.Responses.Response,
-): string | undefined {
+export function getWebSearchDetails(r: OpenAI.Responses.Response): string | undefined {
   if (!Array.isArray(r.output)) return undefined;
 
   type WebSearchCallItem = OpenAI.Responses.ResponseFunctionWebSearch & {
@@ -110,9 +100,7 @@ export function getWebSearchDetails(
     if (item.type === "web_search_call") {
       const action = (item as WebSearchCallItem).action;
       if (action && action.type === "open_page") {
-        const url = (
-          action as OpenAI.Responses.ResponseFunctionWebSearch.OpenPage
-        ).url;
+        const url = (action as OpenAI.Responses.ResponseFunctionWebSearch.OpenPage).url;
         if (url) opened.add(url);
       }
     }
@@ -124,9 +112,7 @@ export function getWebSearchDetails(
     if (item.type === "web_search_call") {
       const action = (item as WebSearchCallItem).action;
       if (action && action.type === "search") {
-        const query = (
-          action as OpenAI.Responses.ResponseFunctionWebSearch.Search
-        ).query;
+        const query = (action as OpenAI.Responses.ResponseFunctionWebSearch.Search).query;
         idx++;
         lines.push(`${idx}. ${query}:`);
       }
@@ -148,9 +134,7 @@ export function getWebSearchDetails(
   return lines.length ? "`Web search:`\n\n" + lines.join("\n") : undefined;
 }
 
-export async function convertResponsesOutput(
-  r: OpenAI.Responses.Response,
-): Promise<{
+export async function convertResponsesOutput(r: OpenAI.Responses.Response): Promise<{
   res: OpenAI.ChatCompletion;
   webSearchDetails?: string;
   images?: { id?: string; result: string }[];
@@ -158,9 +142,7 @@ export async function convertResponsesOutput(
   const functionCalls = Array.isArray(r.output)
     ? (
         r.output.filter(
-          (item) =>
-            (typeof item === "string" ? JSON.parse(item) : item).type ===
-            "function_call",
+          (item) => (typeof item === "string" ? JSON.parse(item) : item).type === "function_call",
         ) as (OpenAI.Responses.ResponseFunctionToolCall | string)[]
       ).map((item) => (typeof item === "string" ? JSON.parse(item) : item))
     : [];

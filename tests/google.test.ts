@@ -1,8 +1,5 @@
 import { jest } from "@jest/globals";
-import {
-  getUserGoogleCreds,
-  saveUserGoogleCreds,
-} from "../src/helpers/google.ts";
+import { getUserGoogleCreds, saveUserGoogleCreds } from "../src/helpers/google.ts";
 import fs from "fs";
 
 // Spy on fs functions
@@ -29,9 +26,7 @@ jest.mock("../src/config.ts", () => ({
 }));
 
 const originalConsole = { ...console };
-const mockExit = jest
-  .spyOn(process, "exit")
-  .mockImplementation(() => undefined as never);
+const mockExit = jest.spyOn(process, "exit").mockImplementation(() => undefined as never);
 
 beforeEach(() => {
   // Reset all mocks before each test
@@ -116,9 +111,7 @@ describe("Google API Integration Tests", () => {
 
       const creds = getUserGoogleCreds(userId);
       expect(creds).toEqual(mockCreds[userId]);
-      expect(mockExistsSync).toHaveBeenCalledWith(
-        expect.stringContaining("data/creds.json"),
-      );
+      expect(mockExistsSync).toHaveBeenCalledWith(expect.stringContaining("data/creds.json"));
       expect(mockReadFileSync).toHaveBeenCalledWith(
         expect.stringContaining("data/creds.json"),
         "utf8",
@@ -145,9 +138,7 @@ describe("Google API Integration Tests", () => {
 
       saveUserGoogleCreds(mockCreds, userId);
 
-      expect(mockExistsSync).toHaveBeenCalledWith(
-        expect.stringContaining("data/creds.json"),
-      );
+      expect(mockExistsSync).toHaveBeenCalledWith(expect.stringContaining("data/creds.json"));
       expect(mockReadFileSync).toHaveBeenCalledWith(
         expect.stringContaining("data/creds.json"),
         "utf8",

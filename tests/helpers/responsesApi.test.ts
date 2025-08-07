@@ -22,9 +22,7 @@ describe("responsesApi helpers", () => {
       ],
     };
     const res = convertResponsesInput(params);
-    expect(res.input).toEqual([
-      { role: "user", content: "hi", type: "message" },
-    ]);
+    expect(res.input).toEqual([{ role: "user", content: "hi", type: "message" }]);
     expect(res.tools).toEqual([
       {
         type: "function",
@@ -89,9 +87,7 @@ describe("responsesApi helpers", () => {
   it("converts responses output with function_call", async () => {
     const r: OpenAI.Responses.Response = {
       output_text: "",
-      output: [
-        { type: "function_call", call_id: "c", name: "t", arguments: "{}" },
-      ],
+      output: [{ type: "function_call", call_id: "c", name: "t", arguments: "{}" }],
     } as OpenAI.Responses.Response;
     const { res } = await convertResponsesOutput(r);
     expect(res.choices[0].message.tool_calls).toEqual([

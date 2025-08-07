@@ -3,11 +3,7 @@ import { Context } from "telegraf";
 import { useConfig } from "../config.ts";
 import { log } from "../helpers.ts";
 import { includesUser } from "../utils/users.ts";
-import {
-  ChatParamsType,
-  CompletionParamsType,
-  ConfigChatType,
-} from "../types.ts";
+import { ChatParamsType, CompletionParamsType, ConfigChatType } from "../types.ts";
 
 function isAccessAllowed(chatConfig: ConfigChatType, ctxChat: Chat) {
   const privateChat = ctxChat as Chat.PrivateChat;
@@ -19,21 +15,16 @@ function isAccessAllowed(chatConfig: ConfigChatType, ctxChat: Chat) {
   return includesUser(allowedUsers, username);
 }
 
-function getChatConfig(
-  ctxChat: Chat,
-  ctx: Context,
-): ConfigChatType | undefined {
+function getChatConfig(ctxChat: Chat, ctx: Context): ConfigChatType | undefined {
   let chat =
-    useConfig().chats.find(
-      (c) => c.id == ctxChat?.id || c.ids?.includes(ctxChat?.id) || 0,
-    ) || ({} as ConfigChatType);
+    useConfig().chats.find((c) => c.id == ctxChat?.id || c.ids?.includes(ctxChat?.id) || 0) ||
+    ({} as ConfigChatType);
 
   const defaultChat = useConfig().chats.find((c) => c.name === "default");
 
   if (!chat.id) {
     chat =
-      useConfig().chats.find((c) => c.bot_name === ctx.botInfo.username) ||
-      ({} as ConfigChatType);
+      useConfig().chats.find((c) => c.bot_name === ctx.botInfo.username) || ({} as ConfigChatType);
 
     if (chat.id && ctxChat?.type === "private") {
       if (!isAccessAllowed(chat, ctxChat)) {
@@ -63,9 +54,7 @@ function getChatConfig(
         return;
       }
 
-      const userChat = useConfig().chats.find(
-        (c) => c.username === privateChat.username || "",
-      );
+      const userChat = useConfig().chats.find((c) => c.username === privateChat.username || "");
       if (userChat) chat = userChat;
     }
   }
@@ -97,11 +86,7 @@ function getChatConfig(
       defaultChat,
       chat,
     );
-    mergeConfigParam<{ chatParams: ChatParamsType }>(
-      "chatParams",
-      defaultChat,
-      chat,
-    );
+    mergeConfigParam<{ chatParams: ChatParamsType }>("chatParams", defaultChat, chat);
   }
 
   return chat;
@@ -127,8 +112,7 @@ export function getCtxChatMsg(ctx: Context): {
   if (Object.prototype.hasOwnProperty.call(ctx, "update")) {
     const updateEdited = ctx.update as Update.EditedMessageUpdate;
     const updateNew = ctx.update as Update.MessageUpdate;
-    msg = (updateEdited.edited_message ||
-      updateNew.message) as Message.TextMessage;
+    msg = (updateEdited.edited_message || updateNew.message) as Message.TextMessage;
     ctxChat = msg?.chat;
   }
 

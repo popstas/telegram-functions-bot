@@ -28,9 +28,7 @@ describe("NextOffdayClient", () => {
 
   it("options_string formats args", () => {
     const client = new mod.NextOffdayClient();
-    const str = client.options_string(
-      '{"startOffDate":"2024-01-01","currentDate":"2024-01-03"}',
-    );
+    const str = client.options_string('{"startOffDate":"2024-01-01","currentDate":"2024-01-03"}');
     expect(str).toBe("`get_next_offday(2024-01-01, 2024-01-03)`");
   });
 

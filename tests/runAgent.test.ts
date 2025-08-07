@@ -14,10 +14,7 @@ jest.unstable_mockModule("../src/config.ts", () => ({
 }));
 
 import type { runAgent } from "../src/agent-runner.ts";
-const mockRunAgent = jest.fn<
-  ReturnType<typeof runAgent>,
-  Parameters<typeof runAgent>
->();
+const mockRunAgent = jest.fn<ReturnType<typeof runAgent>, Parameters<typeof runAgent>>();
 jest.unstable_mockModule("../src/agent-runner.ts", () => ({
   runAgent: (...args: Parameters<typeof runAgent>) => mockRunAgent(...args),
 }));
@@ -44,11 +41,7 @@ describe("CLI Agent", () => {
     const log = jest.spyOn(console, "log").mockImplementation(() => {});
     await runCliAgent(["test", "hello world"]);
     await Promise.resolve();
-    expect(mockRunAgent).toHaveBeenCalledWith(
-      "test",
-      "hello world",
-      expect.any(Function),
-    );
+    expect(mockRunAgent).toHaveBeenCalledWith("test", "hello world", expect.any(Function));
     expect(log).toHaveBeenCalledWith("test response");
     log.mockRestore();
   });

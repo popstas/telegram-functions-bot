@@ -8,9 +8,7 @@ export function useApi(localModel?: string): OpenAI {
   const cacheKey = localModel || "default";
   if (!apiCache[cacheKey]) {
     const config = useConfig();
-    const proxyAgent = config.auth.proxy_url
-      ? new ProxyAgent(config.auth.proxy_url)
-      : undefined;
+    const proxyAgent = config.auth.proxy_url ? new ProxyAgent(config.auth.proxy_url) : undefined;
 
     if (localModel) {
       const model = config.local_models.find((m) => m.name === localModel);

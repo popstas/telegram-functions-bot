@@ -13,9 +13,7 @@ jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   isOurUser: jest.fn(),
 }));
 
-const { addToHistory, forgetHistoryOnTimeout } = await import(
-  "../../src/helpers/history.ts"
-);
+const { addToHistory, forgetHistoryOnTimeout } = await import("../../src/helpers/history.ts");
 
 describe("history helpers", () => {
   beforeEach(() => {

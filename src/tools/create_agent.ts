@@ -29,14 +29,8 @@ export class CreateAgentClient extends AIFunctionsProvider {
     description,
     inputSchema: z.object({
       name: z.string().describe("Human friendly name").optional(),
-      description: z
-        .string()
-        .describe("Tool description for parent agent")
-        .optional(),
-      agent_name: z
-        .string()
-        .describe("Unique agent identifier (a-z0-9_)")
-        .optional(),
+      description: z.string().describe("Tool description for parent agent").optional(),
+      agent_name: z.string().describe("Unique agent identifier (a-z0-9_)").optional(),
       prompt: z.string().describe("System prompt for the new agent").optional(),
     }),
   })
@@ -50,17 +44,14 @@ export class CreateAgentClient extends AIFunctionsProvider {
     const agent: ConfigChatType = {
       name: args.name || `Agent ${Date.now()}`,
       agent_name:
-        args.agent_name ||
-        (args.name || "agent").toLowerCase().replace(/[^a-z0-9_]/g, "_"),
+        args.agent_name || (args.name || "agent").toLowerCase().replace(/[^a-z0-9_]/g, "_"),
       systemMessage: args.prompt || "You are an assistant",
       completionParams: { model: this.configChat.completionParams.model },
       chatParams: {} as ChatParamsType,
       toolParams: {} as ToolParamsType,
     };
     config.chats.push(agent);
-    const currentChat = config.chats.find(
-      (c) => c.agent_name === this.configChat.agent_name,
-    );
+    const currentChat = config.chats.find((c) => c.agent_name === this.configChat.agent_name);
     if (currentChat) {
       if (!currentChat.tools) currentChat.tools = [];
       currentChat.tools.push({

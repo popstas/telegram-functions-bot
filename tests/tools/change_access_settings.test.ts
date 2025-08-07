@@ -50,9 +50,7 @@ describe("ChangeAccessSettingsClient", () => {
 
   it("options_string formats message", () => {
     const client = new mod.ChangeAccessSettingsClient();
-    const str = client.options_string(
-      '{"addAdmin":["a"],"removePrivate":["b"]}',
-    );
+    const str = client.options_string('{"addAdmin":["a"],"removePrivate":["b"]}');
     expect(str).toBe("**Change access:** `addAdmin: a; removePrivate: b`");
   });
 

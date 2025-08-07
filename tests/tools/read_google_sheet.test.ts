@@ -1,10 +1,6 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import type { OAuth2Client } from "google-auth-library";
-import type {
-  ConfigChatType,
-  ThreadStateType,
-  ToolResponse,
-} from "../../src/types.ts";
+import type { ConfigChatType, ThreadStateType, ToolResponse } from "../../src/types.ts";
 
 const mockReadConfig = jest.fn();
 const mockReadSheet = jest.fn();

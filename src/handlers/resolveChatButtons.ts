@@ -1,10 +1,6 @@
 import { Context } from "telegraf";
 import { Message } from "telegraf/types";
-import {
-  ConfigChatButtonType,
-  ConfigChatType,
-  ThreadStateType,
-} from "../types.ts";
+import { ConfigChatButtonType, ConfigChatType, ThreadStateType } from "../types.ts";
 import { sendTelegramMessage } from "../telegram/send.ts";
 
 export default async function resolveChatButtons(

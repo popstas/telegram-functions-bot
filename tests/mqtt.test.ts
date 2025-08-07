@@ -70,15 +70,8 @@ describe("useMqtt", () => {
 
     mockRunAgent.mockResolvedValue("answer");
     await handlers.message("base/agent", Buffer.from("hi"));
-    expect(mockRunAgent).toHaveBeenCalledWith(
-      "agent",
-      "hi",
-      expect.any(Function),
-    );
-    expect(mqttClient.publish).toHaveBeenCalledWith(
-      "base/agent/answer",
-      "answer",
-    );
+    expect(mockRunAgent).toHaveBeenCalledWith("agent", "hi", expect.any(Function));
+    expect(mqttClient.publish).toHaveBeenCalledWith("base/agent/answer", "answer");
   });
 });
 
@@ -87,9 +80,6 @@ describe("publishMqttProgress", () => {
     mockUseConfig.mockReturnValue({ mqtt: { base: "base" } });
     useMqtt();
     publishMqttProgress("step", "agent");
-    expect(mqttClient.publish).toHaveBeenCalledWith(
-      "base/agent/progress",
-      "step",
-    );
+    expect(mqttClient.publish).toHaveBeenCalledWith("base/agent/progress", "step");
   });
 });

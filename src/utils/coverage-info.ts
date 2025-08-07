@@ -44,9 +44,7 @@ export function parseCoverage(coveragePath: string): FileCoverageInfo[] {
   }
 
   try {
-    const coverageData: CoverageSummary = JSON.parse(
-      readFileSync(absolutePath, "utf-8"),
-    );
+    const coverageData: CoverageSummary = JSON.parse(readFileSync(absolutePath, "utf-8"));
 
     return Object.entries(coverageData)
       .filter(([key]) => key !== "total")
@@ -58,8 +56,7 @@ export function parseCoverage(coveragePath: string): FileCoverageInfo[] {
         lines_coverage: fileCoverage.lines.pct,
         functions_total: fileCoverage.functions.total,
         functions_covered: fileCoverage.functions.covered,
-        functions_uncovered:
-          fileCoverage.functions.total - fileCoverage.functions.covered,
+        functions_uncovered: fileCoverage.functions.total - fileCoverage.functions.covered,
         functions_coverage: fileCoverage.functions.pct,
       }))
       .sort((a, b) => b.lines_uncovered - a.lines_uncovered);
@@ -69,9 +66,7 @@ export function parseCoverage(coveragePath: string): FileCoverageInfo[] {
   }
 }
 
-export function coverageInfo(
-  coveragePath = "coverage/coverage-summary.json",
-): void {
+export function coverageInfo(coveragePath = "coverage/coverage-summary.json"): void {
   const coverage = parseCoverage(coveragePath);
   console.log(JSON.stringify(coverage, null, 2));
 }

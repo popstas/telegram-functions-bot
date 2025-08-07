@@ -12,9 +12,7 @@ function makeCfg(root: string | undefined, outFile = "gpt.md"): ConfigChatType {
     agent_name: "agent",
     completionParams: {},
     chatParams: {},
-    toolParams: root
-      ? { obsidian: { root_path: root, out_file: outFile } }
-      : {},
+    toolParams: root ? { obsidian: { root_path: root, out_file: outFile } } : {},
   } as ConfigChatType;
 }
 

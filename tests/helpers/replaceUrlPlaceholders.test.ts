@@ -1,8 +1,5 @@
 import { jest } from "@jest/globals";
-import {
-  replaceUrlPlaceholders,
-  __clearUrlCache,
-} from "../../src/helpers/placeholders.ts";
+import { replaceUrlPlaceholders, __clearUrlCache } from "../../src/helpers/placeholders.ts";
 
 describe("replaceUrlPlaceholders", () => {
   beforeEach(() => {
@@ -10,9 +7,7 @@ describe("replaceUrlPlaceholders", () => {
   });
 
   it("replaces url placeholder with fetched content and caches it", async () => {
-    const fetchMock = jest
-      .fn()
-      .mockResolvedValue({ text: jest.fn().mockResolvedValue("OK") });
+    const fetchMock = jest.fn().mockResolvedValue({ text: jest.fn().mockResolvedValue("OK") });
     global.fetch = fetchMock as unknown as typeof fetch;
     const text = "Status: {url:https://example.com/status.html}";
     const res1 = await replaceUrlPlaceholders(text);

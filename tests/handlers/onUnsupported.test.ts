@@ -14,9 +14,7 @@ jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   sendTelegramDocument: jest.fn(),
 }));
 
-const { default: onUnsupported } = await import(
-  "../../src/handlers/onUnsupported.ts"
-);
+const { default: onUnsupported } = await import("../../src/handlers/onUnsupported.ts");
 
 function createCtx(message: Record<string, unknown>): Context {
   return {

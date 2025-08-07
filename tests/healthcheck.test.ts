@@ -1,11 +1,4 @@
-import {
-  jest,
-  describe,
-  it,
-  expect,
-  beforeEach,
-  afterEach,
-} from "@jest/globals";
+import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import { EventEmitter } from "events";
 
 const mockGet = jest.fn();
@@ -34,10 +27,7 @@ afterEach(() => {
 
 function mockResponse(path: string, status: number, data: string) {
   mockGet.mockImplementationOnce(
-    (
-      _opts: unknown,
-      cb: (res: EventEmitter & { statusCode?: number }) => void,
-    ) => {
+    (_opts: unknown, cb: (res: EventEmitter & { statusCode?: number }) => void) => {
       const res = new EventEmitter() as EventEmitter & { statusCode?: number };
       res.statusCode = status;
       cb(res);
@@ -63,11 +53,7 @@ function mockErrorResponse(error: Error) {
 describe("runHealthcheck", () => {
   it("returns true on healthy response", async () => {
     mockResponse("/ping", 200, "pong");
-    mockResponse(
-      "/health",
-      200,
-      JSON.stringify({ healthy: true, errors: [] } as HealthResponse),
-    );
+    mockResponse("/health", 200, JSON.stringify({ healthy: true, errors: [] } as HealthResponse));
     await expect(runHealthcheck()).resolves.toBe(true);
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
@@ -130,8 +116,6 @@ describe("runHealthcheck", () => {
       } as HealthResponse),
     );
     await expect(runHealthcheck()).resolves.toBe(false);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "Service unavailable\nConnection timeout",
-    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith("Service unavailable\nConnection timeout");
   });
 });

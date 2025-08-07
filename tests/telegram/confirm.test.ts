@@ -60,9 +60,7 @@ describe("telegramConfirm", () => {
     });
     await Promise.resolve();
     expect(mockSendTelegramMessage).toHaveBeenCalled();
-    const confirmName = Object.keys(actions).find((n) =>
-      n.startsWith("confirm_"),
-    )!;
+    const confirmName = Object.keys(actions).find((n) => n.startsWith("confirm_"))!;
     await actions[confirmName]({
       chat: { id: 1 },
       from: { id: 10 },
@@ -83,9 +81,7 @@ describe("telegramConfirm", () => {
       onCancel: async () => -1,
     });
     await Promise.resolve();
-    const cancelName = Object.keys(actions).find((n) =>
-      n.startsWith("cancel_"),
-    )!;
+    const cancelName = Object.keys(actions).find((n) => n.startsWith("cancel_"))!;
     await actions[cancelName]({
       chat: { id: 1 },
       from: { id: 10 },

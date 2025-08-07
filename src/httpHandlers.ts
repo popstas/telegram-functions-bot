@@ -11,15 +11,10 @@ import { addToHistory } from "./helpers/history.ts";
 
 const HTTP_LOG_PATH = "data/http.log";
 
-const pkg = JSON.parse(
-  readFileSync(new URL("../package.json", import.meta.url), "utf-8"),
-);
+const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf-8"));
 const version = pkg.version;
 
-export async function agentGetHandler(
-  req: express.Request,
-  res: express.Response,
-) {
+export async function agentGetHandler(req: express.Request, res: express.Response) {
   const { agentName } = req.params;
 
   try {
@@ -40,15 +35,11 @@ function checkAuth(chatConfig?: ConfigChatType, token?: string) {
   const chatToken = chatConfig?.http_token;
   const requestToken = token?.split(" ")[1];
   const isAccess =
-    (chatToken && requestToken === chatToken) ||
-    (globalToken && requestToken === globalToken);
+    (chatToken && requestToken === chatToken) || (globalToken && requestToken === globalToken);
   return isAccess;
 }
 
-export async function agentPostHandler(
-  req: express.Request,
-  res: express.Response,
-) {
+export async function agentPostHandler(req: express.Request, res: express.Response) {
   const { agentName } = req.params;
   const { text, webhook } = req.body || {};
   const token = req.headers["authorization"];
@@ -132,10 +123,7 @@ export async function agentPostHandler(
   }
 }
 
-export async function toolPostHandler(
-  req: express.Request,
-  res: express.Response,
-) {
+export async function toolPostHandler(req: express.Request, res: express.Response) {
   const { agentName, toolName } = req.params;
   const args = req.body || {};
   const token = req.headers["authorization"];
@@ -156,9 +144,7 @@ export async function toolPostHandler(
     });
     return res.status(400).send("Wrong agent_name");
   }
-  const chatId =
-    agentConfig.id ||
-    parseInt("666" + Math.floor(100000 + Math.random() * 900000));
+  const chatId = agentConfig.id || parseInt("666" + Math.floor(100000 + Math.random() * 900000));
   const thread = {
     id: chatId,
     msgs: [],

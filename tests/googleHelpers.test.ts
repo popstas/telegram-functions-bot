@@ -95,10 +95,7 @@ describe("google helpers", () => {
   it("saveUserGoogleCreds writes merged creds", () => {
     mockExistsSync.mockReturnValue(true);
     mockReadFileSync.mockReturnValue("{}");
-    googleHelpers.saveUserGoogleCreds(
-      { token: "t" } as unknown as Credentials,
-      3,
-    );
+    googleHelpers.saveUserGoogleCreds({ token: "t" } as unknown as Credentials, 3);
     expect(mockWriteFileSync).toHaveBeenCalledWith(
       expect.stringContaining("creds.json"),
       JSON.stringify({ 3: { token: "t" } }, null, 2),

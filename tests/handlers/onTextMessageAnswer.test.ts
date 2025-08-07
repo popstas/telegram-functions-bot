@@ -37,9 +37,7 @@ const mockSendTelegramMessage = jest.fn();
 const mockUseConfig = jest.fn();
 
 // Default mock implementations
-mockRequestGptAnswer.mockImplementation(() =>
-  Promise.resolve({ content: "hi" }),
-);
+mockRequestGptAnswer.mockImplementation(() => Promise.resolve({ content: "hi" }));
 mockSendTelegramMessage.mockImplementation(() =>
   Promise.resolve({ chat: { id: 1 } } as Message.TextMessage),
 );
@@ -75,9 +73,7 @@ jest.unstable_mockModule("../../src/threads.ts", () => ({
 
 let handlers: typeof import("../../src/handlers/onTextMessage.ts");
 
-function createCtx(
-  message: Record<string, unknown>,
-): Context & { secondTry?: boolean } {
+function createCtx(message: Record<string, unknown>): Context & { secondTry?: boolean } {
   return {
     message,
     update: { message },
@@ -184,13 +180,7 @@ describe("answerToMessage", () => {
     );
 
     // Verify sendTelegramMessage was called correctly
-    expect(mockSendTelegramMessage).toHaveBeenCalledWith(
-      1,
-      "hi",
-      expect.anything(),
-      ctx,
-      chat,
-    );
+    expect(mockSendTelegramMessage).toHaveBeenCalledWith(1, "hi", expect.anything(), ctx, chat);
 
     // Verify the message was added to history
     expect(threads[1].msgs.length).toBe(1);

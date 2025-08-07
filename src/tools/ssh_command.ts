@@ -1,12 +1,7 @@
 import { aiFunction, AIFunctionsProvider } from "@agentic/core";
 import { z } from "zod";
 import { readConfig } from "../config.ts";
-import {
-  ConfigChatType,
-  ConfigType,
-  SshConfigType,
-  ToolResponse,
-} from "../types.ts";
+import { ConfigChatType, ConfigType, SshConfigType, ToolResponse } from "../types.ts";
 import { exec } from "child_process";
 import { writeFileSync } from "fs";
 import * as path from "path";
@@ -16,8 +11,7 @@ type ToolArgsType = {
   command: string;
 };
 
-export const description =
-  "Run commands via SSH, can run multiline scripts as command";
+export const description = "Run commands via SSH, can run multiline scripts as command";
 export const details = `- convert question to command
 - exec ssh from your machine, with your user ssh access
 - answer with command output
@@ -79,10 +73,7 @@ export class SshCommandClient extends AIFunctionsProvider {
             if (sshError) {
               // console.error(`ssh error: ${sshError.message}`);
               if (sshError.code) {
-                const errorMsg = sshError.message.replace(
-                  /Command failed: ssh .* "bash .*?"/,
-                  "",
-                );
+                const errorMsg = sshError.message.replace(/Command failed: ssh .* "bash .*?"/, "");
                 const outPipe = (name: string, output: string) =>
                   output.trim() ? `${name}:\n\`\`\`${output}\n\`\`\`\n\n` : "";
                 resolve({

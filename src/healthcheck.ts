@@ -45,14 +45,11 @@ export async function request(path: string): Promise<{
   data: string;
 }> {
   return new Promise((resolve) => {
-    const req = http.get(
-      { host: "localhost", port: process.env.PORT || 7586, path },
-      (res) => {
-        let data = "";
-        res.on("data", (c) => (data += c));
-        res.on("end", () => resolve({ statusCode: res.statusCode || 0, data }));
-      },
-    );
+    const req = http.get({ host: "localhost", port: process.env.PORT || 7586, path }, (res) => {
+      let data = "";
+      res.on("data", (c) => (data += c));
+      res.on("end", () => resolve({ statusCode: res.statusCode || 0, data }));
+    });
     req.on("error", () => resolve({ statusCode: 0, data: "" }));
   });
 }
@@ -84,9 +81,7 @@ export const runHealthcheck = async () => {
 (async () => {
   const isMain = (() => {
     const currentFilePath = fileURLToPath(import.meta.url);
-    const scriptPath = process.argv[1]
-      ? resolve(process.cwd(), process.argv[1])
-      : "";
+    const scriptPath = process.argv[1] ? resolve(process.cwd(), process.argv[1]) : "";
     return scriptPath === currentFilePath;
   })();
   if (isMain) {

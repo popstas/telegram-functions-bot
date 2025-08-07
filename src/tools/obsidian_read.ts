@@ -1,12 +1,7 @@
 import * as fs from "fs";
 import { aiFunction, AIFunctionsProvider } from "@agentic/core";
 import { z } from "zod";
-import {
-  ConfigChatType,
-  ConfigType,
-  ObsidianConfigType,
-  ToolResponse,
-} from "../types.ts";
+import { ConfigChatType, ConfigType, ObsidianConfigType, ToolResponse } from "../types.ts";
 import { readConfig } from "../config.ts";
 import path from "node:path";
 // @ts-expect-error - No type definitions available for recursive-readdir
@@ -16,8 +11,7 @@ type ToolArgsType = {
   file_path: string;
 };
 
-export const description =
-  "Read the contents of an Obsidian file by files list";
+export const description = "Read the contents of an Obsidian file by files list";
 export const details = `- read all obsidian file tree and includes it to prompt
 - when answer, read the content from file(s) by path
 - root_path: toolParams.obsidian.root_path
@@ -50,13 +44,9 @@ export class ObsidianReadClient extends AIFunctionsProvider {
     }),
   })
   obsidian_read(options: ToolArgsType): ToolResponse {
-    const root_path = path.resolve(
-      this.configChat.toolParams?.obsidian?.root_path || ".",
-    );
+    const root_path = path.resolve(this.configChat.toolParams?.obsidian?.root_path || ".");
     const file_paths = this.getFilePath(options);
-    const file_paths_abs = file_paths.map((f) =>
-      path.resolve(`${root_path}/${f}`),
-    );
+    const file_paths_abs = file_paths.map((f) => path.resolve(`${root_path}/${f}`));
     const content = file_paths_abs
       .map((f) => {
         try {

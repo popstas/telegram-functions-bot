@@ -62,9 +62,7 @@ jest.unstable_mockModule("../../src/threads.ts", () => ({
 
 let onTextMessage: (ctx: Context & { secondTry?: boolean }) => Promise<void>;
 
-function createCtx(
-  message: Record<string, unknown>,
-): Context & { secondTry?: boolean } {
+function createCtx(message: Record<string, unknown>): Context & { secondTry?: boolean } {
   return {
     message,
     update: { message },
@@ -103,13 +101,7 @@ describe("onTextMessage memory", () => {
       metadata: { chatId: 1, userId: 2, messageId: 42 },
       chat,
     });
-    expect(mockSendTelegramMessage).toHaveBeenCalledWith(
-      1,
-      "Запомнил",
-      undefined,
-      ctx,
-      chat,
-    );
+    expect(mockSendTelegramMessage).toHaveBeenCalledWith(1, "Запомнил", undefined, ctx, chat);
     expect(mockAddToHistory).not.toHaveBeenCalled();
   });
 });

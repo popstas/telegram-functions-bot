@@ -8,9 +8,7 @@ import { log } from "../helpers.ts";
 
 export default async function checkAccessLevel(
   ctx: Context,
-): Promise<
-  { msg: Message.TextMessage; chat: ConfigChatType } | false | undefined
-> {
+): Promise<{ msg: Message.TextMessage; chat: ConfigChatType } | false | undefined> {
   const { msg, chat } = getCtxChatMsg(ctx);
   if (!msg) {
     console.log("no ctx message detected");
@@ -69,16 +67,10 @@ export function isMentioned(
   const prefix = chat.prefix ?? "";
   const isPrivate = msg.chat.type === "private";
   if (isPrivate) return true;
-  const text =
-    (msg as Message.TextMessage).text ||
-    (msg as { caption?: string }).caption ||
-    "";
+  const text = (msg as Message.TextMessage).text || (msg as { caption?: string }).caption || "";
 
-  const replyAuthor = (msg.reply_to_message as Message.TextMessage)?.from
-    ?.username;
-  const isReply = Boolean(
-    msg.reply_to_message && msg.from?.username !== replyAuthor,
-  );
+  const replyAuthor = (msg.reply_to_message as Message.TextMessage)?.from?.username;
+  const isReply = Boolean(msg.reply_to_message && msg.from?.username !== replyAuthor);
   const replyToBot = isReply && replyAuthor === botName;
   const replyToOther = isReply && replyAuthor !== botName;
 

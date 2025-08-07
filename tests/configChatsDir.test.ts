@@ -40,19 +40,13 @@ describe("chats dir mode", () => {
   });
 
   it("updateChatInConfig writes only chat file", () => {
-    const beforeCfg = yaml.load(readFileSync(configPath, "utf8")) as Record<
-      string,
-      unknown
-    >;
+    const beforeCfg = yaml.load(readFileSync(configPath, "utf8")) as Record<string, unknown>;
     const updated: ConfigChatType = {
       ...mod.useConfig().chats[0],
       description: "new",
     };
     mod.updateChatInConfig(updated);
-    const afterCfg = yaml.load(readFileSync(configPath, "utf8")) as Record<
-      string,
-      unknown
-    >;
+    const afterCfg = yaml.load(readFileSync(configPath, "utf8")) as Record<string, unknown>;
     expect(afterCfg.useChatsDir).toBe(true);
     expect(afterCfg.chatsDir).toBe(beforeCfg.chatsDir);
     expect("chats" in afterCfg).toBe(false);
@@ -61,19 +55,13 @@ describe("chats dir mode", () => {
   });
 
   it("syncButtons updates chat file", async () => {
-    const beforeCfg = yaml.load(readFileSync(configPath, "utf8")) as Record<
-      string,
-      unknown
-    >;
+    const beforeCfg = yaml.load(readFileSync(configPath, "utf8")) as Record<string, unknown>;
     const chat = {
       ...mod.useConfig().chats[0],
       buttonsSync: { sheetId: "id", sheetName: "name" },
     } as ConfigChatType;
     await mod.syncButtons(chat, {} as unknown as Record<string, unknown>);
-    const afterCfg = yaml.load(readFileSync(configPath, "utf8")) as Record<
-      string,
-      unknown
-    >;
+    const afterCfg = yaml.load(readFileSync(configPath, "utf8")) as Record<string, unknown>;
     expect(afterCfg.useChatsDir).toBe(true);
     expect(afterCfg.chatsDir).toBe(beforeCfg.chatsDir);
     expect("chats" in afterCfg).toBe(false);

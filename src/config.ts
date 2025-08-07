@@ -37,9 +37,7 @@ function writeFileIfChanged(path: string, content: string) {
 
 export function loadChatsFromDir(dir: string): ConfigChatType[] {
   if (!existsSync(dir)) return [];
-  const files = readdirSync(dir).filter(
-    (f) => f.endsWith(".yml") || f.endsWith(".yaml"),
-  );
+  const files = readdirSync(dir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"));
   const chats: ConfigChatType[] = [];
   for (const file of files) {
     const content = readFileSync(path.join(dir, file), "utf8");
@@ -54,9 +52,7 @@ export function saveChatsToDir(dir: string, chats: ConfigChatType[]) {
     mkdirSync(dir, { recursive: true });
   }
   chats.forEach((chat) => {
-    const nameForFile = chat.username
-      ? `private_${chat.username}`
-      : `${chat.name || chat.id}`;
+    const nameForFile = chat.username ? `private_${chat.username}` : `${chat.name || chat.id}`;
     const safe = safeFilename(nameForFile, `${chat.id || 0}`);
     const filePath = path.join(dir, `${safe}.yml`);
     const yamlRaw = yaml.dump(chat, {
@@ -215,8 +211,7 @@ export function generateConfig(): ConfigType {
         completionParams: {
           model: "gpt-4.1-mini",
         },
-        systemMessage:
-          "You are using functions to answer the questions. Current date: {date}",
+        systemMessage: "You are using functions to answer the questions. Current date: {date}",
         tools: ["javascript_interpreter", "brainstorm", "fetch"],
         chatParams: {
           forgetTimeout: 600,
@@ -257,8 +252,7 @@ export function generateConfig(): ConfigType {
           temperature: 0.7,
         },
         local_model: "",
-        systemMessage:
-          "You are using functions to answer the questions. Current date: {date}",
+        systemMessage: "You are using functions to answer the questions. Current date: {date}",
         buttons: [{ name: "button_name", prompt: "button_prompt" }],
         buttonsSync: {
           sheetId: "sheet_id",
@@ -274,9 +268,7 @@ export function generateConfig(): ConfigType {
         ],
         http_token: "change_me",
         tools: ["javascript_interpreter", "brainstorm", "fetch"],
-        evaluators: [
-          { agent_name: "evaluator", threshold: 4, maxIterations: 2 },
-        ],
+        evaluators: [{ agent_name: "evaluator", threshold: 4, maxIterations: 2 }],
         chatParams: {
           forgetTimeout: 600,
           deleteToolAnswers: 60,
@@ -330,9 +322,7 @@ export function updateChatInConfig(chatConfig: ConfigChatType) {
   const config = useConfig();
   let idx = -1;
   if (chatConfig.id) {
-    idx = config.chats.findIndex(
-      (c) => c.id === chatConfig.id || c.ids?.includes(chatConfig.id!),
-    );
+    idx = config.chats.findIndex((c) => c.id === chatConfig.id || c.ids?.includes(chatConfig.id!));
   }
   if (idx === -1 && chatConfig.username) {
     idx = config.chats.findIndex((c) => c.username === chatConfig.username);
@@ -355,11 +345,7 @@ export function updateChatInConfig(chatConfig: ConfigChatType) {
 export function checkConfigSchema(config: ConfigType) {
   // check root
   const rootKeys = Object.keys(generateConfig()) as Array<keyof ConfigType>;
-  const checkKeys = (
-    obj: Record<string, unknown>,
-    allowed: string[],
-    path = "",
-  ) => {
+  const checkKeys = (obj: Record<string, unknown>, allowed: string[], path = "") => {
     Object.keys(obj).forEach((k) => {
       if (!allowed.includes(k)) {
         let target = path;
@@ -376,11 +362,7 @@ export function checkConfigSchema(config: ConfigType) {
   };
   checkKeys(config as unknown as Record<string, unknown>, rootKeys);
   config.local_models?.forEach((m, idx) =>
-    checkKeys(
-      m as Record<string, unknown>,
-      ["name", "url", "model"],
-      `local_models[${idx}].`,
-    ),
+    checkKeys(m as Record<string, unknown>, ["name", "url", "model"], `local_models[${idx}].`),
   );
 
   // check chats
@@ -390,10 +372,7 @@ export function checkConfigSchema(config: ConfigType) {
   const chatKeys = Object.keys(exampleChat) as Array<keyof ConfigChatType>;
   config.chats.forEach((c, idx) => {
     checkKeys(c as Record<string, unknown>, chatKeys, `chats[${idx}].`);
-    if (
-      c.chatParams &&
-      "showTelegramNames" in (c.chatParams as Record<string, unknown>)
-    ) {
+    if (c.chatParams && "showTelegramNames" in (c.chatParams as Record<string, unknown>)) {
       log({
         msg: `chats[${c.name || idx}].chatParams.showTelegramNames is deprecated`,
         logLevel: "warn",
@@ -402,11 +381,7 @@ export function checkConfigSchema(config: ConfigType) {
   });
 }
 
-export function logConfigChanges(
-  oldConfig: ConfigType,
-  newConfig: ConfigType,
-  file?: string,
-) {
+export function logConfigChanges(oldConfig: ConfigType, newConfig: ConfigType, file?: string) {
   const filename = file || configPath;
 
   if (oldConfig.useChatsDir || newConfig.useChatsDir) {
@@ -477,10 +452,7 @@ export function setConfigPath(path: string) {
   configPath = path;
 }
 
-export async function syncButtons(
-  chat: ConfigChatType,
-  authClient: OAuth2Client | GoogleAuth,
-) {
+export async function syncButtons(chat: ConfigChatType, authClient: OAuth2Client | GoogleAuth) {
   const syncConfig = chat.buttonsSync || {
     sheetId: "1TCtetO2kEsV7_yaLMej0GCR3lmDMg9nVRyRr82KT5EE",
     sheetName: "gpt prompts all private chats",
@@ -508,20 +480,14 @@ export async function getGoogleButtons(
   syncConfig: ButtonsSyncConfigType,
   authClient: OAuth2Client | GoogleAuth,
 ) {
-  const rows = await readGoogleSheet(
-    syncConfig.sheetId,
-    syncConfig.sheetName,
-    authClient,
-  );
+  const rows = await readGoogleSheet(syncConfig.sheetId, syncConfig.sheetName, authClient);
   if (!rows) {
     console.error(`Failed to load sheet "${syncConfig.sheetId}"`);
     return;
   }
 
   const buttons: ConfigChatButtonType[] = [];
-  for (const row of rows.slice(1) as Array<
-    [string, string, number?, string?]
-  >) {
+  for (const row of rows.slice(1) as Array<[string, string, number?, string?]>) {
     const button: ConfigChatButtonType = {
       name: row[0],
       prompt: row[1],

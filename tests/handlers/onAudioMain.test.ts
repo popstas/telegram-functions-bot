@@ -70,9 +70,7 @@ beforeEach(async () => {
     arrayBuffer: async () => Buffer.from("data"),
   }) as unknown as typeof fetch;
   jest.spyOn(fs.promises, "writeFile").mockResolvedValue();
-  jest
-    .spyOn(fs, "existsSync")
-    .mockImplementation((p) => !String(p).startsWith("data"));
+  jest.spyOn(fs, "existsSync").mockImplementation((p) => !String(p).startsWith("data"));
   jest.spyOn(fs, "unlinkSync").mockImplementation(() => {});
   mockConvertToMp3.mockResolvedValue("file.mp3");
   mockSendAudioWhisper.mockResolvedValue({ text: "hello" });
@@ -103,20 +101,15 @@ describe("onAudio main", () => {
     } as Message.VoiceMessage;
     mockCheckAccessLevel.mockResolvedValue({ msg });
     mockUseConfig.mockReturnValue({ stt: { whisperBaseUrl: "http://w" } });
-    const persistentChatAction = jest.fn(
-      async (_: string, fn: () => Promise<void>) => {
-        await fn();
-      },
-    );
+    const persistentChatAction = jest.fn(async (_: string, fn: () => Promise<void>) => {
+      await fn();
+    });
     const ctx = {
       ...createCtx(msg),
       chat: msg.chat,
       persistentChatAction,
     } as Context & { secondTry?: boolean };
     await onAudio(ctx);
-    expect(persistentChatAction).toHaveBeenCalledWith(
-      "typing",
-      expect.any(Function),
-    );
+    expect(persistentChatAction).toHaveBeenCalledWith("typing", expect.any(Function));
   });
 });

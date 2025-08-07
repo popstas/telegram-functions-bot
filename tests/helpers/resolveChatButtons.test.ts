@@ -1,10 +1,6 @@
 import { jest } from "@jest/globals";
 import { Context, Message } from "telegraf/types";
-import {
-  ConfigChatType,
-  ConfigChatButtonType,
-  ThreadStateType,
-} from "../../src/types.ts";
+import { ConfigChatType, ConfigChatButtonType, ThreadStateType } from "../../src/types.ts";
 
 const mockSendTelegramMessage = jest.fn();
 
@@ -13,9 +9,7 @@ jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   sendTelegramDocument: jest.fn(),
 }));
 
-const { default: resolveChatButtons } = await import(
-  "../../src/handlers/resolveChatButtons.ts"
-);
+const { default: resolveChatButtons } = await import("../../src/handlers/resolveChatButtons.ts");
 
 describe("resolveChatButtons", () => {
   beforeEach(() => {
@@ -55,13 +49,7 @@ describe("resolveChatButtons", () => {
       dynamicButtons: undefined,
     };
 
-    const res = await resolveChatButtons(
-      {} as unknown as Context,
-      msg,
-      chat,
-      thread,
-      {},
-    );
+    const res = await resolveChatButtons({} as unknown as Context, msg, chat, thread, {});
 
     expect(res).toBeUndefined();
     expect(thread.activeButton).toEqual(button);

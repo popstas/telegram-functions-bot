@@ -6,9 +6,7 @@ import type { Message } from "telegraf/types";
 jest.unstable_mockModule("../../src/bot.ts", () => ({
   useBot: () => ({
     telegram: {
-      sendMessage: jest
-        .fn()
-        .mockResolvedValue({ message_id: 1, chat: { id: 1 } }),
+      sendMessage: jest.fn().mockResolvedValue({ message_id: 1, chat: { id: 1 } }),
       editMessageText: jest.fn(),
       deleteMessage: jest.fn(),
     },
@@ -19,9 +17,7 @@ let handleCompletionStream: typeof import("../../src/helpers/gpt/streaming.ts").
 
 beforeEach(async () => {
   jest.resetModules();
-  ({ handleCompletionStream } = await import(
-    "../../src/helpers/gpt/streaming.ts"
-  ));
+  ({ handleCompletionStream } = await import("../../src/helpers/gpt/streaming.ts"));
 });
 
 describe("handleCompletionStream tool_calls", () => {

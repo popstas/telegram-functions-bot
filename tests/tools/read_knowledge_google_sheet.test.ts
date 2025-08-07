@@ -39,10 +39,7 @@ describe("KnowledgeGoogleSheetClient", () => {
       { title: "A", text: "1" },
       { title: "B", text: "2" },
     ]);
-    const client = new mod.KnowledgeGoogleSheetClient(
-      cfg(),
-      {} as OAuth2Client,
-    );
+    const client = new mod.KnowledgeGoogleSheetClient(cfg(), {} as OAuth2Client);
     const res = await client.read_knowledge_google_sheet({ title: "B" });
     expect(res.content).toBe("2");
     await client.read_knowledge_google_sheet({ title: "A" });
@@ -51,22 +48,14 @@ describe("KnowledgeGoogleSheetClient", () => {
 
   it("returns default message when not found", async () => {
     mockReadSheet.mockResolvedValue([{ title: "A", text: "1" }]);
-    const client = new mod.KnowledgeGoogleSheetClient(
-      cfg(),
-      {} as OAuth2Client,
-    );
+    const client = new mod.KnowledgeGoogleSheetClient(cfg(), {} as OAuth2Client);
     const res = await client.read_knowledge_google_sheet({ title: "X" });
     expect(res.content).toBe("No answer found for X");
   });
 
   it("options_string formats title", () => {
-    const client = new mod.KnowledgeGoogleSheetClient(
-      cfg(),
-      {} as OAuth2Client,
-    );
-    expect(client.options_string('{"title":"T"}')).toBe(
-      "**Google sheet:** `T`",
-    );
+    const client = new mod.KnowledgeGoogleSheetClient(cfg(), {} as OAuth2Client);
+    expect(client.options_string('{"title":"T"}')).toBe("**Google sheet:** `T`");
   });
 
   it("prompt_append lists titles", async () => {
@@ -74,10 +63,7 @@ describe("KnowledgeGoogleSheetClient", () => {
       { title: "A", text: "1" },
       { title: "B", text: "2" },
     ]);
-    const client = new mod.KnowledgeGoogleSheetClient(
-      cfg(),
-      {} as OAuth2Client,
-    );
+    const client = new mod.KnowledgeGoogleSheetClient(cfg(), {} as OAuth2Client);
     const txt = await client.prompt_append();
     expect(txt).toContain("- A");
     expect(txt).toContain("- B");

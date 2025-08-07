@@ -15,9 +15,7 @@ jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   sendTelegramDocument: jest.fn(),
 }));
 
-const { default: checkAccessLevel } = await import(
-  "../../src/handlers/access.ts"
-);
+const { default: checkAccessLevel } = await import("../../src/handlers/access.ts");
 
 describe("checkAccessLevel", () => {
   beforeEach(() => {
@@ -38,9 +36,7 @@ describe("checkAccessLevel", () => {
     } as ConfigChatType;
     mockGetCtxChatMsg.mockReturnValue({ msg, chat });
 
-    const ctx = { message: msg } as unknown as Parameters<
-      typeof checkAccessLevel
-    >[0];
+    const ctx = { message: msg } as unknown as Parameters<typeof checkAccessLevel>[0];
 
     const res = await checkAccessLevel(ctx);
     expect(res).toEqual({ msg, chat });
@@ -55,9 +51,7 @@ describe("checkAccessLevel", () => {
     } as unknown as Message.TextMessage;
     mockGetCtxChatMsg.mockReturnValue({ msg, chat: undefined });
 
-    const ctx = { message: msg } as unknown as Parameters<
-      typeof checkAccessLevel
-    >[0];
+    const ctx = { message: msg } as unknown as Parameters<typeof checkAccessLevel>[0];
 
     const res = await checkAccessLevel(ctx);
     expect(res).toBeUndefined();
@@ -79,9 +73,7 @@ describe("checkAccessLevel", () => {
     } as ConfigChatType;
     mockGetCtxChatMsg.mockReturnValue({ msg, chat });
 
-    const ctx = { message: msg } as unknown as Parameters<
-      typeof checkAccessLevel
-    >[0];
+    const ctx = { message: msg } as unknown as Parameters<typeof checkAccessLevel>[0];
 
     const res = await checkAccessLevel(ctx);
     expect(res).toBe(false);
@@ -90,9 +82,7 @@ describe("checkAccessLevel", () => {
 
   it("returns undefined when message missing", async () => {
     mockGetCtxChatMsg.mockReturnValue({ chat: undefined, msg: undefined });
-    const res = await checkAccessLevel(
-      {} as Parameters<typeof checkAccessLevel>[0],
-    );
+    const res = await checkAccessLevel({} as Parameters<typeof checkAccessLevel>[0]);
     expect(res).toBeUndefined();
     expect(mockSendTelegramMessage).not.toHaveBeenCalled();
   });

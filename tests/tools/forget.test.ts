@@ -46,9 +46,7 @@ describe("ForgetClient", () => {
     const client = new mod.ForgetClient(cfg, thread);
     const res = await client.forget({});
     expect(res.content).toContain("boom");
-    expect(mockLog).toHaveBeenCalledWith(
-      expect.objectContaining({ logLevel: "error" }),
-    );
+    expect(mockLog).toHaveBeenCalledWith(expect.objectContaining({ logLevel: "error" }));
   });
 
   it("options_string constant", () => {

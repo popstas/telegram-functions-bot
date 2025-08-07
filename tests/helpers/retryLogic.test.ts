@@ -98,12 +98,7 @@ describe.skip("executeTools retry logic", () => {
     });
 
     await expect(
-      executeTools(
-        mockToolCalls as any,
-        mockChatTools as any,
-        mockChatConfig,
-        mockMsg,
-      ),
+      executeTools(mockToolCalls as any, mockChatTools as any, mockChatConfig, mockMsg),
     ).rejects.toThrow("400 Invalid parameter");
 
     expect(mockCallTools).toHaveBeenCalledTimes(1);
@@ -118,12 +113,7 @@ describe.skip("executeTools retry logic", () => {
     });
 
     await expect(
-      executeTools(
-        mockToolCalls as any,
-        mockChatTools as any,
-        mockChatConfig,
-        mockMsg,
-      ),
+      executeTools(mockToolCalls as any, mockChatTools as any, mockChatConfig, mockMsg),
     ).rejects.toThrow("500 Internal Server Error");
 
     expect(mockCallTools).toHaveBeenCalledTimes(1);

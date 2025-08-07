@@ -49,13 +49,7 @@ jest.unstable_mockModule("js-yaml", () => ({
 
 // Import the module under test after setting up mocks
 const configMod = await import("../src/config.ts");
-const {
-  readConfig,
-  writeConfig,
-  generateConfig,
-  loadChatsFromDir,
-  saveChatsToDir,
-} = configMod;
+const { readConfig, writeConfig, generateConfig, loadChatsFromDir, saveChatsToDir } = configMod;
 
 describe("generateConfig", () => {
   it("sets defaults for chat directory fields", () => {
@@ -80,10 +74,7 @@ describe("readConfig", () => {
 
     expect(mockExistsSync).toHaveBeenCalledWith("testConfig.yml");
     expect(mockDump).toHaveBeenCalledWith(mockConfig, expect.any(Object));
-    expect(mockWriteFileSync).toHaveBeenCalledWith(
-      "testConfig.yml",
-      "mockYaml",
-    );
+    expect(mockWriteFileSync).toHaveBeenCalledWith("testConfig.yml", "mockYaml");
     expect(config).toEqual(mockConfig);
   });
 
@@ -112,10 +103,7 @@ describe("readConfig", () => {
       .mockReturnValueOnce("c2yaml");
     const chat1 = { name: "c1", agent_name: "c1" } as ConfigChatType;
     const chat2 = { name: "c2", agent_name: "c2" } as ConfigChatType;
-    mockLoad
-      .mockReturnValueOnce(cfg)
-      .mockReturnValueOnce(chat1)
-      .mockReturnValueOnce(chat2);
+    mockLoad.mockReturnValueOnce(cfg).mockReturnValueOnce(chat1).mockReturnValueOnce(chat2);
     mockReaddirSync.mockReturnValue(["c1.yml", "c2.yml"]);
 
     const res = readConfig("testConfig.yml");
@@ -139,10 +127,7 @@ describe("writeConfig", () => {
     const config = writeConfig("testConfig.yml", mockConfig);
 
     expect(mockDump).toHaveBeenCalledWith(mockConfig, expect.any(Object));
-    expect(mockWriteFileSync).toHaveBeenCalledWith(
-      "testConfig.yml",
-      "mockYaml",
-    );
+    expect(mockWriteFileSync).toHaveBeenCalledWith("testConfig.yml", "mockYaml");
     expect(config).toEqual(mockConfig);
   });
 
@@ -152,17 +137,12 @@ describe("writeConfig", () => {
     mockDump.mockImplementation(() => {
       throw mockError;
     });
-    const consoleErrorSpy = jest
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
     const config = writeConfig("testConfig.yml", mockConfig);
 
     expect(mockDump).toHaveBeenCalledWith(mockConfig, expect.any(Object));
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "Error in writeConfig(): ",
-      mockError,
-    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith("Error in writeConfig(): ", mockError);
     expect(config).toEqual(mockConfig);
 
     // Clean up
@@ -186,10 +166,7 @@ describe("writeConfig", () => {
 
     const res = writeConfig("cfg.yml", cfg);
 
-    expect(mockWriteFileSync).toHaveBeenCalledWith(
-      path.join("chats", "c1.yml"),
-      "chatYaml",
-    );
+    expect(mockWriteFileSync).toHaveBeenCalledWith(path.join("chats", "c1.yml"), "chatYaml");
     expect(mockWriteFileSync).toHaveBeenCalledWith("cfg.yml", "mainYaml");
     const mainDumpCall = mockDump.mock.calls.find((c) => c[0].auth);
     expect(mainDumpCall[0].chats).toBeUndefined();
@@ -220,14 +197,8 @@ describe("loadChatsFromDir", () => {
     mockLoad.mockReturnValueOnce(chatA).mockReturnValueOnce(chatB);
     const res = loadChatsFromDir("dir");
     expect(res).toEqual([chatA, chatB]);
-    expect(mockReadFileSync).toHaveBeenCalledWith(
-      path.join("dir", "a.yml"),
-      "utf8",
-    );
-    expect(mockReadFileSync).toHaveBeenCalledWith(
-      path.join("dir", "b.yaml"),
-      "utf8",
-    );
+    expect(mockReadFileSync).toHaveBeenCalledWith(path.join("dir", "a.yml"), "utf8");
+    expect(mockReadFileSync).toHaveBeenCalledWith(path.join("dir", "b.yaml"), "utf8");
   });
 
   it("returns empty array when directory missing", () => {
@@ -262,14 +233,8 @@ describe("saveChatsToDir", () => {
     mockDump.mockReturnValueOnce("ayaml").mockReturnValueOnce("byaml");
     saveChatsToDir("dir", chats);
     expect(mockMkdirSync).toHaveBeenCalledWith("dir", { recursive: true });
-    expect(mockWriteFileSync).toHaveBeenCalledWith(
-      path.join("dir", "a.yml"),
-      "ayaml",
-    );
-    expect(mockWriteFileSync).toHaveBeenCalledWith(
-      path.join("dir", "b.yml"),
-      "byaml",
-    );
+    expect(mockWriteFileSync).toHaveBeenCalledWith(path.join("dir", "a.yml"), "ayaml");
+    expect(mockWriteFileSync).toHaveBeenCalledWith(path.join("dir", "b.yml"), "byaml");
   });
 
   it("skips write when chat file unchanged", () => {
@@ -302,10 +267,7 @@ describe("saveChatsToDir", () => {
     mockDump.mockReturnValueOnce("ayaml");
     saveChatsToDir("dir", chats);
     expect(mockMkdirSync).toHaveBeenCalledWith("dir", { recursive: true });
-    expect(mockWriteFileSync).toHaveBeenCalledWith(
-      path.join("dir", "private_alice.yml"),
-      "ayaml",
-    );
+    expect(mockWriteFileSync).toHaveBeenCalledWith(path.join("dir", "private_alice.yml"), "ayaml");
   });
 });
 
@@ -328,9 +290,7 @@ describe("readConfig agent_name", () => {
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining("agent_name not set for chat Test Chat"),
     );
-    expect(console.info).toHaveBeenCalledWith(
-      expect.stringContaining("Config modified"),
-    );
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining("Config modified"));
   });
 });
 
@@ -353,10 +313,7 @@ describe("checkConfigSchema", () => {
   it("warns about deprecated showTelegramNames", () => {
     mockExistsSync.mockReturnValue(true);
     const cfg = generateConfig();
-    cfg.chats[0].chatParams = { showTelegramNames: true } as unknown as Record<
-      string,
-      unknown
-    >;
+    cfg.chats[0].chatParams = { showTelegramNames: true } as unknown as Record<string, unknown>;
     mockReadFileSync.mockReturnValue("yaml");
     mockLoad.mockReturnValue(cfg);
 

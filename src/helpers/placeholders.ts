@@ -5,10 +5,7 @@ export interface UrlCacheEntry {
 
 const urlCache: Record<string, UrlCacheEntry> = {};
 
-async function fetchUrl(
-  url: string,
-  cacheTime: number = 3600,
-): Promise<string> {
+async function fetchUrl(url: string, cacheTime: number = 3600): Promise<string> {
   const cached = urlCache[url];
   if (cached && cached.expiry > Date.now()) {
     return cached.content;
@@ -59,9 +56,7 @@ export async function replaceToolPlaceholders(
     } else {
       const chatTool = chatTools.find((t) => t.name === toolName);
       if (!chatTool) continue;
-      const fn = chatTool.module
-        .call(chatConfig, thread)
-        .functions.get(toolName);
+      const fn = chatTool.module.call(chatConfig, thread).functions.get(toolName);
       let parsedArgs: unknown;
       if (!argsStr.trim()) {
         parsedArgs = {};
@@ -72,10 +67,7 @@ export async function replaceToolPlaceholders(
           parsedArgs = argsStr;
         }
       }
-      const argString =
-        typeof parsedArgs === "string"
-          ? parsedArgs
-          : JSON.stringify(parsedArgs);
+      const argString = typeof parsedArgs === "string" ? parsedArgs : JSON.stringify(parsedArgs);
       const res = await fn(argString);
       content = res.content;
       if (content !== undefined) {
@@ -110,18 +102,12 @@ export function __clearToolCache() {
   }
 }
 
-export function replaceVarsPlaceholders(
-  text: string,
-  vars: Record<string, string>,
-) {
-  text = text.replace(
-    /<vars:([^>]+)>([\s\S]*?)<\/vars:\1>/g,
-    (_, name, content) => {
-      const val = vars[name];
-      if (val === undefined) return "";
-      return content.replace(new RegExp(`{vars:${name}}`, "g"), val);
-    },
-  );
+export function replaceVarsPlaceholders(text: string, vars: Record<string, string>) {
+  text = text.replace(/<vars:([^>]+)>([\s\S]*?)<\/vars:\1>/g, (_, name, content) => {
+    const val = vars[name];
+    if (val === undefined) return "";
+    return content.replace(new RegExp(`{vars:${name}}`, "g"), val);
+  });
   return text.replace(/\{vars:([^}]+)}/g, (_, name) => vars[name] || "");
 }
 

@@ -67,11 +67,7 @@ export async function getSystemMessage(
   chatTools: ChatToolType[],
   thread: ThreadStateType = { messages: [], msgs: [], id: 0 },
 ): Promise<string> {
-  const systemMessages = await getToolsSystemMessages(
-    chatTools,
-    chatConfig,
-    thread,
-  );
+  const systemMessages = await getToolsSystemMessages(chatTools, chatConfig, thread);
   const system =
     chatConfig.systemMessage ||
     systemMessages[0] ||
@@ -82,9 +78,7 @@ export async function getSystemMessage(
 
 export function getTokensCount(chatConfig: ConfigChatType, text: string) {
   try {
-    const tokenizer = encodingForModel(
-      chatConfig.completionParams.model as TiktokenModel,
-    );
+    const tokenizer = encodingForModel(chatConfig.completionParams.model as TiktokenModel);
     return tokenizer.encode(text).length;
   } catch (error) {
     console.error(error);

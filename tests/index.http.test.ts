@@ -11,9 +11,7 @@ const expressApp = {
   listen: jest.fn(),
 };
 const mockExpress = jest.fn(() => expressApp);
-mockExpress.json = jest.fn(
-  () => (_req: Request, _res: Response, next: () => void) => next(),
-);
+mockExpress.json = jest.fn(() => (_req: Request, _res: Response, next: () => void) => next());
 
 jest.unstable_mockModule("../src/config.ts", () => ({
   __esModule: true,

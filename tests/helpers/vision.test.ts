@@ -62,9 +62,9 @@ function createDocMsg(caption?: string): Message.DocumentMessage {
 describe("recognizeImageText", () => {
   it("throws error when model missing", async () => {
     const msg = createMsg();
-    await expect(
-      vision.recognizeImageText(msg, {} as ConfigChatType),
-    ).rejects.toThrow("Не указана модель для распознавания.");
+    await expect(vision.recognizeImageText(msg, {} as ConfigChatType)).rejects.toThrow(
+      "Не указана модель для распознавания.",
+    );
     expect(mockGetFileLink).toHaveBeenCalledWith("f1");
     expect(mockLlCall).not.toHaveBeenCalled();
   });
@@ -96,9 +96,7 @@ describe("recognizeImageText", () => {
     mockGetFileLink.mockResolvedValue("http://file");
     mockLlCall.mockRejectedValue(new Error("bad"));
     const msg = createMsg();
-    await expect(
-      vision.recognizeImageText(msg, {} as ConfigChatType),
-    ).rejects.toThrow("bad");
+    await expect(vision.recognizeImageText(msg, {} as ConfigChatType)).rejects.toThrow("bad");
   });
 
   it("supports document messages", async () => {

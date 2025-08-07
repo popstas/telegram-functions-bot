@@ -1,12 +1,7 @@
 import { aiFunction, AIFunctionsProvider } from "@agentic/core";
 import { z } from "zod";
 import { readConfig } from "../config.ts";
-import {
-  BrainstormParamsType,
-  ConfigChatType,
-  ConfigType,
-  ThreadStateType,
-} from "../types.ts";
+import { BrainstormParamsType, ConfigChatType, ConfigType, ThreadStateType } from "../types.ts";
 import { buildMessages } from "../helpers/gpt.ts";
 import { llmCall } from "../helpers/gpt.ts";
 import { Message } from "telegraf/types";
@@ -47,8 +42,7 @@ export class BrainstormClient extends AIFunctionsProvider {
   async brainstorm(options: ToolArgsType) {
     const toolParams = this.configChat.toolParams?.brainstorm;
     const prompt = toolParams?.promptBefore;
-    const systemMessage =
-      options.systemMessage + (prompt ? `\n\n${prompt}` : "");
+    const systemMessage = options.systemMessage + (prompt ? `\n\n${prompt}` : "");
 
     const thread = this.thread;
     const messages = await buildMessages(systemMessage, thread.messages);

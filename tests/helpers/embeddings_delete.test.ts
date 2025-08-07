@@ -1,11 +1,4 @@
-import {
-  jest,
-  describe,
-  it,
-  expect,
-  beforeEach,
-  afterEach,
-} from "@jest/globals";
+import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { ConfigChatType } from "../../src/types.ts";
@@ -19,9 +12,7 @@ jest.unstable_mockModule("../../src/helpers/useApi.ts", () => ({
   useApi: () => ({
     embeddings: {
       create: async ({ input }: { input: string }) => ({
-        data: [
-          { embedding: mockEmbeddings[input as keyof typeof mockEmbeddings] },
-        ],
+        data: [{ embedding: mockEmbeddings[input as keyof typeof mockEmbeddings] }],
       }),
     },
   }),

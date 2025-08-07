@@ -1,9 +1,5 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import type {
-  ConfigChatType,
-  ConfigType,
-  ThreadStateType,
-} from "../../src/types.ts";
+import type { ConfigChatType, ConfigType, ThreadStateType } from "../../src/types.ts";
 
 const mockReadConfig = jest.fn();
 const mockWriteConfig = jest.fn();
@@ -13,8 +9,7 @@ jest.unstable_mockModule("../../src/config.ts", () => ({
   __esModule: true,
   readConfig: () => mockReadConfig(),
   writeConfig: (...args: unknown[]) => mockWriteConfig(...args),
-  generatePrivateChatConfig: (...args: unknown[]) =>
-    mockGeneratePrivateChatConfig(...args),
+  generatePrivateChatConfig: (...args: unknown[]) => mockGeneratePrivateChatConfig(...args),
   updateChatInConfig: jest.fn(),
 }));
 
@@ -25,9 +20,7 @@ beforeEach(async () => {
   mockReadConfig.mockReset();
   mockWriteConfig.mockReset();
   mockGeneratePrivateChatConfig.mockReset();
-  ({ ChangeChatSettingsClient } = await import(
-    "../../src/tools/change_chat_settings.ts"
-  ));
+  ({ ChangeChatSettingsClient } = await import("../../src/tools/change_chat_settings.ts"));
 });
 
 describe("ChangeChatSettingsClient", () => {

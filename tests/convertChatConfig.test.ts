@@ -75,11 +75,7 @@ describe("convertChatConfig", () => {
     );
     expect(mockDump.mock.calls[1][0]).not.toHaveProperty("chats");
     expect(mockDump.mock.calls[1][0]).toMatchObject({ useChatsDir: true });
-    expect(mockWriteFileSync).toHaveBeenNthCalledWith(
-      2,
-      "config.yml",
-      "cfgOut",
-    );
+    expect(mockWriteFileSync).toHaveBeenNthCalledWith(2, "config.yml", "cfgOut");
   });
 
   it("merges chats from directory and disables useChatsDir", () => {

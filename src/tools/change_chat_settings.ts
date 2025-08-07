@@ -1,10 +1,6 @@
 import { aiFunction, AIFunctionsProvider } from "@agentic/core";
 import { z } from "zod";
-import {
-  generatePrivateChatConfig,
-  readConfig,
-  writeConfig,
-} from "../config.ts";
+import { generatePrivateChatConfig, readConfig, writeConfig } from "../config.ts";
 import {
   ConfigChatType,
   ConfigType,
@@ -52,27 +48,20 @@ export class ChangeChatSettingsClient extends AIFunctionsProvider {
         .boolean()
         .optional()
         .describe("Whether to forget the context after each message"),
-      forgetTimeout: z
-        .number()
-        .optional()
-        .describe("Time in seconds to forget the context after"),
+      forgetTimeout: z.number().optional().describe("Time in seconds to forget the context after"),
       showToolMessages: z
         .union([z.boolean(), z.literal("headers")])
         .optional()
-        .describe(
-          "Whether to show tool messages, headers means only tool calls",
-        ),
+        .describe("Whether to show tool messages, headers means only tool calls"),
     }),
   })
   async change_chat_settings(settings: ToolArgsType) {
     const config = readConfig();
     const privateChatConfig = config.chats.find(
-      (chat) =>
-        this.configChat.username && chat.username === this.configChat.username,
+      (chat) => this.configChat.username && chat.username === this.configChat.username,
     );
     const groupChatConfig = config.chats.find(
-      (chat) =>
-        chat.id === this.thread.id || chat.ids?.includes(this.thread.id),
+      (chat) => chat.id === this.thread.id || chat.ids?.includes(this.thread.id),
     );
     const chatConfig = groupChatConfig || privateChatConfig;
 

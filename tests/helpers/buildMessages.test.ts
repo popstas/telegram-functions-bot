@@ -37,12 +37,7 @@ describe("buildMessages", () => {
     ];
 
     const res = await buildMessages("sys", history);
-    expect(res.map((m) => m.role)).toEqual([
-      "system",
-      "assistant",
-      "assistant",
-      "tool",
-    ]);
+    expect(res.map((m) => m.role)).toEqual(["system", "assistant", "assistant", "tool"]);
   });
 
   it("sanitizes user name", async () => {

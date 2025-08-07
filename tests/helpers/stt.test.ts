@@ -1,9 +1,7 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 
 const mockTmpNameSync = jest.fn();
-const mockExec = jest.fn(
-  (cmd: string, cb: (err: unknown, out: string) => void) => cb(null, ""),
-);
+const mockExec = jest.fn((cmd: string, cb: (err: unknown, out: string) => void) => cb(null, ""));
 const mockAccess = jest.fn();
 const mockReadFile = jest.fn();
 
@@ -54,10 +52,7 @@ describe("convertToMp3", () => {
   it("calls ffmpeg and returns path", async () => {
     const res = await stt.convertToMp3("input.wav");
     expect(mockTmpNameSync).toHaveBeenCalled();
-    expect(mockExec).toHaveBeenCalledWith(
-      expect.stringContaining("ffmpeg"),
-      expect.any(Function),
-    );
+    expect(mockExec).toHaveBeenCalledWith(expect.stringContaining("ffmpeg"), expect.any(Function));
     expect(res).toBe("/tmp/file.mp3");
   });
 });
@@ -102,9 +97,7 @@ describe("sendAudioWhisper", () => {
     (fetch as unknown as jest.Mock)
       .mockResolvedValueOnce({
         ok: true,
-        text: jest
-          .fn()
-          .mockResolvedValue('{"detected_language":"en"}' as never),
+        text: jest.fn().mockResolvedValue('{"detected_language":"en"}' as never),
         headers: { entries: () => [] },
       } as never)
       .mockResolvedValueOnce({
@@ -126,9 +119,7 @@ describe("sendAudioWhisper", () => {
     (fetch as unknown as jest.Mock)
       .mockResolvedValueOnce({
         ok: true,
-        text: jest
-          .fn()
-          .mockResolvedValue('{"detected_language":"en"}' as never),
+        text: jest.fn().mockResolvedValue('{"detected_language":"en"}' as never),
         headers: { entries: () => [] },
       } as never)
       .mockResolvedValueOnce({
@@ -137,8 +128,8 @@ describe("sendAudioWhisper", () => {
         text: jest.fn().mockResolvedValue("oops" as never),
         headers: { entries: () => [] },
       } as never);
-    await expect(
-      stt.sendAudioWhisper({ mp3Path: "p", prompt: "hi" }),
-    ).rejects.toThrow("HTTP error! status: 500, body: oops");
+    await expect(stt.sendAudioWhisper({ mp3Path: "p", prompt: "hi" })).rejects.toThrow(
+      "HTTP error! status: 500, body: oops",
+    );
   });
 });

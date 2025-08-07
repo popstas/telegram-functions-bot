@@ -127,10 +127,7 @@ describe("logConfigChanges", () => {
         msg: expect.stringContaining("config.yml"),
       }),
     );
-    expect(mockWriteFile).toHaveBeenCalledWith(
-      "data/last-config-change.diff",
-      expect.any(String),
-    );
+    expect(mockWriteFile).toHaveBeenCalledWith("data/last-config-change.diff", expect.any(String));
   });
 
   it("does nothing when configs equal", () => {
@@ -153,10 +150,7 @@ describe("logConfigChanges", () => {
         msg: expect.stringContaining("data/chats/test.yml"),
       }),
     );
-    expect(mockWriteFile).toHaveBeenCalledWith(
-      "data/last-config-change.diff",
-      expect.any(String),
-    );
+    expect(mockWriteFile).toHaveBeenCalledWith("data/last-config-change.diff", expect.any(String));
   });
 });
 
@@ -171,10 +165,7 @@ describe("getGoogleButtons", () => {
     }));
     mod = await import("../src/config.ts");
     const auth = {} as unknown as OAuth2Client;
-    const res = await mod.getGoogleButtons(
-      { sheetId: "id", sheetName: "s" },
-      auth,
-    );
+    const res = await mod.getGoogleButtons({ sheetId: "id", sheetName: "s" }, auth);
     expect(res).toBeUndefined();
   });
 
@@ -188,13 +179,8 @@ describe("getGoogleButtons", () => {
     }));
     mod = await import("../src/config.ts");
     const auth = {} as unknown as OAuth2Client;
-    const res = await mod.getGoogleButtons(
-      { sheetId: "id", sheetName: "s" },
-      auth,
-    );
-    expect(res).toEqual([
-      { name: "btn", prompt: "pr", row: 1, waitMessage: "wait" },
-    ]);
+    const res = await mod.getGoogleButtons({ sheetId: "id", sheetName: "s" }, auth);
+    expect(res).toEqual([{ name: "btn", prompt: "pr", row: 1, waitMessage: "wait" }]);
   });
 });
 
@@ -224,10 +210,7 @@ describe("watchConfigChanges", () => {
 
     mod.watchConfigChanges();
 
-    expect(mockWatchFile).toHaveBeenCalledWith(
-      "config.yml",
-      expect.any(Function),
-    );
+    expect(mockWatchFile).toHaveBeenCalledWith("config.yml", expect.any(Function));
     const cb = mockWatchFile.mock.calls[0][1] as () => void;
     cb();
 
@@ -261,15 +244,10 @@ describe("watchConfigChanges", () => {
     mod.watchConfigChanges();
 
     const chatPath = path.join("chats", "test.yml");
-    expect(mockWatchFile).toHaveBeenCalledWith(
-      "config.yml",
-      expect.any(Function),
-    );
+    expect(mockWatchFile).toHaveBeenCalledWith("config.yml", expect.any(Function));
     expect(mockWatchFile).toHaveBeenCalledWith(chatPath, expect.any(Function));
 
-    const cb = mockWatchFile.mock.calls.find(
-      (c) => c[0] === chatPath,
-    )?.[1] as () => void;
+    const cb = mockWatchFile.mock.calls.find((c) => c[0] === chatPath)?.[1] as () => void;
     cb();
     expect(threads[1].completionParams).toEqual({ model: "new" });
   });
@@ -304,10 +282,7 @@ describe("watchConfigChanges", () => {
 
     mod.watchConfigChanges();
 
-    const dirCb = mockWatch.mock.calls[0][1] as (
-      event: string,
-      filename: string,
-    ) => void;
+    const dirCb = mockWatch.mock.calls[0][1] as (event: string, filename: string) => void;
     const chatPath = path.join("chats", "test.yml");
     dirCb("rename", "test.yml");
 

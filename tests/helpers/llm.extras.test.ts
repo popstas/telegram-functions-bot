@@ -66,18 +66,14 @@ beforeEach(async () => {
   const api = {
     chat: {
       completions: {
-        create: jest
-          .fn()
-          .mockResolvedValue({ choices: [{ message: { content: "a" } }] }),
+        create: jest.fn().mockResolvedValue({ choices: [{ message: { content: "a" } }] }),
       },
     },
   };
   const apiObserved = {
     chat: {
       completions: {
-        create: jest
-          .fn()
-          .mockResolvedValue({ choices: [{ message: { content: "b" } }] }),
+        create: jest.fn().mockResolvedValue({ choices: [{ message: { content: "b" } }] }),
       },
     },
   };
@@ -153,9 +149,7 @@ describe("llmCall", () => {
       },
     });
     const calledParams = (api.responses.create as jest.Mock).mock.calls[0][0];
-    expect(calledParams.input).toEqual([
-      { role: "user", content: "hi", type: "message" },
-    ]);
+    expect(calledParams.input).toEqual([{ role: "user", content: "hi", type: "message" }]);
     expect(calledParams.tools).toEqual([
       {
         type: "function",
@@ -280,8 +274,7 @@ describe("llmCall", () => {
     ];
     const stream = {
       async *[Symbol.asyncIterator]() {
-        for (const e of events)
-          yield e as unknown as OpenAI.Responses.ResponseStreamEvent;
+        for (const e of events) yield e as unknown as OpenAI.Responses.ResponseStreamEvent;
       },
       controller: { signal: undefined },
       on: jest.fn(),
@@ -332,8 +325,7 @@ describe("llmCall", () => {
     ];
     const stream = {
       async *[Symbol.asyncIterator]() {
-        for (const e of events)
-          yield e as unknown as OpenAI.Responses.ResponseStreamEvent;
+        for (const e of events) yield e as unknown as OpenAI.Responses.ResponseStreamEvent;
       },
       controller: { signal: undefined },
       on: jest.fn(),
@@ -367,9 +359,7 @@ describe("llmCall", () => {
   });
 
   it("uses completions streaming when enabled", async () => {
-    const events = [
-      { choices: [{ delta: { content: "r" } }] } as ChatCompletionChunk,
-    ];
+    const events = [{ choices: [{ delta: { content: "r" } }] } as ChatCompletionChunk];
     const stream = {
       async *[Symbol.asyncIterator]() {
         for (const e of events) yield e as ChatCompletionChunk;
@@ -628,8 +618,7 @@ describe("requestGptAnswer", () => {
       local_model: undefined,
       chatParams: { useResponsesApi: true, streaming: false },
     });
-    const sent = (await import("../../src/telegram/send.ts"))
-      .sendTelegramMessage as jest.Mock;
+    const sent = (await import("../../src/telegram/send.ts")).sendTelegramMessage as jest.Mock;
     const message = sent.mock.calls.pop()?.[1];
     expect(message).toContain("Web search:");
     expect(message).toContain("[T](https://u) (opened)");
@@ -659,8 +648,7 @@ describe("requestGptAnswer", () => {
       local_model: undefined,
       chatParams: { useResponsesApi: true, streaming: false },
     });
-    const sendDoc = (await import("../../src/telegram/send.ts"))
-      .sendTelegramDocument as jest.Mock;
+    const sendDoc = (await import("../../src/telegram/send.ts")).sendTelegramDocument as jest.Mock;
     expect(sendDoc).toHaveBeenCalled();
   });
 });

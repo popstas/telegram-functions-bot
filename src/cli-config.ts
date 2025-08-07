@@ -13,9 +13,7 @@ export const runConfigConvert = (args: string[]) => {
 
 const isMain = (() => {
   const currentFilePath = fileURLToPath(import.meta.url);
-  const scriptPath = process.argv[1]
-    ? resolve(process.cwd(), process.argv[1])
-    : "";
+  const scriptPath = process.argv[1] ? resolve(process.cwd(), process.argv[1]) : "";
   return scriptPath === currentFilePath;
 })();
 

@@ -51,9 +51,7 @@ function telegramifyWithCodeBlocks(text: string): string {
   }
   return text
     .split(/(```[\s\S]*?```)/)
-    .map((part) =>
-      part.startsWith("```") ? part : telegramifyMarkdown(part, "escape"),
-    )
+    .map((part) => (part.startsWith("```") ? part : telegramifyMarkdown(part, "escape")))
     .join("");
 }
 
@@ -65,9 +63,7 @@ export interface ExtraCtx {
 export async function sendTelegramMessage(
   chat_id: number,
   text: string,
-  extraMessageParams?:
-    | Record<string, unknown>
-    | Markup.Markup<ReplyKeyboardMarkup>,
+  extraMessageParams?: Record<string, unknown> | Markup.Markup<ReplyKeyboardMarkup>,
   ctx?: Context & ExtraCtx,
   chatConfig?: ConfigChatType,
 ): Promise<Message.TextMessage | undefined> {
@@ -130,10 +126,7 @@ export async function sendTelegramMessage(
   // Process the text based on parse_mode
   if (params.parse_mode === "HTML") {
     processedText = sanitizeTelegramHtml(text);
-  } else if (
-    params.parse_mode === "MarkdownV2" ||
-    params.parse_mode === "Markdown"
-  ) {
+  } else if (params.parse_mode === "MarkdownV2" || params.parse_mode === "Markdown") {
     processedText = telegramifyWithCodeBlocks(text);
   }
 
@@ -144,11 +137,7 @@ export async function sendTelegramMessage(
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
     try {
-      response = await useBot(chatConfig.bot_token).telegram.sendMessage(
-        chat_id,
-        msg,
-        params,
-      );
+      response = await useBot(chatConfig.bot_token).telegram.sendMessage(chat_id, msg, params);
     } catch (e: unknown) {
       const error = e as TelegramError;
       // Fallback: if error is 'bot was blocked by the user', handle gracefully
@@ -185,10 +174,7 @@ export async function sendTelegramMessage(
 
   // deleteAfter timeout
   if (params.deleteAfter) {
-    const deleteAfter =
-      typeof params.deleteAfter === "number"
-        ? params.deleteAfter * 1000
-        : 10000;
+    const deleteAfter = typeof params.deleteAfter === "number" ? params.deleteAfter * 1000 : 10000;
     if (response)
       setTimeout(async () => {
         await useBot(chatConfig?.bot_token).telegram.deleteMessage(
@@ -230,10 +216,7 @@ export function buildButtonRows(buttons: ConfigChatButtonType[]) {
   return buttonRows;
 }
 
-export function getFullName(msg: {
-  from?: User;
-  forward_origin?: ForwardOrigin;
-}) {
+export function getFullName(msg: { from?: User; forward_origin?: ForwardOrigin }) {
   const forwardOrigin = msg.forward_origin;
   if (forwardOrigin) {
     if (forwardOrigin.type === "hidden_user") {
@@ -245,27 +228,17 @@ export function getFullName(msg: {
     }
   }
   if (msg.from) {
-    return [msg.from.first_name, msg.from.last_name]
-      .filter(Boolean)
-      .join(" ")
-      .trim();
+    return [msg.from.first_name, msg.from.last_name].filter(Boolean).join(" ").trim();
   }
 }
 
-export function isOurUser(
-  sender_user: User | undefined,
-  chatConfig: ConfigChatType,
-) {
+export function isOurUser(sender_user: User | undefined, chatConfig: ConfigChatType) {
   const username = sender_user?.username;
   const chatPrivateUsers = chatConfig?.privateUsers || [];
   const isOurUser =
     username &&
     includesUser(
-      [
-        ...chatPrivateUsers,
-        ...(useConfig().privateUsers || []),
-        ...(useConfig().adminUsers || []),
-      ],
+      [...chatPrivateUsers, ...(useConfig().privateUsers || []), ...(useConfig().adminUsers || [])],
       username,
     );
   return isOurUser;
@@ -308,10 +281,7 @@ export async function sendTelegramDocument(
       file instanceof Buffer
         ? Input.fromBuffer(file, fileName)
         : Input.fromLocalFile(file as string);
-    const response = await useBot(chatConfig?.bot_token).telegram.sendDocument(
-      chat_id,
-      document,
-    );
+    const response = await useBot(chatConfig?.bot_token).telegram.sendDocument(chat_id, document);
     return response as unknown as Message.DocumentMessage;
   } catch (e: unknown) {
     const error = e as TelegramError;

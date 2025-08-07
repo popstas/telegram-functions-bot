@@ -13,11 +13,7 @@ import onAudio from "./handlers/onAudio.ts";
 import onUnsupported from "./handlers/onUnsupported.ts";
 import onDocument from "./handlers/onDocument.ts";
 import { useLastCtx } from "./helpers/lastCtx.ts";
-import {
-  agentGetHandler,
-  agentPostHandler,
-  toolPostHandler,
-} from "./httpHandlers.ts";
+import { agentGetHandler, agentPostHandler, toolPostHandler } from "./httpHandlers.ts";
 import { useMqtt } from "./mqtt.ts";
 import { healthHandler } from "./healthcheck.ts";
 
@@ -74,9 +70,7 @@ async function launchBot(bot_token: string, bot_name: string) {
     const bot = useBot(bot_token);
 
     // Set up help command
-    bot.help(async (ctx) =>
-      ctx.reply("https://github.com/popstas/telegram-functions-bot"),
-    );
+    bot.help(async (ctx) => ctx.reply("https://github.com/popstas/telegram-functions-bot"));
 
     // Initialize commands with proper error handling
     await initCommands(bot);
@@ -189,10 +183,7 @@ function initHttp() {
   return app;
 }
 
-async function telegramPostHandlerTest(
-  req: express.Request,
-  res: express.Response,
-) {
+async function telegramPostHandlerTest(req: express.Request, res: express.Response) {
   req.params = { chatId: "-4534736935" };
   req.body = {
     text: "На сервере высокий load average. Проверь, есть ли необычное в процессах, скажи да или нет noconfirm",
@@ -200,10 +191,7 @@ async function telegramPostHandlerTest(
   return telegramPostHandler(req, res);
 }
 
-async function telegramPostHandler(
-  req: express.Request,
-  res: express.Response,
-) {
+async function telegramPostHandler(req: express.Request, res: express.Response) {
   const { chatId } = req.params;
   const { text } = req.body || "";
 
@@ -213,9 +201,7 @@ async function telegramPostHandler(
     return res.status(400).send("Message text is required.");
   }
 
-  const chatConfig = useConfig().chats.find(
-    (chat) => chat.id === parseInt(chatId),
-  );
+  const chatConfig = useConfig().chats.find((chat) => chat.id === parseInt(chatId));
   if (!chatConfig) {
     log({ msg: `http: Chat ${chatId} not found in config`, logLevel: "warn" });
     return res.status(400).send("Wrong chat_id");
@@ -264,10 +250,7 @@ async function telegramPostHandler(
     update: virtualCtx.update,
     chat: virtualCtx.chat,
     // replace to fake action
-    persistentChatAction: async (
-      action: string,
-      callback: () => Promise<void>,
-    ) => {
+    persistentChatAction: async (action: string, callback: () => Promise<void>) => {
       log({ msg: `persistentChatAction stub` });
       return await callback();
     },
@@ -277,30 +260,19 @@ async function telegramPostHandler(
 
   try {
     newCtx.expressRes = res;
-    await onTextMessage(
-      newCtx as Context,
-      undefined,
-      async (sentMsg: Message.TextMessage) => {
-        if (sentMsg) {
-          const text = (sentMsg as Message.TextMessage).text;
-          res.contentType("text/plain; charset=utf-8");
-          res.end(text);
-        } else {
-          res.status(500).send("Error sending message.");
-        }
-        // await useBot().telegram.sendMessage(chat.id, 'test - ' + text);
-      },
-    );
+    await onTextMessage(newCtx as Context, undefined, async (sentMsg: Message.TextMessage) => {
+      if (sentMsg) {
+        const text = (sentMsg as Message.TextMessage).text;
+        res.contentType("text/plain; charset=utf-8");
+        res.end(text);
+      } else {
+        res.status(500).send("Error sending message.");
+      }
+      // await useBot().telegram.sendMessage(chat.id, 'test - ' + text);
+    });
   } catch {
     res.status(500).send("Error sending message.");
   }
 }
 
-export {
-  start,
-  launchBot,
-  createHttpApp,
-  initHttp,
-  telegramPostHandler,
-  telegramPostHandlerTest,
-};
+export { start, launchBot, createHttpApp, initHttp, telegramPostHandler, telegramPostHandlerTest };

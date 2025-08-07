@@ -44,9 +44,7 @@ const expressApp = {
   listen: jest.fn((_: number, cb: () => void) => cb()),
 };
 const mockExpress = jest.fn(() => expressApp);
-mockExpress.json = jest.fn(
-  () => (_req: unknown, _res: unknown, next: () => void) => next(),
-);
+mockExpress.json = jest.fn(() => (_req: unknown, _res: unknown, next: () => void) => next());
 
 jest.unstable_mockModule("../src/bot.ts", () => ({
   __esModule: true,
@@ -128,9 +126,7 @@ describe("start", () => {
   it("exits when config invalid", async () => {
     mockUseConfig.mockReturnValue({ auth: {} });
     mockValidateConfig.mockReturnValue(false);
-    const exitSpy = jest
-      .spyOn(process, "exit")
-      .mockImplementation(() => undefined as never);
+    const exitSpy = jest.spyOn(process, "exit").mockImplementation(() => undefined as never);
 
     await index.start();
 

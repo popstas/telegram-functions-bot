@@ -27,15 +27,12 @@ jest.unstable_mockModule("@modelcontextprotocol/sdk/client/stdio", () => ({
   },
 }));
 
-jest.unstable_mockModule(
-  "@modelcontextprotocol/sdk/client/streamableHttp.js",
-  () => ({
-    __esModule: true,
-    StreamableHTTPClientTransport: function (url: unknown, opts: unknown) {
-      mockHttp(url, opts);
-    },
-  }),
-);
+jest.unstable_mockModule("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
+  __esModule: true,
+  StreamableHTTPClientTransport: function (url: unknown, opts: unknown) {
+    mockHttp(url, opts);
+  },
+}));
 
 jest.unstable_mockModule("../src/helpers.ts", () => ({
   __esModule: true,
@@ -105,11 +102,7 @@ describe("connectMcp", () => {
 
   it("returns disconnected on error", async () => {
     mockConnect.mockRejectedValue(new Error("bad"));
-    const res = await connectMcp(
-      "m",
-      { serverUrl: "http://s" } as unknown as McpToolConfig,
-      {},
-    );
+    const res = await connectMcp("m", { serverUrl: "http://s" } as unknown as McpToolConfig, {});
     expect(res).toEqual({ model: "m", client: null, connected: false });
     expect(mockLog).toHaveBeenCalled();
   });

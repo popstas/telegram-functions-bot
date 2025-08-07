@@ -45,9 +45,7 @@ jest.unstable_mockModule("../../src/threads.ts", () => ({
 
 let onTextMessage: (ctx: Context & { secondTry?: boolean }) => Promise<void>;
 
-function createCtx(
-  message: Record<string, unknown>,
-): Context & { secondTry?: boolean } {
+function createCtx(message: Record<string, unknown>): Context & { secondTry?: boolean } {
   return {
     message,
     update: { message },

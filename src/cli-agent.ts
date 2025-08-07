@@ -21,9 +21,7 @@ export const runCliAgent = (args: string[]) => {
 // Check if this file is being run directly (not imported)
 const isMain = (() => {
   const currentFilePath = fileURLToPath(import.meta.url);
-  const scriptPath = process.argv[1]
-    ? resolve(process.cwd(), process.argv[1])
-    : "";
+  const scriptPath = process.argv[1] ? resolve(process.cwd(), process.argv[1]) : "";
   return scriptPath === currentFilePath;
 })();
 

@@ -57,12 +57,7 @@ describe("onPhoto main flow", () => {
     });
     const ctx = createCtx(msg);
     await onPhoto(ctx);
-    expect(mockProcessImageMessage).toHaveBeenCalledWith(
-      ctx,
-      msg,
-      chat,
-      "upload_photo",
-    );
+    expect(mockProcessImageMessage).toHaveBeenCalledWith(ctx, msg, chat, "upload_photo");
     expect(mockOnTextMessage).toHaveBeenCalled();
     const calledCtx = mockOnTextMessage.mock.calls[0][0];
     expect(calledCtx.message.text).toBe("cap\n\nImage contents: ocr");

@@ -29,9 +29,7 @@ describe.skip("executeTools retry logic", () => {
     const successResult = { success: true };
     mockCallTools.mockResolvedValueOnce(successResult);
 
-    const result = await callWithRetry(
-      () => mockCallTools() as Promise<{ success: boolean }>,
-    );
+    const result = await callWithRetry(() => mockCallTools() as Promise<{ success: boolean }>);
 
     expect(result).toEqual(successResult);
     expect(mockCallTools).toHaveBeenCalledTimes(1);
@@ -40,13 +38,9 @@ describe.skip("executeTools retry logic", () => {
   it("should retry on 429 error and succeed", async () => {
     const error = createError(429, "Too Many Requests");
     const successResult = { success: true };
-    mockCallTools
-      .mockRejectedValueOnce(error)
-      .mockResolvedValueOnce(successResult);
+    mockCallTools.mockRejectedValueOnce(error).mockResolvedValueOnce(successResult);
 
-    const result = await callWithRetry(
-      () => mockCallTools() as Promise<{ success: boolean }>,
-    );
+    const result = await callWithRetry(() => mockCallTools() as Promise<{ success: boolean }>);
 
     expect(result).toEqual(successResult);
     expect(mockCallTools).toHaveBeenCalledTimes(2);
@@ -55,13 +49,9 @@ describe.skip("executeTools retry logic", () => {
   it("should retry on 500 error and succeed", async () => {
     const error = createError(500, "Internal Server Error");
     const successResult = { success: true };
-    mockCallTools
-      .mockRejectedValueOnce(error)
-      .mockResolvedValueOnce(successResult);
+    mockCallTools.mockRejectedValueOnce(error).mockResolvedValueOnce(successResult);
 
-    const result = await callWithRetry(
-      () => mockCallTools() as Promise<{ success: boolean }>,
-    );
+    const result = await callWithRetry(() => mockCallTools() as Promise<{ success: boolean }>);
 
     expect(result).toEqual(successResult);
     expect(mockCallTools).toHaveBeenCalledTimes(2);
@@ -71,9 +61,7 @@ describe.skip("executeTools retry logic", () => {
     const error = createError(500, "Internal Server Error");
     mockCallTools.mockRejectedValueOnce(error).mockRejectedValueOnce(error);
 
-    await expect(callWithRetry(() => mockCallTools())).rejects.toThrow(
-      "Internal Server Error",
-    );
+    await expect(callWithRetry(() => mockCallTools())).rejects.toThrow("Internal Server Error");
 
     expect(mockCallTools).toHaveBeenCalledTimes(2);
   });
@@ -82,18 +70,13 @@ describe.skip("executeTools retry logic", () => {
     const error = new Error("Some other error");
     mockCallTools.mockRejectedValueOnce(error);
 
-    await expect(callWithRetry(() => mockCallTools())).rejects.toThrow(
-      "Some other error",
-    );
+    await expect(callWithRetry(() => mockCallTools())).rejects.toThrow("Some other error");
 
     expect(mockCallTools).toHaveBeenCalledTimes(1);
   });
 
   // Helper function to create error objects
-  function createError(
-    status: number,
-    message: string,
-  ): Error & { status: number } {
+  function createError(status: number, message: string): Error & { status: number } {
     const error = new Error(message) as Error & { status: number };
     error.status = status;
     return error;

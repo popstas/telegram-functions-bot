@@ -22,8 +22,7 @@ jest.unstable_mockModule("../src/helpers/gpt/llm.ts", () => ({
 
 jest.unstable_mockModule("../src/helpers/history.ts", () => ({
   addToHistory: (...args: unknown[]) => mockAddToHistory(...args),
-  forgetHistoryOnTimeout: (...args: unknown[]) =>
-    mockForgetHistoryOnTimeout(...args),
+  forgetHistoryOnTimeout: (...args: unknown[]) => mockForgetHistoryOnTimeout(...args),
 }));
 
 jest.unstable_mockModule("../src/helpers.ts", () => ({
@@ -65,8 +64,6 @@ describe("runAgent", () => {
 
   it("throws if agent not found", async () => {
     mockReadConfig.mockReturnValue({ chats: [] });
-    await expect(runAgent("missing", "hi")).rejects.toThrow(
-      "Agent not found: missing",
-    );
+    await expect(runAgent("missing", "hi")).rejects.toThrow("Agent not found: missing");
   });
 });

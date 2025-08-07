@@ -1,10 +1,6 @@
 import { aiFunction, AIFunctionsProvider } from "@agentic/core";
 import { z } from "zod";
-import type {
-  ConfigChatType,
-  ToolResponse,
-  ThreadStateType,
-} from "../types.ts";
+import type { ConfigChatType, ToolResponse, ThreadStateType } from "../types.ts";
 import { previewEmbedding, searchEmbedding } from "../helpers/embeddings.ts";
 import type { Message } from "telegraf/types";
 
@@ -56,9 +52,7 @@ export class MemorySearchClient extends AIFunctionsProvider {
 
   async prompt_append(): Promise<string | undefined> {
     if (!this.configChat.toolParams?.vector_memory?.alwaysSearch) return;
-    const last = this.thread.msgs[this.thread.msgs.length - 1] as
-      | Message.TextMessage
-      | undefined;
+    const last = this.thread.msgs[this.thread.msgs.length - 1] as Message.TextMessage | undefined;
     const query = last?.text;
     if (!query) return;
     const res = await this.memory_search({ query, limit: 3 });

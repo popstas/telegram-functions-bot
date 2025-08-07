@@ -31,11 +31,9 @@ jest.unstable_mockModule("../src/telegram/send.ts", () => ({
 }));
 
 let actionCb: (ctx: unknown) => Promise<void>;
-const mockAction = jest.fn(
-  (name: string, cb: (ctx: unknown) => Promise<void>) => {
-    actionCb = cb;
-  },
-);
+const mockAction = jest.fn((name: string, cb: (ctx: unknown) => Promise<void>) => {
+  actionCb = cb;
+});
 
 jest.unstable_mockModule("../src/bot", () => ({
   __esModule: true,
@@ -103,9 +101,7 @@ beforeEach(async () => {
     chatParams: {},
     toolParams: {},
   }));
-  mockGetActionUserMsg
-    .mockReset()
-    .mockReturnValue({ user: { username: "admin" } });
+  mockGetActionUserMsg.mockReset().mockReturnValue({ user: { username: "admin" } });
   mockGetSystemMessage.mockReset().mockResolvedValue("sys");
   mockGetTokensCount.mockReset().mockReturnValue(1);
   mockResolveChatTools.mockReset().mockResolvedValue([]);
@@ -147,9 +143,7 @@ describe("getToolsInfo", () => {
   });
 
   it("skips agent tool when user not allowed", async () => {
-    mockUseTools.mockResolvedValue([
-      { name: "foo", module: { description: "Foo" } },
-    ]);
+    mockUseTools.mockResolvedValue([{ name: "foo", module: { description: "Foo" } }]);
     config.chats.push({
       agent_name: "agent1",
       privateUsers: ["user1"],
@@ -193,26 +187,19 @@ describe("commandAddTool", () => {
       undefined,
       chat,
     );
-    expect(mockAction).toHaveBeenCalledWith(
-      "add_tool_foo",
-      expect.any(Function),
-    );
+    expect(mockAction).toHaveBeenCalledWith("add_tool_foo", expect.any(Function));
     const ctxReply = jest.fn();
     await actionCb({ chat: { id: 2, type: "private" }, reply: ctxReply });
     expect(config.chats[0].tools).toContain("foo");
     expect(config.chats[0].toolParams).toEqual({ p: 1 });
-    expect(ctxReply).toHaveBeenCalledWith(
-      expect.stringContaining("Tool added: foo"),
-    );
+    expect(ctxReply).toHaveBeenCalledWith(expect.stringContaining("Tool added: foo"));
     expect(mockWriteConfig).toHaveBeenCalled();
   });
 });
 
 describe("getInfoMessage", () => {
   it("builds info string", async () => {
-    mockUseTools.mockResolvedValue([
-      { name: "foo", module: { description: "" } },
-    ]);
+    mockUseTools.mockResolvedValue([{ name: "foo", module: { description: "" } }]);
     const chat: ConfigChatType = {
       name: "c",
       id: 1,
@@ -241,12 +228,7 @@ describe("handleForget", () => {
     mockSendTelegramMessage.mockResolvedValue("ok");
     await commands.handleForget(ctx);
     expect(mockForgetHistory).toHaveBeenCalledWith(1);
-    expect(mockSendTelegramMessage).toHaveBeenCalledWith(
-      1,
-      "OK",
-      undefined,
-      ctx,
-    );
+    expect(mockSendTelegramMessage).toHaveBeenCalledWith(1, "OK", undefined, ctx);
   });
 });
 
@@ -263,12 +245,7 @@ describe("handleInfo", () => {
     mockSendTelegramMessage.mockResolvedValue("ok");
     const expected = await commands.getInfoMessage(msg, chat);
     await commands.handleInfo(ctx);
-    expect(mockSendTelegramMessage).toHaveBeenCalledWith(
-      1,
-      expected,
-      undefined,
-      ctx,
-    );
+    expect(mockSendTelegramMessage).toHaveBeenCalledWith(1, expected, undefined, ctx);
   });
 });
 
@@ -332,9 +309,7 @@ describe("handleStart", () => {
     await commands.handleStart(ctx);
     expect(mockReadConfig).toHaveBeenCalled();
     expect(mockWriteConfig).toHaveBeenCalledWith(undefined, config);
-    expect(
-      (config as { chats: ConfigChatType[] }).chats[0].user_vars?.[0],
-    ).toEqual({
+    expect((config as { chats: ConfigChatType[] }).chats[0].user_vars?.[0]).toEqual({
       username: "user",
       vars: { from: "pop" },
     });
