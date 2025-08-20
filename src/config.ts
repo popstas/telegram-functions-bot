@@ -252,6 +252,7 @@ export function generateConfig(): ConfigType {
           temperature: 0.7,
         },
         local_model: "",
+        response_format: { type: "json_object" },
         systemMessage: "You are using functions to answer the questions. Current date: {date}",
         buttons: [{ name: "button_name", prompt: "button_prompt" }],
         buttonsSync: {

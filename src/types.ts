@@ -56,6 +56,7 @@ export type ConfigChatType = {
   prefix?: string;
   completionParams: CompletionParamsType;
   local_model?: string;
+  response_format?: OpenAI.Chat.Completions.ChatCompletionCreateParams["response_format"];
   systemMessage?: string;
   buttons?: ConfigChatButtonType[];
   buttonsSync?: ButtonsSyncConfigType;
