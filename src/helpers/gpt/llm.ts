@@ -562,7 +562,7 @@ export async function requestGptAnswer(
     model,
     temperature: thread.completionParams?.temperature,
     tools,
-    response_format: options?.responseFormat,
+    response_format: options?.responseFormat || chatConfig.response_format,
   };
   const { res, trace, webSearchDetails, images } = await llmCall({
     apiParams,
@@ -613,7 +613,7 @@ export async function requestGptAnswer(
     noSendTelegram: ctx?.noSendTelegram,
     gptContext,
     trace,
-    responseFormat: options?.responseFormat,
+    responseFormat: options?.responseFormat || chatConfig.response_format,
   });
 
   if (!options?.skipEvaluators && chatConfig.evaluators?.length) {

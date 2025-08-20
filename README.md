@@ -28,6 +28,7 @@ Telegram bot with functions tools.
 - Optional delay between split messages
 - Vector memory with `memory_search` and `memory_delete` tools (confirmation required for delete, optional automatic search)
 - Dynamic reply buttons returned from LLM responses (enable with `chatParams.responseButtons`)
+- Enforce structured outputs by setting `response_format` in chat configuration
 
 ## Pipeline
 
@@ -491,6 +492,29 @@ chatParams:
 ```
 
 Each button should contain `name` and `prompt`. When a user clicks a button, its `prompt` is sent as their next message.
+
+## Default response format
+
+Set `response_format` in a chat configuration to force the model to reply in a specific structure.
+
+```yaml
+response_format:
+  type: json_object
+```
+
+You can also provide a JSON Schema:
+
+```yaml
+response_format:
+  type: json_schema
+  json_schema:
+    name: response
+    schema:
+      type: object
+      properties:
+        message: { type: string }
+      required: [message]
+```
 
 ## Langfuse Setup
 

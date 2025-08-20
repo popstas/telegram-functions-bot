@@ -582,6 +582,24 @@ describe("requestGptAnswer", () => {
     expect(calledParams.tools).toEqual([{ type: "image_generation" }]);
   });
 
+  it("uses response_format from chat config", async () => {
+    const api = {
+      chat: {
+        completions: {
+          create: jest.fn().mockResolvedValue({ choices: [{ message: { content: "a" } }] }),
+        },
+      },
+    };
+    mockUseApi.mockReturnValue(api);
+    const msg: Message.TextMessage = { ...baseMsg };
+    await requestGptAnswer(msg, {
+      ...chatConfig,
+      response_format: { type: "json_object" },
+    });
+    const calledParams = (api.chat.completions.create as jest.Mock).mock.calls[0][0];
+    expect(calledParams.response_format).toEqual({ type: "json_object" });
+  });
+
   it("sends web search details", async () => {
     const api = {
       responses: {
