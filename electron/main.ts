@@ -23,25 +23,29 @@ const pendingLogs: LogEntry[] = [];
 const FALLBACK_ICON_DATA_URL =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAYAAAAfSC3RAAAAHElEQVQ4T2NkoBAwUqifgYGB4T8GphE0DSqGhgYAJDUEAK0YELkAAAAASUVORK5CYII=";
 
+function appBasePath() {
+  if (app.isPackaged) {
+    const electronProcess = process as NodeJS.Process & { resourcesPath?: string };
+    if (electronProcess.resourcesPath) {
+      return electronProcess.resourcesPath;
+    }
+  }
+  return app.getAppPath();
+}
+
 function assetPath(file: string) {
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, file);
+    return path.join(appBasePath(), file);
   }
-  return path.join(app.getAppPath(), "electron", "assets", file);
+  return path.join(appBasePath(), "assets", file);
 }
 
 function resolveHtml() {
-  if (app.isPackaged) {
-    return path.join(process.resourcesPath, "index.html");
-  }
-  return path.join(app.getAppPath(), "electron", "index.html");
+  return path.join(appBasePath(), "index.html");
 }
 
 function resolvePreload() {
-  if (app.isPackaged) {
-    return path.join(process.resourcesPath, "preload.js");
-  }
-  return path.join(app.getAppPath(), "electron", "preload.ts");
+  return path.join(appBasePath(), app.isPackaged ? "preload.js" : "preload.ts");
 }
 
 function ensureLogsDir() {
@@ -71,7 +75,7 @@ async function createWindow() {
     mainWindow?.show();
   });
 
-  mainWindow.on("close", (event) => {
+  mainWindow.on("close", (event: { preventDefault: () => void }) => {
     if (quitting) return;
     event.preventDefault();
     mainWindow?.hide();
@@ -239,7 +243,7 @@ app.on("activate", () => {
   }
 });
 
-app.on("before-quit", async (event) => {
+app.on("before-quit", async (event: { preventDefault: () => void }) => {
   if (quitting) {
     return;
   }
