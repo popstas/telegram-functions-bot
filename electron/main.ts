@@ -24,28 +24,70 @@ const FALLBACK_ICON_DATA_URL =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAYAAAAfSC3RAAAAHElEQVQ4T2NkoBAwUqifgYGB4T8GphE0DSqGhgYAJDUEAK0YELkAAAAASUVORK5CYII=";
 
 function appBasePath() {
+  const appPath = app.getAppPath();
+
   if (app.isPackaged) {
     const electronProcess = process as NodeJS.Process & { resourcesPath?: string };
     if (electronProcess.resourcesPath) {
       return electronProcess.resourcesPath;
     }
+    return appPath;
   }
-  return app.getAppPath();
+
+  const directHtml = path.join(appPath, "index.html");
+  if (fs.existsSync(directHtml)) {
+    return appPath;
+  }
+
+  const electronDir = path.join(appPath, "electron");
+  if (fs.existsSync(path.join(electronDir, "index.html"))) {
+    return electronDir;
+  }
+
+  return appPath;
+}
+
+function resolveExistingPath(candidates: string[]) {
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return candidates[0] ?? "";
 }
 
 function assetPath(file: string) {
-  if (app.isPackaged) {
-    return path.join(appBasePath(), file);
-  }
-  return path.join(appBasePath(), "assets", file);
+  const base = appBasePath();
+  const candidates = app.isPackaged
+    ? [path.join(base, file), path.join(base, "assets", file)]
+    : [path.join(base, "assets", file), path.join(base, file), path.join(app.getAppPath(), "assets", file)];
+
+  return resolveExistingPath(candidates);
 }
 
 function resolveHtml() {
-  return path.join(appBasePath(), "index.html");
+  const base = appBasePath();
+  const candidates = [path.join(base, "index.html"), path.join(app.getAppPath(), "electron", "index.html")];
+  return resolveExistingPath(candidates);
 }
 
 function resolvePreload() {
-  return path.join(appBasePath(), app.isPackaged ? "preload.js" : "preload.ts");
+  const base = appBasePath();
+  const candidates = app.isPackaged
+    ? [
+        path.join(base, "preload.js"),
+        path.join(base, "preload.cjs"),
+        path.join(base, "preload.mjs"),
+        path.join(base, "dist-electron", "preload.js"),
+      ]
+    : [
+        path.join(base, "preload.ts"),
+        path.join(base, "preload.js"),
+        path.join(base, "dist-electron", "preload.js"),
+        path.join(app.getAppPath(), "electron", "preload.ts"),
+      ];
+
+  return resolveExistingPath(candidates);
 }
 
 function ensureLogsDir() {
