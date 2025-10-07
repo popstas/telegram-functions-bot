@@ -5,6 +5,7 @@
 
 # production
 /build
+/dist-electron
 /data
 
 # dev scripts

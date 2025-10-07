@@ -58,3 +58,15 @@ export function publishMqttProgress(msg: string, agent?: string) {
 export function isMqttConnected() {
   return connected;
 }
+
+export function shutdownMqtt() {
+  if (!client) return;
+  try {
+    client.removeAllListeners();
+    client.end(true);
+  } catch (error) {
+    log({ msg: `mqtt shutdown error: ${error}`, logPath: MQTT_LOG_PATH, logLevel: "warn" });
+  }
+  client = undefined;
+  connected = false;
+}

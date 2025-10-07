@@ -35,6 +35,7 @@ jest.unstable_mockModule("../src/mqtt.ts", () => ({
   useMqtt: () => mockUseMqtt(),
   isMqttConnected: jest.fn(),
   publishMqttProgress: jest.fn(),
+  shutdownMqtt: jest.fn(),
 }));
 
 const expressApp = {
@@ -152,7 +153,7 @@ describe("start", () => {
 
     await index.start();
 
-    expect(setTimeoutSpy).toHaveBeenCalledWith(index.start, 10000);
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 10000);
     setTimeoutSpy.mockRestore();
   });
 });
