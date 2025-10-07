@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Telegram Functions Bot</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <h1>Telegram Functions Bot</h1>
+        <p class="status">Status: <span id="bot-status">starting…</span></p>
+      </div>
+      <div class="controls">
+        <button id="toggle-run">Start</button>
+        <button id="toggle-window">Hide</button>
+        <button id="open-logs">Open logs folder</button>
+      </div>
+    </header>
+
+    <section class="toolbar">
+      <div class="filters">
+        <label><input type="checkbox" data-source="messages" checked /> Messages</label>
+        <label><input type="checkbox" data-source="http" checked /> HTTP</label>
+        <label><input type="checkbox" data-source="mqtt" checked /> MQTT</label>
+      </div>
+      <div class="actions">
+        <button id="pause">Pause</button>
+        <button id="clear">Clear</button>
+        <label class="autoscale">
+          <input type="checkbox" id="autoscroll" checked /> Auto-scroll
+        </label>
+      </div>
+    </section>
+
+    <main class="log-view" id="log-container"></main>
+
+    <template id="log-line-template">
+      <article class="log-line">
+        <div class="log-meta">
+          <span class="log-source"></span>
+          <span class="log-timestamp"></span>
+          <span class="log-level"></span>
+        </div>
+        <pre class="log-message"></pre>
+      </article>
+    </template>
+
+    <script type="module" src="./renderer.js"></script>
+  </body>
+</html>

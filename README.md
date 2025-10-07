@@ -6,7 +6,7 @@ Telegram bot with functions tools.
 
 ## Features
 
-- In comparsion with [popstas/telegram-chatgpt-bot](https://github.com/popstas/telegram-chatgpt-bot)
+- In comparison with [popstas/telegram-chatgpt-bot](https://github.com/popstas/telegram-chatgpt-bot)
 - Single answer to several forwarded messages to bot
 - Bot can use tools to get answer
 - Better fallback answer when telegram markdown is wrong
@@ -19,6 +19,7 @@ Telegram bot with functions tools.
 - Prompt placeholders: `{url:...}` and `{tool:...}` for dynamic content
 - Photo messages and image documents are processed with OCR to extract text
 - Dedicated log files for HTTP and MQTT activity
+- Desktop launcher with tray controls and live log viewer ([docs/desktop-launcher.md](docs/desktop-launcher.md))
 - Docker healthcheck endpoint for container monitoring
 - GET `/agent/:agent` returns agent status
 - Per-chat `http_token` overrides the global HTTP token
@@ -29,6 +30,17 @@ Telegram bot with functions tools.
 - Vector memory with `memory_search` and `memory_delete` tools (confirmation required for delete, optional automatic search)
 - Dynamic reply buttons returned from LLM responses (enable with `chatParams.responseButtons`)
 - Enforce structured outputs by setting `response_format` in chat configuration
+
+## Desktop launcher
+
+The project ships with a lightweight Electron wrapper so you can monitor the bot from the system tray on macOS, Windows, or Linux.
+
+- **Start the desktop shell:** `npm run desktop`. The command launches Electron with the existing Node runtime so the same configuration is reused.
+- **Tray controls:** start or stop the bot, show or hide the window, and open the local `data/` directory where log files live.
+- **Live log viewer:** the window tails `data/messages.log`, `data/http.log`, and `data/mqtt.log` in real time. You can pause the stream, clear the list, filter by source, and toggle automatic scrolling.
+- **Graceful shutdown:** quitting the app stops running bots and MQTT connections before exiting.
+
+For distribution, run `npm run build:electron` to emit bundled `main`/`preload` files, then package them with tooling such as `electron-builder`.
 
 ## Pipeline
 

@@ -65,6 +65,7 @@ jest.unstable_mockModule("../src/mqtt.ts", () => ({
   useMqtt: () => mockUseMqtt(),
   isMqttConnected: () => true,
   publishMqttProgress: jest.fn(),
+  shutdownMqtt: jest.fn(),
 }));
 
 jest.unstable_mockModule("../src/handlers/onTextMessage.ts", () => ({
