@@ -14,6 +14,7 @@
     "tsBuildInfoFile": "node_modules/.cache/tsconfig.tsbuildinfo",
     "noEmit": true,
     "isolatedModules": true,
+    "strict": true,
     "typeRoots": ["node_modules/@types", "src/@types"]
   },
   "exclude": ["node_modules", "build"],

@@ -164,11 +164,11 @@ export async function toolPostHandler(req: express.Request, res: express.Respons
   const chatTool = chatTools.find((f) => f.name === toolName);
   if (!chatTool) {
     log({
-      msg: "Wrong tool_name",
+      msg: `Wrong tool_name: ${toolName}`,
       logLevel: "warn",
       logPath: HTTP_LOG_PATH,
     });
-    return res.status(400).send("Wrong tool_name");
+    return res.status(400).send(`Wrong tool_name: ${toolName}`);
   }
   const fn = chatTool.module.call(agentConfig, thread).functions.get(toolName);
   const argsStr = typeof args === "string" ? args : JSON.stringify(args || {});

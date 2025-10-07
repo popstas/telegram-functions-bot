@@ -31,7 +31,7 @@
     "google-auth-library": "^10.1.0",
     "googleapis": "^152.0.0",
     "https-proxy-agent": "^7.0.6",
-    "js-tiktoken": "^1.0.20",
+    "js-tiktoken": "^1.0.21",
     "js-yaml": "^4.1.0",
     "langfuse": "^3.38.4",
     "lodash.debounce": "^4.0.8",
