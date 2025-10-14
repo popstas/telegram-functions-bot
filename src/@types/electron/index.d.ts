@@ -33,7 +33,8 @@ declare module "electron" {
     hide(): void;
     focus(): void;
     isVisible(): boolean;
-    on(event: "ready-to-show" | "close", listener: (...args: unknown[]) => void): this;
+    on(event: "ready-to-show", listener: () => void): this;
+    on(event: "close", listener: (event: { preventDefault: () => void }) => void): this;
     webContents: {
       send(channel: string, ...args: unknown[]): void;
     };

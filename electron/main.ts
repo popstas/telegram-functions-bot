@@ -139,9 +139,10 @@ async function createWindow() {
     mainWindow?.show();
   });
 
-  mainWindow.on("close", (event: { preventDefault: () => void }) => {
+  mainWindow.on("close", (event) => {
     if (quitting) return;
-    event.preventDefault();
+    const browserEvent = event as { preventDefault?: () => void } | undefined;
+    browserEvent?.preventDefault?.();
     mainWindow?.hide();
     logDesktop("Main window hidden instead of closed", "debug");
   });
