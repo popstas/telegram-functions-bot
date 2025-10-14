@@ -6,7 +6,7 @@ export type LogSource = "messages" | "http" | "mqtt";
 export type LogLevel = "debug" | "verbose" | "info" | "warn" | "error";
 
 export interface LogEntry {
-  source: LogSource;
+  source: LogSource | "desktop";
   raw: string;
   message: string;
   timestamp?: string;

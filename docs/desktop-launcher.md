@@ -18,7 +18,8 @@ The command starts Electron with the `NODE_ENV=desktop` flag. The bot lifecycle 
 ## Features
 
 - Tray menu for start/stop, show/hide window, and opening the `data/` folder.
-- Live log viewer that tails `data/messages.log`, `data/http.log`, and `data/mqtt.log`.
+- Live log viewer that tails `data/messages.log`, `data/http.log`, and `data/mqtt.log`, and surfaces Electron lifecycle events
+  through the **Desktop** filter for easier debugging.
 - Pause, clear, and per-source filters plus optional auto-scroll for logs.
 - Graceful shutdown of Telegram bots and MQTT subscriptions when quitting.
 

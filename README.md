@@ -37,7 +37,9 @@ The project ships with a lightweight Electron wrapper so you can monitor the bot
 
 - **Start the desktop shell:** `npm run desktop`. The command launches Electron with the existing Node runtime so the same configuration is reused.
 - **Tray controls:** start or stop the bot, show or hide the window, and open the local `data/` directory where log files live.
-- **Live log viewer:** the window tails `data/messages.log`, `data/http.log`, and `data/mqtt.log` in real time. You can pause the stream, clear the list, filter by source, and toggle automatic scrolling.
+- **Live log viewer:** the window tails `data/messages.log`, `data/http.log`, and `data/mqtt.log` in real time. You can pause the
+  stream, clear the list, filter by source (including a dedicated **Desktop** channel for Electron lifecycle messages), and toggle
+  automatic scrolling.
 - **Graceful shutdown:** quitting the app stops running bots and MQTT connections before exiting.
 
 For distribution, run `npm run build:electron` to emit bundled `main`/`preload` files, then package them with tooling such as `electron-builder`.

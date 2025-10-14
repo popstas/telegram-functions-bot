@@ -12,7 +12,7 @@ const filterCheckboxes = Array.from(document.querySelectorAll(".filters input[ty
 const state = {
   paused: false,
   autoScroll: true,
-  filters: new Set(["messages", "http", "mqtt"]),
+  filters: new Set(["messages", "http", "mqtt", "desktop"]),
   logs: [],
 };
 

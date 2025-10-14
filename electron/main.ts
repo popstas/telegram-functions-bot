@@ -10,7 +10,7 @@ import {
 } from "electron";
 import path from "node:path";
 import fs from "node:fs";
-import { createDefaultLogTailer, LogEntry, LogTailer } from "./logTail.ts";
+import { createDefaultLogTailer, LogEntry, LogTailer, LogLevel } from "./logTail.ts";
 import { startBot, stopBot } from "../src/index.ts";
 
 let mainWindow: BrowserWindow | null = null;
@@ -22,6 +22,26 @@ let rendererReady = false;
 const pendingLogs: LogEntry[] = [];
 const FALLBACK_ICON_DATA_URL =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAYAAAAfSC3RAAAAHElEQVQ4T2NkoBAwUqifgYGB4T8GphE0DSqGhgYAJDUEAK0YELkAAAAASUVORK5CYII=";
+
+function logDesktop(message: string, level: LogLevel = "info", details?: unknown) {
+  const timestamp = new Date().toISOString();
+  const consoleMethod =
+    level === "error" ? console.error : level === "warn" ? console.warn : level === "debug" ? console.debug : console.log;
+  if (details !== undefined) {
+    consoleMethod("[desktop]", message, details);
+  } else {
+    consoleMethod("[desktop]", message);
+  }
+
+  const entry: LogEntry = {
+    source: "desktop",
+    raw: details instanceof Error ? `${message}: ${details.stack ?? details.message ?? details}` : message,
+    message,
+    timestamp,
+    level,
+  };
+  sendLog(entry);
+}
 
 function appBasePath() {
   const appPath = app.getAppPath();
@@ -99,6 +119,7 @@ function ensureLogsDir() {
 }
 
 async function createWindow() {
+  logDesktop("Creating main window");
   mainWindow = new BrowserWindow({
     width: 960,
     height: 640,
@@ -114,6 +135,7 @@ async function createWindow() {
   });
 
   mainWindow.on("ready-to-show", () => {
+    logDesktop("Renderer ready-to-show event received", "debug");
     mainWindow?.show();
   });
 
@@ -121,9 +143,12 @@ async function createWindow() {
     if (quitting) return;
     event.preventDefault();
     mainWindow?.hide();
+    logDesktop("Main window hidden instead of closed", "debug");
   });
 
-  await mainWindow.loadFile(resolveHtml());
+  const htmlPath = resolveHtml();
+  logDesktop(`Loading renderer HTML from ${htmlPath}`);
+  await mainWindow.loadFile(htmlPath);
 }
 
 function sendBotState() {
@@ -139,6 +164,13 @@ function sendLog(entry: LogEntry) {
   mainWindow.webContents.send("logs:append", entry);
 }
 
+function reportPendingLogsQueued() {
+  if (!pendingLogs.length) {
+    return;
+  }
+  logDesktop(`Queued ${pendingLogs.length} log entries while renderer initialized`, "debug");
+}
+
 function flushPendingLogs() {
   if (!mainWindow) return;
   while (pendingLogs.length) {
@@ -150,33 +182,42 @@ function flushPendingLogs() {
 
 async function startLogTailer() {
   const logsDir = ensureLogsDir();
+  logDesktop(`Starting log tailer in ${logsDir}`);
   tailer = createDefaultLogTailer(logsDir);
   tailer.on("log", (entry) => sendLog(entry));
   tailer.on("error", (error) => {
+    logDesktop(`Log tailer error: ${error.message}`, "error", error);
     mainWindow?.webContents.send("logs:error", error.message);
   });
   await tailer.start();
+  logDesktop("Log tailer started", "debug");
 }
 
 async function startBotProcess() {
+  logDesktop("Starting bot process");
   try {
     await startBot();
     botRunning = true;
+    logDesktop("Bot process started successfully");
   } catch (error) {
     console.error("Failed to start bot", error);
     botRunning = false;
+    logDesktop("Failed to start bot", "error", error);
   }
   sendBotState();
   updateTrayMenu();
 }
 
 async function stopBotProcess() {
+  logDesktop("Stopping bot process");
   try {
     await stopBot();
   } catch (error) {
     console.error("Failed to stop bot", error);
+    logDesktop("Failed to stop bot", "error", error);
   }
   botRunning = false;
+  logDesktop("Bot process stopped", "debug");
   sendBotState();
   updateTrayMenu();
 }
@@ -206,6 +247,7 @@ function createTray() {
   tray.setToolTip("Telegram Functions Bot");
   tray.on("click", () => toggleWindowVisibility());
   updateTrayMenu();
+  logDesktop("Tray initialized");
 }
 
 function updateTrayMenu() {
@@ -249,6 +291,7 @@ function updateTrayMenu() {
 
 function registerIpcHandlers() {
   ipcMain.handle("bot:toggle", async () => {
+    logDesktop("IPC: bot:toggle invoked", "debug");
     if (botRunning) {
       await stopBotProcess();
     } else {
@@ -257,16 +300,20 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle("logs:open-folder", async () => {
+    logDesktop("IPC: logs:open-folder invoked", "debug");
     await shell.openPath(ensureLogsDir());
   });
 
   ipcMain.on("renderer-ready", () => {
     rendererReady = true;
+    logDesktop("Renderer reported ready", "debug");
+    reportPendingLogsQueued();
     flushPendingLogs();
     sendBotState();
   });
 
   ipcMain.handle("window:toggle", () => {
+    logDesktop("IPC: window:toggle invoked", "debug");
     toggleWindowVisibility();
   });
 }
@@ -277,10 +324,12 @@ app.on("window-all-closed", () => {
 
 app.on("activate", () => {
   if (!mainWindow) {
+    logDesktop("App activated without window, recreating", "debug");
     void createWindow().then(() => {
       sendBotState();
     });
   } else {
+    logDesktop("App activated, showing existing window", "debug");
     mainWindow.show();
   }
 });
@@ -291,12 +340,14 @@ app.on("before-quit", async (event: { preventDefault: () => void }) => {
   }
   event.preventDefault();
   quitting = true;
+  logDesktop("Application quitting, stopping services");
   await stopBotProcess();
   tailer?.stop();
   app.exit();
 });
 
 app.whenReady().then(async () => {
+  logDesktop("Electron app ready", "debug");
   await createWindow();
   createTray();
   registerIpcHandlers();

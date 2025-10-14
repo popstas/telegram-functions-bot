@@ -14,7 +14,10 @@
     "tsBuildInfoFile": "node_modules/.cache/tsconfig.tsbuildinfo",
     "noEmit": true,
     "isolatedModules": true,
-    "typeRoots": ["node_modules/@types", "src/@types"]
+    "typeRoots": ["node_modules/@types", "src/@types"],
+    "paths": {
+      "electron": ["./src/@types/electron/index.d.ts"]
+    }
   },
   "exclude": ["node_modules", "build"],
   "include": ["src/**/*.ts", "electron/**/*.ts"]
