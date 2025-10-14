@@ -46,6 +46,18 @@ The project ships with a lightweight Electron wrapper so you can monitor the bot
 
 For distribution, run `npm run build:electron` to emit bundled `main`/`preload` files, then package them with tooling such as `electron-builder`.
 
+### Native modules (better-sqlite3)
+
+Vector memory features rely on the native `better-sqlite3` bindings. The CLI entry point bundles a binary compatible with your local Node.js runtime, but Electron ships with its own Node version. If the desktop launcher reports an `ERR_DLOPEN_FAILED` or `NODE_MODULE_VERSION` mismatch for `better-sqlite3`:
+
+1. Rebuild the module for Electron:
+   ```bash
+   npx electron-rebuild --only better-sqlite3
+   ```
+2. Restart `npm run desktop`.
+
+Until the rebuild succeeds the bot continues to run, but vector memory tools are disabled and a warning is logged to the desktop console.
+
 ## Pipeline
 
 - Receive question

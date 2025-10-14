@@ -34,3 +34,13 @@ The command starts Electron with the `NODE_ENV=desktop` flag. The bot lifecycle 
 2. Use your preferred packaging tool (e.g. `electron-builder`) to generate installers. The bundled assets live in the `dist-electron/` directory.
 
 > **Tip:** Add your own tray icon at `electron/assets/icon.png` before packaging; the repository intentionally leaves the placeholder untracked.
+
+## Native modules
+
+The vector memory tools depend on the `better-sqlite3` native module. When you launch Electron it uses its own Node.js build, so you must rebuild the binding to match:
+
+```bash
+npx electron-rebuild --only better-sqlite3
+```
+
+The desktop launcher keeps running even if the rebuild fails, but vector memory is temporarily disabled and a warning is written to the Electron console and `data/electron.log`.

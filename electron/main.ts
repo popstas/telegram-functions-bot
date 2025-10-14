@@ -155,8 +155,21 @@ function ensureLogsDir() {
   return dir;
 }
 
+function markRendererReady(reason: string) {
+  if (rendererReady) {
+    logDesktop(`Renderer already marked ready (via ${reason})`, "debug");
+    return;
+  }
+  rendererReady = true;
+  logDesktop(`Renderer marked ready (via ${reason})`, "debug");
+  reportPendingLogsQueued();
+  flushPendingLogs();
+  sendBotState();
+}
+
 async function createWindow() {
   logDesktop("Creating main window");
+  rendererReady = false;
   mainWindow = new BrowserWindow({
     width: 960,
     height: 640,
@@ -187,6 +200,7 @@ async function createWindow() {
   const htmlPath = resolveHtml();
   logDesktop(`Loading renderer HTML from ${htmlPath}`);
   await mainWindow.loadFile(htmlPath);
+  markRendererReady("loadFile resolved");
 }
 
 function sendBotState() {
@@ -343,11 +357,8 @@ function registerIpcHandlers() {
   });
 
   ipcMain.on("renderer-ready", () => {
-    rendererReady = true;
     logDesktop("Renderer reported ready", "debug");
-    reportPendingLogsQueued();
-    flushPendingLogs();
-    sendBotState();
+    markRendererReady("renderer IPC");
   });
 
   ipcMain.handle("window:toggle", () => {

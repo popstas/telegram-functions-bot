@@ -35,7 +35,7 @@ declare module "electron" {
     isVisible(): boolean;
     on(event: "ready-to-show", listener: () => void): this;
     on(event: "close", listener: (event: { preventDefault: () => void }) => void): this;
-    webContents: {
+    webContents: EventEmitter & {
       send(channel: string, ...args: unknown[]): void;
     };
   }
