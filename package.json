@@ -6,7 +6,7 @@
   "scripts": {
     "start": "tsx src/index.ts",
     "desktop": "cross-env NODE_ENV=desktop electron electron/main-entry.mjs",
-    "build:electron": "esbuild electron/main.ts electron/preload.ts --bundle --platform=node --format=esm --outdir=dist-electron --sourcemap --external:electron",
+    "build:electron": "esbuild electron/main.ts electron/preload.js --bundle --platform=node --format=esm --outdir=dist-electron --sourcemap --external:electron",
     "changelog": "npx conventional-changelog-cli -p angular -i CHANGELOG.md -s -r 0",
     "test": "node --no-warnings=ExperimentalWarning --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:coverage": "npm test -- --coverage",
