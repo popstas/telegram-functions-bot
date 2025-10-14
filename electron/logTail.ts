@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events";
 import { promises as fsPromises, watch, FSWatcher } from "node:fs";
 import path from "node:path";
 
-export type LogSource = "messages" | "http" | "mqtt";
+export type LogSource = "messages";
 export type LogLevel = "debug" | "verbose" | "info" | "warn" | "error";
 
 export interface LogEntry {
@@ -181,8 +181,6 @@ export function parseLogLine(source: LogSource, raw: string): LogEntry {
 export function createDefaultLogTailer(baseDir = "data") {
   const files: Record<LogSource, string> = {
     messages: path.join(baseDir, "messages.log"),
-    http: path.join(baseDir, "http.log"),
-    mqtt: path.join(baseDir, "mqtt.log"),
   };
-  return new LogTailer(files);
+  return new LogTailer(files, { followExisting: false });
 }

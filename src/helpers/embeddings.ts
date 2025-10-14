@@ -15,6 +15,16 @@ let databaseCtor: typeof DatabaseModule | null = null;
 let moduleLoadFailed = false;
 let moduleWarningLogged = false;
 
+export function shouldLoadBetterSqlite3(): boolean {
+  if (process.env.BETTER_SQLITE3_ALLOW_ELECTRON === "1") {
+    return true;
+  }
+  if (typeof process.versions?.electron === "string") {
+    return false;
+  }
+  return true;
+}
+
 function warnVectorMemoryDisabled(error?: unknown) {
   if (moduleWarningLogged) {
     return;
@@ -36,6 +46,13 @@ function loadDatabaseConstructor(): typeof DatabaseModule | null {
     return databaseCtor;
   }
   if (moduleLoadFailed) {
+    return null;
+  }
+  if (!shouldLoadBetterSqlite3()) {
+    moduleLoadFailed = true;
+    warnVectorMemoryDisabled(
+      "Electron runtime detected; skipping better-sqlite3 load (set BETTER_SQLITE3_ALLOW_ELECTRON=1 after rebuilding the module for Electron).",
+    );
     return null;
   }
   try {

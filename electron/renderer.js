@@ -25,7 +25,7 @@ if (!window.desktop) {
 const state = {
   paused: false,
   autoScroll: true,
-  filters: new Set(["messages", "http", "mqtt", "desktop"]),
+  filters: new Set(["messages", "desktop"]),
   logs: [],
 };
 

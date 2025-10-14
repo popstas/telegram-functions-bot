@@ -3,7 +3,7 @@ import path from "node:path";
 import os from "node:os";
 import { promises as fs } from "node:fs";
 import { mkdtempSync } from "node:fs";
-import { LogTailer, parseLogLine } from "../../electron/logTail.ts";
+import { LogTailer, parseLogLine, createDefaultLogTailer } from "../../electron/logTail.ts";
 
 const TIMESTAMP = "2024-01-01 10:00:00";
 
@@ -17,7 +17,7 @@ describe("parseLogLine", () => {
   });
 
   it("falls back to defaults when metadata missing", () => {
-    const entry = parseLogLine("http", "plain line without timestamp");
+    const entry = parseLogLine("messages", "plain line without timestamp");
     expect(entry.timestamp).toBeUndefined();
     expect(entry.level).toBe("info");
     expect(entry.message).toBe("plain line without timestamp");
@@ -26,15 +26,13 @@ describe("parseLogLine", () => {
 
 describe("LogTailer", () => {
   let tempDir: string;
-  let files: Record<"messages" | "http" | "mqtt", string>;
+  let files: Record<"messages", string>;
   let tailer: LogTailer;
 
   beforeEach(() => {
     tempDir = mkdtempSync(path.join(os.tmpdir(), "tgbot-logs-"));
     files = {
       messages: path.join(tempDir, "messages.log"),
-      http: path.join(tempDir, "http.log"),
-      mqtt: path.join(tempDir, "mqtt.log"),
     };
   });
 
@@ -45,8 +43,6 @@ describe("LogTailer", () => {
 
   it("emits existing lines on startup", async () => {
     await fs.writeFile(files.messages, `[${TIMESTAMP}] [INFO] hello world\n`);
-    await fs.writeFile(files.http, `[${TIMESTAMP}] request accepted\n`);
-    await fs.writeFile(files.mqtt, `[${TIMESTAMP}] mqtt event\n`);
 
     const seen: string[] = [];
     tailer = new LogTailer(files);
@@ -56,16 +52,11 @@ describe("LogTailer", () => {
 
     await tailer.start();
 
-    expect(seen).toHaveLength(3);
-    expect(seen).toEqual(
-      expect.arrayContaining(["messages:hello world", "http:request accepted", "mqtt:mqtt event"]),
-    );
+    expect(seen).toEqual(["messages:hello world"]);
   });
 
   it("watches for appended lines", async () => {
     await fs.writeFile(files.messages, "");
-    await fs.writeFile(files.http, "");
-    await fs.writeFile(files.mqtt, "");
 
     const received: string[] = [];
     tailer = new LogTailer(files, { followExisting: false });
@@ -77,10 +68,8 @@ describe("LogTailer", () => {
 
     await fs.appendFile(files.messages, `[${TIMESTAMP}] new message\n`);
     await tailer.refresh("messages");
-    await fs.appendFile(files.http, `[${TIMESTAMP}] [ERROR] http failed\n`);
-    await tailer.refresh("http");
 
-    const expectedEntries = ["messages:new message", "http:http failed"];
+    const expectedEntries = ["messages:new message"];
     for (let i = 0; i < 20; i++) {
       if (expectedEntries.every((line) => received.includes(line))) {
         break;
@@ -89,5 +78,27 @@ describe("LogTailer", () => {
     }
 
     expect(received).toEqual(expect.arrayContaining(expectedEntries));
+  });
+
+  it("default tailer emits only new message lines", async () => {
+    const baseDir = path.join(tempDir, "logs");
+    await fs.mkdir(baseDir, { recursive: true });
+    const messagesFile = path.join(baseDir, "messages.log");
+    await fs.writeFile(messagesFile, `[${TIMESTAMP}] [INFO] old line\n`);
+
+    const received: string[] = [];
+    tailer = createDefaultLogTailer(baseDir);
+    tailer.on("log", (entry) => {
+      received.push(`${entry.source}:${entry.message}`);
+    });
+
+    await tailer.start();
+    expect(received).toHaveLength(0);
+
+    await fs.appendFile(messagesFile, `[${TIMESTAMP}] [INFO] fresh line\n`);
+    await tailer.refresh("messages");
+
+    expect(received.length).toBeGreaterThanOrEqual(1);
+    expect(new Set(received)).toEqual(new Set(["messages:fresh line"]));
   });
 });

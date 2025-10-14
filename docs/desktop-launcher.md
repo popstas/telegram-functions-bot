@@ -18,8 +18,8 @@ The command starts Electron with the `NODE_ENV=desktop` flag. The bot lifecycle 
 ## Features
 
 - Tray menu for start/stop, show/hide window, and opening the `data/` folder.
-- Live log viewer that tails `data/messages.log`, `data/http.log`, and `data/mqtt.log`, and surfaces Electron lifecycle events
-  through the **Desktop** filter for easier debugging.
+- Live log viewer that tails new entries from `data/messages.log` and surfaces Electron lifecycle events through the **Desktop**
+  filter for easier debugging.
 - Pause, clear, and per-source filters plus optional auto-scroll for logs.
 - Desktop lifecycle events are also saved to `data/electron.log`, providing a plain-text audit trail for troubleshooting startup
   issues even if the renderer UI is unavailable.
@@ -37,10 +37,11 @@ The command starts Electron with the `NODE_ENV=desktop` flag. The bot lifecycle 
 
 ## Native modules
 
-The vector memory tools depend on the `better-sqlite3` native module. When you launch Electron it uses its own Node.js build, so you must rebuild the binding to match:
+The vector memory tools depend on the `better-sqlite3` native module. When you launch Electron it uses its own Node.js build, so you must rebuild the binding to match and then explicitly opt-in to loading it inside the desktop shell:
 
 ```bash
 npx electron-rebuild --only better-sqlite3
+BETTER_SQLITE3_ALLOW_ELECTRON=1 npm run desktop
 ```
 
-The desktop launcher keeps running even if the rebuild fails, but vector memory is temporarily disabled and a warning is written to the Electron console and `data/electron.log`.
+Until both steps are completed the desktop launcher skips the native module to avoid `NODE_MODULE_VERSION` errors. Vector memory remains disabled and a warning is written to the Electron console and `data/electron.log`.

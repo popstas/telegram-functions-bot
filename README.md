@@ -37,9 +37,8 @@ The project ships with a lightweight Electron wrapper so you can monitor the bot
 
 - **Start the desktop shell:** `npm run desktop`. The command launches Electron with the existing Node runtime so the same configuration is reused.
 - **Tray controls:** start or stop the bot, show or hide the window, and open the local `data/` directory where log files live.
-- **Live log viewer:** the window tails `data/messages.log`, `data/http.log`, and `data/mqtt.log` in real time. You can pause the
-  stream, clear the list, filter by source (including a dedicated **Desktop** channel for Electron lifecycle messages), and toggle
-  automatic scrolling.
+- **Live log viewer:** the window tails new entries from `data/messages.log` in real time. You can pause the stream, clear the
+  list, switch between message and **Desktop** channels, and toggle automatic scrolling.
 - **Desktop log file:** Electron lifecycle activity is also persisted to `data/electron.log` so you can review startup issues even
   if the renderer fails to load.
 - **Graceful shutdown:** quitting the app stops running bots and MQTT connections before exiting.
@@ -48,15 +47,18 @@ For distribution, run `npm run build:electron` to emit bundled `main`/`preload` 
 
 ### Native modules (better-sqlite3)
 
-Vector memory features rely on the native `better-sqlite3` bindings. The CLI entry point bundles a binary compatible with your local Node.js runtime, but Electron ships with its own Node version. If the desktop launcher reports an `ERR_DLOPEN_FAILED` or `NODE_MODULE_VERSION` mismatch for `better-sqlite3`:
+Vector memory features rely on the native `better-sqlite3` bindings. The CLI entry point bundles a binary compatible with your local Node.js runtime, but Electron ships with its own Node version. To avoid repeated `ERR_DLOPEN_FAILED` traces the desktop launcher skips loading `better-sqlite3` until you explicitly opt back in. When you are ready to enable vector memory inside Electron:
 
 1. Rebuild the module for Electron:
    ```bash
    npx electron-rebuild --only better-sqlite3
    ```
-2. Restart `npm run desktop`.
+2. Launch the desktop shell with the opt-in flag so the runtime will load the rebuilt binding:
+   ```bash
+   BETTER_SQLITE3_ALLOW_ELECTRON=1 npm run desktop
+   ```
 
-Until the rebuild succeeds the bot continues to run, but vector memory tools are disabled and a warning is logged to the desktop console.
+Until the rebuild succeeds (or the opt-in flag is omitted) the bot continues to run, vector memory tools stay disabled, and a warning is logged to both the desktop console and `data/electron.log`.
 
 ## Pipeline
 
