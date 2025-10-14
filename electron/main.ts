@@ -20,8 +20,37 @@ let botRunning = false;
 let quitting = false;
 let rendererReady = false;
 const pendingLogs: LogEntry[] = [];
+let logStream: fs.WriteStream | null = null;
 const FALLBACK_ICON_DATA_URL =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAYAAAAfSC3RAAAAHElEQVQ4T2NkoBAwUqifgYGB4T8GphE0DSqGhgYAJDUEAK0YELkAAAAASUVORK5CYII=";
+
+function getLogStream() {
+  if (logStream) return logStream;
+  const dir = ensureLogsDir();
+  const file = path.join(dir, "electron.log");
+  try {
+    logStream = fs.createWriteStream(file, { flags: "a" });
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    console.error("[desktop] Failed to open electron log file", err);
+    logStream = null;
+  }
+  return logStream;
+}
+
+function serializeDetails(details: unknown) {
+  if (details instanceof Error) {
+    return details.stack ?? details.message;
+  }
+  if (typeof details === "string") {
+    return details;
+  }
+  try {
+    return JSON.stringify(details);
+  } catch {
+    return String(details);
+  }
+}
 
 function logDesktop(message: string, level: LogLevel = "info", details?: unknown) {
   const timestamp = new Date().toISOString();
@@ -40,6 +69,13 @@ function logDesktop(message: string, level: LogLevel = "info", details?: unknown
     timestamp,
     level,
   };
+
+  const stream = getLogStream();
+  if (stream) {
+    const detailText = details === undefined ? "" : ` ${serializeDetails(details)}`;
+    stream.write(`[${timestamp}] [${level.toUpperCase()}] ${message}${detailText}\n`);
+  }
+
   sendLog(entry);
 }
 
@@ -101,9 +137,10 @@ function resolvePreload() {
         path.join(base, "dist-electron", "preload.js"),
       ]
     : [
-        path.join(base, "preload.ts"),
         path.join(base, "preload.js"),
+        path.join(base, "preload.mjs"),
         path.join(base, "dist-electron", "preload.js"),
+        path.join(app.getAppPath(), "electron", "preload.js"),
         path.join(app.getAppPath(), "electron", "preload.ts"),
       ];
 
@@ -345,6 +382,13 @@ app.on("before-quit", async (event: { preventDefault: () => void }) => {
   await stopBotProcess();
   tailer?.stop();
   app.exit();
+});
+
+app.on("quit", () => {
+  if (logStream) {
+    logStream.end();
+    logStream = null;
+  }
 });
 
 app.whenReady().then(async () => {

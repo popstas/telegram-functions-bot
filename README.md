@@ -40,6 +40,8 @@ The project ships with a lightweight Electron wrapper so you can monitor the bot
 - **Live log viewer:** the window tails `data/messages.log`, `data/http.log`, and `data/mqtt.log` in real time. You can pause the
   stream, clear the list, filter by source (including a dedicated **Desktop** channel for Electron lifecycle messages), and toggle
   automatic scrolling.
+- **Desktop log file:** Electron lifecycle activity is also persisted to `data/electron.log` so you can review startup issues even
+  if the renderer fails to load.
 - **Graceful shutdown:** quitting the app stops running bots and MQTT connections before exiting.
 
 For distribution, run `npm run build:electron` to emit bundled `main`/`preload` files, then package them with tooling such as `electron-builder`.

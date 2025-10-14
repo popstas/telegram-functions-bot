@@ -9,6 +9,19 @@ const clearButton = document.getElementById("clear");
 const autoScrollToggle = document.getElementById("autoscroll");
 const filterCheckboxes = Array.from(document.querySelectorAll(".filters input[type='checkbox']"));
 
+const desktopBridge = window.desktop ?? {
+  onLog: () => () => {},
+  onBotState: () => () => {},
+  toggleBot: async () => {},
+  openLogsFolder: async () => {},
+  toggleWindow: async () => {},
+  notifyReady: () => {},
+};
+
+if (!window.desktop) {
+  console.error("Desktop preload bridge unavailable. Renderer controls will be no-ops.");
+}
+
 const state = {
   paused: false,
   autoScroll: true,
@@ -83,15 +96,15 @@ filterCheckboxes.forEach((checkbox) => {
 });
 
 toggleRunButton.addEventListener("click", () => {
-  window.desktop.toggleBot();
+  desktopBridge.toggleBot();
 });
 
 toggleWindowButton.addEventListener("click", () => {
-  window.desktop.toggleWindow();
+  desktopBridge.toggleWindow();
 });
 
 openLogsButton.addEventListener("click", () => {
-  window.desktop.openLogsFolder();
+  desktopBridge.openLogsFolder();
 });
 
 pauseButton.addEventListener("click", () => {
@@ -111,13 +124,13 @@ autoScrollToggle.addEventListener("change", () => {
   state.autoScroll = autoScrollToggle.checked;
 });
 
-window.desktop.onLog(handleLog);
-window.desktop.onBotState((stateInfo) => {
+desktopBridge.onLog(handleLog);
+desktopBridge.onBotState((stateInfo) => {
   updateStatus(stateInfo.running);
 });
 
 window.addEventListener("DOMContentLoaded", () => {
   updateStatus(false);
   renderAll();
-  window.desktop.notifyReady();
+  desktopBridge.notifyReady();
 });
