@@ -112,7 +112,10 @@ beforeEach(async () => {
     on: jest.fn(),
     action: jest.fn(),
     catch: jest.fn(),
-    launch: jest.fn().mockResolvedValue(undefined),
+    launch: jest.fn().mockImplementation((_config, onLaunch) => {
+      onLaunch?.();
+      return Promise.resolve();
+    }),
   });
   mockInitCommands.mockReset();
   mockWriteConfig.mockReset();

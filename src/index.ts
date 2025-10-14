@@ -130,15 +130,31 @@ async function launchBot(bot_token: string, bot_name: string) {
     bot.action("add_chat", handleAddChat);
 
     // Start the bot
-    await bot.launch().catch((error) => {
+    let resolveReady: (() => void) | undefined;
+    let rejectReady: ((error: unknown) => void) | undefined;
+
+    const ready = new Promise<void>((resolve, reject) => {
+      resolveReady = resolve;
+      rejectReady = reject;
+    });
+
+    const launchPromise = bot.launch({}, () => {
+      log({ msg: `bot started: ${bot_name}` });
+      resolveReady?.();
+    });
+
+    launchPromise.catch((error) => {
       log({
         msg: `[${bot_name}] Error during bot launch: ${error instanceof Error ? error.message : String(error)}`,
         logLevel: "error",
       });
-      console.error(error.stack);
+      if (error instanceof Error) {
+        console.error(error.stack);
+      }
+      rejectReady?.(error);
     });
 
-    log({ msg: `bot started: ${bot_name}` });
+    await ready;
     return bot;
   } catch (error: unknown) {
     if (error && typeof error === "object" && "response" in error) {
