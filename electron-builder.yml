@@ -1,0 +1,27 @@
+appId: com.telegram.functions.bot
+productName: Telegram Functions Bot
+directories:
+  output: dist
+  buildResources: electron/assets
+files:
+  - dist-electron/**/*
+  - electron/index.html
+  - electron/renderer.js
+  - electron/styles.css
+  - electron/assets/**/*
+  - package.json
+  - node_modules/**/*
+  - "!docs/**/*"
+  - "!tests/**/*"
+  - "!data/**/*"
+  - "!CHANGELOG.md"
+  - "!TODO.md"
+  - "!AGENTS.md"
+asar: false
+extraMetadata:
+  main: dist-electron/main.js
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64

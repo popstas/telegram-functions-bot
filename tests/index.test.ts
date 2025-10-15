@@ -65,6 +65,7 @@ jest.unstable_mockModule("../src/mqtt.ts", () => ({
   useMqtt: () => mockUseMqtt(),
   isMqttConnected: () => true,
   publishMqttProgress: jest.fn(),
+  shutdownMqtt: jest.fn(),
 }));
 
 jest.unstable_mockModule("../src/handlers/onTextMessage.ts", () => ({
@@ -111,7 +112,10 @@ beforeEach(async () => {
     on: jest.fn(),
     action: jest.fn(),
     catch: jest.fn(),
-    launch: jest.fn().mockResolvedValue(undefined),
+    launch: jest.fn().mockImplementation((_config, onLaunch) => {
+      onLaunch?.();
+      return Promise.resolve();
+    }),
   });
   mockInitCommands.mockReset();
   mockWriteConfig.mockReset();

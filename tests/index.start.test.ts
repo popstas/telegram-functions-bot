@@ -14,7 +14,10 @@ const botInstance = {
   on: jest.fn(),
   action: jest.fn(),
   catch: jest.fn(),
-  launch: jest.fn().mockResolvedValue(undefined),
+  launch: jest.fn().mockImplementation((_config, onLaunch) => {
+    onLaunch?.();
+    return Promise.resolve();
+  }),
   botInfo: { username: "bot" },
 };
 
@@ -35,6 +38,7 @@ jest.unstable_mockModule("../src/mqtt.ts", () => ({
   useMqtt: () => mockUseMqtt(),
   isMqttConnected: jest.fn(),
   publishMqttProgress: jest.fn(),
+  shutdownMqtt: jest.fn(),
 }));
 
 const expressApp = {
@@ -87,6 +91,11 @@ beforeEach(async () => {
   mockWatchConfigChanges.mockReset();
   mockUseMqtt.mockReset();
   mockInitTools.mockReset();
+  botInstance.launch.mockClear();
+  botInstance.launch.mockImplementation((_config, onLaunch) => {
+    onLaunch?.();
+    return Promise.resolve();
+  });
 
   index = await import("../src/index.ts");
 });
@@ -152,7 +161,7 @@ describe("start", () => {
 
     await index.start();
 
-    expect(setTimeoutSpy).toHaveBeenCalledWith(index.start, 10000);
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 10000);
     setTimeoutSpy.mockRestore();
   });
 });

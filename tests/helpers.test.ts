@@ -1,7 +1,13 @@
-import path from "path";
-import os from "os";
 import fs from "fs";
-import { log, agentNameToId, ensureDirectoryExists } from "../src/helpers.ts";
+import os from "os";
+import path from "path";
+import {
+  log,
+  agentNameToId,
+  ensureDirectoryExists,
+  subscribeToLogs,
+  type LogDispatchPayload,
+} from "../src/helpers.ts";
 
 describe("log", () => {
   let consoleOutput: string[] = [];
@@ -64,6 +70,26 @@ describe("log", () => {
     expect(consoleOutput).toContainEqual(
       expect.stringContaining("[123] [Test Chat] [user] [testuser] Test message with details"),
     );
+  });
+  it("notifies log subscribers", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "log-subscriber-"));
+    const logFile = path.join(tmpDir, "custom.log");
+    const received: LogDispatchPayload[] = [];
+    const unsubscribe = subscribeToLogs((payload) => {
+      received.push(payload);
+    });
+
+    log({ msg: "Subscriber message", logLevel: "warn", logPath: logFile });
+
+    unsubscribe();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+
+    expect(received).toHaveLength(1);
+    expect(received[0]).toMatchObject({
+      logLevel: "warn",
+      logPath: logFile,
+      formatted: expect.stringContaining("Subscriber message"),
+    });
   });
 });
 

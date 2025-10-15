@@ -19,6 +19,7 @@ jest.unstable_mockModule("../src/bot", () => ({
 jest.unstable_mockModule("../src/mqtt.ts", () => ({
   __esModule: true,
   isMqttConnected: () => mockIsMqttConnected(),
+  shutdownMqtt: jest.fn(),
 }));
 
 let healthHandler: typeof import("../src/healthcheck.ts").healthHandler;

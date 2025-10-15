@@ -6,7 +6,7 @@ Telegram bot with functions tools.
 
 ## Features
 
-- In comparsion with [popstas/telegram-chatgpt-bot](https://github.com/popstas/telegram-chatgpt-bot)
+- In comparison with [popstas/telegram-chatgpt-bot](https://github.com/popstas/telegram-chatgpt-bot)
 - Single answer to several forwarded messages to bot
 - Bot can use tools to get answer
 - Better fallback answer when telegram markdown is wrong
@@ -19,6 +19,7 @@ Telegram bot with functions tools.
 - Prompt placeholders: `{url:...}` and `{tool:...}` for dynamic content
 - Photo messages and image documents are processed with OCR to extract text
 - Dedicated log files for HTTP and MQTT activity
+- Desktop launcher with tray controls and live log viewer ([docs/desktop-launcher.md](docs/desktop-launcher.md))
 - Docker healthcheck endpoint for container monitoring
 - GET `/agent/:agent` returns agent status
 - Per-chat `http_token` overrides the global HTTP token
@@ -29,6 +30,37 @@ Telegram bot with functions tools.
 - Vector memory with `memory_search` and `memory_delete` tools (confirmation required for delete, optional automatic search)
 - Dynamic reply buttons returned from LLM responses (enable with `chatParams.responseButtons`)
 - Enforce structured outputs by setting `response_format` in chat configuration
+
+## Desktop launcher
+
+The project ships with a lightweight Electron wrapper so you can monitor the bot from the system tray on macOS, Windows, or Linux.
+
+- **Start the desktop shell:** `npm run desktop`. The command launches Electron with the existing Node runtime so the same configuration is reused.
+- **Tray controls:** start or stop the bot, show or hide the window, and open the local `data/` directory where log files live.
+- **Live log viewer:** the window streams new entries from the running bot in real time, mirroring what hits `data/messages.log`
+  without replaying historical lines. You can pause the stream, clear the list, switch between message and **Desktop** channels,
+  and toggle automatic scrolling.
+- **Desktop log file:** Electron lifecycle activity is also persisted to `data/electron.log` so you can review startup issues even
+  if the renderer fails to load.
+- **Graceful shutdown:** quitting the app stops running bots and MQTT connections before exiting.
+
+For distribution, run `npm run build:dist` to bundle the Electron entry points and generate a Windows `.exe` installer in the
+`dist/` directory. If you only need the JavaScript bundles (for custom packaging workflows), use `npm run build:electron`.
+
+### Native modules (better-sqlite3)
+
+Vector memory features rely on the native `better-sqlite3` bindings. The CLI entry point bundles a binary compatible with your local Node.js runtime, but Electron ships with its own Node version. To avoid repeated `ERR_DLOPEN_FAILED` traces the desktop launcher skips loading `better-sqlite3` until you explicitly opt back in. When you are ready to enable vector memory inside Electron:
+
+1. Rebuild the module for Electron:
+   ```bash
+   npx electron-rebuild --only better-sqlite3
+   ```
+2. Launch the desktop shell with the opt-in flag so the runtime will load the rebuilt binding:
+   ```bash
+   BETTER_SQLITE3_ALLOW_ELECTRON=1 npm run desktop
+   ```
+
+Until the rebuild succeeds (or the opt-in flag is omitted) the bot continues to run, vector memory tools stay disabled, and a warning is logged to both the desktop console and `data/electron.log`.
 
 ## Pipeline
 

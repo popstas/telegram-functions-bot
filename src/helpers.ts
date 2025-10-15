@@ -2,9 +2,9 @@ import express from "express";
 import fs from "fs";
 import path from "path";
 
-type LogLevel = "debug" | "verbose" | "info" | "warn" | "error";
+export type LogLevel = "debug" | "verbose" | "info" | "warn" | "error";
 
-interface LogParams {
+export interface LogParams {
   msg: string;
   logLevel?: LogLevel;
   chatId?: number;
@@ -12,6 +12,41 @@ interface LogParams {
   username?: string;
   role?: "system" | "user" | "assistant" | "tool";
   logPath?: string;
+}
+
+export interface LogDispatchPayload {
+  logLevel: LogLevel;
+  logPath: string | undefined;
+  formatted: string;
+  timestamp: string;
+  chatId?: number;
+  chatTitle?: string;
+  username?: string;
+  role?: "system" | "user" | "assistant" | "tool";
+}
+
+type LogSubscriber = (payload: LogDispatchPayload) => void;
+
+const logSubscribers = new Set<LogSubscriber>();
+
+export function subscribeToLogs(listener: LogSubscriber) {
+  logSubscribers.add(listener);
+  return () => {
+    logSubscribers.delete(listener);
+  };
+}
+
+function notifyLogSubscribers(payload: LogDispatchPayload) {
+  if (!logSubscribers.size) {
+    return;
+  }
+  for (const listener of [...logSubscribers]) {
+    try {
+      listener(payload);
+    } catch (error) {
+      console.error("Failed to notify log subscriber", error);
+    }
+  }
 }
 
 export function log({
@@ -55,6 +90,17 @@ export function log({
       console.error(logMessage);
       break;
   }
+
+  notifyLogSubscribers({
+    logLevel,
+    logPath,
+    formatted: logMessage,
+    timestamp,
+    chatId,
+    chatTitle,
+    username,
+    role,
+  });
 }
 
 export function ensureDirectoryExists(filePath: string) {

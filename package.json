@@ -1,10 +1,13 @@
 {
   "name": "telegram-functions-bot",
-  "version": "main",
+  "version": "2025.10.15",
   "description": "",
   "type": "module",
   "scripts": {
     "start": "tsx src/index.ts",
+    "desktop": "cross-env NODE_ENV=desktop electron electron/main-entry.mjs",
+    "build:electron": "esbuild electron/main.ts electron/preload.js --bundle --platform=node --format=esm --outdir=dist-electron --sourcemap --external:electron",
+    "build:dist": "npm run build:electron && electron-builder --config electron-builder.yml --win --x64 --publish never",
     "changelog": "npx conventional-changelog-cli -p angular -i CHANGELOG.md -s -r 0",
     "test": "node --no-warnings=ExperimentalWarning --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:coverage": "npm test -- --coverage",
@@ -61,6 +64,8 @@
     "@typescript-eslint/eslint-plugin": "^8.16.0",
     "@typescript-eslint/parser": "^8.16.0",
     "@typescript/native-preview": "^7.0.0-dev.20250806.1",
+    "electron": "^34.2.0",
+    "electron-builder": "^25.1.8",
     "cross-env": "^7.0.3",
     "esbuild": "^0.25.6",
     "eslint": "^9.31.0",

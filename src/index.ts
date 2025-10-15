@@ -1,11 +1,13 @@
 import { Context } from "telegraf";
 import { message, editedMessage } from "telegraf/filters";
 import { Message } from "telegraf/types";
+import type http from "node:http";
 import { useConfig, validateConfig, watchConfigChanges } from "./config.ts";
 import { initCommands, handleAddChat } from "./commands.ts";
 import { log } from "./helpers.ts";
 import { initTools } from "./helpers/useTools.ts";
 import express from "express";
+import type { Telegraf } from "telegraf";
 import { useBot } from "./bot.ts";
 import onTextMessage from "./handlers/onTextMessage.ts";
 import onPhoto from "./handlers/onPhoto.ts";
@@ -14,8 +16,13 @@ import onUnsupported from "./handlers/onUnsupported.ts";
 import onDocument from "./handlers/onDocument.ts";
 import { useLastCtx } from "./helpers/lastCtx.ts";
 import { agentGetHandler, agentPostHandler, toolPostHandler } from "./httpHandlers.ts";
-import { useMqtt } from "./mqtt.ts";
+import { useMqtt, shutdownMqtt } from "./mqtt.ts";
 import { healthHandler } from "./healthcheck.ts";
+
+let activeBots: Telegraf[] = [];
+let httpServer: http.Server | null = null;
+let restartTimer: NodeJS.Timeout | null = null;
+let startPromise: Promise<void> | null = null;
 
 process.on("unhandledRejection", (reason) => {
   log({ msg: `Unhandled rejection: ${reason}`, logLevel: "error" });
@@ -27,41 +34,65 @@ process.on("uncaughtException", (error, source) => {
 });
 
 process.env.DOTENV_CONFIG_QUIET = "true";
-if (process.env.NODE_ENV !== "test") {
+if (process.env.NODE_ENV !== "test" && process.env.NODE_ENV !== "desktop") {
   void start();
 }
 
 async function start() {
-  // global
-  const config = useConfig();
+  await startBot();
+}
 
-  if (!validateConfig(config)) {
-    console.log("Invalid config, exiting...");
-    process.exit(1);
+async function startBot() {
+  if (startPromise) {
+    await startPromise;
+    return;
   }
-  watchConfigChanges();
+
+  startPromise = (async () => {
+    const config = useConfig();
+
+    if (!validateConfig(config)) {
+      console.log("Invalid config, exiting...");
+      process.exit(1);
+    }
+    watchConfigChanges();
+
+    try {
+      await stopAllBots();
+      await closeHttpServer();
+
+      const mainBot = await launchBot(config.auth.bot_token, config.bot_name);
+      if (mainBot) {
+        activeBots.push(mainBot);
+      }
+
+      const chatBots = config.chats.filter((c) => c.bot_token && c.bot_name);
+      for (const c of chatBots) {
+        try {
+          const bot = await launchBot(c.bot_token!, c.bot_name!);
+          if (bot) {
+            activeBots.push(bot);
+          }
+        } catch (error: unknown) {
+          console.error(`Error launching bot ${c.bot_name}:`, error);
+        }
+      }
+
+      httpServer = initHttp();
+      useMqtt();
+      await initTools();
+    } catch (error: unknown) {
+      console.error("Error during bot startup:", error);
+      console.log("restart after 10 seconds...");
+      await stopBot();
+      scheduleRestart();
+    }
+  })();
 
   try {
-    await launchBot(config.auth.bot_token, config.bot_name);
-    // log({msg: 'bot started'});
-
-    const chatBots = config.chats.filter((c) => c.bot_token && c.bot_name);
-    for (const c of chatBots) {
-      try {
-        await launchBot(c.bot_token!, c.bot_name!);
-      } catch (error: unknown) {
-        console.error(`Error launching bot ${c.bot_name}:`, error);
-      }
-    }
-
-    // Initialize HTTP server
-    initHttp();
-    useMqtt();
-    await initTools();
-  } catch (error: unknown) {
-    console.error("Error during bot startup:", error);
-    console.log("restart after 10 seconds...");
-    setTimeout(start, 10000);
+    await startPromise;
+  } finally {
+    startPromise = null;
   }
 }
 
@@ -99,15 +130,31 @@ async function launchBot(bot_token: string, bot_name: string) {
     bot.action("add_chat", handleAddChat);
 
     // Start the bot
-    void bot.launch().catch((error) => {
+    let resolveReady: (() => void) | undefined;
+    let rejectReady: ((error: unknown) => void) | undefined;
+
+    const ready = new Promise<void>((resolve, reject) => {
+      resolveReady = resolve;
+      rejectReady = reject;
+    });
+
+    const launchPromise = bot.launch({}, () => {
+      log({ msg: `bot started: ${bot_name}` });
+      resolveReady?.();
+    });
+
+    launchPromise.catch((error) => {
       log({
         msg: `[${bot_name}] Error during bot launch: ${error instanceof Error ? error.message : String(error)}`,
         logLevel: "error",
       });
-      console.error(error.stack);
+      if (error instanceof Error) {
+        console.error(error.stack);
+      }
+      rejectReady?.(error);
     });
 
-    log({ msg: `bot started: ${bot_name}` });
+    await ready;
     return bot;
   } catch (error: unknown) {
     if (error && typeof error === "object" && "response" in error) {
@@ -177,10 +224,10 @@ function initHttp() {
   const result = createHttpApp();
   if (!result) return null;
   const { app, port } = result;
-  app.listen(port, () => {
+  const server = app.listen(port, () => {
     log({ msg: `http server listening on port ${port}` });
   });
-  return app;
+  return server;
 }
 
 async function telegramPostHandlerTest(req: express.Request, res: express.Response) {
@@ -275,4 +322,58 @@ async function telegramPostHandler(req: express.Request, res: express.Response) 
   }
 }
 
-export { start, launchBot, createHttpApp, initHttp, telegramPostHandler, telegramPostHandlerTest };
+function scheduleRestart() {
+  if (restartTimer) {
+    clearTimeout(restartTimer);
+  }
+  restartTimer = setTimeout(() => {
+    restartTimer = null;
+    void startBot();
+  }, 10000);
+}
+
+async function stopAllBots() {
+  if (activeBots.length === 0) return;
+  const bots = [...activeBots];
+  activeBots = [];
+  await Promise.all(
+    bots.map(async (bot) => {
+      try {
+        await Promise.resolve(bot.stop("desktop-stop"));
+      } catch (error) {
+        log({
+          msg: `Error stopping bot: ${error instanceof Error ? error.message : String(error)}`,
+          logLevel: "warn",
+        });
+      }
+    }),
+  );
+}
+
+async function closeHttpServer() {
+  if (!httpServer) return;
+  await new Promise<void>((resolve) => {
+    httpServer?.close(() => resolve());
+  });
+  httpServer = null;
+}
+
+export async function stopBot() {
+  if (restartTimer) {
+    clearTimeout(restartTimer);
+    restartTimer = null;
+  }
+  await stopAllBots();
+  await closeHttpServer();
+  shutdownMqtt();
+}
+
+export {
+  startBot as start,
+  startBot,
+  launchBot,
+  createHttpApp,
+  initHttp,
+  telegramPostHandler,
+  telegramPostHandlerTest,
+};
