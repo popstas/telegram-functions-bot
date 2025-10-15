@@ -18,6 +18,7 @@
     "paths": {
       "electron": ["./src/@types/electron/index.d.ts"]
     }
+    "strict": true,
   },
   "exclude": ["node_modules", "build"],
   "include": ["src/**/*.ts", "electron/**/*.ts"]
