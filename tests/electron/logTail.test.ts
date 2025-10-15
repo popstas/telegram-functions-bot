@@ -3,7 +3,12 @@ import path from "node:path";
 import os from "node:os";
 import { promises as fs } from "node:fs";
 import { mkdtempSync } from "node:fs";
-import { LogTailer, parseLogLine, createDefaultLogTailer } from "../../electron/logTail.ts";
+import {
+  LogTailer,
+  parseLogLine,
+  createDefaultLogTailer,
+  isRelevantChange,
+} from "../../electron/logTail.ts";
 
 const TIMESTAMP = "2024-01-01 10:00:00";
 
@@ -21,6 +26,23 @@ describe("parseLogLine", () => {
     expect(entry.timestamp).toBeUndefined();
     expect(entry.level).toBe("info");
     expect(entry.message).toBe("plain line without timestamp");
+  });
+});
+
+describe("isRelevantChange", () => {
+  it("treats missing filenames as relevant", () => {
+    expect(isRelevantChange("messages.log", undefined)).toBe(true);
+    expect(isRelevantChange("messages.log", null)).toBe(true);
+  });
+
+  it("matches buffers against the expected filename", () => {
+    expect(isRelevantChange("messages.log", Buffer.from("messages.log"))).toBe(true);
+    expect(isRelevantChange("messages.log", Buffer.from("other.log"))).toBe(false);
+  });
+
+  it("matches strings against the expected filename", () => {
+    expect(isRelevantChange("messages.log", "messages.log")).toBe(true);
+    expect(isRelevantChange("messages.log", "other.log")).toBe(false);
   });
 });
 

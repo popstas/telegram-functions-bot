@@ -24,6 +24,13 @@ type ListenerSignature = {
   error: (error: Error) => void;
 };
 
+export function isRelevantChange(target: string, changed: string | Buffer | null | undefined) {
+  if (!changed) {
+    return true;
+  }
+  return changed.toString() === target;
+}
+
 export class LogTailer extends EventEmitter {
   private readonly offsets = new Map<LogSource, number>();
   private readonly watchers: WatcherMap = new Map();
@@ -98,7 +105,7 @@ export class LogTailer extends EventEmitter {
     }
 
     const watcher = watch(dir, { persistent: false }, async (eventType, changed) => {
-      if (!changed || changed.toString() !== fileName) {
+      if (!isRelevantChange(fileName, changed)) {
         return;
       }
       const reset = eventType === "rename";
