@@ -17,7 +17,7 @@
     "typeRoots": ["./node_modules/@types", "./src/@types"],
     "paths": {
       "electron": ["./src/@types/electron/index.d.ts"]
-    }
+    },
     "strict": true,
   },
   "exclude": ["node_modules", "build"],
