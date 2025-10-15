@@ -30,6 +30,7 @@ jest.unstable_mockModule("../src/helpers.ts", () => ({
   agentNameToId: (name: string) => name.length,
   sendToHttp: jest.fn(),
   safeFilename: jest.fn(),
+  stringToId: (value: string) => value.length,
 }));
 
 let agentPostHandler: typeof import("../src/httpHandlers.ts").agentPostHandler;

@@ -24,6 +24,7 @@ jest.unstable_mockModule("../src/helpers/gpt/llm.ts", () => ({
 }));
 
 jest.unstable_mockModule("../src/helpers.ts", () => ({
+  __esModule: true,
   log: mockLog,
   agentNameToId: (str: string): number => {
     // Simple hash function for testing
@@ -36,6 +37,15 @@ jest.unstable_mockModule("../src/helpers.ts", () => ({
     return Math.abs(hash);
   },
   safeFilename: jest.fn(),
+  stringToId: (value: string) => {
+    let hash = 0;
+    for (let i = 0; i < value.length; i++) {
+      const char = value.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash);
+  },
 }));
 
 // Import the function to test after setting up mocks

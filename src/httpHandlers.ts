@@ -2,7 +2,7 @@ import type express from "express";
 import { Context } from "telegraf";
 import { Message } from "telegraf/types";
 import { useConfig } from "./config.ts";
-import { agentNameToId, log } from "./helpers.ts";
+import { log, stringToId } from "./helpers.ts";
 import { requestGptAnswer } from "./helpers/gpt/llm.ts";
 import { resolveChatTools } from "./helpers/gpt/tools.ts";
 import type { ThreadStateType, ConfigChatType } from "./types.ts";
@@ -41,7 +41,7 @@ function checkAuth(chatConfig?: ConfigChatType, token?: string) {
 
 export async function agentPostHandler(req: express.Request, res: express.Response) {
   const { agentName } = req.params;
-  const { text, webhook } = req.body || {};
+  const { text, webhook, chat_id: chatIdFromBody } = req.body || {};
   const token = req.headers["authorization"];
   const agentConfig = useConfig().chats.find((c) => c.agent_name === agentName);
   if (!checkAuth(agentConfig, token)) {
@@ -60,14 +60,6 @@ export async function agentPostHandler(req: express.Request, res: express.Respon
     });
     return res.status(400).send("Message text is required.");
   }
-  if (!text) {
-    log({
-      msg: "Message text is required.",
-      logLevel: "warn",
-      logPath: HTTP_LOG_PATH,
-    });
-    return res.status(400).send("Message text is required.");
-  }
   if (!agentConfig) {
     log({
       msg: "Wrong agent_name",
@@ -76,7 +68,35 @@ export async function agentPostHandler(req: express.Request, res: express.Respon
     });
     return res.status(400).send("Wrong agent_name");
   }
-  const chatId = agentConfig.id || parseInt("444" + agentNameToId(agentName));
+  const forwardedFor = req.headers["x-forwarded-for"];
+  const ipAddress = Array.isArray(forwardedFor)
+    ? forwardedFor[0]
+    : forwardedFor?.split(",")[0]?.trim() || req.ip || req.socket?.remoteAddress || "";
+  const defaultChatId =
+    Number.parseInt(`444${stringToId(agentName)}`, 10) + stringToId(ipAddress || "");
+  const bodyChatId = (() => {
+    if (chatIdFromBody === undefined || chatIdFromBody === null) {
+      return undefined;
+    }
+    if (typeof chatIdFromBody === "number") {
+      return Number.isFinite(chatIdFromBody) ? Math.trunc(chatIdFromBody) : undefined;
+    }
+    if (typeof chatIdFromBody === "string") {
+      const trimmedChatId = chatIdFromBody.trim();
+      if (!trimmedChatId) {
+        return undefined;
+      }
+      return /^\d+$/.test(trimmedChatId)
+        ? Number.parseInt(trimmedChatId, 10)
+        : stringToId(trimmedChatId);
+    }
+    return stringToId(String(chatIdFromBody));
+  })();
+  const configuredChatId =
+    typeof agentConfig.id === "number" && Number.isFinite(agentConfig.id)
+      ? agentConfig.id
+      : undefined;
+  const chatId = bodyChatId ?? configuredChatId ?? defaultChatId;
   const msg = {
     chat: { id: chatId, type: "private" as const },
     text,

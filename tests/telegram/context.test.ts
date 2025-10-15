@@ -13,7 +13,9 @@ jest.unstable_mockModule("../../src/config.ts", () => ({
 }));
 
 jest.unstable_mockModule("../../src/helpers.ts", () => ({
+  __esModule: true,
   log: (...args: unknown[]) => mockLog(...args),
+  stringToId: jest.fn(),
 }));
 
 let getActionUserMsg: typeof import("../../src/telegram/context.ts").getActionUserMsg;
