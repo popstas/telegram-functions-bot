@@ -27,11 +27,24 @@ The command starts Electron with the `NODE_ENV=desktop` flag. The bot lifecycle 
 
 ## Packaging
 
-1. Bundle the Electron entry points:
-   ```bash
-   npm run build:electron
-   ```
-2. Use your preferred packaging tool (e.g. `electron-builder`) to generate installers. The bundled assets live in the `dist-electron/` directory.
+### Windows `.exe`
+
+```bash
+npm run build:dist
+```
+
+The command bundles `electron/main.ts` and `electron/preload.js`, then invokes `electron-builder` to emit an `.exe` installer in
+the `dist/` directory. Drop your own icon at `electron/assets/icon.png` before packaging.
+
+### Custom workflows
+
+If you need just the compiled JavaScript entry points (for example to feed another packager), run:
+
+```bash
+npm run build:electron
+```
+
+The bundled files are written to `dist-electron/`.
 
 > **Tip:** Add your own tray icon at `electron/assets/icon.png` before packaging; the repository intentionally leaves the placeholder untracked.
 

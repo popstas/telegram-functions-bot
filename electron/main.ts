@@ -10,17 +10,18 @@ import {
 } from "electron";
 import path from "node:path";
 import fs from "node:fs";
-import { createDefaultLogTailer, LogEntry, LogTailer, LogLevel } from "./logTail.ts";
+import { LogEntry, LogLevel, parseLogLine } from "./logTail.ts";
+import { subscribeToLogs, type LogDispatchPayload } from "../src/helpers.ts";
 import { startBot, stopBot } from "../src/index.ts";
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
-let tailer: LogTailer | null = null;
 let botRunning = false;
 let quitting = false;
 let rendererReady = false;
 const pendingLogs: LogEntry[] = [];
 let logStream: fs.WriteStream | null = null;
+let detachLogSubscription: (() => void) | null = null;
 const FALLBACK_ICON_DATA_URL =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAYAAAAfSC3RAAAAHElEQVQ4T2NkoBAwUqifgYGB4T8GphE0DSqGhgYAJDUEAK0YELkAAAAASUVORK5CYII=";
 
@@ -232,19 +233,6 @@ function flushPendingLogs() {
   }
 }
 
-async function startLogTailer() {
-  const logsDir = ensureLogsDir();
-  logDesktop(`Starting log tailer in ${logsDir}`);
-  tailer = createDefaultLogTailer(logsDir);
-  tailer.on("log", (entry) => sendLog(entry));
-  tailer.on("error", (error) => {
-    logDesktop(`Log tailer error: ${error.message}`, "error", error);
-    mainWindow?.webContents.send("logs:error", error.message);
-  });
-  await tailer.start();
-  logDesktop("Log tailer started", "debug");
-}
-
 async function startBotProcess() {
   logDesktop("Starting bot process");
   try {
@@ -333,12 +321,41 @@ function updateTrayMenu() {
       click: async () => {
         quitting = true;
         await stopBotProcess();
-        tailer?.stop();
+        stopLogForwarding();
         app.exit();
       },
     },
   ];
   tray.setContextMenu(Menu.buildFromTemplate(template));
+}
+
+function handleLogEvent(payload: LogDispatchPayload) {
+  if (!payload.logPath) {
+    return;
+  }
+  const fileName = path.basename(payload.logPath);
+  if (fileName !== "messages.log") {
+    return;
+  }
+  const entry = parseLogLine("messages", payload.formatted);
+  sendLog(entry);
+}
+
+function startLogForwarding() {
+  if (detachLogSubscription) {
+    return;
+  }
+  detachLogSubscription = subscribeToLogs((payload) => handleLogEvent(payload));
+  logDesktop("Subscribed to runtime log stream", "debug");
+}
+
+function stopLogForwarding() {
+  if (!detachLogSubscription) {
+    return;
+  }
+  detachLogSubscription();
+  detachLogSubscription = null;
+  logDesktop("Runtime log stream unsubscribed", "debug");
 }
 
 function registerIpcHandlers() {
@@ -391,11 +408,12 @@ app.on("before-quit", async (event: { preventDefault: () => void }) => {
   quitting = true;
   logDesktop("Application quitting, stopping services");
   await stopBotProcess();
-  tailer?.stop();
+  stopLogForwarding();
   app.exit();
 });
 
 app.on("quit", () => {
+  stopLogForwarding();
   if (logStream) {
     logStream.end();
     logStream = null;
@@ -404,9 +422,9 @@ app.on("quit", () => {
 
 app.whenReady().then(async () => {
   logDesktop("Electron app ready", "debug");
+  startLogForwarding();
   await createWindow();
   createTray();
   registerIpcHandlers();
   await startBotProcess();
-  await startLogTailer();
 });

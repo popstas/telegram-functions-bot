@@ -37,13 +37,15 @@ The project ships with a lightweight Electron wrapper so you can monitor the bot
 
 - **Start the desktop shell:** `npm run desktop`. The command launches Electron with the existing Node runtime so the same configuration is reused.
 - **Tray controls:** start or stop the bot, show or hide the window, and open the local `data/` directory where log files live.
-- **Live log viewer:** the window tails new entries from `data/messages.log` in real time. You can pause the stream, clear the
-  list, switch between message and **Desktop** channels, and toggle automatic scrolling.
+- **Live log viewer:** the window streams new entries from the running bot in real time, mirroring what hits `data/messages.log`
+  without replaying historical lines. You can pause the stream, clear the list, switch between message and **Desktop** channels,
+  and toggle automatic scrolling.
 - **Desktop log file:** Electron lifecycle activity is also persisted to `data/electron.log` so you can review startup issues even
   if the renderer fails to load.
 - **Graceful shutdown:** quitting the app stops running bots and MQTT connections before exiting.
 
-For distribution, run `npm run build:electron` to emit bundled `main`/`preload` files, then package them with tooling such as `electron-builder`.
+For distribution, run `npm run build:dist` to bundle the Electron entry points and generate a Windows `.exe` installer in the
+`dist/` directory. If you only need the JavaScript bundles (for custom packaging workflows), use `npm run build:electron`.
 
 ### Native modules (better-sqlite3)
 
