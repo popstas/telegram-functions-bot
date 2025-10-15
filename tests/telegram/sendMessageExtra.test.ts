@@ -12,8 +12,10 @@ jest.unstable_mockModule("../../src/bot.ts", () => ({
 }));
 
 jest.unstable_mockModule("../../src/helpers.ts", () => ({
+  __esModule: true,
   log: jest.fn(),
   safeFilename: jest.fn((v) => v),
+  stringToId: jest.fn(),
 }));
 
 // mock splitBigMessage so we control number of parts

@@ -74,7 +74,9 @@ jest.unstable_mockModule("../../src/threads.ts", () => ({
 }));
 
 jest.unstable_mockModule("../../src/helpers.ts", () => ({
+  __esModule: true,
   log: (...args: unknown[]) => mockLog(...args),
+  stringToId: jest.fn(),
 }));
 
 let llm: typeof import("../../src/helpers/gpt/llm.ts");

@@ -28,8 +28,10 @@ jest.unstable_mockModule("../src/agent-runner.ts", () => ({
 }));
 
 jest.unstable_mockModule("../src/helpers.ts", () => ({
+  __esModule: true,
   log: (...args: unknown[]) => mockLog(...args),
   safeFilename: jest.fn(),
+  stringToId: jest.fn(),
 }));
 
 let useMqtt: typeof import("../src/mqtt.ts").useMqtt;

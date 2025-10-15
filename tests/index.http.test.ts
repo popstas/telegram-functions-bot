@@ -32,6 +32,7 @@ jest.unstable_mockModule("../src/helpers.ts", () => ({
   sendToHttp: jest.fn(),
   ensureDirectoryExists: jest.fn(),
   safeFilename: jest.fn(),
+  stringToId: jest.fn(),
 }));
 
 jest.unstable_mockModule("express", () => ({

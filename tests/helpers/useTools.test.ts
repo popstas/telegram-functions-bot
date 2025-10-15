@@ -23,7 +23,9 @@ jest.unstable_mockModule("fs", () => ({
 }));
 
 jest.unstable_mockModule("../../src/helpers.ts", () => ({
+  __esModule: true,
   log: (...args: unknown[]) => mockLog(...args),
+  stringToId: jest.fn(),
 }));
 
 jest.unstable_mockModule("../../src/config.ts", () => ({

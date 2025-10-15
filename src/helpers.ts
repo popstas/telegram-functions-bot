@@ -136,3 +136,5 @@ export function agentNameToId(agentName: string): number {
 
   return Math.abs(hash);
 }
+
+export const stringToId = agentNameToId;

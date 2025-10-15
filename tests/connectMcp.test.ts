@@ -38,6 +38,7 @@ jest.unstable_mockModule("../src/helpers.ts", () => ({
   __esModule: true,
   log: (...args: unknown[]) => mockLog(...args),
   safeFilename: jest.fn(),
+  stringToId: jest.fn(),
 }));
 
 let connectMcp: typeof import("../src/mcp.ts").connectMcp;

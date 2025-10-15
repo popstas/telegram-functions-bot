@@ -16,8 +16,10 @@ const mockReaddirSync = jest.fn();
 const mockMkdirSync = jest.fn();
 
 jest.unstable_mockModule("../src/helpers.ts", () => ({
+  __esModule: true,
   log: mockLog,
   safeFilename: jest.fn(),
+  stringToId: jest.fn(),
 }));
 
 jest.unstable_mockModule("lodash.debounce", () => ({

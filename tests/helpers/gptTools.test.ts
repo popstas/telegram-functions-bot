@@ -41,9 +41,11 @@ jest.unstable_mockModule("../../src/threads.ts", () => ({
 }));
 
 jest.unstable_mockModule("../../src/helpers.ts", () => ({
+  __esModule: true,
   log: (...args: unknown[]) => mockLog(...args),
   sendToHttp: (...args: unknown[]) => mockSendToHttp(...args),
   safeFilename: jest.fn((v) => v),
+  stringToId: jest.fn(),
 }));
 
 jest.unstable_mockModule("../../src/mqtt.ts", () => ({
