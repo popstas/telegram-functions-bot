@@ -1,4 +1,5 @@
 import { jest, describe, it, beforeEach, expect } from "@jest/globals";
+import path from "node:path";
 import type { Message } from "telegraf/types";
 import type { ConfigChatType, ChatToolType, ThreadStateType } from "../../src/types.ts";
 import type { ChatCompletionMessageToolCall } from "openai/resources/chat/completions";
@@ -408,7 +409,50 @@ describe("executeTools", () => {
 
     expect(toolFn).toHaveBeenCalledTimes(1);
     const passedArgs = JSON.parse(toolFn.mock.calls[0][0]);
-    expect(passedArgs).toEqual({ format: "png", fullPage: true });
+    expect(passedArgs).toEqual({
+      format: "png",
+      fullPage: true,
+      filePath: path.resolve("data", "screenshots", "screenshot.png"),
+    });
+  });
+
+  it("generates filePath from url for take_screenshot", async () => {
+    const toolCalls: ChatCompletionMessageToolCall[] = [
+      {
+        id: "1",
+        type: "function",
+        function: {
+          name: "take_screenshot",
+          arguments: JSON.stringify({
+            format: "jpeg",
+            url: "https://Example.com/some/path?q=1",
+            fullPage: false,
+          }),
+        },
+      },
+    ];
+
+    const toolFn = jest.fn().mockResolvedValue({ content: "ok" });
+    const chatTools: ChatToolType[] = [
+      {
+        name: "take_screenshot",
+        module: {
+          description: "",
+          call: () => ({
+            functions: { get: () => toolFn, toolSpecs: { function: {} } },
+          }),
+        },
+      },
+    ];
+
+    const cfg: ConfigChatType = { ...baseConfig, chatParams: {} };
+    await tools.executeTools(toolCalls, chatTools, cfg, baseMsg);
+
+    expect(toolFn).toHaveBeenCalledTimes(1);
+    const passedArgs = JSON.parse(toolFn.mock.calls[0][0]);
+    expect(passedArgs.filePath).toBe(
+      path.resolve("data", "screenshots", "example_com_some_path_q_1.jpg"),
+    );
   });
 });
 
