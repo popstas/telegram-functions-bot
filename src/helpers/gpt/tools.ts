@@ -1,4 +1,5 @@
 import * as Express from "express";
+import path from "node:path";
 import { Chat, Message } from "telegraf/types";
 import OpenAI from "openai";
 import {
@@ -20,6 +21,44 @@ import { requestGptAnswer } from "./llm.ts";
 import { includesUser } from "../../utils/users.ts";
 import { publishMqttProgress } from "../../mqtt.ts";
 import { telegramConfirm } from "../../telegram/confirm.ts";
+
+function sanitizeUrlForScreenshot(url?: string): string {
+  if (!url) {
+    return "screenshot";
+  }
+
+  let normalized = url;
+  try {
+    const parsed = new URL(url);
+    normalized = `${parsed.hostname}${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    normalized = url;
+  }
+
+  normalized = normalized
+    .replace(/(^\w+:|^)\/\//, "")
+    .replace(/[^a-z0-9а-яё]+/gi, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
+
+  return normalized || "screenshot";
+}
+
+function resolveScreenshotExtension(format?: string): string {
+  const normalized = (format || "png").toLowerCase();
+  if (normalized === "jpeg") {
+    return "jpg";
+  }
+  if (
+    normalized === "jpg" ||
+    normalized === "png" ||
+    normalized === "webp" ||
+    normalized === "gif"
+  ) {
+    return normalized;
+  }
+  return "png";
+}
 
 export function prettifyKeyValue(key: string, value: unknown, level = 0): string {
   function prettifyKey(innerKey?: string): string {
@@ -269,18 +308,30 @@ export async function executeTools(
     // fix chrome_devtools take_screenshoot call
     if (toolCall.function.name === "take_screenshot") {
       const toolParamsParsed = JSON.parse(toolParams) as {
-        format: string;
+        format?: string;
         quality?: number;
         uid?: string;
         fullPage?: boolean;
+        filePath?: string;
+        url?: string;
       };
 
       // png screenshots do not support 'quality'
-      if (toolParamsParsed.format === "png") delete toolParamsParsed.quality;
+      if ((toolParamsParsed.format || "").toLowerCase() === "png") delete toolParamsParsed.quality;
 
       // Providing both "uid" and "fullPage" is not allowed
       if (toolParamsParsed.uid && toolParamsParsed.fullPage) delete toolParamsParsed.uid;
-      
+
+      if (!toolParamsParsed.filePath) {
+        const extension = resolveScreenshotExtension(toolParamsParsed.format);
+        const sanitized = sanitizeUrlForScreenshot(toolParamsParsed.url);
+        toolParamsParsed.filePath = path.resolve(
+          "data",
+          "screenshots",
+          `${sanitized}.${extension}`,
+        );
+      }
+
       toolParams = JSON.stringify(toolParamsParsed);
     }
 
