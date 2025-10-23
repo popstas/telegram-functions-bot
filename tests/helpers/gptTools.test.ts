@@ -372,6 +372,44 @@ describe("executeTools", () => {
     const arg = toolFn.mock.calls[0][0];
     expect(JSON.parse(arg).description).toContain("Полный текст:");
   });
+
+  it("cleans take_screenshot params before calling tool", async () => {
+    const toolCalls: ChatCompletionMessageToolCall[] = [
+      {
+        id: "1",
+        type: "function",
+        function: {
+          name: "take_screenshot",
+          arguments: JSON.stringify({
+            format: "png",
+            quality: 80,
+            uid: "node-1",
+            fullPage: true,
+          }),
+        },
+      },
+    ];
+
+    const toolFn = jest.fn().mockResolvedValue({ content: "ok" });
+    const chatTools: ChatToolType[] = [
+      {
+        name: "take_screenshot",
+        module: {
+          description: "",
+          call: () => ({
+            functions: { get: () => toolFn, toolSpecs: { function: {} } },
+          }),
+        },
+      },
+    ];
+
+    const cfg: ConfigChatType = { ...baseConfig, chatParams: {} };
+    await tools.executeTools(toolCalls, chatTools, cfg, baseMsg);
+
+    expect(toolFn).toHaveBeenCalledTimes(1);
+    const passedArgs = JSON.parse(toolFn.mock.calls[0][0]);
+    expect(passedArgs).toEqual({ format: "png", fullPage: true });
+  });
 });
 
 describe("chatAsTool", () => {
