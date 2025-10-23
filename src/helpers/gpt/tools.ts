@@ -266,6 +266,24 @@ export async function executeTools(
       toolParams = JSON.stringify(toolParamsParsed);
     }
 
+    // fix chrome_devtools take_screenshoot call
+    if (toolCall.function.name === "take_screenshot") {
+      const toolParamsParsed = JSON.parse(toolParams) as {
+        format: string;
+        quality?: number;
+        uid?: string;
+        fullPage?: boolean;
+      };
+
+      // png screenshots do not support 'quality'
+      if (toolParamsParsed.format === "png") delete toolParamsParsed.quality;
+
+      // Providing both "uid" and "fullPage" is not allowed
+      if (toolParamsParsed.uid && toolParamsParsed.fullPage) delete toolParamsParsed.uid;
+      
+      toolParams = JSON.stringify(toolParamsParsed);
+    }
+
     let toolParamsStr: string;
     if (["expertizeme_search_items", "expertizeme_export_items"].includes(chatTool.name)) {
       toolParamsStr = prettifyExpertizemeSearchItems(JSON.parse(toolParams), chatTool.name);
