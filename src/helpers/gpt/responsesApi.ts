@@ -1,7 +1,9 @@
 import OpenAI from "openai";
+import type { ResponsesParamsType } from "../../types.ts";
 
 export function convertResponsesInput(
   apiParams: OpenAI.Chat.Completions.ChatCompletionCreateParams,
+  responsesParams?: ResponsesParamsType,
 ): Record<string, unknown> {
   const { messages, response_format, ...rest } = apiParams;
   const input: OpenAI.Responses.ResponseInputItem[] = [];
@@ -46,6 +48,12 @@ export function convertResponsesInput(
     }
   }
   const respParams: Record<string, unknown> = { ...rest, input };
+  if (responsesParams?.reasoning?.effort) {
+    respParams.reasoning = { effort: responsesParams.reasoning.effort };
+  }
+  if (responsesParams?.verbosity) {
+    respParams.verbosity = responsesParams.verbosity;
+  }
   if (response_format) {
     if (response_format.type === "json_schema") {
       const json = response_format.json_schema || {};

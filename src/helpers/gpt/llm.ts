@@ -90,7 +90,7 @@ export async function llmCall({
       responses: OpenAI.Responses;
     };
     if (useResponses) {
-      const respParams = convertResponsesInput(apiParams);
+      const respParams = convertResponsesInput(apiParams, chatConfig?.responsesParams);
       if (isStreaming) {
         const stream = apiResponses.responses.stream(
           { ...respParams, stream: true } as never,

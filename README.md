@@ -201,6 +201,19 @@ Responses API is a new feature of OpenAI that allows you to use tools and web se
 
 To use it, set `useResponsesApi` to `true` in the chat config.
 
+You can tune reasoning effort and verbosity for the Responses API via the optional `responsesParams` section of the chat
+configuration:
+
+```yaml
+responsesParams:
+  reasoning:
+    effort: minimal # or low | medium | high
+  verbosity: low     # or medium | high
+```
+
+These values are passed to `client.responses.create` calls so you can balance speed, reasoning depth and verbosity depending on
+the chat requirements.
+
 Work only with OpenAI models.
 
 When enabled, the bot can use the `web_search_preview` tool to get web search results.

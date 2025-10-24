@@ -33,6 +33,19 @@ describe("responsesApi helpers", () => {
     ]);
   });
 
+  it("merges responses params", () => {
+    const params: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
+      messages: [{ role: "user", content: "hi" }],
+      model: "m",
+    };
+    const res = convertResponsesInput(params, {
+      reasoning: { effort: "minimal" },
+      verbosity: "medium",
+    });
+    expect(res.reasoning).toEqual({ effort: "minimal" });
+    expect(res.verbosity).toBe("medium");
+  });
+
   it("converts tool messages to responses input", () => {
     const params: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
       messages: [

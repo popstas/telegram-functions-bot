@@ -27,6 +27,10 @@ chats:
       - javascript_interpreter
       - brainstorm
       - fetch
+    responsesParams:
+      reasoning:
+        effort: minimal
+      verbosity: low
     chatParams:
       forgetTimeout: 600
       deleteToolAnswers: 60
