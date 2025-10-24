@@ -66,8 +66,24 @@ export type ConfigChatType = {
   http_token?: string;
   tools?: (string | ToolBotType)[];
   evaluators?: ChatEvaluatorType[];
+  responsesParams?: ResponsesParamsType;
   chatParams: ChatParamsType;
   toolParams: ToolParamsType;
+};
+
+export type ResponsesReasoningEffort =
+  | "minimal"
+  | Exclude<OpenAI.ReasoningEffort, null | undefined>;
+
+export type ResponsesVerbosity = "low" | "medium" | "high";
+
+export type ResponsesParamsType = {
+  reasoning?: {
+    effort?: ResponsesReasoningEffort;
+  };
+  text?: {
+    verbosity?: ResponsesVerbosity;
+  };
 };
 
 export type ToolBotType = {

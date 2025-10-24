@@ -161,6 +161,36 @@ describe("llmCall", () => {
     expect(result.res.choices[0].message.content).toBe("r");
   });
 
+  it("passes responses params to responses api", async () => {
+    mockUseLangfuse.mockReturnValue({ trace: undefined });
+    const api = {
+      responses: {
+        create: jest.fn().mockResolvedValue({ output_text: "r" }),
+      },
+    };
+    mockUseApi.mockReturnValue(api);
+    const params = {
+      messages: [{ role: "user", content: "hi" }],
+      model: "m",
+    } as OpenAI.ChatCompletionCreateParams;
+    await llm.llmCall({
+      apiParams: params,
+      msg: { ...baseMsg },
+      chatConfig: {
+        ...chatConfig,
+        local_model: undefined,
+        responsesParams: {
+          reasoning: { effort: "minimal" },
+          text: { verbosity: "low" },
+        },
+        chatParams: { useResponsesApi: true, streaming: false },
+      },
+    });
+    const calledParams = (api.responses.create as jest.Mock).mock.calls[0][0];
+    expect(calledParams.reasoning).toEqual({ effort: "minimal" });
+    expect(calledParams.text).toEqual({ verbosity: "low" });
+  });
+
   it("handles responses function_call", async () => {
     mockUseLangfuse.mockReturnValue({ trace: undefined });
     const api = {

@@ -213,6 +213,10 @@ export function generateConfig(): ConfigType {
         },
         systemMessage: "You are using functions to answer the questions. Current date: {date}",
         tools: ["javascript_interpreter", "brainstorm", "fetch"],
+        responsesParams: {
+          reasoning: { effort: "minimal" },
+          text: { verbosity: "low" },
+        },
         chatParams: {
           forgetTimeout: 600,
           deleteToolAnswers: 60,
@@ -270,6 +274,10 @@ export function generateConfig(): ConfigType {
         http_token: "change_me",
         tools: ["javascript_interpreter", "brainstorm", "fetch"],
         evaluators: [{ agent_name: "evaluator", threshold: 4, maxIterations: 2 }],
+        responsesParams: {
+          reasoning: { effort: "minimal" },
+          text: { verbosity: "low" },
+        },
         chatParams: {
           forgetTimeout: 600,
           deleteToolAnswers: 60,
