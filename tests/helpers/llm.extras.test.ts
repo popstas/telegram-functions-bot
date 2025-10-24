@@ -181,14 +181,14 @@ describe("llmCall", () => {
         local_model: undefined,
         responsesParams: {
           reasoning: { effort: "minimal" },
-          verbosity: "low",
+          text: { verbosity: "low" },
         },
         chatParams: { useResponsesApi: true, streaming: false },
       },
     });
     const calledParams = (api.responses.create as jest.Mock).mock.calls[0][0];
     expect(calledParams.reasoning).toEqual({ effort: "minimal" });
-    expect(calledParams.verbosity).toBe("low");
+    expect(calledParams.text).toEqual({ verbosity: "low" });
   });
 
   it("handles responses function_call", async () => {

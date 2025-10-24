@@ -51,22 +51,24 @@ export function convertResponsesInput(
   if (responsesParams?.reasoning?.effort) {
     respParams.reasoning = { effort: responsesParams.reasoning.effort };
   }
-  if (responsesParams?.verbosity) {
-    respParams.verbosity = responsesParams.verbosity;
+  const textParams: Record<string, unknown> = {};
+  if (responsesParams?.text?.verbosity) {
+    textParams.verbosity = responsesParams.text.verbosity;
   }
   if (response_format) {
     if (response_format.type === "json_schema") {
       const json = response_format.json_schema || {};
-      respParams.text = {
-        format: {
-          type: "json_schema",
-          name: json.name,
-          schema: json.schema,
-        },
+      textParams.format = {
+        type: "json_schema",
+        name: json.name,
+        schema: json.schema,
       };
     } else {
-      respParams.text = { format: response_format };
+      textParams.format = response_format;
     }
+  }
+  if (Object.keys(textParams).length) {
+    respParams.text = textParams;
   }
   if (apiParams.tools) {
     respParams.tools = (apiParams.tools as OpenAI.ChatCompletionTool[]).map((t) => {

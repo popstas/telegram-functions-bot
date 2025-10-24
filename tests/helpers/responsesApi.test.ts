@@ -40,10 +40,10 @@ describe("responsesApi helpers", () => {
     };
     const res = convertResponsesInput(params, {
       reasoning: { effort: "minimal" },
-      verbosity: "medium",
+      text: { verbosity: "medium" },
     });
     expect(res.reasoning).toEqual({ effort: "minimal" });
-    expect(res.verbosity).toBe("medium");
+    expect(res.text).toEqual({ verbosity: "medium" });
   });
 
   it("converts tool messages to responses input", () => {

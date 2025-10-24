@@ -81,7 +81,9 @@ export type ResponsesParamsType = {
   reasoning?: {
     effort?: ResponsesReasoningEffort;
   };
-  verbosity?: ResponsesVerbosity;
+  text?: {
+    verbosity?: ResponsesVerbosity;
+  };
 };
 
 export type ToolBotType = {

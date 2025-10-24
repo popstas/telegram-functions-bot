@@ -215,7 +215,7 @@ export function generateConfig(): ConfigType {
         tools: ["javascript_interpreter", "brainstorm", "fetch"],
         responsesParams: {
           reasoning: { effort: "minimal" },
-          verbosity: "low",
+          text: { verbosity: "low" },
         },
         chatParams: {
           forgetTimeout: 600,
@@ -276,7 +276,7 @@ export function generateConfig(): ConfigType {
         evaluators: [{ agent_name: "evaluator", threshold: 4, maxIterations: 2 }],
         responsesParams: {
           reasoning: { effort: "minimal" },
-          verbosity: "low",
+          text: { verbosity: "low" },
         },
         chatParams: {
           forgetTimeout: 600,

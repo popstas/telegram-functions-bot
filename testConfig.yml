@@ -30,7 +30,8 @@ chats:
     responsesParams:
       reasoning:
         effort: minimal
-      verbosity: low
+      text:
+        verbosity: low
     chatParams:
       forgetTimeout: 600
       deleteToolAnswers: 60
