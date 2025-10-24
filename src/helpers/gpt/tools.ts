@@ -12,7 +12,7 @@ import {
 } from "../../types.ts";
 import { useThreads } from "../../threads.ts";
 import { sendTelegramMessage } from "../../telegram/send.ts";
-import { log, sendToHttp, safeFilename } from "../../helpers.ts";
+import { log, sendToHttp, safeFilename, ensureDirectoryExists } from "../../helpers.ts";
 import useTools from "../useTools.ts";
 import useLangfuse from "../useLangfuse.ts";
 import { isAdminUser } from "../../telegram/send.ts";
@@ -330,6 +330,7 @@ export async function executeTools(
           "screenshots",
           `${sanitized}.${extension}`,
         );
+        ensureDirectoryExists(toolParamsParsed.filePath);
       }
 
       toolParams = JSON.stringify(toolParamsParsed);
