@@ -1,4 +1,4 @@
-import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
+import { jest, describe, it, expect, beforeAll, beforeEach, afterEach } from "@jest/globals";
 import { EventEmitter } from "events";
 
 const mockGet = jest.fn();
@@ -13,12 +13,13 @@ let runHealthcheck: typeof import("../src/healthcheck").runHealthcheck;
 type HealthResponse = import("../src/healthcheck").HealthResponse;
 let consoleErrorSpy: jest.SpiedFunction<typeof console.error>;
 
-beforeEach(async () => {
-  jest.resetModules();
+beforeAll(async () => {
+  ({ runHealthcheck } = await import("../src/healthcheck"));
+});
+
+beforeEach(() => {
   mockGet.mockReset();
   consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
-  const healthcheck = await import("../src/healthcheck");
-  runHealthcheck = healthcheck.runHealthcheck;
 });
 
 afterEach(() => {

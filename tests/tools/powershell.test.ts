@@ -1,4 +1,4 @@
-import { jest, describe, it, expect, beforeEach } from "@jest/globals";
+import { jest, describe, it, expect, beforeAll, beforeEach } from "@jest/globals";
 import type { ToolResponse } from "../../src/types.ts";
 
 const mockExec = jest.fn();
@@ -9,10 +9,12 @@ jest.unstable_mockModule("child_process", () => ({
 
 let mod: typeof import("../../src/tools/powershell.ts");
 
-beforeEach(async () => {
-  jest.resetModules();
-  mockExec.mockReset();
+beforeAll(async () => {
   mod = await import("../../src/tools/powershell.ts");
+});
+
+beforeEach(() => {
+  mockExec.mockReset();
 });
 
 describe("PowershellCommandClient", () => {

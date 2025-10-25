@@ -1,8 +1,8 @@
-import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
+import { jest, describe, it, expect, beforeAll, beforeEach, afterEach } from "@jest/globals";
 import fs from "fs";
 import path from "path";
 import type { ConfigChatType } from "../src/types.ts";
-import { generateConfig, setConfigPath, writeConfig } from "../src/config.ts";
+import { generateConfig, setConfigPath, writeConfig, reloadConfig } from "../src/config.ts";
 
 jest.unstable_mockModule("../src/helpers/useApi.ts", () => ({
   useApi: () => ({
@@ -28,13 +28,17 @@ function writeChat(chat: ConfigChatType) {
   const config = generateConfig();
   config.chats.push(chat);
   writeConfig("data/test-config.yml", config);
+  reloadConfig();
 }
 
-beforeEach(async () => {
-  jest.resetModules();
+beforeAll(async () => {
+  embeddings = await import("../src/helpers/embeddings.ts");
+});
+
+beforeEach(() => {
+  embeddings.__resetForTests?.();
   process.env.CONFIG = "data/test-config.yml";
   setConfigPath("data/test-config.yml");
-  embeddings = await import("../src/helpers/embeddings.ts");
 });
 
 afterEach(() => {
@@ -42,6 +46,8 @@ afterEach(() => {
   fs.rmSync("data/test-config.yml", { force: true });
   delete process.env.CONFIG;
   setConfigPath("config.yml");
+  embeddings.__resetForTests?.();
+  reloadConfig();
 });
 
 describe("defaultMemoryDbPath", () => {

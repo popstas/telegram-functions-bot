@@ -1,4 +1,4 @@
-import { jest, describe, it, expect, beforeEach } from "@jest/globals";
+import { jest, describe, it, expect, beforeEach, beforeAll } from "@jest/globals";
 import type { Message } from "telegraf/types";
 import type { ConfigChatType, ThreadStateType } from "../../src/types.ts";
 import OpenAI from "openai";
@@ -10,6 +10,20 @@ const mockUseLangfuse = jest.fn();
 const mockObserveOpenAI = jest.fn();
 const mockAddToHistory = jest.fn();
 const mockForgetHistory = jest.fn();
+const mockUseThreads = jest.fn(() => ({}) as Record<number, ThreadStateType>);
+const mockResolveChatTools = jest.fn();
+const mockGetToolsPrompts = jest.fn();
+const mockGetSystemMessage = jest.fn();
+const mockBuildMessages = jest.fn();
+const mockReplaceUrl = jest.fn((s: string) => Promise.resolve(s));
+const mockReplaceTool = jest.fn((s: string) => Promise.resolve(s));
+const mockExecuteTools = jest.fn();
+const mockGetToolsSystemMessages = jest.fn();
+const mockSendTelegramMessage = jest.fn();
+const mockSendTelegramDocument = jest.fn();
+const mockGetFullName = jest.fn();
+const mockIsAdminUser = jest.fn();
+const mockForward = jest.fn();
 const mockUseBot = jest.fn(() => ({
   telegram: {
     sendMessage: jest.fn(),
@@ -19,27 +33,59 @@ const mockUseBot = jest.fn(() => ({
 }));
 
 jest.unstable_mockModule("../../src/helpers/useApi.ts", () => ({
-  useApi: (...args: unknown[]) => mockUseApi(...args),
+  useApi: mockUseApi,
 }));
 
 jest.unstable_mockModule("../../src/helpers/useLangfuse.ts", () => ({
-  default: (...args: unknown[]) => mockUseLangfuse(...args),
+  default: mockUseLangfuse,
 }));
 
 jest.unstable_mockModule("langfuse", () => ({
-  observeOpenAI: (...args: unknown[]) => mockObserveOpenAI(...args),
+  observeOpenAI: mockObserveOpenAI,
 }));
 
 jest.unstable_mockModule("../../src/bot.ts", () => ({
-  useBot: () => mockUseBot(),
+  useBot: mockUseBot,
 }));
 
 jest.unstable_mockModule("../../src/helpers/history.ts", () => ({
-  addToHistory: (...args: unknown[]) => mockAddToHistory(...args),
-  forgetHistory: (...args: unknown[]) => mockForgetHistory(...args),
+  addToHistory: mockAddToHistory,
+  forgetHistory: mockForgetHistory,
+}));
+
+jest.unstable_mockModule("../../src/threads.ts", () => ({
+  useThreads: mockUseThreads,
+}));
+
+jest.unstable_mockModule("../../src/helpers/gpt/tools.ts", () => ({
+  executeTools: mockExecuteTools,
+  resolveChatTools: mockResolveChatTools,
+  getToolsPrompts: mockGetToolsPrompts,
+  getToolsSystemMessages: mockGetToolsSystemMessages,
+}));
+
+jest.unstable_mockModule("../../src/helpers/gpt/messages.ts", () => ({
+  getSystemMessage: mockGetSystemMessage,
+  buildMessages: mockBuildMessages,
+}));
+
+jest.unstable_mockModule("../../src/helpers/placeholders.ts", () => ({
+  replaceUrlPlaceholders: mockReplaceUrl,
+  replaceToolPlaceholders: mockReplaceTool,
+  replaceVarsPlaceholders: (s: string) => s,
+}));
+
+jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
+  getTelegramForwardedUser: mockForward,
+  sendTelegramMessage: mockSendTelegramMessage,
+  sendTelegramDocument: mockSendTelegramDocument,
+  getFullName: mockGetFullName,
+  isAdminUser: mockIsAdminUser,
 }));
 
 let llm: typeof import("../../src/helpers/gpt/llm.ts");
+let requestGptAnswer: typeof import("../../src/helpers/gpt/llm.ts").requestGptAnswer;
+let threads: Record<number, ThreadStateType>;
 
 const baseMsg: Message.TextMessage = {
   chat: { id: 1, type: "private", title: "chat" },
@@ -56,12 +102,32 @@ const chatConfig: ConfigChatType = {
   local_model: "model",
 } as ConfigChatType;
 
-beforeEach(async () => {
-  jest.resetModules();
+beforeAll(async () => {
+  llm = await import("../../src/helpers/gpt/llm.ts");
+  requestGptAnswer = llm.requestGptAnswer;
+});
+
+beforeEach(() => {
   mockUseApi.mockReset();
   mockUseLangfuse.mockReset();
   mockObserveOpenAI.mockReset();
   mockUseBot.mockReset();
+  mockUseThreads.mockReset();
+  mockResolveChatTools.mockReset();
+  mockGetToolsPrompts.mockReset();
+  mockGetSystemMessage.mockReset();
+  mockBuildMessages.mockReset();
+  mockReplaceUrl.mockReset();
+  mockReplaceTool.mockReset();
+  mockExecuteTools.mockReset();
+  mockGetToolsSystemMessages.mockReset();
+  mockSendTelegramMessage.mockReset();
+  mockSendTelegramDocument.mockReset();
+  mockGetFullName.mockReset();
+  mockIsAdminUser.mockReset();
+  mockForward.mockReset();
+  threads = {} as Record<number, ThreadStateType>;
+  mockUseThreads.mockReturnValue(threads);
   mockUseLangfuse.mockReturnValue({ trace: undefined });
   const api = {
     chat: {
@@ -79,7 +145,11 @@ beforeEach(async () => {
   };
   mockUseApi.mockReturnValue(api);
   mockObserveOpenAI.mockReturnValue(apiObserved);
-  llm = await import("../../src/helpers/gpt/llm.ts");
+  mockResolveChatTools.mockResolvedValue([]);
+  mockGetToolsPrompts.mockResolvedValue([]);
+  mockGetSystemMessage.mockResolvedValue("sys {date}");
+  mockBuildMessages.mockResolvedValue([]);
+  mockForward.mockReturnValue("Bob");
 });
 
 describe("llmCall", () => {
@@ -507,55 +577,12 @@ describe("llmCall", () => {
 });
 
 describe("requestGptAnswer", () => {
-  const threads: Record<number, ThreadStateType> = {};
-  const mockUseThreads = jest.fn(() => threads);
-  const mockResolveChatTools = jest.fn();
-  const mockGetToolsPrompts = jest.fn();
-  const mockGetSystemMessage = jest.fn();
-  const mockBuildMessages = jest.fn();
-  const mockReplaceUrl = jest.fn((s: string) => Promise.resolve(s));
-  const mockReplaceTool = jest.fn((s: string) => Promise.resolve(s));
-  const mockForward = jest.fn();
-
-  jest.unstable_mockModule("../../src/threads.ts", () => ({
-    useThreads: () => mockUseThreads(),
-  }));
-  jest.unstable_mockModule("../../src/helpers/gpt/tools.ts", () => ({
-    executeTools: jest.fn(),
-    resolveChatTools: (...args: unknown[]) => mockResolveChatTools(...args),
-    getToolsPrompts: (...args: unknown[]) => mockGetToolsPrompts(...args),
-    getToolsSystemMessages: jest.fn(),
-  }));
-  jest.unstable_mockModule("../../src/helpers/gpt/messages.ts", () => ({
-    getSystemMessage: (...args: unknown[]) => mockGetSystemMessage(...args),
-    buildMessages: (...args: unknown[]) => mockBuildMessages(...args),
-  }));
-  jest.unstable_mockModule("../../src/helpers/placeholders.ts", () => ({
-    replaceUrlPlaceholders: (...args: unknown[]) => mockReplaceUrl(...args),
-    replaceToolPlaceholders: (...args: unknown[]) => mockReplaceTool(...args),
-    replaceVarsPlaceholders: (s: string) => s,
-  }));
-  jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
-    getTelegramForwardedUser: (...args: unknown[]) => mockForward(...args),
-    sendTelegramMessage: jest.fn(),
-    sendTelegramDocument: jest.fn(),
-    getFullName: jest.fn(),
-    isAdminUser: jest.fn(),
-  }));
-
-  let requestGptAnswer: typeof llm.requestGptAnswer;
-
-  beforeEach(async () => {
-    jest.resetModules();
-    mockUseLangfuse.mockReturnValue({ trace: undefined });
-    mockUseThreads.mockClear();
+  beforeEach(() => {
     mockResolveChatTools.mockResolvedValue([]);
     mockGetToolsPrompts.mockResolvedValue([]);
     mockGetSystemMessage.mockResolvedValue("sys {date}");
     mockBuildMessages.mockResolvedValue([]);
     mockForward.mockReturnValue("Bob");
-    const mod = await import("../../src/helpers/gpt/llm.ts");
-    requestGptAnswer = mod.requestGptAnswer;
   });
 
   it("returns undefined when no text", async () => {

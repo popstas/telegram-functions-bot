@@ -211,3 +211,17 @@ export function closeDb(dbPath: string) {
     dbCache.delete(dbPath);
   }
 }
+
+export function __resetForTests() {
+  for (const db of dbCache.values()) {
+    try {
+      db.close();
+    } catch {
+      // ignore errors from closing cached handles during test cleanup
+    }
+  }
+  dbCache.clear();
+  databaseCtor = null;
+  moduleLoadFailed = false;
+  moduleWarningLogged = false;
+}

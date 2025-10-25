@@ -1,4 +1,4 @@
-import { jest, describe, it, expect, beforeEach } from "@jest/globals";
+import { describe, it, expect, beforeAll } from "@jest/globals";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -16,8 +16,7 @@ function makeCfg(root: string): ConfigChatType {
   } as ConfigChatType;
 }
 
-beforeEach(async () => {
-  jest.resetModules();
+beforeAll(async () => {
   mod = await import("../../src/tools/obsidian_read.ts");
 });
 

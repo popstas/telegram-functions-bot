@@ -1,13 +1,4 @@
-import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-
-const mockUseConfig = jest.fn();
-const mockValidateConfig = jest.fn();
-const mockWatchConfigChanges = jest.fn();
-const mockUseMqtt = jest.fn();
-const mockUseBot = jest.fn();
-const mockInitCommands = jest.fn();
-const mockLog = jest.fn();
-const mockInitTools = jest.fn();
+import { jest, describe, it, expect, beforeAll, beforeEach, afterEach } from "@jest/globals";
 
 const botInstance = {
   help: jest.fn(),
@@ -20,6 +11,16 @@ const botInstance = {
   }),
   botInfo: { username: "bot" },
 };
+
+const mockUseConfig = jest.fn();
+const mockValidateConfig = jest.fn();
+const mockWatchConfigChanges = jest.fn();
+const mockUseMqtt = jest.fn();
+const mockShutdownMqtt = jest.fn();
+const mockUseBot = jest.fn(() => botInstance);
+const mockInitCommands = jest.fn();
+const mockLog = jest.fn();
+const mockInitTools = jest.fn();
 
 jest.unstable_mockModule("../src/config.ts", () => ({
   __esModule: true,
@@ -38,7 +39,7 @@ jest.unstable_mockModule("../src/mqtt.ts", () => ({
   useMqtt: () => mockUseMqtt(),
   isMqttConnected: jest.fn(),
   publishMqttProgress: jest.fn(),
-  shutdownMqtt: jest.fn(),
+  shutdownMqtt: (...args: unknown[]) => mockShutdownMqtt(...args),
 }));
 
 const expressApp = {
@@ -85,20 +86,43 @@ jest.unstable_mockModule("express", () => ({
 
 let index: typeof import("../src/index.ts");
 
-beforeEach(async () => {
-  jest.resetModules();
+beforeAll(async () => {
+  index = await import("../src/index.ts");
+});
+
+beforeEach(() => {
+  index.__resetForTests?.();
   mockUseConfig.mockReset();
   mockValidateConfig.mockReset();
   mockWatchConfigChanges.mockReset();
   mockUseMqtt.mockReset();
+  mockShutdownMqtt.mockReset();
+  mockUseBot.mockReset();
+  mockUseBot.mockImplementation(() => botInstance);
+  mockInitCommands.mockReset();
   mockInitTools.mockReset();
-  botInstance.launch.mockClear();
+  mockLog.mockReset();
+  mockExpress.mockClear();
+  mockExpress.json.mockClear();
+  expressApp.use.mockReset();
+  expressApp.get.mockReset();
+  expressApp.post.mockReset();
+  expressApp.listen.mockReset();
+  expressApp.listen.mockImplementation((_: number, cb: () => void) => cb());
+  botInstance.help.mockReset();
+  botInstance.on.mockReset();
+  botInstance.action.mockReset();
+  botInstance.catch.mockReset();
+  botInstance.launch.mockReset();
   botInstance.launch.mockImplementation((_config, onLaunch) => {
     onLaunch?.();
     return Promise.resolve();
   });
+});
 
-  index = await import("../src/index.ts");
+afterEach(async () => {
+  await index.stopBot();
+  index.__resetForTests?.();
 });
 
 describe("start", () => {
