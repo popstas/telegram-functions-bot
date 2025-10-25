@@ -30,6 +30,7 @@ jest.unstable_mockModule("../src/agent-runner.ts", () => ({
 jest.unstable_mockModule("../src/helpers.ts", () => ({
   __esModule: true,
   log: (...args: unknown[]) => mockLog(...args),
+  ensureDirectoryExists: jest.fn(),
   safeFilename: jest.fn(),
   stringToId: jest.fn(),
 }));

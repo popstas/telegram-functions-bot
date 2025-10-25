@@ -46,6 +46,7 @@ jest.unstable_mockModule("../../src/helpers.ts", () => ({
   log: (...args: unknown[]) => mockLog(...args),
   sendToHttp: (...args: unknown[]) => mockSendToHttp(...args),
   safeFilename: jest.fn((v) => v),
+  ensureDirectoryExists: jest.fn(),
   stringToId: jest.fn(),
 }));
 

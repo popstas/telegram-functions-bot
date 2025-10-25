@@ -73,6 +73,7 @@ Until the rebuild succeeds (or the opt-in flag is omitted) the bot continues to 
 - `brainstorm` - Useful tool for brainstorming and planning task
 - `change_chat_settings` - Change chat settings in config.yml
 - `change_access_settings` - Add/remove users to admin and private user lists in config.yml
+- `delay` - Pause execution for a specified number of seconds
 - `get_next_offday` - count 4-days cycle: day, night, sleep, offday
 - `forget` - Forget chat history
 - `javascript_interpreter` - exec JavaScript code

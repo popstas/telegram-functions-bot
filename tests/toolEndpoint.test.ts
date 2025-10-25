@@ -37,6 +37,7 @@ jest.unstable_mockModule("../src/helpers.ts", () => ({
     return Math.abs(hash);
   },
   safeFilename: jest.fn(),
+  ensureDirectoryExists: jest.fn(),
   stringToId: (value: string) => {
     let hash = 0;
     for (let i = 0; i < value.length; i++) {

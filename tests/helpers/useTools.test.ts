@@ -25,6 +25,7 @@ jest.unstable_mockModule("fs", () => ({
 jest.unstable_mockModule("../../src/helpers.ts", () => ({
   __esModule: true,
   log: (...args: unknown[]) => mockLog(...args),
+  ensureDirectoryExists: jest.fn(),
   stringToId: jest.fn(),
 }));
 
@@ -120,12 +121,13 @@ describe("initTools", () => {
   });
 
   it("waits for initTools when called concurrently", async () => {
-    const delayPath = path.resolve("src/tools/delay.ts");
+    const tempToolName = "temp_delay.ts";
+    const tempToolPath = path.resolve(`src/tools/${tempToolName}`);
     fs.writeFileSync(
-      delayPath,
+      tempToolPath,
       "await new Promise(r => setTimeout(r, 50)); export function call() { return { content: 'delay' }; }\n",
     );
-    mockReaddirSync.mockReturnValue(["delay.ts"]);
+    mockReaddirSync.mockReturnValue([tempToolName]);
     jest.resetModules();
     ({ default: useTools, initTools } = await import("../../src/helpers/useTools.ts"));
 
@@ -134,7 +136,6 @@ describe("initTools", () => {
     const [initRes, useRes] = await Promise.all([initPromise, usePromise]);
 
     expect(useRes).toEqual(initRes);
-
-    fs.unlinkSync(delayPath);
+    fs.unlinkSync(tempToolPath);
   });
 });

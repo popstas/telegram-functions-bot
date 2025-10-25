@@ -19,6 +19,7 @@ jest.unstable_mockModule("../src/helpers.ts", () => ({
   __esModule: true,
   log: mockLog,
   safeFilename: jest.fn(),
+  ensureDirectoryExists: jest.fn(),
   stringToId: jest.fn(),
 }));
 
