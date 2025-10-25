@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { jest, describe, it, expect, beforeEach } from "@jest/globals";
+import { jest, describe, it, expect, beforeEach, beforeAll } from "@jest/globals";
 import type { Message } from "telegraf/types";
 import type { ConfigChatType, GptContextType, ToolResponse } from "../../src/types.ts";
 
@@ -17,40 +17,43 @@ const mockUseBot = jest.fn(() => ({
 }));
 
 jest.unstable_mockModule("../../src/helpers/gpt/tools.ts", () => ({
-  executeTools: (...args: unknown[]) => mockExecuteTools(...args),
+  executeTools: mockExecuteTools,
   resolveChatTools: jest.fn(),
   getToolsPrompts: jest.fn(),
   getToolsSystemMessages: jest.fn(),
 }));
 
 jest.unstable_mockModule("../../src/helpers/history.ts", () => ({
-  addToHistory: (...args: unknown[]) => mockAddToHistory(...args),
-  forgetHistory: (...args: unknown[]) => mockForgetHistory(...args),
+  addToHistory: mockAddToHistory,
+  forgetHistory: mockForgetHistory,
 }));
 
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
-  sendTelegramMessage: (...args: unknown[]) => mockSendTelegramMessage(...args),
-  sendTelegramDocument: (...args: unknown[]) => mockSendTelegramDocument(...args),
+  sendTelegramMessage: mockSendTelegramMessage,
+  sendTelegramDocument: mockSendTelegramDocument,
   getTelegramForwardedUser: jest.fn(),
 }));
 
 jest.unstable_mockModule("../../src/bot.ts", () => ({
-  useBot: () => mockUseBot(),
+  useBot: mockUseBot,
 }));
 
 let handleModelAnswer: typeof import("../../src/helpers/gpt/llm.ts").handleModelAnswer;
 let processToolResults: typeof import("../../src/helpers/gpt/llm.ts").processToolResults;
 
-beforeEach(async () => {
-  jest.resetModules();
+beforeAll(async () => {
+  const mod = await import("../../src/helpers/gpt/llm.ts");
+  handleModelAnswer = mod.handleModelAnswer;
+  processToolResults = mod.processToolResults;
+});
+
+beforeEach(() => {
   mockExecuteTools.mockReset();
   mockAddToHistory.mockReset();
   mockForgetHistory.mockReset();
   mockSendTelegramMessage.mockReset();
   mockSendTelegramDocument.mockReset();
-  const mod = await import("../../src/helpers/gpt/llm.ts");
-  handleModelAnswer = mod.handleModelAnswer;
-  processToolResults = mod.processToolResults;
+  mockUseBot.mockReset();
 });
 
 describe("handleModelAnswer", () => {

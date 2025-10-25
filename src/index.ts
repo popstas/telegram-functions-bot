@@ -368,6 +368,16 @@ export async function stopBot() {
   shutdownMqtt();
 }
 
+export function __resetForTests() {
+  activeBots = [];
+  httpServer = null;
+  if (restartTimer) {
+    clearTimeout(restartTimer);
+  }
+  restartTimer = null;
+  startPromise = null;
+}
+
 export {
   startBot as start,
   startBot,

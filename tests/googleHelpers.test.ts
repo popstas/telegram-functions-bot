@@ -1,4 +1,4 @@
-import { jest, describe, it, expect, beforeEach } from "@jest/globals";
+import { jest, describe, it, expect, beforeAll, beforeEach } from "@jest/globals";
 import type { Credentials } from "google-auth-library";
 import type { Message } from "telegraf/types";
 
@@ -32,15 +32,18 @@ jest.unstable_mockModule("fs", () => ({
 
 let googleHelpers: typeof import("../src/helpers/google.ts");
 
-beforeEach(async () => {
-  jest.resetModules();
+beforeAll(async () => {
+  googleHelpers = await import("../src/helpers/google.ts");
+});
+
+beforeEach(() => {
   mockExistsSync.mockReset();
   mockReadFileSync.mockReset();
   mockWriteFileSync.mockReset();
   mockMkdirSync.mockReset();
   mockReaddirSync.mockReset();
   mockWatch.mockReset();
-  googleHelpers = await import("../src/helpers/google.ts");
+  mockWatchFile.mockReset();
 });
 
 describe("google helpers", () => {

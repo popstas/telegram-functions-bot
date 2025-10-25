@@ -121,20 +121,27 @@ describe("initTools", () => {
 
   it("waits for initTools when called concurrently", async () => {
     const delayPath = path.resolve("src/tools/delay.ts");
-    fs.writeFileSync(
-      delayPath,
-      "await new Promise(r => setTimeout(r, 50)); export function call() { return { content: 'delay' }; }\n",
-    );
-    mockReaddirSync.mockReturnValue(["delay.ts"]);
-    jest.resetModules();
-    ({ default: useTools, initTools } = await import("../../src/helpers/useTools.ts"));
+    const existingDelay = fs.existsSync(delayPath) ? fs.readFileSync(delayPath, "utf8") : null;
+    try {
+      fs.writeFileSync(
+        delayPath,
+        "await new Promise(r => setTimeout(r, 50)); export function call() { return { content: 'delay' }; }\n",
+      );
+      mockReaddirSync.mockReturnValue(["delay.ts"]);
+      jest.resetModules();
+      ({ default: useTools, initTools } = await import("../../src/helpers/useTools.ts"));
 
-    const initPromise = initTools();
-    const usePromise = useTools();
-    const [initRes, useRes] = await Promise.all([initPromise, usePromise]);
+      const initPromise = initTools();
+      const usePromise = useTools();
+      const [initRes, useRes] = await Promise.all([initPromise, usePromise]);
 
-    expect(useRes).toEqual(initRes);
-
-    fs.unlinkSync(delayPath);
+      expect(useRes).toEqual(initRes);
+    } finally {
+      if (existingDelay === null) {
+        fs.unlinkSync(delayPath);
+      } else {
+        fs.writeFileSync(delayPath, existingDelay);
+      }
+    }
   });
 });
