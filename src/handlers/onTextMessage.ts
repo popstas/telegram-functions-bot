@@ -39,7 +39,7 @@ export default async function onTextMessage(
 
   const chatTitle = (ctx.message?.chat as Chat.TitleChat).title || "";
   const chatId = msg.chat.id;
-  const answerId = msg.message_id.toString();
+  const answerId = msg.message_id?.toString() || "";
 
   log({
     msg: msg.text,
@@ -230,7 +230,7 @@ export async function answerToMessage(
         Object.assign(extraParams, extraParamsButtons);
       }
       const chatTitle = (msg.chat as Chat.TitleChat).title;
-      const answerId = msg.message_id.toString();
+      const answerId = msg.message_id?.toString() || "";
       log({
         msg: text,
         logLevel: "info",

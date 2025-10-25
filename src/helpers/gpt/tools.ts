@@ -358,7 +358,7 @@ export async function executeTools(
 
     const chatTitle = (msg.chat as Chat.TitleChat).title;
     const chatId = msg.chat.id;
-    const answerId = msg.message_id.toString();
+    const answerId = msg.message_id?.toString() || "";
     const showMessages = chatConfig.chatParams?.showToolMessages !== false;
 
     if (!chatConfig.chatParams?.confirmation && toolParams) {
@@ -459,7 +459,7 @@ export async function executeTools(
           noSendTelegram,
         );
         const chatTitle = (msg.chat as Chat.TitleChat).title;
-        const answerId = msg.message_id.toString();
+        const answerId = msg.message_id?.toString() || "";
         log({
           msg: "tools called",
           logLevel: "info",
