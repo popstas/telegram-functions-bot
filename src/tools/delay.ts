@@ -4,9 +4,20 @@ import type { ConfigChatType, ThreadStateType } from "../types.ts";
 
 export const description = "Pause execution for a specified number of seconds before continuing.";
 
-type ToolArgsType = {
-  seconds: number;
-};
+const inputSchema = z.object({
+  seconds: z
+    .number()
+    .min(0, "seconds must be a non-negative number")
+    .max(3600, "seconds must not exceed 3600")
+    .describe("Number of seconds to pause before responding")
+    .default(5),
+  reason: z
+    .string()
+    .min(1, "reason must be provided")
+    .describe("Explanation for why a delay is required"),
+});
+
+type ToolArgsType = z.input<typeof inputSchema>;
 
 export class DelayClient extends AIFunctionsProvider {
   protected readonly configChat: ConfigChatType;
@@ -21,15 +32,9 @@ export class DelayClient extends AIFunctionsProvider {
   @aiFunction({
     name: "delay",
     description,
-    inputSchema: z.object({
-      seconds: z
-        .number()
-        .min(0, "seconds must be a non-negative number")
-        .max(3600, "seconds must not exceed 3600")
-        .describe("Number of seconds to pause before responding"),
-    }),
+    inputSchema,
   })
-  async delay({ seconds }: ToolArgsType) {
+  async delay({ seconds = 5, reason }: ToolArgsType) {
     const milliseconds = Math.round(seconds * 1000);
 
     if (milliseconds > 0) {
@@ -37,15 +42,18 @@ export class DelayClient extends AIFunctionsProvider {
     }
 
     const secondsLabel = seconds === 1 ? "second" : "seconds";
-    return { content: `Waited ${seconds} ${secondsLabel}.` };
+    return { content: `Waited ${seconds} ${secondsLabel}. Reason: ${reason}` };
   }
 
   options_string(str: string) {
     try {
-      const { seconds } = JSON.parse(str) as Partial<ToolArgsType>;
-      if (typeof seconds === "number") {
-        const secondsLabel = seconds === 1 ? "second" : "seconds";
-        return `**Delay:** wait ${seconds} ${secondsLabel}`;
+      const { seconds, reason } = JSON.parse(str) as Partial<ToolArgsType>;
+      const resolvedSeconds =
+        typeof seconds === "number" ? seconds : seconds === undefined ? 5 : undefined;
+      if (typeof resolvedSeconds === "number") {
+        const secondsLabel = resolvedSeconds === 1 ? "second" : "seconds";
+        const reasonLabel = typeof reason === "string" && reason.length > 0 ? ` — ${reason}` : "";
+        return `**Delay:** wait ${resolvedSeconds} ${secondsLabel}${reasonLabel}`;
       }
     } catch {
       // ignore parsing errors and return original string
