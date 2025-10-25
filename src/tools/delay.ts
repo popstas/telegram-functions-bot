@@ -1,7 +1,6 @@
 import { aiFunction, AIFunctionsProvider } from "@agentic/core";
 import { z } from "zod";
 import { ConfigChatType, ThreadStateType } from "../types.ts";
-import { log } from "../helpers.ts";
 
 export const description =
   "Wait for a specified number of seconds, then return the current datetime";
