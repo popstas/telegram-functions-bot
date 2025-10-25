@@ -358,12 +358,14 @@ export async function executeTools(
 
     const chatTitle = (msg.chat as Chat.TitleChat).title;
     const chatId = msg.chat.id;
+    const answerId = msg.message_id.toString();
     const showMessages = chatConfig.chatParams?.showToolMessages !== false;
 
     if (!chatConfig.chatParams?.confirmation && toolParams) {
       log({
         msg: `${toolCall.function.name}: ${toolParams}`,
         chatId,
+        answerId,
         chatTitle,
         role: "assistant",
       });
@@ -403,6 +405,7 @@ export async function executeTools(
             log({
               msg: `Retrying tool ${toolCall.function.name} after 400 error`,
               chatId: msg.chat.id,
+              answerId,
               chatTitle: (msg.chat as Chat.TitleChat).title,
               role: "tool",
               logLevel: "warn",
@@ -423,12 +426,13 @@ export async function executeTools(
         log({
           msg: `${toolCall.function.name} result: ${content[0].text}`,
           chatId,
+          answerId,
           chatTitle,
           role: "tool",
         });
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (_error) {
-        log({ msg: result.content, chatId, chatTitle, role: "tool" });
+        log({ msg: result.content, chatId, answerId, chatTitle, role: "tool" });
       }
       return result;
     }
@@ -455,10 +459,12 @@ export async function executeTools(
           noSendTelegram,
         );
         const chatTitle = (msg.chat as Chat.TitleChat).title;
+        const answerId = msg.message_id.toString();
         log({
           msg: "tools called",
           logLevel: "info",
           chatId: msg.chat.id,
+          answerId,
           chatTitle,
           role: "tool",
         });

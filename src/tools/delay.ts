@@ -29,41 +29,21 @@ export class DelayClient extends AIFunctionsProvider {
       reason: z.string().describe("Reason for the delay"),
     }),
   })
-  async delay({ seconds = 5, reason }: { seconds?: number; reason: string }) {
+  async delay({ seconds = 5 }: { seconds?: number; reason: string }) {
     try {
       // Ensure seconds is within bounds
       const waitTime = Math.min(Math.max(seconds, 1), 85);
-
-      log({
-        msg: `Delaying for ${waitTime} seconds. Reason: ${reason}`,
-        logLevel: "info",
-        chatId: this.thread.id,
-        role: "system",
-      });
 
       // Wait for specified seconds
       await new Promise((resolve) => setTimeout(resolve, waitTime * 1000));
 
       const currentDateTime = new Date().toISOString();
 
-      log({
-        msg: `Delay completed. Current datetime: ${currentDateTime}`,
-        logLevel: "info",
-        chatId: this.thread.id,
-        role: "system",
-      });
-
       return {
         content: `Waited ${waitTime} seconds. Current datetime: ${currentDateTime}`,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      log({
-        msg: `Failed to delay: ${errorMessage}`,
-        logLevel: "error",
-        chatId: this.thread.id,
-        role: "system",
-      });
       return { content: `Failed to delay: ${errorMessage}` };
     }
   }

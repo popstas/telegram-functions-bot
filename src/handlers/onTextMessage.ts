@@ -39,11 +39,13 @@ export default async function onTextMessage(
 
   const chatTitle = (ctx.message?.chat as Chat.TitleChat).title || "";
   const chatId = msg.chat.id;
+  const answerId = msg.message_id.toString();
 
   log({
     msg: msg.text,
     logLevel: "info",
     chatId,
+    answerId,
     chatTitle,
     role: "user",
     username: msg?.from?.username,
@@ -85,6 +87,7 @@ export default async function onTextMessage(
     log({
       msg: "cancelling previous response",
       chatId,
+      answerId,
       chatTitle: (msg.chat as Chat.TitleChat).title,
       role: "system",
       username: msg?.from?.username,
@@ -227,10 +230,12 @@ export async function answerToMessage(
         Object.assign(extraParams, extraParamsButtons);
       }
       const chatTitle = (msg.chat as Chat.TitleChat).title;
+      const answerId = msg.message_id.toString();
       log({
         msg: text,
         logLevel: "info",
         chatId: msg.chat.id,
+        answerId,
         chatTitle,
         role: "system",
       });

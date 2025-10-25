@@ -104,9 +104,11 @@ export async function agentPostHandler(req: express.Request, res: express.Respon
     date: Math.floor(Date.now() / 1000),
     from: { id: 0, is_bot: false, first_name: "http" },
   } as Message.TextMessage;
+  const answerId = msg.message_id.toString();
   log({
     msg: msg.text,
     chatId,
+    answerId,
     chatTitle: "http",
     username: "http",
     role: "user",
@@ -123,6 +125,7 @@ export async function agentPostHandler(req: express.Request, res: express.Respon
   log({
     msg: answer,
     chatId,
+    answerId,
     chatTitle: "http: " + agentName,
     username: "http",
     role: "assistant",

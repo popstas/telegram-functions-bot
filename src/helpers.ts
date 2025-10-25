@@ -12,6 +12,7 @@ export interface LogParams {
   username?: string;
   role?: "system" | "user" | "assistant" | "tool";
   logPath?: string;
+  answerId?: string;
 }
 
 export interface LogDispatchPayload {
@@ -23,6 +24,7 @@ export interface LogDispatchPayload {
   chatTitle?: string;
   username?: string;
   role?: "system" | "user" | "assistant" | "tool";
+  answerId?: string;
 }
 
 type LogSubscriber = (payload: LogDispatchPayload) => void;
@@ -57,10 +59,11 @@ export function log({
   username,
   role,
   logPath = "data/messages.log",
+  answerId,
 }: LogParams) {
   const tzoffset = new Date().getTimezoneOffset() * 60000; //offset in milliseconds
   const timestamp = new Date(Date.now() - tzoffset).toISOString().slice(0, 19).replace("T", " ");
-  const chatIdStr = chatId ? `[${chatId}] ` : "";
+  const chatIdStr = chatId ? `[${chatId}]${answerId ? `[${answerId}]` : ""} ` : "";
   if (msg.includes("\n")) {
     msg = msg.replace(/\n/g, " ");
   }
