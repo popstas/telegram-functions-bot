@@ -31,10 +31,40 @@ const state = {
   logs: [],
 };
 
-function scrollToBottom() {
-  if (!state.autoScroll) return;
+function scrollToBottom(reason = "unknown") {
+  if (!logContainer) {
+    console.warn("[scrollToBottom] Missing log container", { reason });
+    return;
+  }
+
+  if (!state.autoScroll) {
+    console.debug("[scrollToBottom] Skipped because auto-scroll is disabled", {
+      reason,
+      scrollTop: logContainer.scrollTop,
+      scrollHeight: logContainer.scrollHeight,
+      clientHeight: logContainer.clientHeight,
+    });
+    return;
+  }
+
+  const before = {
+    scrollTop: logContainer.scrollTop,
+    scrollHeight: logContainer.scrollHeight,
+    clientHeight: logContainer.clientHeight,
+  };
+
   requestAnimationFrame(() => {
+    const lastEntry = logContainer.lastElementChild;
+    if (lastEntry instanceof HTMLElement) {
+      lastEntry.scrollIntoView({ block: "end" });
+    }
     logContainer.scrollTop = logContainer.scrollHeight;
+    const after = {
+      scrollTop: logContainer.scrollTop,
+      scrollHeight: logContainer.scrollHeight,
+      clientHeight: logContainer.clientHeight,
+    };
+    console.debug("[scrollToBottom] Applied", { reason, before, after, hasEntry: Boolean(lastEntry) });
   });
 }
 
@@ -81,14 +111,17 @@ function renderAll() {
   state.logs.forEach((entry) => {
     renderEntry(entry);
   });
-  scrollToBottom();
+  scrollToBottom("renderAll");
 }
 
 function handleLog(entry) {
   state.logs.push(entry);
-  if (state.paused) return;
+  if (state.paused) {
+    console.debug("[handleLog] Received log while paused", entry);
+    return;
+  }
   renderEntry(entry);
-  scrollToBottom();
+  scrollToBottom("handleLog");
 }
 
 function updateStatus(running) {
@@ -138,7 +171,10 @@ clearButton.addEventListener("click", () => {
 autoScrollToggle.addEventListener("change", () => {
   state.autoScroll = autoScrollToggle.checked;
   if (state.autoScroll) {
-    scrollToBottom();
+    console.debug("[autoscroll] Enabled");
+    scrollToBottom("autoScrollToggle");
+  } else {
+    console.debug("[autoscroll] Disabled");
   }
 });
 
