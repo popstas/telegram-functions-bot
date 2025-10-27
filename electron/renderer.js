@@ -53,6 +53,8 @@ function persistPreferences(patch) {
   }
 }
 
+const INFO_MESSAGE_LIGHTNESS_START = 0.5;
+
 const state = {
   paused: false,
   autoScroll:
@@ -117,6 +119,32 @@ function formatTimestamp(timestamp) {
   return `${hours}:${minutes}:${seconds}`;
 }
 
+function hashStringToUnitInterval(value) {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash << 5) - hash + value.charCodeAt(index);
+    hash |= 0; // Convert to 32bit integer
+  }
+  return (hash >>> 0) / 0xffffffff;
+}
+
+function resolveInfoMessageColor(message) {
+  if (!message) {
+    return null;
+  }
+  const match = message.match(/^\[(-?\d+)\]\[(\d+)\]/);
+  if (!match) {
+    return null;
+  }
+  const key = `${match[1]}:${match[2]}`;
+  const normalized = hashStringToUnitInterval(key);
+  const component = Math.round(
+    255 * (INFO_MESSAGE_LIGHTNESS_START + (1 - INFO_MESSAGE_LIGHTNESS_START) * normalized),
+  );
+  const componentHex = component.toString(16).padStart(2, "0");
+  return `#${componentHex}${componentHex}${componentHex}`;
+}
+
 function renderEntry(entry) {
   if (!state.filters.has(entry.source)) {
     return;
@@ -132,6 +160,16 @@ function renderEntry(entry) {
   const messageElement = node.querySelector(".log-message");
   messageElement.textContent = entry.message;
   messageElement.dataset.level = entry.level;
+  if (entry.level === "info" || entry.level === "verbose") {
+    const infoColor = resolveInfoMessageColor(entry.message);
+    if (infoColor) {
+      messageElement.style.setProperty("--message-color", infoColor);
+    } else {
+      messageElement.style.removeProperty("--message-color");
+    }
+  } else {
+    messageElement.style.removeProperty("--message-color");
+  }
   logContainer.appendChild(node);
 }
 

@@ -163,7 +163,7 @@ select {
 
 .log-view.color-messages .log-message[data-level="info"],
 .log-view.color-messages .log-message[data-level="verbose"] {
-  color: #ffffff;
+  color: var(--message-color, #ffffff);
 }
 
 .log-view.color-messages .log-message[data-level="debug"] {
