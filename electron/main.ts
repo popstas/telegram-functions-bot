@@ -185,6 +185,9 @@ async function createWindow() {
     },
   });
 
+  // Note: Window icon will be set via electron-builder configuration
+  // The icon.ico file will be used for the app icon in the build
+
   mainWindow.on("ready-to-show", () => {
     logDesktop("Renderer ready-to-show event received", "debug");
     mainWindow?.show();
@@ -273,7 +276,7 @@ function toggleWindowVisibility() {
 }
 
 function resolveTrayIcon() {
-  const iconPath = assetPath("icon.png");
+  const iconPath = assetPath("icon.ico");
   const fileIcon = nativeImage.createFromPath(iconPath);
   if (!fileIcon.isEmpty()) {
     return fileIcon;

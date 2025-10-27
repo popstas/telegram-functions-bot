@@ -2,13 +2,14 @@ appId: com.telegram.functions.bot
 productName: Telegram Functions Bot
 directories:
   output: dist
-  buildResources: electron/assets
+  buildResources: electron
 files:
   - dist-electron/**/*
   - electron/index.html
   - electron/renderer.js
   - electron/styles.css
-  - electron/assets/**/*
+  - electron/icon.ico
+  - electron/icon.png
   - package.json
   - node_modules/**/*
   - "!docs/**/*"
@@ -25,3 +26,8 @@ win:
     - target: nsis
       arch:
         - x64
+  icon: electron/icon.ico
+mac:
+  icon: electron/icon.ico
+linux:
+  icon: electron/icon.png
