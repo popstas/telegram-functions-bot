@@ -72,7 +72,8 @@ select {
 
 .filters label,
 .actions button,
-.autoscale {
+.autoscale,
+.color-toggle {
   margin-right: 12px;
   color: #e2e8f0;
 }
@@ -145,15 +146,7 @@ select {
 }
 
 .log-meta .log-level {
-  color: rgba(203, 213, 225, 0.8);
-}
-
-.log-meta .log-level[data-level="warn"] {
-  color: var(--warn);
-}
-
-.log-meta .log-level[data-level="error"] {
-  color: var(--error);
+  display: none;
 }
 
 .log-message {
@@ -163,6 +156,23 @@ select {
   color: #f1f5f9;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.log-view.color-messages .log-message[data-level="info"],
+.log-view.color-messages .log-message[data-level="verbose"] {
+  color: #ffffff;
+}
+
+.log-view.color-messages .log-message[data-level="debug"] {
+  color: #94a3b8;
+}
+
+.log-view.color-messages .log-message[data-level="warn"] {
+  color: #facc15;
+}
+
+.log-view.color-messages .log-message[data-level="error"] {
+  color: var(--error);
 }
 
 .empty-state {

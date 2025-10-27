@@ -7,6 +7,7 @@ const openLogsButton = document.getElementById("open-logs");
 const pauseButton = document.getElementById("pause");
 const clearButton = document.getElementById("clear");
 const autoScrollToggle = document.getElementById("autoscroll");
+const colorMessagesToggle = document.getElementById("color-messages");
 const filterCheckboxes = Array.from(document.querySelectorAll(".filters input[type='checkbox']"));
 
 const desktopBridge = window.desktop ?? {
@@ -25,6 +26,7 @@ if (!window.desktop) {
 const state = {
   paused: false,
   autoScroll: true,
+  colorMessages: false,
   filters: new Set(["messages", "desktop"]),
   logs: [],
 };
@@ -61,7 +63,9 @@ function renderEntry(entry) {
   const levelElement = node.querySelector(".log-level");
   levelElement.textContent = entry.level.toUpperCase();
   levelElement.dataset.level = entry.level;
-  node.querySelector(".log-message").textContent = entry.message;
+  const messageElement = node.querySelector(".log-message");
+  messageElement.textContent = entry.message;
+  messageElement.dataset.level = entry.level;
   logContainer.appendChild(node);
 }
 
@@ -138,6 +142,11 @@ autoScrollToggle.addEventListener("change", () => {
   }
 });
 
+colorMessagesToggle.addEventListener("change", () => {
+  state.colorMessages = colorMessagesToggle.checked;
+  logContainer.classList.toggle("color-messages", state.colorMessages);
+});
+
 desktopBridge.onLog(handleLog);
 desktopBridge.onBotState((stateInfo) => {
   updateStatus(stateInfo.running);
@@ -146,5 +155,7 @@ desktopBridge.onBotState((stateInfo) => {
 window.addEventListener("DOMContentLoaded", () => {
   updateStatus(false);
   renderAll();
+  state.colorMessages = colorMessagesToggle.checked;
+  logContainer.classList.toggle("color-messages", state.colorMessages);
   desktopBridge.notifyReady();
 });
