@@ -54,6 +54,7 @@ function persistPreferences(patch) {
 }
 
 const INFO_MESSAGE_LIGHTNESS_START = 0.5;
+const INFO_MESSAGE_GRADIENTS = 10;
 
 const state = {
   paused: false,
@@ -147,9 +148,22 @@ function resolveInfoMessageColor(message) {
 
   const normalized = hashStringToUnitInterval(identifier);
   const start = Math.max(0, Math.min(1, INFO_MESSAGE_LIGHTNESS_START));
-  const component = Math.round(255 * (start + (1 - start) * normalized));
-  const clamped = Math.max(0, Math.min(255, component));
-  const componentHex = clamped.toString(16).padStart(2, "0");
+  const gradientSize = (1 - start) / INFO_MESSAGE_GRADIENTS;
+  const gradientIndex = Math.min(
+    INFO_MESSAGE_GRADIENTS - 1,
+    Math.floor(normalized * INFO_MESSAGE_GRADIENTS),
+  );
+  const gradientStart = start + gradientIndex * gradientSize;
+  const gradientEnd =
+    gradientIndex === INFO_MESSAGE_GRADIENTS - 1
+      ? 1
+      : Math.min(1, gradientStart + gradientSize);
+  const normalizedInt = Math.floor(normalized * 1e4);
+  const lastDigit = Math.abs(normalizedInt) % 10;
+  const blendFactor = Number.isFinite(lastDigit) && lastDigit > 0 ? lastDigit / 9 : 0;
+  const lightness = gradientStart + (gradientEnd - gradientStart) * blendFactor;
+  const component = Math.round(255 * Math.min(1, Math.max(0, lightness)));
+  const componentHex = component.toString(16).padStart(2, "0");
   return `#${componentHex}${componentHex}${componentHex}`;
 }
 
