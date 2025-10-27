@@ -65,7 +65,7 @@ const state = {
     typeof storedPreferences.colorMessages === "boolean"
       ? storedPreferences.colorMessages
       : false,
-  filters: new Set(["messages", "desktop"]),
+  filters: new Set(["messages", "http", "desktop"]),
   logs: [],
 };
 
@@ -132,16 +132,24 @@ function resolveInfoMessageColor(message) {
   if (!message) {
     return null;
   }
-  const match = message.match(/^\[(-?\d+)\]\[(\d+)\]/);
-  if (!match) {
+
+  const trimmed = message.trim();
+  if (!trimmed) {
     return null;
   }
-  const key = `${match[1]}:${match[2]}`;
-  const normalized = hashStringToUnitInterval(key);
-  const component = Math.round(
-    255 * (INFO_MESSAGE_LIGHTNESS_START + (1 - INFO_MESSAGE_LIGHTNESS_START) * normalized),
-  );
-  const componentHex = component.toString(16).padStart(2, "0");
+
+  const firstWhitespaceIndex = trimmed.search(/\s/);
+  const identifier =
+    firstWhitespaceIndex === -1 ? trimmed : trimmed.slice(0, firstWhitespaceIndex);
+  if (!identifier) {
+    return null;
+  }
+
+  const normalized = hashStringToUnitInterval(identifier);
+  const start = Math.max(0, Math.min(1, INFO_MESSAGE_LIGHTNESS_START));
+  const component = Math.round(255 * (start + (1 - start) * normalized));
+  const clamped = Math.max(0, Math.min(255, component));
+  const componentHex = clamped.toString(16).padStart(2, "0");
   return `#${componentHex}${componentHex}${componentHex}`;
 }
 
