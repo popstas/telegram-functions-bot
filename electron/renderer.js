@@ -31,12 +31,22 @@ const state = {
 
 function scrollToBottom() {
   if (!state.autoScroll) return;
-  logContainer.scrollTop = logContainer.scrollHeight;
+  requestAnimationFrame(() => {
+    logContainer.scrollTop = logContainer.scrollHeight;
+  });
 }
 
 function formatTimestamp(timestamp) {
   if (!timestamp) return "";
-  return timestamp;
+  const normalized = timestamp.includes("T") ? timestamp : timestamp.replace(" ", "T");
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) {
+    return timestamp;
+  }
+  const hours = `${date.getHours()}`.padStart(2, "0");
+  const minutes = `${date.getMinutes()}`.padStart(2, "0");
+  const seconds = `${date.getSeconds()}`.padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
 }
 
 function renderEntry(entry) {
@@ -45,8 +55,9 @@ function renderEntry(entry) {
   }
   const node = template.content.firstElementChild.cloneNode(true);
   node.dataset.source = entry.source;
-  node.querySelector(".log-source").textContent = entry.source;
-  node.querySelector(".log-timestamp").textContent = formatTimestamp(entry.timestamp);
+  const timestampElement = node.querySelector(".log-timestamp");
+  timestampElement.textContent = formatTimestamp(entry.timestamp);
+  timestampElement.dataset.level = entry.level;
   const levelElement = node.querySelector(".log-level");
   levelElement.textContent = entry.level.toUpperCase();
   levelElement.dataset.level = entry.level;
@@ -122,6 +133,9 @@ clearButton.addEventListener("click", () => {
 
 autoScrollToggle.addEventListener("change", () => {
   state.autoScroll = autoScrollToggle.checked;
+  if (state.autoScroll) {
+    scrollToBottom();
+  }
 });
 
 desktopBridge.onLog(handleLog);
