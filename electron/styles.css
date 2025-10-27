@@ -98,22 +98,22 @@ select {
   padding: 12px 18px 20px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 1px;
 }
 
 .log-line {
   background: rgba(15, 23, 42, 0.7);
   border: 1px solid rgba(148, 163, 184, 0.12);
   border-radius: 6px;
-  padding: 8px 12px;
+  padding: 5px 10px;
   display: grid;
-  grid-template-columns: minmax(130px, 180px) 1fr;
-  gap: 10px;
+  grid-template-columns: 70px 1fr;
+  gap: 1px;
 }
 
 .log-meta {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   font-size: 0.8rem;
   color: rgba(203, 213, 225, 0.8);

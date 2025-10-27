@@ -23,10 +23,46 @@ if (!window.desktop) {
   console.error("Desktop preload bridge unavailable. Renderer controls will be no-ops.");
 }
 
+const PREFERENCES_STORAGE_KEY = "desktop-log-preferences";
+
+function readStoredPreferences() {
+  try {
+    const raw = window.localStorage?.getItem(PREFERENCES_STORAGE_KEY);
+    if (!raw) {
+      return {};
+    }
+    const parsed = JSON.parse(raw);
+    return typeof parsed === "object" && parsed ? parsed : {};
+  } catch (error) {
+    console.warn("[preferences] Failed to read stored preferences", error);
+    return {};
+  }
+}
+
+let storedPreferences = readStoredPreferences();
+
+function persistPreferences(patch) {
+  storedPreferences = { ...storedPreferences, ...patch };
+  try {
+    window.localStorage?.setItem(
+      PREFERENCES_STORAGE_KEY,
+      JSON.stringify(storedPreferences),
+    );
+  } catch (error) {
+    console.warn("[preferences] Failed to persist preferences", error);
+  }
+}
+
 const state = {
   paused: false,
-  autoScroll: true,
-  colorMessages: false,
+  autoScroll:
+    typeof storedPreferences.autoScroll === "boolean"
+      ? storedPreferences.autoScroll
+      : true,
+  colorMessages:
+    typeof storedPreferences.colorMessages === "boolean"
+      ? storedPreferences.colorMessages
+      : false,
   filters: new Set(["messages", "desktop"]),
   logs: [],
 };
@@ -176,11 +212,13 @@ autoScrollToggle.addEventListener("change", () => {
   } else {
     console.debug("[autoscroll] Disabled");
   }
+  persistPreferences({ autoScroll: state.autoScroll });
 });
 
 colorMessagesToggle.addEventListener("change", () => {
   state.colorMessages = colorMessagesToggle.checked;
   logContainer.classList.toggle("color-messages", state.colorMessages);
+  persistPreferences({ colorMessages: state.colorMessages });
 });
 
 desktopBridge.onLog(handleLog);
@@ -191,7 +229,8 @@ desktopBridge.onBotState((stateInfo) => {
 window.addEventListener("DOMContentLoaded", () => {
   updateStatus(false);
   renderAll();
-  state.colorMessages = colorMessagesToggle.checked;
+  autoScrollToggle.checked = state.autoScroll;
+  colorMessagesToggle.checked = state.colorMessages;
   logContainer.classList.toggle("color-messages", state.colorMessages);
   desktopBridge.notifyReady();
 });
