@@ -68,6 +68,9 @@ select {
   gap: 12px;
   background: rgba(30, 41, 59, 0.85);
   border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 
 .filters label,
