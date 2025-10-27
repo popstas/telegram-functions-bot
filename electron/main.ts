@@ -10,7 +10,7 @@ import {
 } from "electron";
 import path from "node:path";
 import fs from "node:fs";
-import { LogEntry, LogLevel, parseLogLine } from "./logTail.ts";
+import { LogEntry, LogLevel, parseLogLine, type LogSource } from "./logTail.ts";
 import { subscribeToLogs, type LogDispatchPayload } from "../src/helpers.ts";
 import { startBot, stopBot } from "../src/index.ts";
 
@@ -332,15 +332,21 @@ function updateTrayMenu() {
   tray.setContextMenu(Menu.buildFromTemplate(template));
 }
 
+const RUNTIME_LOG_SOURCES = new Map<string, LogSource>([
+  ["messages.log", "messages"],
+  ["http.log", "http"],
+]);
+
 function handleLogEvent(payload: LogDispatchPayload) {
   if (!payload.logPath) {
     return;
   }
   const fileName = path.basename(payload.logPath);
-  if (fileName !== "messages.log") {
+  const source = RUNTIME_LOG_SOURCES.get(fileName);
+  if (!source) {
     return;
   }
-  const entry = parseLogLine("messages", payload.formatted);
+  const entry = parseLogLine(source, payload.formatted);
   sendLog(entry);
 }
 

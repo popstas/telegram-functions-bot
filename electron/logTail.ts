@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events";
 import { promises as fsPromises, watch, FSWatcher } from "node:fs";
 import path from "node:path";
 
-export type LogSource = "messages";
+export type LogSource = "messages" | "http";
 export type LogLevel = "debug" | "verbose" | "info" | "warn" | "error";
 
 export interface LogEntry {
@@ -188,6 +188,7 @@ export function parseLogLine(source: LogSource, raw: string): LogEntry {
 export function createDefaultLogTailer(baseDir = "data") {
   const files: Record<LogSource, string> = {
     messages: path.join(baseDir, "messages.log"),
+    http: path.join(baseDir, "http.log"),
   };
   return new LogTailer(files, { followExisting: false });
 }

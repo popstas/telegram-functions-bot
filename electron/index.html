@@ -23,6 +23,7 @@
     <section class="toolbar">
       <div class="filters">
         <label><input type="checkbox" data-source="messages" checked /> Messages</label>
+        <label><input type="checkbox" data-source="http" checked /> HTTP</label>
         <label><input type="checkbox" data-source="desktop" checked /> Desktop</label>
       </div>
       <div class="actions">
@@ -31,6 +32,9 @@
         <label class="autoscale">
           <input type="checkbox" id="autoscroll" checked /> Auto-scroll
         </label>
+        <label class="color-toggle">
+          <input type="checkbox" id="color-messages" /> Color messages
+        </label>
       </div>
     </section>
 
@@ -38,11 +42,10 @@
 
     <template id="log-line-template">
       <article class="log-line">
-        <div class="log-meta">
-          <span class="log-source"></span>
+        <header class="log-meta">
           <span class="log-timestamp"></span>
           <span class="log-level"></span>
-        </div>
+        </header>
         <pre class="log-message"></pre>
       </article>
     </template>

@@ -8,6 +8,7 @@ import {
   parseLogLine,
   createDefaultLogTailer,
   isRelevantChange,
+  type LogSource,
 } from "../../electron/logTail.ts";
 
 const TIMESTAMP = "2024-01-01 10:00:00";
@@ -48,13 +49,14 @@ describe("isRelevantChange", () => {
 
 describe("LogTailer", () => {
   let tempDir: string;
-  let files: Record<"messages", string>;
+  let files: Record<LogSource, string>;
   let tailer: LogTailer;
 
   beforeEach(() => {
     tempDir = mkdtempSync(path.join(os.tmpdir(), "tgbot-logs-"));
     files = {
       messages: path.join(tempDir, "messages.log"),
+      http: path.join(tempDir, "http.log"),
     };
   });
 
