@@ -53,8 +53,12 @@ function persistPreferences(patch) {
   }
 }
 
-const INFO_MESSAGE_LIGHTNESS_START = 0.5;
-const INFO_MESSAGE_GRADIENTS = 10;
+const INFO_MESSAGE_COLORS = ["#aaa", "#fff"];
+
+const infoMessageColorState = {
+  lastIdentifier: null,
+  colorIndex: 0,
+};
 
 const state = {
   paused: false,
@@ -120,51 +124,46 @@ function formatTimestamp(timestamp) {
   return `${hours}:${minutes}:${seconds}`;
 }
 
-function hashStringToUnitInterval(value) {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash << 5) - hash + value.charCodeAt(index);
-    hash |= 0; // Convert to 32bit integer
-  }
-  return (hash >>> 0) / 0xffffffff;
+function resetInfoMessageColorState() {
+  infoMessageColorState.lastIdentifier = null;
+  infoMessageColorState.colorIndex = 0;
 }
 
-function resolveInfoMessageColor(message) {
-  if (!message) {
-    return null;
-  }
-
-  const trimmed = message.trim();
+function extractInfoMessageIdentifier(trimmed) {
   if (!trimmed) {
     return null;
   }
-
   const firstWhitespaceIndex = trimmed.search(/\s/);
-  const identifier =
-    firstWhitespaceIndex === -1 ? trimmed : trimmed.slice(0, firstWhitespaceIndex);
-  if (!identifier) {
-    return null;
+  return firstWhitespaceIndex === -1 ? trimmed : trimmed.slice(0, firstWhitespaceIndex);
+}
+
+function enrichLogEntry(entry) {
+  const enriched = { ...entry };
+  if (entry.level !== "info" && entry.level !== "verbose") {
+    return enriched;
   }
 
-  const normalized = hashStringToUnitInterval(identifier);
-  const start = Math.max(0, Math.min(1, INFO_MESSAGE_LIGHTNESS_START));
-  const gradientSize = (1 - start) / INFO_MESSAGE_GRADIENTS;
-  const gradientIndex = Math.min(
-    INFO_MESSAGE_GRADIENTS - 1,
-    Math.floor(normalized * INFO_MESSAGE_GRADIENTS),
-  );
-  const gradientStart = start + gradientIndex * gradientSize;
-  const gradientEnd =
-    gradientIndex === INFO_MESSAGE_GRADIENTS - 1
-      ? 1
-      : Math.min(1, gradientStart + gradientSize);
-  const normalizedInt = Math.floor(normalized * 1e4);
-  const lastDigit = Math.abs(normalizedInt) % 10;
-  const blendFactor = Number.isFinite(lastDigit) && lastDigit > 0 ? lastDigit / 9 : 0;
-  const lightness = gradientStart + (gradientEnd - gradientStart) * blendFactor;
-  const component = Math.round(255 * Math.min(1, Math.max(0, lightness)));
-  const componentHex = component.toString(16).padStart(2, "0");
-  return `#${componentHex}${componentHex}${componentHex}`;
+  const trimmed = entry.message?.trim();
+  if (!trimmed) {
+    return enriched;
+  }
+
+  const identifier = extractInfoMessageIdentifier(trimmed);
+  if (!identifier) {
+    return enriched;
+  }
+
+  if (infoMessageColorState.lastIdentifier === null) {
+    infoMessageColorState.colorIndex = 0;
+  } else if (identifier !== infoMessageColorState.lastIdentifier) {
+    infoMessageColorState.colorIndex =
+      (infoMessageColorState.colorIndex + 1) % INFO_MESSAGE_COLORS.length;
+  }
+
+  infoMessageColorState.lastIdentifier = identifier;
+  enriched.infoColor = INFO_MESSAGE_COLORS[infoMessageColorState.colorIndex];
+  enriched.infoIdentifier = identifier;
+  return enriched;
 }
 
 function renderEntry(entry) {
@@ -182,13 +181,8 @@ function renderEntry(entry) {
   const messageElement = node.querySelector(".log-message");
   messageElement.textContent = entry.message;
   messageElement.dataset.level = entry.level;
-  if (entry.level === "info" || entry.level === "verbose") {
-    const infoColor = resolveInfoMessageColor(entry.message);
-    if (infoColor) {
-      messageElement.style.setProperty("--message-color", infoColor);
-    } else {
-      messageElement.style.removeProperty("--message-color");
-    }
+  if ((entry.level === "info" || entry.level === "verbose") && entry.infoColor) {
+    messageElement.style.setProperty("--message-color", entry.infoColor);
   } else {
     messageElement.style.removeProperty("--message-color");
   }
@@ -204,6 +198,8 @@ function renderAll() {
     logContainer.appendChild(empty);
     return;
   }
+  resetInfoMessageColorState();
+  state.logs = state.logs.map((entry) => enrichLogEntry(entry));
   state.logs.forEach((entry) => {
     renderEntry(entry);
   });
@@ -211,12 +207,13 @@ function renderAll() {
 }
 
 function handleLog(entry) {
-  state.logs.push(entry);
+  const enriched = enrichLogEntry(entry);
+  state.logs.push(enriched);
   if (state.paused) {
     console.debug("[handleLog] Received log while paused", entry);
     return;
   }
-  renderEntry(entry);
+  renderEntry(enriched);
   scrollToBottom("handleLog");
 }
 
@@ -261,6 +258,7 @@ pauseButton.addEventListener("click", () => {
 
 clearButton.addEventListener("click", () => {
   state.logs = [];
+  resetInfoMessageColorState();
   renderAll();
 });
 
