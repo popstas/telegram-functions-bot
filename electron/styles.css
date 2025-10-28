@@ -99,11 +99,13 @@ select {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  padding-left: 16px;
 }
 
 .font-size-button {
   width: 32px;
   height: 32px;
+  margin-left: -16px;
   padding: 0;
   border: none;
   border-radius: 6px;
@@ -114,6 +116,19 @@ select {
   align-items: center;
   justify-content: center;
   transition: background 0.2s ease, color 0.2s ease;
+}
+.font-size-button[data-size="small"] {
+  width: 24px;
+  height: 24px;
+  font-size: 0.7rem;
+}
+.font-size-button[data-size="medium"] {
+  width: 28px;
+  height: 28px;
+  font-size: 0.85rem;
+}
+.font-size-button[data-size="large"] {
+  font-size: 1.05rem;
 }
 
 .font-size-button:hover,
