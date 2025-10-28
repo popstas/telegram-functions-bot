@@ -1,3 +1,8 @@
+import {
+  DEFAULT_FONT_SIZE,
+  normalizeFontSizePreference,
+} from "./fontPreferences.js";
+
 const logContainer = document.getElementById("log-container");
 const template = document.getElementById("log-line-template");
 const statusElement = document.getElementById("bot-status");
@@ -9,6 +14,7 @@ const clearButton = document.getElementById("clear");
 const autoScrollToggle = document.getElementById("autoscroll");
 const colorMessagesToggle = document.getElementById("color-messages");
 const filterCheckboxes = Array.from(document.querySelectorAll(".filters input[type='checkbox']"));
+const fontSizeButtons = Array.from(document.querySelectorAll(".font-size-button"));
 
 const desktopBridge = window.desktop ?? {
   onLog: () => () => {},
@@ -40,6 +46,7 @@ function readStoredPreferences() {
 }
 
 let storedPreferences = readStoredPreferences();
+const initialFontSize = normalizeFontSizePreference(storedPreferences.fontSize ?? DEFAULT_FONT_SIZE);
 
 function persistPreferences(patch) {
   storedPreferences = { ...storedPreferences, ...patch };
@@ -72,7 +79,24 @@ const state = {
       : false,
   filters: new Set(["messages", "http", "desktop"]),
   logs: [],
+  fontSize: initialFontSize,
 };
+
+applyFontSize(state.fontSize, { persist: false });
+
+function applyFontSize(nextSize, { persist = true } = {}) {
+  const normalized = normalizeFontSizePreference(nextSize);
+  state.fontSize = normalized;
+  if (logContainer) {
+    logContainer.dataset.fontSize = normalized;
+  }
+  fontSizeButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.size === normalized);
+  });
+  if (persist) {
+    persistPreferences({ fontSize: normalized });
+  }
+}
 
 function scrollToBottom(reason = "unknown") {
   if (!logContainer) {
@@ -277,6 +301,12 @@ colorMessagesToggle.addEventListener("change", () => {
   state.colorMessages = colorMessagesToggle.checked;
   logContainer.classList.toggle("color-messages", state.colorMessages);
   persistPreferences({ colorMessages: state.colorMessages });
+});
+
+fontSizeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    applyFontSize(button.dataset.size ?? DEFAULT_FONT_SIZE);
+  });
 });
 
 desktopBridge.onLog(handleLog);

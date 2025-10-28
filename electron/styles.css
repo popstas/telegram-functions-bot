@@ -76,7 +76,8 @@ select {
 .filters label,
 .actions button,
 .autoscale,
-.color-toggle {
+.color-toggle,
+.font-size-controls {
   margin-right: 12px;
   color: #e2e8f0;
 }
@@ -94,6 +95,49 @@ select {
   background: rgba(148, 163, 184, 0.35);
 }
 
+.font-size-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.font-size-button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: rgba(148, 163, 184, 0.2);
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.font-size-button:hover,
+.font-size-button:focus-visible {
+  background: rgba(148, 163, 184, 0.35);
+  outline: none;
+}
+
+.font-size-button.active {
+  background: var(--accent);
+  color: #0f172a;
+}
+
+.font-size-button[data-size="small"] {
+  font-size: 0.7rem;
+}
+
+.font-size-button[data-size="medium"] {
+  font-size: 0.85rem;
+}
+
+.font-size-button[data-size="large"] {
+  font-size: 1.05rem;
+}
 
 .log-view {
   flex: 1;
@@ -159,6 +203,16 @@ select {
   color: #f1f5f9;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.log-view[data-font-size="small"] .log-message {
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.log-view[data-font-size="large"] .log-message {
+  font-size: 1rem;
+  line-height: 1.55;
 }
 
 .log-view.color-messages .log-message[data-level="info"],
