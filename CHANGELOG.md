@@ -1,4 +1,24 @@
-# [](https://github.com/popstas/telegram-functions-bot/compare/v2025.8.1...v) (2025-08-06)
+## [2025.10.15](https://github.com/popstas/telegram-functions-bot/compare/v2025.10.7...v2025.10.15) (2025-10-28)
+
+
+### Bug Fixes
+
+* add answerId to log, split log by answer id when multiple requests to single agent ([a30eaa0](https://github.com/popstas/telegram-functions-bot/commit/a30eaa0f0c91180e1db139d8e23aa026a8520808))
+* add desktop app icon ([187a9f3](https://github.com/popstas/telegram-functions-bot/commit/187a9f3e09e08d3f81aaa532038ac25af789a485))
+* clean wrong arguments for take_screenshot in png ([fd28294](https://github.com/popstas/telegram-functions-bot/commit/fd282941cb2d740f1a24f98ea5ba0a202b33f6c8))
+
+
+### Features
+
+* Add reasoning.effort and text.verbosity support to Responses API ([#163](https://github.com/popstas/telegram-functions-bot/issues/163)) ([245bee7](https://github.com/popstas/telegram-functions-bot/commit/245bee7dc950d365ace57b59821987dd13fd87d9))
+* add tool delay ([b75d309](https://github.com/popstas/telegram-functions-bot/commit/b75d309a8fb16f4a5af7c46429b4ed9ec264af48))
+* Allow send chat_id in http_request for make concurrent requests ([#159](https://github.com/popstas/telegram-functions-bot/issues/159)) ([afed09a](https://github.com/popstas/telegram-functions-bot/commit/afed09a86202fd5cb3a678c321f97d833f2c9478))
+* Desktop app electron based ([#158](https://github.com/popstas/telegram-functions-bot/issues/158)) ([fd82d03](https://github.com/popstas/telegram-functions-bot/commit/fd82d0339ba7743cda7fb7e56ee35b3fcada18bb))
+* Improve desktop log viewer layout and behavior, logging better than in console ([#167](https://github.com/popstas/telegram-functions-bot/issues/167)) ([b244d2e](https://github.com/popstas/telegram-functions-bot/commit/b244d2e04504c97648672a4db8b2a846778fc69a))
+
+
+
+## [2025.10.7](https://github.com/popstas/telegram-functions-bot/compare/v2025.8.1...v2025.10.7) (2025-10-07)
 
 
 ### Bug Fixes
@@ -14,6 +34,7 @@
 * add chatsDir, useChatsDir config options ([#147](https://github.com/popstas/telegram-functions-bot/issues/147)) ([2855e9e](https://github.com/popstas/telegram-functions-bot/commit/2855e9e18e594d00d0042d7deb7e1f8e7f5d067d))
 * add confirmation for memory_delete, prettify output ([#142](https://github.com/popstas/telegram-functions-bot/issues/142)) ([84f70e6](https://github.com/popstas/telegram-functions-bot/commit/84f70e6a1acd3f0f02e9b61fd51b4cc09cd8bdc0))
 * add memory_delete tool and rename search_memory to memory_search ([#139](https://github.com/popstas/telegram-functions-bot/issues/139)) ([f005d97](https://github.com/popstas/telegram-functions-bot/commit/f005d9781b6d571d1b7ffc49d54fccbf40fb6599))
+* allow chat response_format ([#157](https://github.com/popstas/telegram-functions-bot/issues/157)) ([e338b1a](https://github.com/popstas/telegram-functions-bot/commit/e338b1a00d1942e28c1685c890e72df2550f28f0))
 * allow dynamic buttons from responses, responseButtons ([#152](https://github.com/popstas/telegram-functions-bot/issues/152)) ([af400f4](https://github.com/popstas/telegram-functions-bot/commit/af400f438ef542cdc1c8d484254d9fc584ce9316))
 * **config:** support chat configs directory ([#148](https://github.com/popstas/telegram-functions-bot/issues/148)) ([8aa63f9](https://github.com/popstas/telegram-functions-bot/commit/8aa63f9513c384cd9d0539c37980a348fc5c7a33))
 * **config:** watch chat files and avoid redundant writes ([#153](https://github.com/popstas/telegram-functions-bot/issues/153)) ([73f5ded](https://github.com/popstas/telegram-functions-bot/commit/73f5dede7b8d4f5532348bb14c9531a9e2b221e4))
