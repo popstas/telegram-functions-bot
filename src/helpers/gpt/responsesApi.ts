@@ -7,10 +7,20 @@ export function convertResponsesInput(
 ): Record<string, unknown> {
   const { messages, response_format, ...rest } = apiParams;
   const input: OpenAI.Responses.ResponseInputItem[] = [];
+  const instructionsParts: string[] = [];
+  const seenInstructions = new Set<string>();
+  const addInstruction = (role: string, name?: string) => {
+    if (!name || role === "tool") return;
+    const key = `${role}:${name}`;
+    if (seenInstructions.has(key)) return;
+    seenInstructions.add(key);
+    instructionsParts.push(`${role} name: ${name}`);
+  };
   for (const m of (messages || []) as (OpenAI.ChatCompletionMessageParam & {
     name?: string;
   })[]) {
     const { name, ...msg } = m;
+    addInstruction(msg.role, name);
     if (
       msg.role === "assistant" &&
       (msg as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam).tool_calls?.length
@@ -30,8 +40,7 @@ export function convertResponsesInput(
           content: (msg as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam)
             .content as string,
           type: "message",
-        } as OpenAI.Responses.EasyInputMessage & { name?: string };
-        if (name) assistantMessage.name = name;
+        } as OpenAI.Responses.EasyInputMessage;
         input.push(assistantMessage);
       }
     } else if (msg.role === "tool") {
@@ -45,12 +54,19 @@ export function convertResponsesInput(
         role: msg.role as "user" | "assistant" | "system" | "developer",
         content: (msg as { content?: string }).content as string,
         type: "message",
-      } as OpenAI.Responses.EasyInputMessage & { name?: string };
-      if (name) inputMessage.name = name;
+      } as OpenAI.Responses.EasyInputMessage;
       input.push(inputMessage);
     }
   }
   const respParams: Record<string, unknown> = { ...rest, input };
+  if (instructionsParts.length) {
+    const namesInstruction = instructionsParts.join("\n");
+    const existingInstructions =
+      typeof respParams.instructions === "string" ? respParams.instructions : undefined;
+    respParams.instructions = existingInstructions
+      ? `${existingInstructions}\n${namesInstruction}`
+      : namesInstruction;
+  }
   if (responsesParams?.reasoning?.effort) {
     respParams.reasoning = { effort: responsesParams.reasoning.effort };
   }
