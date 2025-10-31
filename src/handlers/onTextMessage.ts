@@ -26,6 +26,10 @@ interface ActiveResponse {
 
 const activeResponses = new Map<number, ActiveResponse>();
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export default async function onTextMessage(
   ctx: Context & { secondTry?: boolean },
   next?: () => Promise<void> | void,
@@ -62,8 +66,13 @@ export default async function onTextMessage(
   const buttonResponse = await resolveChatButtons(ctx, msg, chat, thread, extraMessageParams);
   if (buttonResponse) return buttonResponse;
 
-  if (chat.chatParams?.vector_memory && msg.text?.toLowerCase().startsWith("запомни")) {
-    const text = msg.text.replace(/^запомни[\s\p{P}]*/iu, "");
+  const originalText = msg.text ?? "";
+  const textWithoutPrefix = chat.prefix
+    ? originalText.replace(new RegExp(`^${escapeRegExp(chat.prefix)}[\\s\\p{P}]*`, "iu"), "")
+    : originalText;
+
+  if (chat.chatParams?.vector_memory && textWithoutPrefix.toLowerCase().startsWith("запомни")) {
+    const text = textWithoutPrefix.replace(/^запомни[\s\p{P}]*/iu, "");
     await saveEmbedding({
       text,
       metadata: {

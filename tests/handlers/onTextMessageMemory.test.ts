@@ -104,4 +104,31 @@ describe("onTextMessage memory", () => {
     expect(mockSendTelegramMessage).toHaveBeenCalledWith(1, "Запомнил", undefined, ctx, chat);
     expect(mockAddToHistory).not.toHaveBeenCalled();
   });
+
+  it("saves embedding when message has prefix", async () => {
+    const msg = {
+      chat: { id: 1, title: "t" },
+      from: { id: 2 },
+      text: "бот, запомни: hello world",
+      message_id: 43,
+    } as Message.TextMessage;
+    const chat: ConfigChatType = {
+      name: "c",
+      id: 1,
+      completionParams: {},
+      chatParams: { vector_memory: true },
+      toolParams: {},
+      prefix: "бот",
+    } as ConfigChatType;
+    mockCheckAccessLevel.mockResolvedValue({ msg, chat });
+    const ctx = createCtx(msg);
+    await onTextMessage(ctx);
+    expect(mockSaveEmbedding).toHaveBeenCalledWith({
+      text: "hello world",
+      metadata: { chatId: 1, userId: 2, messageId: 43 },
+      chat,
+    });
+    expect(mockSendTelegramMessage).toHaveBeenCalledWith(1, "Запомнил", undefined, ctx, chat);
+    expect(mockAddToHistory).not.toHaveBeenCalled();
+  });
 });
