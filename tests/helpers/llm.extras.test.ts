@@ -220,6 +220,7 @@ describe("llmCall", () => {
     });
     const calledParams = (api.responses.create as jest.Mock).mock.calls[0][0];
     expect(calledParams.input).toEqual([{ role: "user", content: "hi", type: "message" }]);
+    expect(calledParams.instructions).toBe("user name: Stanislav");
     expect(calledParams.tools).toEqual([
       {
         type: "function",
@@ -356,6 +357,7 @@ describe("llmCall", () => {
       },
       { type: "function_call_output", call_id: "x", output: "res" },
     ]);
+    expect(calledParams.instructions).toBeUndefined();
   });
 
   it("uses responses streaming when enabled", async () => {

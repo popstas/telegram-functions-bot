@@ -20,6 +20,10 @@ This project is a TypeScript Telegram bot. The codebase uses Node.js tooling wit
 - Cover each function first.
 - Check `npm run test-full` and `npm run coverage-info` in the end of each iteration, calculate coverage change.
 
+# Pull request naming
+Create name using angular commit message format.
+`feat:` and `fix:` are using in CHANGELOG.md. It's a release notes for users. Name your PRs in a way that it's easy to understand what was changed. Forbidden to use `feat:` and `fix:` prefixes for chore tasks that don't add new features or fix bugs.
+
 ## Project Structure
 
 - **src/** – main source code (`bot.ts`, `config.ts`, helpers, tools, etc.)

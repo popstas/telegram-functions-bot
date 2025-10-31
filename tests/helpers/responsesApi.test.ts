@@ -23,6 +23,7 @@ describe("responsesApi helpers", () => {
     };
     const res = convertResponsesInput(params);
     expect(res.input).toEqual([{ role: "user", content: "hi", type: "message" }]);
+    expect(res.instructions).toBe("user name: Bob");
     expect(res.tools).toEqual([
       {
         type: "function",
