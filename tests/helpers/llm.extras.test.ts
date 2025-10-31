@@ -219,7 +219,9 @@ describe("llmCall", () => {
       },
     });
     const calledParams = (api.responses.create as jest.Mock).mock.calls[0][0];
-    expect(calledParams.input).toEqual([{ role: "user", content: "hi", type: "message" }]);
+    expect(calledParams.input).toEqual([
+      { role: "user", content: "hi", type: "message", name: "Stanislav" },
+    ]);
     expect(calledParams.tools).toEqual([
       {
         type: "function",

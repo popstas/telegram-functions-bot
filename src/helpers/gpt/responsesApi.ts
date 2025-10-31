@@ -10,8 +10,7 @@ export function convertResponsesInput(
   for (const m of (messages || []) as (OpenAI.ChatCompletionMessageParam & {
     name?: string;
   })[]) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { name: _unused, ...msg } = m;
+    const { name, ...msg } = m;
     if (
       msg.role === "assistant" &&
       (msg as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam).tool_calls?.length
@@ -26,12 +25,14 @@ export function convertResponsesInput(
         } as OpenAI.Responses.ResponseFunctionToolCall);
       }
       if ((msg as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam).content) {
-        input.push({
+        const assistantMessage = {
           role: "assistant",
           content: (msg as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam)
             .content as string,
           type: "message",
-        } as OpenAI.Responses.EasyInputMessage);
+        } as OpenAI.Responses.EasyInputMessage & { name?: string };
+        if (name) assistantMessage.name = name;
+        input.push(assistantMessage);
       }
     } else if (msg.role === "tool") {
       input.push({
@@ -40,11 +41,13 @@ export function convertResponsesInput(
         output: msg.content as string,
       } as OpenAI.Responses.ResponseInputItem.FunctionCallOutput);
     } else {
-      input.push({
+      const inputMessage = {
         role: msg.role as "user" | "assistant" | "system" | "developer",
         content: (msg as { content?: string }).content as string,
         type: "message",
-      } as OpenAI.Responses.EasyInputMessage);
+      } as OpenAI.Responses.EasyInputMessage & { name?: string };
+      if (name) inputMessage.name = name;
+      input.push(inputMessage);
     }
   }
   const respParams: Record<string, unknown> = { ...rest, input };
