@@ -93,7 +93,7 @@ beforeEach(async () => {
   jest.clearAllMocks();
   mockUseConfig.mockReturnValue({ chats: [baseConfig] });
   mockUseThreads.mockReturnValue({ 1: { id: 1, msgs: [], messages: [] } });
-  mockTelegramConfirm.mockResolvedValue([]);
+  mockTelegramConfirm.mockImplementation(async ({ onConfirm }) => onConfirm());
   tools = await import("../../src/helpers/gpt/tools.ts");
 });
 
@@ -304,7 +304,7 @@ describe("executeTools", () => {
     expect(msg.text.trim()).toBe("run");
   });
 
-  it("returns promise when confirmation enabled", async () => {
+  it("executes tool after confirmation", async () => {
     const toolCalls: ChatCompletionMessageToolCall[] = [
       {
         id: "1",
@@ -332,8 +332,44 @@ describe("executeTools", () => {
     };
     const msg = { ...baseMsg };
     const result = tools.executeTools(toolCalls, chatTools, cfg, msg);
-    await expect(result).resolves.toEqual([]);
+    await expect(result).resolves.toEqual([{ content: "ok" }]);
     expect(mockTelegramConfirm).toHaveBeenCalled();
+  });
+
+  it("returns cancellation metadata when confirmation rejected", async () => {
+    const toolCalls: ChatCompletionMessageToolCall[] = [
+      {
+        id: "1",
+        type: "function",
+        function: { name: "foo", arguments: JSON.stringify({ value: 1 }) },
+      },
+    ];
+    const chatTools: ChatToolType[] = [
+      {
+        name: "foo",
+        module: {
+          description: "",
+          call: () => ({
+            functions: {
+              get: () => jest.fn().mockResolvedValue({ content: "ok" }),
+              toolSpecs: { function: {} },
+            },
+          }),
+        },
+      },
+    ];
+    const cfg: ConfigChatType = {
+      ...baseConfig,
+      chatParams: { confirmation: true },
+    };
+    const msg = { ...baseMsg };
+    mockTelegramConfirm.mockImplementation(async ({ onCancel }) => onCancel());
+    const result = await tools.executeTools(toolCalls, chatTools, cfg, msg);
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toHaveLength(0);
+    const meta = result as typeof result & { cancelled?: boolean; cancelMessages?: string[] };
+    expect(meta.cancelled).toBe(true);
+    expect(meta.cancelMessages?.[0]).toContain('"name":"foo"');
   });
 
   it("appends full text for planfix_add_to_lead_task", async () => {

@@ -247,6 +247,107 @@ export async function handleModelAnswer({
       noSendTelegram,
     );
     if (tool_res) {
+      if ((tool_res as ToolResponse[] & { cancelled?: boolean }).cancelled) {
+        const cancellation = tool_res as ToolResponse[] & {
+          cancelled?: boolean;
+          cancelMessages?: string[];
+        };
+        const assistantMessage = {
+          ...(messageAgent as OpenAI.ChatCompletionMessageParam & {
+            tool_calls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
+          }),
+        };
+        delete assistantMessage.tool_calls;
+        gptContext.thread.messages.push(assistantMessage);
+        const cancelMessages = cancellation.cancelMessages?.length
+          ? cancellation.cancelMessages
+          : messageAgent.tool_calls.map((toolCall) =>
+              JSON.stringify({
+                name: toolCall.function.name,
+                arguments: toolCall.function.arguments,
+              }),
+            );
+        let cancelText = cancelMessages
+          .map((params) => `tool call cancelled: ${params}`)
+          .join("\n");
+        if (!cancelText) {
+          cancelText = "tool call cancelled";
+        }
+        gptContext.thread.messages.push({ role: "user", content: cancelText });
+
+        gptContext.messages = await buildMessages(
+          gptContext.systemMessage,
+          gptContext.thread.messages,
+        );
+
+        const isNoTool = level > 6 || !gptContext.tools?.length;
+
+        const modelExternal = chatConfig.local_model
+          ? useConfig().local_models.find((m) => m.name === chatConfig.local_model)
+          : undefined;
+        const model = modelExternal
+          ? modelExternal.model
+          : gptContext.thread.completionParams?.model || "gpt-4.1-mini";
+        const apiParams = {
+          messages: gptContext.messages,
+          model,
+          temperature: gptContext.thread.completionParams?.temperature,
+          tools: isNoTool ? undefined : gptContext.tools,
+          tool_choice: isNoTool
+            ? undefined
+            : ("auto" as OpenAI.Chat.Completions.ChatCompletionToolChoiceOption),
+          response_format: responseFormat,
+        };
+
+        const {
+          res: cancelRes,
+          trace: cancelTrace,
+          webSearchDetails,
+          images,
+        } = await llmCall({
+          apiParams,
+          msg,
+          chatConfig,
+          generationName: "after-cancelled-tool",
+          localModel: chatConfig.local_model,
+          noSendTelegram,
+        });
+
+        if (webSearchDetails && chatConfig.chatParams?.showToolMessages !== false) {
+          await sendTelegramMessage(
+            msg.chat.id,
+            webSearchDetails,
+            { deleteAfter: chatConfig.chatParams?.deleteToolAnswers },
+            undefined,
+            chatConfig,
+          );
+        }
+
+        if (images && images.length) {
+          for (const img of images) {
+            const buffer = Buffer.from(img.result, "base64");
+            await sendTelegramDocument(
+              msg.chat.id,
+              buffer,
+              `${img.id || "image"}.png`,
+              undefined,
+              chatConfig,
+            );
+          }
+        }
+
+        return await handleModelAnswer({
+          msg,
+          res: cancelRes,
+          chatConfig,
+          expressRes,
+          noSendTelegram,
+          gptContext,
+          level: level + 1,
+          trace: cancelTrace,
+          responseFormat,
+        });
+      }
       return processToolResults({
         tool_res,
         messageAgent,
