@@ -44,14 +44,17 @@ export function addToHistory(
   const threads = useThreads();
   const key = msg.chat?.id || 0;
   initThread(msg, chatConfig);
+  const historyLimit = chatConfig.chatParams?.historyLimit ?? 20;
   if (answer) {
     threads[key].messages.push({ role: "system", content: answer });
+    threads[key].messages = threads[key].messages.slice(-historyLimit);
   } else {
     const messageItem = buildUserMessage(msg, chatConfig);
     threads[key].messages.push(messageItem);
+    threads[key].messages = threads[key].messages.slice(-historyLimit);
     threads[key].msgs.push(msg);
-    // limit history from begin to last 20 messages
-    threads[key].msgs = threads[key].msgs.slice(-20);
+    // limit history from begin to last N messages
+    threads[key].msgs = threads[key].msgs.slice(-historyLimit);
   }
 }
 

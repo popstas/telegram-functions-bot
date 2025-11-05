@@ -107,6 +107,7 @@ export type ChatParamsType = {
   debug?: boolean; // TODO: impl
   memoryless?: boolean;
   forgetTimeout?: number; // in seconds
+  historyLimit?: number;
   showToolMessages?: true | false | undefined | "headers";
   markOurUsers?: string;
   placeholderCacheTime?: number;
