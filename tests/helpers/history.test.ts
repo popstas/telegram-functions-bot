@@ -63,4 +63,25 @@ describe("history helpers", () => {
     expect(threads[1].messages.length).toBe(1);
     expect(threads[1].messages[0].content).toBe("2");
   });
+
+  it("limits history to default value", () => {
+    for (let i = 0; i < 25; i += 1) {
+      addToHistory(createMsg(`${i}`), baseChat);
+    }
+    expect(threads[1].msgs).toHaveLength(20);
+    expect(threads[1].messages).toHaveLength(20);
+    expect(threads[1].msgs[0].text).toBe("5");
+    expect(threads[1].messages[0].content).toBe("5");
+  });
+
+  it("limits history to custom value", () => {
+    const chat = { ...baseChat, chatParams: { historyLimit: 5 } };
+    for (let i = 0; i < 10; i += 1) {
+      addToHistory(createMsg(`${i}`), chat);
+    }
+    expect(threads[1].msgs).toHaveLength(5);
+    expect(threads[1].messages).toHaveLength(5);
+    expect(threads[1].msgs[0].text).toBe("5");
+    expect(threads[1].messages[0].content).toBe("5");
+  });
 });

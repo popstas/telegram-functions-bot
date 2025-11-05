@@ -36,6 +36,7 @@ chats:
       forgetTimeout: 600
       deleteToolAnswers: 60
       confirmation: false
+      historyLimit: 20
       showToolMessages: true
       responseButtons: false
     toolParams:

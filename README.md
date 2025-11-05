@@ -484,6 +484,7 @@ Other useful chat parameters include:
 
 - `markOurUsers` – suffix to append to known users in history
 - `forgetTimeout` – auto-forget history after N seconds
+- `historyLimit` – maximum number of recent messages to keep in history (default: 20)
 - Example chat config snippet:
   ```yaml
   - name: Memory MCP agent
