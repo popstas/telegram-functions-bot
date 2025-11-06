@@ -258,6 +258,9 @@ export async function handleModelAnswer({
           }),
         };
         delete assistantMessage.tool_calls;
+        if (assistantMessage.content === null || assistantMessage.content === undefined) {
+          assistantMessage.content = "";
+        }
         gptContext.thread.messages.push(assistantMessage);
         const cancelMessages = cancellation.cancelMessages?.length
           ? cancellation.cancelMessages

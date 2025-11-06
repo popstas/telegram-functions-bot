@@ -15,6 +15,8 @@ const mockUseBot = jest.fn(() => ({
     deleteMessage: jest.fn(),
   },
 }));
+const mockUseApi = jest.fn();
+const mockUseLangfuse = jest.fn();
 
 jest.unstable_mockModule("../../src/helpers/gpt/tools.ts", () => ({
   executeTools: mockExecuteTools,
@@ -38,6 +40,13 @@ jest.unstable_mockModule("../../src/bot.ts", () => ({
   useBot: mockUseBot,
 }));
 
+jest.unstable_mockModule("../../src/helpers/useApi.ts", () => ({
+  useApi: (...args: unknown[]) => mockUseApi(...args),
+}));
+
+jest.unstable_mockModule("../../src/helpers/useLangfuse.ts", () => ({
+  default: () => mockUseLangfuse(),
+}));
 let handleModelAnswer: typeof import("../../src/helpers/gpt/llm.ts").handleModelAnswer;
 let processToolResults: typeof import("../../src/helpers/gpt/llm.ts").processToolResults;
 
@@ -54,6 +63,9 @@ beforeEach(() => {
   mockSendTelegramMessage.mockReset();
   mockSendTelegramDocument.mockReset();
   mockUseBot.mockReset();
+  mockUseApi.mockReset();
+  mockUseLangfuse.mockReset();
+  mockUseLangfuse.mockReturnValue({ trace: null });
 });
 
 describe("handleModelAnswer", () => {
@@ -68,14 +80,18 @@ describe("handleModelAnswer", () => {
     chatParams: {},
     toolParams: {},
   } as ConfigChatType;
-  const gptContext: GptContextType = {
-    thread: { id: 1, messages: [], msgs: [], completionParams: {} },
-    messages: [],
-    systemMessage: "",
-    chatTools: [],
-    prompts: [],
-    tools: [],
-  } as GptContextType;
+  let gptContext: GptContextType;
+
+  beforeEach(() => {
+    gptContext = {
+      thread: { id: 1, messages: [], msgs: [], completionParams: {} },
+      messages: [],
+      systemMessage: "",
+      chatTools: [],
+      prompts: [],
+      tools: [],
+    } as GptContextType;
+  });
 
   it("parses tool_call tags and executes tools", async () => {
     const json = JSON.stringify({
@@ -103,6 +119,67 @@ describe("handleModelAnswer", () => {
       undefined,
     );
     expect(mockAddToHistory).toHaveBeenCalled();
+  });
+
+  it("retries after cancelled tool call and keeps history valid", async () => {
+    const res = {
+      choices: [
+        {
+          message: {
+            role: "assistant",
+            content: null,
+            tool_calls: [
+              {
+                id: "1",
+                type: "function",
+                function: { name: "tool", arguments: "{}" },
+              },
+            ],
+          },
+        },
+      ],
+    } as any;
+
+    const cancellation = [] as unknown as ToolResponse[] & {
+      cancelled: boolean;
+      cancelMessages: string[];
+    };
+    cancellation.cancelled = true;
+    cancellation.cancelMessages = ['{"name":"tool","arguments":"{}"}'];
+    mockExecuteTools.mockResolvedValueOnce(cancellation);
+
+    const mockCreate = jest.fn().mockResolvedValue({
+      choices: [{ message: { content: "done" } }],
+    });
+    mockUseApi.mockReturnValue({
+      chat: { completions: { create: mockCreate } },
+    });
+
+    const result = await handleModelAnswer({
+      msg,
+      res,
+      chatConfig,
+      expressRes: undefined,
+      gptContext,
+    });
+
+    expect(result.content).toBe("done");
+    expect(mockExecuteTools).toHaveBeenCalledTimes(1);
+    expect(mockUseApi).toHaveBeenCalled();
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    const callArgs = mockCreate.mock.calls[0][0] as any;
+    expect(callArgs.messages[1]).toEqual(
+      expect.objectContaining({ role: "assistant", content: "" }),
+    );
+    expect(callArgs.messages[2]).toEqual(
+      expect.objectContaining({
+        role: "user",
+        content: 'tool call cancelled: {"name":"tool","arguments":"{}"}',
+      }),
+    );
+    expect(
+      gptContext.thread.messages.some((m) => (m as { tool_calls?: unknown[] }).tool_calls?.length),
+    ).toBe(false);
   });
 });
 
