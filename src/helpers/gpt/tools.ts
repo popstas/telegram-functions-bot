@@ -22,6 +22,11 @@ import { includesUser } from "../../utils/users.ts";
 import { publishMqttProgress } from "../../mqtt.ts";
 import { telegramConfirm } from "../../telegram/confirm.ts";
 
+type ToolExecutionCancelMetadata = {
+  cancelled: true;
+  cancelMessages: string[];
+};
+
 function sanitizeUrlForScreenshot(url?: string): string {
   if (!url) {
     return "screenshot";
@@ -192,6 +197,8 @@ export async function executeTools(
   noSendTelegram?: boolean,
 ): Promise<ToolResponse[]> {
   const thread = useThreads()[msg.chat.id || 0];
+  const confirmationMessages: string[] = [];
+  const cancellationPayloads: string[] = [];
 
   if (msg.text.includes("noconfirm")) {
     chatConfig = JSON.parse(JSON.stringify(chatConfig));
@@ -202,8 +209,6 @@ export async function executeTools(
     chatConfig.chatParams.confirmation = true;
     msg.text = msg.text.replace("confirm", "");
   }
-  const toolParamsList: string[] = [];
-
   const toolPromises = toolCalls.map(async (toolCall) => {
     const chatTool = chatTools.find((f) => f.name === toolCall.function.name);
     if (!chatTool) return { content: `Tool not found: ${toolCall.function.name}` };
@@ -354,7 +359,17 @@ export async function executeTools(
       toolParamsStr = toolClient.options_string(toolParams);
     }
 
-    toolParamsList.push(toolParamsStr);
+    confirmationMessages.push(toolParamsStr);
+    try {
+      const parsedForCancel = JSON.parse(toolParams);
+      cancellationPayloads.push(
+        JSON.stringify({ name: toolCall.function.name, arguments: parsedForCancel }),
+      );
+    } catch {
+      cancellationPayloads.push(
+        JSON.stringify({ name: toolCall.function.name, arguments: toolParams }),
+      );
+    }
 
     const chatTitle = (msg.chat as Chat.TitleChat).title;
     const chatId = msg.chat.id;
@@ -439,7 +454,7 @@ export async function executeTools(
     return { content: "" };
   });
   if (chatConfig.chatParams?.confirmation) {
-    const confirmText = toolParamsList.join("\n\n") + "\n\nDo you want to proceed?";
+    const confirmText = confirmationMessages.join("\n\n") + "\n\nDo you want to proceed?";
     sendToHttp(expressRes, confirmText);
     return telegramConfirm<ToolResponse[]>({
       chatId: msg.chat.id,
@@ -481,7 +496,10 @@ export async function executeTools(
             chatConfig,
           );
         }
-        return [];
+        const cancelResponse = [] as unknown as ToolResponse[] & ToolExecutionCancelMetadata;
+        cancelResponse.cancelled = true;
+        cancelResponse.cancelMessages = [...cancellationPayloads];
+        return cancelResponse;
       },
     });
   }
