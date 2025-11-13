@@ -7,12 +7,15 @@ import { ChatParamsType, CompletionParamsType, ConfigChatType } from "../types.t
 
 function isAccessAllowed(chatConfig: ConfigChatType, ctxChat: Chat) {
   const privateChat = ctxChat as Chat.PrivateChat;
+  const config = useConfig();
   const allowedUsers = [
-    ...(chatConfig.privateUsers ?? useConfig().privateUsers),
-    ...(useConfig().adminUsers ?? []),
+    ...(chatConfig.privateUsers ?? []),
+    ...(config.privateUsers ?? []),
+    ...(config.adminUsers ?? []),
   ];
+  const uniqueAllowedUsers = [...new Set(allowedUsers)];
   const username = privateChat.username || "without_username";
-  return includesUser(allowedUsers, username);
+  return includesUser(uniqueAllowedUsers, username);
 }
 
 function getChatConfig(ctxChat: Chat, ctx: Context): ConfigChatType | undefined {
