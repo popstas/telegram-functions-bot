@@ -117,6 +117,17 @@ describe("getCtxChatMsg", () => {
     const { chat } = getCtxChatMsg(ctx);
     expect(chat).toMatchObject(baseChat);
   });
+
+  it("allows users from global list when chat list present", () => {
+    mockUseConfig.mockReturnValue({
+      chats: [{ ...baseChat, privateUsers: ["chatUser"] }],
+      privateUsers: ["globalUser"],
+      adminUsers: [],
+    });
+    const ctx = createCtx({ message: createMsg("globalUser") });
+    const { chat } = getCtxChatMsg(ctx);
+    expect(chat).toMatchObject(baseChat);
+  });
 });
 
 describe("createNewContext", () => {
