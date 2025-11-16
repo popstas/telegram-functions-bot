@@ -10,7 +10,7 @@ import {
   forgetHistory,
   initThread,
 } from "../helpers/history.ts";
-import { saveEmbedding } from "../helpers/embeddings.ts";
+import { rememberSave, isRememberCommand, stripRememberPrefix } from "../helpers/memory.ts";
 import { setLastCtx } from "../helpers/lastCtx.ts";
 import { addOauthToThread, ensureAuth } from "../helpers/google.ts";
 import { requestGptAnswer } from "../helpers/gpt.ts";
@@ -71,18 +71,10 @@ export default async function onTextMessage(
     ? originalText.replace(new RegExp(`^${escapeRegExp(chat.prefix)}[\\s\\p{P}]*`, "iu"), "")
     : originalText;
 
-  if (chat.chatParams?.vector_memory && textWithoutPrefix.toLowerCase().startsWith("запомни")) {
-    const text = textWithoutPrefix.replace(/^запомни[\s\p{P}]*/iu, "");
-    await saveEmbedding({
-      text,
-      metadata: {
-        chatId: msg.chat.id,
-        userId: msg.from?.id,
-        messageId: msg.message_id,
-      },
-      chat,
-    });
-    await sendTelegramMessage(msg.chat.id, "Запомнил", undefined, ctx, chat);
+  if (chat.chatParams?.vector_memory && isRememberCommand(textWithoutPrefix)) {
+    const text = stripRememberPrefix(textWithoutPrefix);
+    const confirmation = await rememberSave({ text, msg, chat });
+    await sendTelegramMessage(msg.chat.id, confirmation, undefined, ctx, chat);
     return;
   }
 

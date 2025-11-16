@@ -83,6 +83,7 @@ Until the rebuild succeeds (or the opt-in flag is omitted) the bot continues to 
 - `read_knowledge_google_sheet` - questions and answers from Google Sheet
 - `read_knowledge_json` - questions and answers from json file/url
 - `memory_search` - search messages saved with vector memory
+- `memory_add` - add/store text into vector memory
 - `memory_delete` - delete messages from vector memory after confirmation
 - `ssh_command` - exec ssh shell command, single server from config
 - `web_search_preview` - use OpenAI internal web search tool (only for Responses API)
@@ -503,7 +504,7 @@ Other useful chat parameters include:
 
 ## Vector memory
 
-Enable semantic memory with `chatParams.vector_memory`. Messages starting with `запомни` (any punctuation immediately after the keyword is ignored) are embedded and stored in a SQLite database using `sqlite-vec`. Use the `memory_search` tool to find related snippets or `memory_delete` to remove them after a preview and confirmation. Set `toolParams.vector_memory.alwaysSearch` to automatically search memory before answering. Adjust `toolParams.vector_memory.deleteMaxDistance` (default `1.1`) to limit how far results can be for deletions.
+Enable semantic memory with `chatParams.vector_memory`. Messages starting with `запомни` (any punctuation immediately after the keyword is ignored) are embedded and stored in a SQLite database using `sqlite-vec`. Use the `memory_add` tool to store entries programmatically, `memory_search` to find related snippets, or `memory_delete` to remove them after a preview and confirmation. Set `toolParams.vector_memory.alwaysSearch` to automatically search memory before answering. Adjust `toolParams.vector_memory.deleteMaxDistance` (default `1.1`) to limit how far results can be for deletions.
 
 To prevent duplicates, each new entry is compared against existing memories; if the text is already present or the closest embedding is nearly identical, the save is skipped.
 

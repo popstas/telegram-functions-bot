@@ -112,7 +112,7 @@ export async function initCommands(bot: Telegraf) {
 
 // add tool to chat config
 export async function commandAddTool(msg: Message.TextMessage, chatConfig: ConfigChatType) {
-  const excluded = ["change_chat_settings"];
+  const excluded = ["change_chat_settings", "memory_add", "memory_delete", "memory_search"];
   const globalTools = await useTools();
   const tools = globalTools.filter((t) => !excluded.includes(t.name)).map((t) => t.name);
   const toolsInfo = await getToolsInfo(tools, msg);
@@ -204,7 +204,13 @@ export async function getToolsInfo(tools: (string | ToolBotType)[], msg: Message
     return `- ${f.name}${f.description ? ` - ${f.description}` : ""}`;
   });
   return tools
-    .filter((f) => f !== "change_chat_settings")
+    .filter(
+      (f) =>
+        f !== "change_chat_settings" &&
+        f !== "memory_add" &&
+        f !== "memory_delete" &&
+        f !== "memory_search",
+    )
     .map((f) => globalTools.find((g) => g.name === f) as ChatToolType)
     .filter(Boolean)
     .map((f) => `- ${f.name}${f.module.description ? ` - ${f.module.description}` : ""}`)

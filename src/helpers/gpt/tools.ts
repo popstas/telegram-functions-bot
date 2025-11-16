@@ -550,12 +550,23 @@ export async function resolveChatTools(msg: Message.TextMessage, chatConfig: Con
   }
 
   const globalTools = await useTools();
-  return [
-    ...((chatConfig.tools ?? [])
-      .map((f) => globalTools.find((g) => g.name === f))
-      .filter(Boolean) as ChatToolType[]),
-    ...agentTools,
-  ].filter(Boolean);
+  // Build effective tool names without persisting hidden ones to YAML
+  const effectiveToolNames = new Set<string>();
+  for (const t of chatConfig.tools ?? []) {
+    if (typeof t === "string") effectiveToolNames.add(t);
+  }
+  // Include hidden memory tools when vector memory is enabled
+  if (chatConfig.chatParams?.vector_memory) {
+    effectiveToolNames.add("memory_add");
+    effectiveToolNames.add("memory_search");
+    effectiveToolNames.add("memory_delete");
+  }
+
+  const effectiveTools = Array.from(effectiveToolNames)
+    .map((f) => globalTools.find((g) => g.name === f))
+    .filter(Boolean) as ChatToolType[];
+
+  return [...effectiveTools, ...agentTools].filter(Boolean);
 }
 
 export async function getToolsPrompts(
