@@ -51,7 +51,7 @@ export class BrainstormClient extends AIFunctionsProvider {
     const { res } = await llmCall({
       apiParams: {
         messages,
-        model: thread.completionParams?.model || "gpt-4o-mini",
+        model: thread.completionParams?.model || "gpt-5-mini",
         temperature: thread.completionParams?.temperature,
       },
       msg,

@@ -236,7 +236,7 @@ import { OpenAI } from "openai";
 const client = new OpenAI();
 
 const stream = await client.responses.create({
-  model: "gpt-4.1",
+  model: "gpt-5",
   input: [
     {
       role: "user",
@@ -462,7 +462,7 @@ chats:
     agent_name: "url-checker"
     systemMessage: "Check for url in answer."
     completionParams:
-      model: "gpt-4.1-nano"
+      model: "gpt-5-nano"
 ```
 
 ### How Evaluators Are Used

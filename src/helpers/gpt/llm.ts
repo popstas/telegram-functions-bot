@@ -290,7 +290,7 @@ export async function handleModelAnswer({
           : undefined;
         const model = modelExternal
           ? modelExternal.model
-          : gptContext.thread.completionParams?.model || "gpt-4.1-mini";
+          : gptContext.thread.completionParams?.model || "gpt-5-mini";
         const apiParams = {
           messages: gptContext.messages,
           model,
@@ -517,7 +517,7 @@ export async function processToolResults({
     : undefined;
   const model = modelExternal
     ? modelExternal.model
-    : gptContext.thread.completionParams?.model || "gpt-4.1-mini";
+    : gptContext.thread.completionParams?.model || "gpt-5-mini";
   const apiParams = {
     messages: gptContext.messages,
     model,
@@ -660,7 +660,7 @@ export async function requestGptAnswer(
     : undefined;
   const model = modelExternal
     ? modelExternal.model
-    : thread.completionParams?.model || "gpt-4.1-mini";
+    : thread.completionParams?.model || "gpt-5-mini";
   const apiParams = {
     messages,
     model,

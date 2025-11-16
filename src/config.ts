@@ -194,7 +194,7 @@ export function generateConfig(): ConfigType {
       whisperBaseUrl: "",
     },
     vision: {
-      model: "gpt-4.1-mini",
+      model: "gpt-5-mini",
     },
     logLevel: "info",
     langfuse: {
@@ -209,7 +209,7 @@ export function generateConfig(): ConfigType {
         name: "default",
         agent_name: "default",
         completionParams: {
-          model: "gpt-4.1-mini",
+          model: "gpt-5-mini",
         },
         systemMessage: "You are using functions to answer the questions. Current date: {date}",
         tools: ["javascript_interpreter", "brainstorm", "fetch"],
@@ -253,7 +253,7 @@ export function generateConfig(): ConfigType {
         username: "telegram_username_for_private_chats",
         prefix: "бот",
         completionParams: {
-          model: "gpt-4.1-mini",
+          model: "gpt-5-mini",
           temperature: 0.7,
         },
         local_model: "",

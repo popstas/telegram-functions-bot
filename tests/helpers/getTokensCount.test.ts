@@ -10,7 +10,7 @@ jest.unstable_mockModule("js-tiktoken", () => ({
 let getTokensCount: typeof import("../../src/helpers/gpt/messages.ts").getTokensCount;
 
 const baseConfig: { completionParams: { model: string } } = {
-  completionParams: { model: "gpt-3.5-turbo" },
+  completionParams: { model: "gpt-5-nano" },
 };
 
 describe("getTokensCount", () => {
@@ -22,15 +22,15 @@ describe("getTokensCount", () => {
 
   it("uses model name to select encoding", () => {
     getTokensCount(baseConfig, "a b c");
-    expect(mockEncodingForModel).toHaveBeenCalledWith("gpt-3.5-turbo");
+    expect(mockEncodingForModel).toHaveBeenCalledWith("gpt-5-nano");
   });
 
-  it("passes model name for 4o models", () => {
+  it("passes model name for 5 models", () => {
     const cfg: { completionParams: { model: string } } = {
-      completionParams: { model: "gpt-4o" },
+      completionParams: { model: "gpt-5-mini" },
     };
     getTokensCount(cfg, "a b c");
-    expect(mockEncodingForModel).toHaveBeenCalledWith("gpt-4o");
+    expect(mockEncodingForModel).toHaveBeenCalledWith("gpt-5-mini");
   });
 
   it("counts tokens using encoding", () => {

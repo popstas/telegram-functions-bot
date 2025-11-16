@@ -36,7 +36,7 @@ describe.skip("executeTools retry logic", () => {
       showToolMessages: true,
     },
     completionParams: {
-      model: "gpt-4o-mini",
+      model: "gpt-5-mini",
     },
     name: "default",
     systemMessage: "Test system message",
