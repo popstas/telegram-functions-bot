@@ -154,6 +154,33 @@ export type EvaluatorResult = {
   is_complete: boolean;
 };
 
+export function normalizeToolCalls(messageAgent: OpenAI.ChatCompletionMessage) {
+  if (messageAgent.tool_calls && messageAgent.tool_calls.length > 0) {
+    return messageAgent;
+  }
+
+  const toolCallMatches = messageAgent.content?.matchAll(/<tool_call>([\s\S]*?)<\/tool_call>/g);
+  if (!toolCallMatches) {
+    return messageAgent;
+  }
+
+  const tool_calls = [] as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
+  for (const match of toolCallMatches) {
+    try {
+      const toolCallObj = JSON.parse(match[1]);
+      tool_calls.push(toolCallObj);
+    } catch {
+      // ignore json errors
+    }
+  }
+
+  if (tool_calls.length > 0) {
+    messageAgent.tool_calls = tool_calls;
+  }
+
+  return messageAgent;
+}
+
 async function evaluateAnswer(
   msg: Message.TextMessage,
   evaluator: ConfigChatType,
@@ -199,173 +226,137 @@ export type ProcessToolResultsParams = {
   responseFormat?: OpenAI.Chat.Completions.ChatCompletionCreateParams["response_format"];
 };
 
-export async function handleModelAnswer({
-  msg,
-  res,
+export async function handleCancelledToolCalls({
+  cancellation,
+  messageAgent,
   chatConfig,
   expressRes,
   noSendTelegram,
   gptContext,
-  level = 1,
-  trace,
+  level,
+  msg,
   responseFormat,
-}: HandleModelAnswerParams): Promise<ToolResponse> {
-  if (!res || !res?.choices?.[0]) {
-    return { content: "" };
+}: {
+  cancellation: ToolResponse[] & { cancelled?: boolean; cancelMessages?: string[] };
+  messageAgent: OpenAI.ChatCompletionMessage;
+  chatConfig: ConfigChatType;
+  expressRes: express.Response | undefined;
+  noSendTelegram: boolean | undefined;
+  gptContext: GptContextType;
+  level: number;
+  msg: Message.TextMessage;
+  responseFormat?: OpenAI.Chat.Completions.ChatCompletionCreateParams["response_format"];
+}): Promise<ToolResponse> {
+  const assistantMessage = {
+    ...(messageAgent as OpenAI.ChatCompletionMessageParam & {
+      tool_calls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
+    }),
+  };
+  delete assistantMessage.tool_calls;
+  if (assistantMessage.content === null || assistantMessage.content === undefined) {
+    assistantMessage.content = "";
   }
-
-  const messageAgent = res.choices[0].message;
-  if (!messageAgent) {
-    throw new Error("No message found in OpenAI response");
+  gptContext.thread.messages.push(assistantMessage);
+  const cancelMessages = cancellation.cancelMessages?.length
+    ? cancellation.cancelMessages
+    : messageAgent.tool_calls?.map((toolCall) =>
+        JSON.stringify({
+          name: toolCall.function.name,
+          arguments: toolCall.function.arguments,
+        }),
+      );
+  let cancelText =
+    cancelMessages?.map((params) => `tool call cancelled: ${params}`).join("\n") || "";
+  if (!cancelText) {
+    cancelText = "tool call cancelled";
   }
+  gptContext.thread.messages.push({ role: "user", content: cancelText });
 
-  if (!messageAgent.tool_calls || messageAgent.tool_calls.length === 0) {
-    const toolCallMatches = messageAgent.content?.matchAll(/<tool_call>([\s\S]*?)<\/tool_call>/g);
-    if (toolCallMatches) {
-      const tool_calls = [] as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
-      for (const match of toolCallMatches) {
-        try {
-          const toolCallObj = JSON.parse(match[1]);
-          tool_calls.push(toolCallObj);
-        } catch {
-          // ignore json errors
-        }
-      }
-      if (tool_calls.length > 0) {
-        messageAgent.tool_calls = tool_calls;
-      }
-    }
-  }
+  gptContext.messages = await buildMessages(gptContext.systemMessage, gptContext.thread.messages);
 
-  if (messageAgent.tool_calls?.length) {
-    const tool_res = await executeTools(
-      messageAgent.tool_calls,
-      gptContext.chatTools,
+  const isNoTool = level > 6 || !gptContext.tools?.length;
+
+  const modelExternal = chatConfig.local_model
+    ? useConfig().local_models.find((m) => m.name === chatConfig.local_model)
+    : undefined;
+  const model = modelExternal
+    ? modelExternal.model
+    : gptContext.thread.completionParams?.model || "gpt-5-mini";
+  const apiParams = {
+    messages: gptContext.messages,
+    model,
+    temperature: gptContext.thread.completionParams?.temperature,
+    tools: isNoTool ? undefined : gptContext.tools,
+    tool_choice: isNoTool
+      ? undefined
+      : ("auto" as OpenAI.Chat.Completions.ChatCompletionToolChoiceOption),
+    response_format: responseFormat,
+  };
+
+  const {
+    res: cancelRes,
+    trace: cancelTrace,
+    webSearchDetails,
+    images,
+  } = await llmCall({
+    apiParams,
+    msg,
+    chatConfig,
+    generationName: "after-cancelled-tool",
+    localModel: chatConfig.local_model,
+    noSendTelegram,
+  });
+
+  if (webSearchDetails && chatConfig.chatParams?.showToolMessages !== false) {
+    await sendTelegramMessage(
+      msg.chat.id,
+      webSearchDetails,
+      { deleteAfter: chatConfig.chatParams?.deleteToolAnswers },
+      undefined,
       chatConfig,
-      msg,
-      expressRes,
-      noSendTelegram,
     );
-    if (tool_res) {
-      if ((tool_res as ToolResponse[] & { cancelled?: boolean }).cancelled) {
-        const cancellation = tool_res as ToolResponse[] & {
-          cancelled?: boolean;
-          cancelMessages?: string[];
-        };
-        const assistantMessage = {
-          ...(messageAgent as OpenAI.ChatCompletionMessageParam & {
-            tool_calls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
-          }),
-        };
-        delete assistantMessage.tool_calls;
-        if (assistantMessage.content === null || assistantMessage.content === undefined) {
-          assistantMessage.content = "";
-        }
-        gptContext.thread.messages.push(assistantMessage);
-        const cancelMessages = cancellation.cancelMessages?.length
-          ? cancellation.cancelMessages
-          : messageAgent.tool_calls.map((toolCall) =>
-              JSON.stringify({
-                name: toolCall.function.name,
-                arguments: toolCall.function.arguments,
-              }),
-            );
-        let cancelText = cancelMessages
-          .map((params) => `tool call cancelled: ${params}`)
-          .join("\n");
-        if (!cancelText) {
-          cancelText = "tool call cancelled";
-        }
-        gptContext.thread.messages.push({ role: "user", content: cancelText });
+  }
 
-        gptContext.messages = await buildMessages(
-          gptContext.systemMessage,
-          gptContext.thread.messages,
-        );
-
-        const isNoTool = level > 6 || !gptContext.tools?.length;
-
-        const modelExternal = chatConfig.local_model
-          ? useConfig().local_models.find((m) => m.name === chatConfig.local_model)
-          : undefined;
-        const model = modelExternal
-          ? modelExternal.model
-          : gptContext.thread.completionParams?.model || "gpt-5-mini";
-        const apiParams = {
-          messages: gptContext.messages,
-          model,
-          temperature: gptContext.thread.completionParams?.temperature,
-          tools: isNoTool ? undefined : gptContext.tools,
-          tool_choice: isNoTool
-            ? undefined
-            : ("auto" as OpenAI.Chat.Completions.ChatCompletionToolChoiceOption),
-          response_format: responseFormat,
-        };
-
-        const {
-          res: cancelRes,
-          trace: cancelTrace,
-          webSearchDetails,
-          images,
-        } = await llmCall({
-          apiParams,
-          msg,
-          chatConfig,
-          generationName: "after-cancelled-tool",
-          localModel: chatConfig.local_model,
-          noSendTelegram,
-        });
-
-        if (webSearchDetails && chatConfig.chatParams?.showToolMessages !== false) {
-          await sendTelegramMessage(
-            msg.chat.id,
-            webSearchDetails,
-            { deleteAfter: chatConfig.chatParams?.deleteToolAnswers },
-            undefined,
-            chatConfig,
-          );
-        }
-
-        if (images && images.length) {
-          for (const img of images) {
-            const buffer = Buffer.from(img.result, "base64");
-            await sendTelegramDocument(
-              msg.chat.id,
-              buffer,
-              `${img.id || "image"}.png`,
-              undefined,
-              chatConfig,
-            );
-          }
-        }
-
-        return await handleModelAnswer({
-          msg,
-          res: cancelRes,
-          chatConfig,
-          expressRes,
-          noSendTelegram,
-          gptContext,
-          level: level + 1,
-          trace: cancelTrace,
-          responseFormat,
-        });
-      }
-      return processToolResults({
-        tool_res,
-        messageAgent,
+  if (images && images.length) {
+    for (const img of images) {
+      const buffer = Buffer.from(img.result, "base64");
+      await sendTelegramDocument(
+        msg.chat.id,
+        buffer,
+        `${img.id || "image"}.png`,
+        undefined,
         chatConfig,
-        msg,
-        expressRes,
-        noSendTelegram,
-        gptContext,
-        level,
-        responseFormat,
-      });
+      );
     }
   }
 
-  let answer = res.choices[0]?.message.content || "";
+  return handleModelAnswer({
+    msg,
+    res: cancelRes,
+    chatConfig,
+    expressRes,
+    noSendTelegram,
+    gptContext,
+    level: level + 1,
+    trace: cancelTrace,
+    responseFormat,
+  });
+}
+
+export function parseResponseButtonsAndTelemetry({
+  answer: initialAnswer,
+  chatConfig,
+  gptContext,
+  msg,
+  trace,
+}: {
+  answer: string;
+  chatConfig: ConfigChatType;
+  gptContext: GptContextType;
+  msg: Message.TextMessage;
+  trace?: unknown;
+}): ToolResponse {
+  let answer = initialAnswer;
   let buttons: ConfigChatButtonType[] | undefined;
   if (chatConfig.chatParams?.responseButtons) {
     try {
@@ -395,6 +386,75 @@ export async function handleModelAnswer({
   }
 
   return { content: answer, buttons };
+}
+
+export async function handleModelAnswer({
+  msg,
+  res,
+  chatConfig,
+  expressRes,
+  noSendTelegram,
+  gptContext,
+  level = 1,
+  trace,
+  responseFormat,
+}: HandleModelAnswerParams): Promise<ToolResponse> {
+  if (!res || !res?.choices?.[0]) {
+    return { content: "" };
+  }
+
+  const messageAgent = normalizeToolCalls(res.choices[0].message);
+  if (!messageAgent) {
+    throw new Error("No message found in OpenAI response");
+  }
+
+  if (messageAgent.tool_calls?.length) {
+    const tool_res = await executeTools(
+      messageAgent.tool_calls,
+      gptContext.chatTools,
+      chatConfig,
+      msg,
+      expressRes,
+      noSendTelegram,
+    );
+    if (tool_res) {
+      if ((tool_res as ToolResponse[] & { cancelled?: boolean }).cancelled) {
+        return await handleCancelledToolCalls({
+          cancellation: tool_res as ToolResponse[] & {
+            cancelled?: boolean;
+            cancelMessages?: string[];
+          },
+          chatConfig,
+          expressRes,
+          gptContext,
+          level,
+          messageAgent,
+          msg,
+          noSendTelegram,
+          responseFormat,
+        });
+      }
+      return processToolResults({
+        tool_res,
+        messageAgent,
+        chatConfig,
+        msg,
+        expressRes,
+        noSendTelegram,
+        gptContext,
+        level,
+        responseFormat,
+      });
+    }
+  }
+
+  return parseResponseButtonsAndTelemetry({
+    answer: res.choices[0]?.message.content || "",
+    chatConfig,
+    gptContext,
+    msg,
+    trace,
+  });
 }
 
 function parseToolContent(content: string) {
