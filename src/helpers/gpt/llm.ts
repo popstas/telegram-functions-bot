@@ -181,6 +181,54 @@ export function normalizeToolCalls(messageAgent: OpenAI.ChatCompletionMessage) {
   return messageAgent;
 }
 
+export type RequestNextModelAnswerParams = {
+  chatConfig: ConfigChatType;
+  generationName: string;
+  gptContext: GptContextType;
+  level: number;
+  msg: Message.TextMessage;
+  noSendTelegram?: boolean;
+  responseFormat?: OpenAI.Chat.Completions.ChatCompletionCreateParams["response_format"];
+};
+
+export async function requestNextModelAnswer({
+  msg,
+  chatConfig,
+  gptContext,
+  noSendTelegram,
+  responseFormat,
+  level,
+  generationName,
+}: RequestNextModelAnswerParams) {
+  const isNoTool = level > 6 || !gptContext.tools?.length;
+
+  const modelExternal = chatConfig.local_model
+    ? useConfig().local_models.find((m) => m.name === chatConfig.local_model)
+    : undefined;
+  const model = modelExternal
+    ? modelExternal.model
+    : gptContext.thread.completionParams?.model || "gpt-5-mini";
+  const apiParams = {
+    messages: gptContext.messages,
+    model,
+    temperature: gptContext.thread.completionParams?.temperature,
+    tools: isNoTool ? undefined : gptContext.tools,
+    tool_choice: isNoTool
+      ? undefined
+      : ("auto" as OpenAI.Chat.Completions.ChatCompletionToolChoiceOption),
+    response_format: responseFormat,
+  } satisfies OpenAI.Chat.Completions.ChatCompletionCreateParams;
+
+  return await llmCall({
+    apiParams,
+    msg,
+    chatConfig,
+    generationName,
+    localModel: chatConfig.local_model,
+    noSendTelegram,
+  });
+}
+
 async function evaluateAnswer(
   msg: Message.TextMessage,
   evaluator: ConfigChatType,
@@ -274,37 +322,19 @@ export async function handleCancelledToolCalls({
 
   gptContext.messages = await buildMessages(gptContext.systemMessage, gptContext.thread.messages);
 
-  const isNoTool = level > 6 || !gptContext.tools?.length;
-
-  const modelExternal = chatConfig.local_model
-    ? useConfig().local_models.find((m) => m.name === chatConfig.local_model)
-    : undefined;
-  const model = modelExternal
-    ? modelExternal.model
-    : gptContext.thread.completionParams?.model || "gpt-5-mini";
-  const apiParams = {
-    messages: gptContext.messages,
-    model,
-    temperature: gptContext.thread.completionParams?.temperature,
-    tools: isNoTool ? undefined : gptContext.tools,
-    tool_choice: isNoTool
-      ? undefined
-      : ("auto" as OpenAI.Chat.Completions.ChatCompletionToolChoiceOption),
-    response_format: responseFormat,
-  };
-
   const {
     res: cancelRes,
     trace: cancelTrace,
     webSearchDetails,
     images,
-  } = await llmCall({
-    apiParams,
+  } = await requestNextModelAnswer({
     msg,
     chatConfig,
-    generationName: "after-cancelled-tool",
-    localModel: chatConfig.local_model,
+    gptContext,
     noSendTelegram,
+    responseFormat,
+    level,
+    generationName: "after-cancelled-tool",
   });
 
   if (webSearchDetails && chatConfig.chatParams?.showToolMessages !== false) {
@@ -570,32 +600,14 @@ export async function processToolResults({
 
   gptContext.messages = await buildMessages(gptContext.systemMessage, gptContext.thread.messages);
 
-  const isNoTool = level > 6 || !gptContext.tools?.length;
-
-  const modelExternal = chatConfig.local_model
-    ? useConfig().local_models.find((m) => m.name === chatConfig.local_model)
-    : undefined;
-  const model = modelExternal
-    ? modelExternal.model
-    : gptContext.thread.completionParams?.model || "gpt-5-mini";
-  const apiParams = {
-    messages: gptContext.messages,
-    model,
-    temperature: gptContext.thread.completionParams?.temperature,
-    tools: isNoTool ? undefined : gptContext.tools,
-    tool_choice: isNoTool
-      ? undefined
-      : ("auto" as OpenAI.Chat.Completions.ChatCompletionToolChoiceOption),
-    response_format: responseFormat,
-  };
-
-  const { res, trace, webSearchDetails, images } = await llmCall({
-    apiParams,
+  const { res, trace, webSearchDetails, images } = await requestNextModelAnswer({
     msg,
     chatConfig,
-    generationName: "after-tools",
-    localModel: chatConfig.local_model,
+    gptContext,
     noSendTelegram,
+    responseFormat,
+    level,
+    generationName: "after-tools",
   });
 
   if (webSearchDetails && chatConfig.chatParams?.showToolMessages !== false) {
