@@ -23,6 +23,29 @@ describe("splitBigMessage", () => {
     const res = splitBigMessage("a\n\nb");
     expect(res).toEqual(["a\n\nb"]);
   });
+
+  it("keeps code block formatting across message splits", () => {
+    const lines = Array.from({ length: 500 }, (_, i) => `line ${i} ${"x".repeat(10)}`);
+    const text = ["```", ...lines, "```"].join("\n");
+
+    const messages = splitBigMessage(text);
+
+    expect(messages.length).toBeGreaterThan(1);
+    expect(messages[0].trimEnd().endsWith("```")).toBe(true);
+    expect(messages[1].startsWith("```")).toBe(true);
+
+    const reconstructed: string[] = [];
+    messages.forEach((message, idx) => {
+      const parts = message.split("\n");
+
+      if (idx !== 0 && parts[0] === "```") parts.shift();
+      if (idx !== messages.length - 1 && parts[parts.length - 1] === "```") parts.pop();
+
+      reconstructed.push(...parts);
+    });
+
+    expect(reconstructed.join("\n")).toBe(text);
+  });
 });
 
 describe("prettyText", () => {

@@ -30,7 +30,39 @@ export function splitBigMessage(text: string) {
     if (trimmedMsg) msgs.push(trimmedMsg);
   }
 
-  return msgs;
+  return adjustCodeBlockSplits(msgs, text);
+}
+
+function adjustCodeBlockSplits(messages: string[], originalText: string) {
+  if (messages.length < 2) return messages;
+  if (!originalText.trimStart().startsWith("```")) return messages;
+
+  const result = [...messages];
+  let inCodeBlock = false;
+
+  for (let i = 0; i < result.length - 1; i++) {
+    const lines = result[i].split("\n");
+
+    for (const line of lines) {
+      if (line.trim().startsWith("```")) {
+        inCodeBlock = !inCodeBlock;
+      }
+    }
+
+    if (inCodeBlock) {
+      const movedLine = lines.pop() ?? "";
+      const withoutLastLine = lines.join("\n");
+
+      result[i] = (withoutLastLine ? `${withoutLastLine}\n` : "") + "```";
+
+      const nextMessagePrefix = movedLine ? `${movedLine}\n` : "";
+      result[i + 1] = "```\n" + nextMessagePrefix + result[i + 1];
+
+      inCodeBlock = false;
+    }
+  }
+
+  return result;
 }
 
 export function prettyText(text: string) {
