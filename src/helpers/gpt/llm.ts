@@ -373,7 +373,7 @@ export async function handleCancelledToolCalls({
   });
 }
 
-export function parseResponseButtonsAndTelemetry({
+export async function parseResponseButtonsAndTelemetry({
   answer: initialAnswer,
   chatConfig,
   gptContext,
@@ -385,7 +385,7 @@ export function parseResponseButtonsAndTelemetry({
   gptContext: GptContextType;
   msg: Message.TextMessage;
   trace?: unknown;
-}): ToolResponse {
+}): Promise<ToolResponse> {
   let answer = initialAnswer;
   let buttons: ConfigChatButtonType[] | undefined;
   if (chatConfig.chatParams?.responseButtons) {
@@ -408,6 +408,13 @@ export function parseResponseButtonsAndTelemetry({
     });
   }
 
+  if (chatConfig.chatParams?.responseButtonsAgent) {
+    const generatedButtons = await runButtonsAgent(answer, msg);
+    if (generatedButtons?.length) {
+      buttons = generatedButtons;
+    }
+  }
+
   if (
     gptContext.thread.messages.find((m: OpenAI.ChatCompletionMessageParam) => m.role === "tool") &&
     chatConfig.chatParams?.memoryless
@@ -416,6 +423,48 @@ export function parseResponseButtonsAndTelemetry({
   }
 
   return { content: answer, buttons };
+}
+
+async function runButtonsAgent(answer: string, msg: Message.TextMessage) {
+  const config = useConfig();
+  const agentConfig = config.chats?.find((c) => c.agent_name === "buttons");
+  if (!agentConfig) return undefined;
+
+  const apiParams: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
+    messages: [
+      { role: "system", content: agentConfig.systemMessage || "" },
+      { role: "user", content: answer },
+    ],
+    model: agentConfig.completionParams?.model,
+    temperature: agentConfig.completionParams?.temperature,
+    response_format: agentConfig.response_format,
+  };
+
+  try {
+    const { res } = await llmCall({
+      apiParams,
+      chatConfig: agentConfig,
+      generationName: "buttons-agent",
+      localModel: agentConfig.local_model,
+      noSendTelegram: true,
+      msg,
+    });
+    const content = res.choices[0]?.message?.content;
+    if (!content) return undefined;
+    const parsed = JSON.parse(content) as { buttons?: ConfigChatButtonType[] };
+    if (!Array.isArray(parsed.buttons)) return undefined;
+
+    return parsed.buttons.filter(
+      (button) => button && typeof button.name === "string" && typeof button.prompt === "string",
+    );
+  } catch (e) {
+    log({
+      msg: `Buttons agent error: ${(e as Error).message}`,
+      logLevel: "warn",
+      chatId: msg.chat.id,
+    });
+    return undefined;
+  }
 }
 
 export async function handleModelAnswer({
@@ -478,7 +527,7 @@ export async function handleModelAnswer({
     }
   }
 
-  return parseResponseButtonsAndTelemetry({
+  return await parseResponseButtonsAndTelemetry({
     answer: res.choices[0]?.message.content || "",
     chatConfig,
     gptContext,

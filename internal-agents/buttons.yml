@@ -1,0 +1,27 @@
+name: buttons
+agent_name: buttons
+systemMessage: |
+  Read message, create 3-5 action buttons with short name and prompt. Return button list.
+completionParams:
+  model: gpt-5-nano
+response_format:
+  type: "json_schema"
+  json_schema:
+    name: "response"
+    schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        buttons:
+          type: "array"
+          items:
+            type: "object"
+            additionalProperties: false
+            properties:
+              name:
+                type: "string"
+                description: "Short name"
+              prompt:
+                type: "string"
+            required: ["name", "prompt"]
+      required: ["buttons"]

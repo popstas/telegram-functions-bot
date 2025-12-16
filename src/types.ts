@@ -114,6 +114,7 @@ export type ChatParamsType = {
   useResponsesApi?: boolean;
   streaming?: boolean;
   responseButtons?: boolean;
+  responseButtonsAgent?: boolean;
   vector_memory?: boolean;
 };
 

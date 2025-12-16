@@ -8,7 +8,7 @@ import {
   readdirSync,
   mkdirSync,
 } from "fs";
-import path from "path";
+import pathLib from "path";
 import {
   ChatParamsType,
   ConfigChatType,
@@ -37,12 +37,25 @@ function writeFileIfChanged(path: string, content: string) {
 
 export function loadChatsFromDir(dir: string): ConfigChatType[] {
   if (!existsSync(dir)) return [];
-  const files = readdirSync(dir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"));
+  let files: string[] = [];
+  try {
+    const entries = readdirSync(dir);
+    files = Array.isArray(entries)
+      ? entries.filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"))
+      : [];
+  } catch (e) {
+    log({ msg: `Failed to read chats from ${dir}: ${(e as Error).message}`, logLevel: "warn" });
+    return [];
+  }
   const chats: ConfigChatType[] = [];
   for (const file of files) {
-    const content = readFileSync(path.join(dir, file), "utf8");
-    const chat = yaml.load(content) as ConfigChatType;
-    chats.push(chat);
+    try {
+      const content = readFileSync(pathLib.join(dir, file), "utf8");
+      const chat = yaml.load(content) as ConfigChatType;
+      if (chat) chats.push(chat);
+    } catch (e) {
+      log({ msg: `Failed to load chat from ${file}: ${(e as Error).message}`, logLevel: "warn" });
+    }
   }
   return chats;
 }
@@ -54,7 +67,7 @@ export function saveChatsToDir(dir: string, chats: ConfigChatType[]) {
   chats.forEach((chat) => {
     const nameForFile = chat.username ? `private_${chat.username}` : `${chat.name || chat.id}`;
     const safe = safeFilename(nameForFile, `${chat.id || 0}`);
-    const filePath = path.join(dir, `${safe}.yml`);
+    const filePath = pathLib.join(dir, `${safe}.yml`);
     const yamlRaw = yaml.dump(chat, {
       lineWidth: -1,
       noCompatMode: true,
@@ -87,9 +100,10 @@ export function convertChatConfig(mode: "split" | "merge") {
 }
 
 export function readConfig(path?: string): ConfigType {
+  const defaultConfig = generateConfig();
   if (!path) path = process.env.CONFIG || "config.yml";
   if (!existsSync(path)) {
-    const config = generateConfig();
+    const config = defaultConfig;
     writeConfig(path, config);
     if (process.env.NODE_ENV !== "test") {
       console.log("Generated config.yml file, please fill it with your data.");
@@ -98,12 +112,28 @@ export function readConfig(path?: string): ConfigType {
   }
   const config = yaml.load(readFileSync(path, "utf8")) as ConfigType;
 
+  config.auth = { ...defaultConfig.auth, ...(config.auth || {}) };
+
   if (config.useChatsDir) {
     const dir = config.chatsDir || "data/chats";
     config.chats = loadChatsFromDir(dir);
   }
 
-  if (config.auth.proxy_url === generateConfig().auth.proxy_url) {
+  config.chats = (config.chats || []).filter(Boolean);
+
+  const internalAgentsDir = pathLib.resolve("internal-agents");
+  const internalAgents = loadChatsFromDir(internalAgentsDir);
+  const existingAgents = new Set(
+    config.chats.map((chat) => chat?.agent_name).filter((name): name is string => Boolean(name)),
+  );
+  for (const agent of internalAgents) {
+    if (agent.agent_name && !existingAgents.has(agent.agent_name)) {
+      config.chats.push(agent);
+      existingAgents.add(agent.agent_name);
+    }
+  }
+
+  if (config.auth.proxy_url === defaultConfig.auth.proxy_url) {
     delete config.auth.proxy_url;
   }
 
@@ -226,6 +256,7 @@ export function generateConfig(): ConfigType {
           useResponsesApi: false,
           streaming: false,
           responseButtons: false,
+          responseButtonsAgent: false,
           vector_memory: false,
         },
         toolParams: {
@@ -288,6 +319,7 @@ export function generateConfig(): ConfigType {
           useResponsesApi: false,
           streaming: false,
           responseButtons: false,
+          responseButtonsAgent: false,
           vector_memory: false,
         },
         toolParams: {
@@ -532,7 +564,7 @@ export function watchConfigChanges() {
     const dir = cfg.chatsDir || "data/chats";
     if (existsSync(dir)) {
       const watchChat = (f: string) =>
-        watchFile(path.join(dir, f), () => handler(path.join(dir, f)));
+        watchFile(pathLib.join(dir, f), () => handler(pathLib.join(dir, f)));
 
       readdirSync(dir)
         .filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"))
@@ -542,7 +574,7 @@ export function watchConfigChanges() {
         if (!filename) return;
         if (!filename.toString().match(/\.ya?ml$/i)) return;
         const file = filename.toString();
-        const full = path.join(dir, file);
+        const full = pathLib.join(dir, file);
         if (event === "rename" && existsSync(full)) {
           watchChat(file);
           handler(full);
