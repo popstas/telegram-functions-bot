@@ -29,6 +29,7 @@ Telegram bot with functions tools.
 - Optional delay between split messages
 - Vector memory with `memory_search` and `memory_delete` tools (confirmation required for delete, optional automatic search)
 - Dynamic reply buttons returned from LLM responses (enable with `chatParams.responseButtons`)
+- Treat Telegram reactions as short messages (toggle with `chatParams.answerReactions`)
 - Enforce structured outputs by setting `response_format` in chat configuration
 
 ## Desktop launcher
@@ -547,6 +548,18 @@ To generate buttons automatically from the assistant's reply, enable `chatParams
 ```yaml
 chatParams:
   responseButtonsAgent: true
+```
+
+## Telegram reactions
+
+Reactions are treated as short messages that carry the reaction icon (custom emoji IDs are shown as `:id:`), so quick emoji fe
+edback can steer the assistant without typing.
+
+Disable reaction handling per chat when you don't want emoji inputs to start a new answer:
+
+```yaml
+chatParams:
+  answerReactions: false
 ```
 
 ## Default response format

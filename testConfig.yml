@@ -38,6 +38,7 @@ chats:
       confirmation: false
       historyLimit: 20
       showToolMessages: true
+      answerReactions: true
       responseButtons: false
     toolParams:
       brainstorm:

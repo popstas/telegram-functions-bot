@@ -113,6 +113,7 @@ export type ChatParamsType = {
   placeholderCacheTime?: number;
   useResponsesApi?: boolean;
   streaming?: boolean;
+  answerReactions?: boolean;
   responseButtons?: boolean;
   responseButtonsAgent?: boolean;
   vector_memory?: boolean;

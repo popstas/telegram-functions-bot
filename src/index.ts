@@ -14,6 +14,7 @@ import onPhoto from "./handlers/onPhoto.ts";
 import onAudio from "./handlers/onAudio.ts";
 import onUnsupported from "./handlers/onUnsupported.ts";
 import onDocument from "./handlers/onDocument.ts";
+import onReaction from "./handlers/onReaction.ts";
 import { useLastCtx } from "./helpers/lastCtx.ts";
 import { agentGetHandler, agentPostHandler, toolPostHandler } from "./httpHandlers.ts";
 import { useMqtt, shutdownMqtt } from "./mqtt.ts";
@@ -115,6 +116,7 @@ async function launchBot(bot_token: string, bot_name: string) {
     bot.on(message("video"), onUnsupported);
     bot.on(message("video_note"), onUnsupported);
     bot.on(message("document"), onDocument);
+    bot.on("message_reaction", onReaction);
 
     bot.catch((err, ctx) => {
       log({
