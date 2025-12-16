@@ -408,13 +408,6 @@ export async function parseResponseButtonsAndTelemetry({
     });
   }
 
-  if (chatConfig.chatParams?.responseButtonsAgent) {
-    const generatedButtons = await runButtonsAgent(answer, msg);
-    if (generatedButtons?.length) {
-      buttons = generatedButtons;
-    }
-  }
-
   if (
     gptContext.thread.messages.find((m: OpenAI.ChatCompletionMessageParam) => m.role === "tool") &&
     chatConfig.chatParams?.memoryless
@@ -425,7 +418,7 @@ export async function parseResponseButtonsAndTelemetry({
   return { content: answer, buttons };
 }
 
-async function runButtonsAgent(answer: string, msg: Message.TextMessage) {
+export async function generateButtonsFromAgent(answer: string, msg: Message.TextMessage) {
   const config = useConfig();
   const agentConfig = config.chats?.find((c) => c.agent_name === "buttons");
   if (!agentConfig) return undefined;

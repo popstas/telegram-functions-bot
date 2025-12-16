@@ -107,11 +107,13 @@ jest.unstable_mockModule("../../src/handlers/resolveChatButtons.ts", () => ({
 
 jest.unstable_mockModule("../../src/helpers/gpt.ts", () => ({
   requestGptAnswer: mockRequestGptAnswer,
+  generateButtonsFromAgent: jest.fn(),
 }));
 
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   sendTelegramMessage: mockSendTelegramMessage,
   sendTelegramDocument: jest.fn(),
+  editTelegramMessage: jest.fn(),
   getFullName: jest.fn(),
   getTelegramForwardedUser: jest.fn(),
   isAdminUser: jest.fn(),

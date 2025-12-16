@@ -586,7 +586,23 @@ describe("llmCall", () => {
 });
 
 describe("parseResponseButtonsAndTelemetry", () => {
-  it("uses buttons agent when enabled", async () => {
+  it("parses buttons from response format json", async () => {
+    const result = await llm.parseResponseButtonsAndTelemetry({
+      answer: JSON.stringify({ message: "Final", buttons: [{ name: "Do", prompt: "action" }] }),
+      chatConfig: { ...chatConfig, chatParams: { responseButtons: true } },
+      gptContext: {
+        thread: { messages: [], completionParams: {}, id: 1 },
+      } as unknown as llm.GptContextType,
+      msg: baseMsg,
+    });
+
+    expect(result.buttons).toEqual([{ name: "Do", prompt: "action" }]);
+    expect(result.content).toBe("Final");
+  });
+});
+
+describe("generateButtonsFromAgent", () => {
+  it("calls buttons agent and returns buttons", async () => {
     const buttonsAgent: ConfigChatType = {
       name: "Buttons",
       agent_name: "buttons",
@@ -611,17 +627,10 @@ describe("parseResponseButtonsAndTelemetry", () => {
       },
     });
 
-    const result = await llm.parseResponseButtonsAndTelemetry({
-      answer: "Final answer",
-      chatConfig: { ...chatConfig, chatParams: { responseButtonsAgent: true } },
-      gptContext: {
-        thread: { messages: [], completionParams: {}, id: 1 },
-      } as unknown as llm.GptContextType,
-      msg: baseMsg,
-    });
+    const result = await llm.generateButtonsFromAgent("Final answer", baseMsg);
 
     expect(createMock).toHaveBeenCalled();
-    expect(result.buttons).toEqual([{ name: "Do", prompt: "action" }]);
+    expect(result).toEqual([{ name: "Do", prompt: "action" }]);
   });
 });
 

@@ -13,10 +13,10 @@ import {
 import { rememberSave, isRememberCommand, stripRememberPrefix } from "../helpers/memory.ts";
 import { setLastCtx } from "../helpers/lastCtx.ts";
 import { addOauthToThread, ensureAuth } from "../helpers/google.ts";
-import { requestGptAnswer } from "../helpers/gpt.ts";
+import { generateButtonsFromAgent, requestGptAnswer } from "../helpers/gpt.ts";
 import checkAccessLevel from "./access.ts";
 import resolveChatButtons from "./resolveChatButtons.ts";
-import { sendTelegramMessage } from "../telegram/send.ts";
+import { editTelegramMessage, sendTelegramMessage } from "../telegram/send.ts";
 
 // Track active responses per chat to allow cancellation
 interface ActiveResponse {
@@ -242,6 +242,18 @@ export async function answerToMessage(
       });
       msgSent = await sendTelegramMessage(msg.chat.id, text, extraParams, ctx, chat);
       if (msgSent?.chat.id) useThreads()[msgSent.chat.id].msgs.push(msgSent);
+
+      if (chat.chatParams?.responseButtonsAgent && msgSent && !res?.buttons?.length) {
+        await applyResponseButtonsAgent({
+          answerText: msgSent.text || text,
+          baseExtraParams: extraParams,
+          chat,
+          ctx,
+          msg,
+          originalMessage: msgSent,
+          thread,
+        });
+      }
     });
     return msgSent;
   } catch (e) {
@@ -261,5 +273,45 @@ export async function answerToMessage(
       ctx,
       chat,
     );
+  }
+}
+
+async function applyResponseButtonsAgent({
+  answerText,
+  baseExtraParams,
+  chat,
+  ctx,
+  msg,
+  originalMessage,
+  thread,
+}: {
+  answerText: string;
+  baseExtraParams: Record<string, unknown>;
+  chat: ConfigChatType;
+  ctx: Context;
+  msg: Message.TextMessage;
+  originalMessage: Message.TextMessage;
+  thread: ReturnType<typeof useThreads>[number];
+}) {
+  const generatedButtons = await generateButtonsFromAgent(answerText, msg);
+  if (!generatedButtons?.length) return;
+
+  thread.dynamicButtons = generatedButtons;
+
+  const extraParamsWithButtons = {
+    ...baseExtraParams,
+    ...Markup.keyboard(generatedButtons.map((b) => b.name)).resize(),
+  };
+
+  const updated = await editTelegramMessage(
+    originalMessage,
+    answerText,
+    extraParamsWithButtons,
+    ctx,
+    chat,
+  );
+
+  if (updated?.chat.id) {
+    useThreads()[updated.chat.id].msgs.push(updated);
   }
 }
