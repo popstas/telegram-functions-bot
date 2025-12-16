@@ -21,6 +21,7 @@ import { editTelegramMessage, sendTelegramMessage } from "../telegram/send.ts";
 // Track active responses per chat to allow cancellation
 interface ActiveResponse {
   abortController: AbortController;
+  buttonsAbortController?: AbortController;
   isCompleted: boolean;
 }
 
@@ -96,6 +97,7 @@ export default async function onTextMessage(
     });
     if (!existingResponse.isCompleted) {
       existingResponse.abortController.abort();
+      existingResponse.buttonsAbortController?.abort();
     }
     activeResponses.delete(chatId);
   }
@@ -244,6 +246,11 @@ export async function answerToMessage(
       if (msgSent?.chat.id) useThreads()[msgSent.chat.id].msgs.push(msgSent);
 
       if (chat.chatParams?.responseButtonsAgent && msgSent && !res?.buttons?.length) {
+        const buttonsAbortController = new AbortController();
+        const activeResponse = activeResponses.get(msg.chat.id);
+        if (activeResponse) {
+          activeResponse.buttonsAbortController = buttonsAbortController;
+        }
         await applyResponseButtonsAgent({
           answerText: msgSent.text || text,
           baseExtraParams: extraParams,
@@ -251,8 +258,13 @@ export async function answerToMessage(
           ctx,
           msg,
           originalMessage: msgSent,
+          signal: buttonsAbortController.signal,
           thread,
         });
+        const currentResponse = activeResponses.get(msg.chat.id);
+        if (currentResponse?.buttonsAbortController === buttonsAbortController) {
+          currentResponse.buttonsAbortController = undefined;
+        }
       }
     });
     return msgSent;
@@ -283,6 +295,7 @@ async function applyResponseButtonsAgent({
   ctx,
   msg,
   originalMessage,
+  signal,
   thread,
 }: {
   answerText: string;
@@ -291,27 +304,37 @@ async function applyResponseButtonsAgent({
   ctx: Context;
   msg: Message.TextMessage;
   originalMessage: Message.TextMessage;
+  signal?: AbortSignal;
   thread: ReturnType<typeof useThreads>[number];
 }) {
-  const generatedButtons = await generateButtonsFromAgent(answerText, msg);
-  if (!generatedButtons?.length) return;
+  if (signal?.aborted) return;
 
-  thread.dynamicButtons = generatedButtons;
+  try {
+    const generatedButtons = await generateButtonsFromAgent(answerText, msg, { signal });
+    if (!generatedButtons?.length) return;
 
-  const extraParamsWithButtons = {
-    ...baseExtraParams,
-    ...Markup.keyboard(generatedButtons.map((b) => b.name)).resize(),
-  };
+    if (signal?.aborted) return;
 
-  const updated = await editTelegramMessage(
-    originalMessage,
-    answerText,
-    extraParamsWithButtons,
-    ctx,
-    chat,
-  );
+    thread.dynamicButtons = generatedButtons;
 
-  if (updated?.chat.id) {
-    useThreads()[updated.chat.id].msgs.push(updated);
+    const extraParamsWithButtons = {
+      ...baseExtraParams,
+      ...Markup.keyboard(generatedButtons.map((b) => b.name)).resize(),
+    };
+
+    const updated = await editTelegramMessage(
+      originalMessage,
+      answerText,
+      extraParamsWithButtons,
+      ctx,
+      chat,
+    );
+
+    if (updated?.chat.id) {
+      useThreads()[updated.chat.id].msgs.push(updated);
+    }
+  } catch (error) {
+    if (signal?.aborted) return;
+    throw error;
   }
 }

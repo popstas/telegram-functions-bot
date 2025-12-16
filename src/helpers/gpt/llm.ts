@@ -6,7 +6,7 @@ import {
 } from "../placeholders.ts";
 import express, { Response } from "express";
 import { Context } from "telegraf";
-import { Message } from "telegraf/types";
+import { Chat, Message } from "telegraf/types";
 import {
   ConfigChatType,
   GptContextType,
@@ -418,10 +418,27 @@ export async function parseResponseButtonsAndTelemetry({
   return { content: answer, buttons };
 }
 
-export async function generateButtonsFromAgent(answer: string, msg: Message.TextMessage) {
+export async function generateButtonsFromAgent(
+  answer: string,
+  msg: Message.TextMessage,
+  options?: { signal?: AbortSignal },
+) {
   const config = useConfig();
   const agentConfig = config.chats?.find((c) => c.agent_name === "buttons");
   if (!agentConfig) return undefined;
+
+  if (options?.signal?.aborted) return undefined;
+
+  const chatTitle = (msg.chat as Chat.TitleChat).title;
+  const answerId = msg.message_id?.toString() || "";
+  log({
+    msg: "start generate buttons",
+    chatId: msg.chat.id,
+    chatTitle,
+    answerId,
+    role: "system",
+    logLevel: "info",
+  });
 
   const apiParams: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
     messages: [
@@ -439,6 +456,7 @@ export async function generateButtonsFromAgent(answer: string, msg: Message.Text
       chatConfig: agentConfig,
       generationName: "buttons-agent",
       localModel: agentConfig.local_model,
+      signal: options?.signal,
       noSendTelegram: true,
       msg,
     });
@@ -447,10 +465,20 @@ export async function generateButtonsFromAgent(answer: string, msg: Message.Text
     const parsed = JSON.parse(content) as { buttons?: ConfigChatButtonType[] };
     if (!Array.isArray(parsed.buttons)) return undefined;
 
-    return parsed.buttons.filter(
+    const filteredButtons = parsed.buttons.filter(
       (button) => button && typeof button.name === "string" && typeof button.prompt === "string",
     );
+    log({
+      msg: `Generated buttons: ${filteredButtons.map((button) => button.name).join(", ")}`,
+      chatId: msg.chat.id,
+      chatTitle,
+      answerId,
+      role: "system",
+      logLevel: "info",
+    });
+    return filteredButtons;
   } catch (e) {
+    if (options?.signal?.aborted) return undefined;
     log({
       msg: `Buttons agent error: ${(e as Error).message}`,
       logLevel: "warn",

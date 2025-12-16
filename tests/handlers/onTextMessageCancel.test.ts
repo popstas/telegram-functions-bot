@@ -37,6 +37,7 @@ const mockCheckAccessLevel = jest.fn<
 >();
 const mockAddToHistory = jest.fn<Message.TextMessage, [Message.TextMessage]>();
 const mockResolveChatButtons = jest.fn<Message.TextMessage, [Message.TextMessage]>();
+const mockGenerateButtonsFromAgent = jest.fn();
 // Mock function for requestGptAnswer with proper typing
 const mockRequestGptAnswer = jest.fn(
   (_msg: Message.TextMessage, _chat: ConfigChatType, options?: { signal?: AbortSignal }) => {
@@ -107,7 +108,7 @@ jest.unstable_mockModule("../../src/handlers/resolveChatButtons.ts", () => ({
 
 jest.unstable_mockModule("../../src/helpers/gpt.ts", () => ({
   requestGptAnswer: mockRequestGptAnswer,
-  generateButtonsFromAgent: jest.fn(),
+  generateButtonsFromAgent: mockGenerateButtonsFromAgent,
 }));
 
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
@@ -186,6 +187,7 @@ beforeEach(async () => {
     return { msg, chat: baseChat };
   });
   mockRequestGptAnswer.mockResolvedValue({ content: "ok" });
+  mockGenerateButtonsFromAgent.mockResolvedValue(undefined);
   mockSendTelegramMessage.mockResolvedValue({
     chat: { id: 1 },
   } as unknown as Message.TextMessage);
@@ -267,6 +269,51 @@ describe("onTextMessage cancel", () => {
 
     // cleanup
     resolveFirst();
+    await jest.runAllTimersAsync();
+  });
+
+  it("aborts button generation when cancelling a previous response", async () => {
+    const msg1 = {
+      chat: { id: 1, type: "private" },
+      from: { id: 1 },
+      text: "first",
+      message_id: 1,
+    } as Message.TextMessage;
+    const msg2 = {
+      chat: { id: 1, type: "private" },
+      from: { id: 1 },
+      text: "second",
+      message_id: 2,
+    } as Message.TextMessage;
+
+    const chat: ConfigChatType = { ...baseChat, chatParams: { responseButtonsAgent: true } };
+
+    mockCheckAccessLevel.mockResolvedValueOnce({ msg: msg1, chat });
+    mockCheckAccessLevel.mockResolvedValueOnce({ msg: msg2, chat });
+    mockResolveChatButtons.mockImplementation(() => undefined);
+
+    let resolveButtons: ((value: unknown) => void) | undefined;
+    let buttonsSignal: AbortSignal | undefined;
+    mockGenerateButtonsFromAgent.mockImplementation((_answer, _msg, options) => {
+      buttonsSignal = options?.signal;
+      return new Promise((resolve) => {
+        resolveButtons = resolve;
+      });
+    });
+
+    mockSendTelegramMessage.mockResolvedValue({
+      chat: { id: 1 },
+      message_id: 99,
+      text: "first response",
+    } as Message.TextMessage);
+
+    await onTextMessage(createCtx(msg1), undefined, jest.fn());
+    await Promise.resolve();
+    await onTextMessage(createCtx(msg2), undefined, jest.fn());
+
+    expect(buttonsSignal?.aborted).toBe(true);
+
+    resolveButtons?.([]);
     await jest.runAllTimersAsync();
   });
 });
