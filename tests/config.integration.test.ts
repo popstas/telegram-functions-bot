@@ -31,7 +31,8 @@ describe("config integration", () => {
     const configPath = path.join(tmp, "config.yml");
     writeConfig(configPath, cfg);
     const loaded = readConfig(configPath);
-    expect(loaded.chats.map((c) => c.name)).toEqual(["a", "b"]);
+    const userChats = loaded.chats.filter((c) => c.agent_name !== "buttons");
+    expect(userChats.map((c) => c.name)).toEqual(["a", "b"]);
     const chatFile = path.join(chatsDir, "a.yml");
     const before = readFileSync(chatFile, "utf8");
     loaded.chats[0].description = "updated";
@@ -71,6 +72,6 @@ describe("config integration", () => {
     convertChatConfig("merge");
     const mergedCfg = yaml.load(readFileSync(configPath, "utf8")) as ConfigType;
     expect(mergedCfg.useChatsDir).toBe(false);
-    expect(mergedCfg.chats[0].name).toBe("chat1");
+    expect(mergedCfg.chats.find((c) => c.name === "chat1")).toBeDefined();
   });
 });

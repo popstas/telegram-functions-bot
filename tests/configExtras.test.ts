@@ -203,7 +203,10 @@ describe("watchConfigChanges", () => {
       chats: [{ name: "test", id: 1, completionParams: { model: "new" } }],
     } as typeof oldCfg;
 
-    mockExistsSync.mockReturnValue(true);
+    mockExistsSync.mockImplementation((p) => {
+      if (typeof p === "string" && p.includes("internal-agents")) return false;
+      return true;
+    });
     mockReadFileSync.mockReturnValue("yaml");
     mockLoad.mockReturnValueOnce(oldCfg).mockReturnValueOnce(newCfg);
     mod.reloadConfig();
@@ -233,7 +236,10 @@ describe("watchConfigChanges", () => {
     const chatOld = { name: "test", id: 1, completionParams: { model: "old" } };
     const chatNew = { name: "test", id: 1, completionParams: { model: "new" } };
 
-    mockExistsSync.mockReturnValue(true);
+    mockExistsSync.mockImplementation((p) => {
+      if (typeof p === "string" && p.includes("internal-agents")) return false;
+      return true;
+    });
     mockReaddirSync.mockReturnValue(["test.yml"]);
     mockLoad
       .mockReturnValueOnce(cfgFile)
@@ -267,7 +273,10 @@ describe("watchConfigChanges", () => {
     cfgFile.chatsDir = "chats";
     const chatNew = { name: "test", id: 1, completionParams: { model: "new" } };
 
-    mockExistsSync.mockReturnValue(true);
+    mockExistsSync.mockImplementation((p) => {
+      if (typeof p === "string" && p.includes("internal-agents")) return false;
+      return true;
+    });
     mockReaddirSync.mockReturnValueOnce([]).mockReturnValueOnce(["test.yml"]);
     mockLoad
       .mockReturnValueOnce(cfgFile) // initial reloadConfig

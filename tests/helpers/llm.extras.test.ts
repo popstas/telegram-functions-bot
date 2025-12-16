@@ -24,6 +24,7 @@ const mockSendTelegramDocument = jest.fn();
 const mockGetFullName = jest.fn();
 const mockIsAdminUser = jest.fn();
 const mockForward = jest.fn();
+const mockUseConfig = jest.fn();
 const mockUseBot = jest.fn(() => ({
   telegram: {
     sendMessage: jest.fn(),
@@ -73,6 +74,10 @@ jest.unstable_mockModule("../../src/helpers/placeholders.ts", () => ({
   replaceUrlPlaceholders: mockReplaceUrl,
   replaceToolPlaceholders: mockReplaceTool,
   replaceVarsPlaceholders: (s: string) => s,
+}));
+
+jest.unstable_mockModule("../../src/config.ts", () => ({
+  useConfig: () => mockUseConfig(),
 }));
 
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
@@ -126,6 +131,7 @@ beforeEach(() => {
   mockGetFullName.mockReset();
   mockIsAdminUser.mockReset();
   mockForward.mockReset();
+  mockUseConfig.mockReset();
   threads = {} as Record<number, ThreadStateType>;
   mockUseThreads.mockReturnValue(threads);
   mockUseLangfuse.mockReturnValue({ trace: undefined });
@@ -150,6 +156,7 @@ beforeEach(() => {
   mockGetSystemMessage.mockResolvedValue("sys {date}");
   mockBuildMessages.mockResolvedValue([]);
   mockForward.mockReturnValue("Bob");
+  mockUseConfig.mockReturnValue({ auth: {}, chats: [], local_models: [] });
 });
 
 describe("llmCall", () => {
@@ -575,6 +582,55 @@ describe("llmCall", () => {
     });
     expect(api.chat.completions.stream).toHaveBeenCalled();
     expect(result.res.choices[0].message.content).toBe("hello");
+  });
+});
+
+describe("parseResponseButtonsAndTelemetry", () => {
+  it("parses buttons from response format json", async () => {
+    const result = await llm.parseResponseButtonsAndTelemetry({
+      answer: JSON.stringify({ message: "Final", buttons: [{ name: "Do", prompt: "action" }] }),
+      chatConfig: { ...chatConfig, chatParams: { responseButtons: true } },
+      gptContext: {
+        thread: { messages: [], completionParams: {}, id: 1 },
+      } as unknown as llm.GptContextType,
+      msg: baseMsg,
+    });
+
+    expect(result.buttons).toEqual([{ name: "Do", prompt: "action" }]);
+    expect(result.content).toBe("Final");
+  });
+});
+
+describe("generateButtonsFromAgent", () => {
+  it("calls buttons agent and returns buttons", async () => {
+    const buttonsAgent: ConfigChatType = {
+      name: "Buttons",
+      agent_name: "buttons",
+      systemMessage: "Create buttons",
+      completionParams: { model: "gpt-5-nano" },
+      chatParams: {},
+      toolParams: {},
+      response_format: { type: "json_schema" },
+    } as ConfigChatType;
+    mockUseConfig.mockReturnValue({ auth: {}, chats: [buttonsAgent], local_models: [] });
+    const createMock = jest.fn().mockResolvedValue({
+      choices: [
+        { message: { content: JSON.stringify({ buttons: [{ name: "Do", prompt: "action" }] }) } },
+      ],
+    });
+    mockUseApi.mockReturnValue({
+      chat: {
+        completions: {
+          create: createMock,
+          stream: jest.fn(),
+        },
+      },
+    });
+
+    const result = await llm.generateButtonsFromAgent("Final answer", baseMsg);
+
+    expect(createMock).toHaveBeenCalled();
+    expect(result).toEqual([{ name: "Do", prompt: "action" }]);
   });
 });
 

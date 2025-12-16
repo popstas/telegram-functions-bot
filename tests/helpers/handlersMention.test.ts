@@ -8,6 +8,7 @@ jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   __esModule: true,
   sendTelegramMessage: mockSendTelegramMessage,
   sendTelegramDocument: jest.fn(),
+  editTelegramMessage: jest.fn(),
   getFullName: jest.fn(),
   getTelegramForwardedUser: jest.fn(),
   isAdminUser: jest.fn(),

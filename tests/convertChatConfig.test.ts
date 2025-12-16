@@ -85,7 +85,10 @@ describe("convertChatConfig", () => {
     const chat1 = { name: "a" } as ConfigChatType;
     const chat2 = { name: "b" } as ConfigChatType;
 
-    mockExistsSync.mockReturnValue(true);
+    mockExistsSync.mockImplementation((p) => {
+      if (typeof p === "string" && p.includes("internal-agents")) return false;
+      return p === "config.yml" || p === "data/chats";
+    });
     mockReadFileSync
       .mockReturnValueOnce("cfgYaml")
       .mockReturnValueOnce("aYaml")
@@ -105,11 +108,10 @@ describe("convertChatConfig", () => {
 
     expect(mockReaddirSync).toHaveBeenCalledWith("data/chats");
     expect(mockDump).toHaveBeenCalledTimes(1);
-    expect(mockDump.mock.calls[0][0]).toMatchObject({
-      useChatsDir: false,
-      chats: [chat1, chat2],
-    });
+    const dumpedConfig = mockDump.mock.calls[0][0] as ConfigType;
+    const savedChats = (dumpedConfig.chats || []).filter((c) => c && c.agent_name !== "buttons");
+    expect(dumpedConfig.useChatsDir).toBe(false);
+    expect(savedChats).toEqual([chat1, chat2]);
     expect(mockWriteFileSync).toHaveBeenCalledWith("config.yml", "cfgOut");
-    expect(mockMkdirSync).not.toHaveBeenCalled();
   });
 });

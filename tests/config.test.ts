@@ -109,7 +109,7 @@ describe("readConfig", () => {
     const res = readConfig("testConfig.yml");
 
     expect(mockReaddirSync).toHaveBeenCalledWith("chats");
-    expect(res.chats).toEqual([chat1, chat2]);
+    expect(res.chats.filter((c) => c.agent_name !== "buttons")).toEqual([chat1, chat2]);
   });
 });
 

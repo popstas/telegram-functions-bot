@@ -6,7 +6,7 @@ import {
 } from "../placeholders.ts";
 import express, { Response } from "express";
 import { Context } from "telegraf";
-import { Message } from "telegraf/types";
+import { Chat, Message } from "telegraf/types";
 import {
   ConfigChatType,
   GptContextType,
@@ -373,7 +373,7 @@ export async function handleCancelledToolCalls({
   });
 }
 
-export function parseResponseButtonsAndTelemetry({
+export async function parseResponseButtonsAndTelemetry({
   answer: initialAnswer,
   chatConfig,
   gptContext,
@@ -385,7 +385,7 @@ export function parseResponseButtonsAndTelemetry({
   gptContext: GptContextType;
   msg: Message.TextMessage;
   trace?: unknown;
-}): ToolResponse {
+}): Promise<ToolResponse> {
   let answer = initialAnswer;
   let buttons: ConfigChatButtonType[] | undefined;
   if (chatConfig.chatParams?.responseButtons) {
@@ -416,6 +416,76 @@ export function parseResponseButtonsAndTelemetry({
   }
 
   return { content: answer, buttons };
+}
+
+export async function generateButtonsFromAgent(
+  answer: string,
+  msg: Message.TextMessage,
+  options?: { signal?: AbortSignal },
+) {
+  const config = useConfig();
+  const agentConfig = config.chats?.find((c) => c.agent_name === "buttons");
+  if (!agentConfig) return undefined;
+
+  if (options?.signal?.aborted) return undefined;
+
+  const chatTitle = (msg.chat as Chat.TitleChat).title;
+  const answerId = msg.message_id?.toString() || "";
+  log({
+    msg: "start generate buttons",
+    chatId: msg.chat.id,
+    chatTitle,
+    answerId,
+    role: "system",
+    logLevel: "info",
+  });
+
+  const apiParams: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
+    messages: [
+      { role: "system", content: agentConfig.systemMessage || "" },
+      { role: "user", content: answer },
+    ],
+    model: agentConfig.completionParams?.model,
+    temperature: agentConfig.completionParams?.temperature,
+    response_format: agentConfig.response_format,
+  };
+
+  try {
+    const { res } = await llmCall({
+      apiParams,
+      chatConfig: agentConfig,
+      generationName: "buttons-agent",
+      localModel: agentConfig.local_model,
+      signal: options?.signal,
+      noSendTelegram: true,
+      msg,
+    });
+    const content = res.choices[0]?.message?.content;
+    if (!content) return undefined;
+    const parsed = JSON.parse(content) as { buttons?: ConfigChatButtonType[] };
+    if (!Array.isArray(parsed.buttons)) return undefined;
+
+    const filteredButtons = parsed.buttons.filter(
+      (button) => button && typeof button.name === "string" && typeof button.prompt === "string",
+    );
+    log({
+      msg: `Generated buttons: ${filteredButtons.map((button) => button.name).join(", ")}`,
+      chatId: msg.chat.id,
+      chatTitle,
+      answerId,
+      role: "system",
+      logLevel: "info",
+    });
+    return filteredButtons;
+  } catch (e) {
+    if (options?.signal?.aborted) return undefined;
+    log({
+      msg: `Buttons agent error: ${(e as Error).message}`,
+      logLevel: "warn",
+      chatId: msg.chat.id,
+    });
+    return undefined;
+  }
 }
 
 export async function handleModelAnswer({
@@ -478,7 +548,7 @@ export async function handleModelAnswer({
     }
   }
 
-  return parseResponseButtonsAndTelemetry({
+  return await parseResponseButtonsAndTelemetry({
     answer: res.choices[0]?.message.content || "",
     chatConfig,
     gptContext,

@@ -200,6 +200,85 @@ export async function sendTelegramMessage(
   return response;
 }
 
+export async function editTelegramMessage(
+  message: Message.TextMessage,
+  text: string,
+  extraMessageParams?: Record<string, unknown> | Markup.Markup<ReplyKeyboardMarkup>,
+  ctx?: Context & ExtraCtx,
+  chatConfig?: ConfigChatType,
+): Promise<Message.TextMessage | undefined> {
+  if (!message?.chat?.id) {
+    return undefined;
+  }
+
+  chatConfig =
+    chatConfig ||
+    useConfig().chats.find((c) => c.bot_name === ctx?.botInfo.username) ||
+    ({} as ConfigChatType);
+
+  if (ctx?.noSendTelegram) {
+    ctx.progressCallback?.(text);
+    return undefined;
+  }
+
+  const params: Record<string, unknown> = {
+    ...extraMessageParams,
+  };
+
+  if (!params.parse_mode) {
+    if (text.trim().startsWith("<")) {
+      params.parse_mode = "HTML";
+    } else {
+      params.parse_mode = "MarkdownV2";
+    }
+  }
+
+  const processedText =
+    params.parse_mode === "HTML" ? sanitizeTelegramHtml(text) : telegramifyWithCodeBlocks(text);
+
+  try {
+    return (await useBot(chatConfig.bot_token).telegram.editMessageText(
+      message.chat.id,
+      message.message_id,
+      undefined,
+      processedText,
+      params,
+    )) as Message.TextMessage;
+  } catch (err) {
+    log({
+      msg: `editTelegramMessage failed: ${(err as Error).message}`,
+      logLevel: "warn",
+      chatId: message.chat.id,
+      chatTitle: chatConfig.name,
+    });
+
+    const newMsg = await sendTelegramMessage(
+      message.chat.id,
+      text,
+      extraMessageParams,
+      ctx,
+      chatConfig,
+    );
+    if (newMsg?.chat?.id === message.chat.id && newMsg.message_id !== message.message_id) {
+      try {
+        await useBot(chatConfig.bot_token).telegram.deleteMessage(
+          message.chat.id,
+          message.message_id,
+        );
+      } catch (deleteErr) {
+        log({
+          msg: `Failed to delete message after edit fallback: ${(deleteErr as Error).message}`,
+          logLevel: "warn",
+          chatId: message.chat.id,
+          chatTitle: chatConfig.name,
+        });
+      }
+    }
+
+    return newMsg as Message.TextMessage | undefined;
+  }
+}
+
 export function isAdminUser(msg: Message.TextMessage): boolean {
   if (!msg.from?.username) return false;
   return includesUser(useConfig().adminUsers, msg.from.username);

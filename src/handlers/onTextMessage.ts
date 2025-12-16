@@ -13,14 +13,15 @@ import {
 import { rememberSave, isRememberCommand, stripRememberPrefix } from "../helpers/memory.ts";
 import { setLastCtx } from "../helpers/lastCtx.ts";
 import { addOauthToThread, ensureAuth } from "../helpers/google.ts";
-import { requestGptAnswer } from "../helpers/gpt.ts";
+import { generateButtonsFromAgent, requestGptAnswer } from "../helpers/gpt.ts";
 import checkAccessLevel from "./access.ts";
 import resolveChatButtons from "./resolveChatButtons.ts";
-import { sendTelegramMessage } from "../telegram/send.ts";
+import { editTelegramMessage, sendTelegramMessage } from "../telegram/send.ts";
 
 // Track active responses per chat to allow cancellation
 interface ActiveResponse {
   abortController: AbortController;
+  buttonsAbortController?: AbortController;
   isCompleted: boolean;
 }
 
@@ -96,6 +97,7 @@ export default async function onTextMessage(
     });
     if (!existingResponse.isCompleted) {
       existingResponse.abortController.abort();
+      existingResponse.buttonsAbortController?.abort();
     }
     activeResponses.delete(chatId);
   }
@@ -242,6 +244,28 @@ export async function answerToMessage(
       });
       msgSent = await sendTelegramMessage(msg.chat.id, text, extraParams, ctx, chat);
       if (msgSent?.chat.id) useThreads()[msgSent.chat.id].msgs.push(msgSent);
+
+      if (chat.chatParams?.responseButtonsAgent && msgSent && !res?.buttons?.length) {
+        const buttonsAbortController = new AbortController();
+        const activeResponse = activeResponses.get(msg.chat.id);
+        if (activeResponse) {
+          activeResponse.buttonsAbortController = buttonsAbortController;
+        }
+        await applyResponseButtonsAgent({
+          answerText: msgSent.text || text,
+          baseExtraParams: extraParams,
+          chat,
+          ctx,
+          msg,
+          originalMessage: msgSent,
+          signal: buttonsAbortController.signal,
+          thread,
+        });
+        const currentResponse = activeResponses.get(msg.chat.id);
+        if (currentResponse?.buttonsAbortController === buttonsAbortController) {
+          currentResponse.buttonsAbortController = undefined;
+        }
+      }
     });
     return msgSent;
   } catch (e) {
@@ -261,5 +285,56 @@ export async function answerToMessage(
       ctx,
       chat,
     );
+  }
+}
+
+async function applyResponseButtonsAgent({
+  answerText,
+  baseExtraParams,
+  chat,
+  ctx,
+  msg,
+  originalMessage,
+  signal,
+  thread,
+}: {
+  answerText: string;
+  baseExtraParams: Record<string, unknown>;
+  chat: ConfigChatType;
+  ctx: Context;
+  msg: Message.TextMessage;
+  originalMessage: Message.TextMessage;
+  signal?: AbortSignal;
+  thread: ReturnType<typeof useThreads>[number];
+}) {
+  if (signal?.aborted) return;
+
+  try {
+    const generatedButtons = await generateButtonsFromAgent(answerText, msg, { signal });
+    if (!generatedButtons?.length) return;
+
+    if (signal?.aborted) return;
+
+    thread.dynamicButtons = generatedButtons;
+
+    const extraParamsWithButtons = {
+      ...baseExtraParams,
+      ...Markup.keyboard(generatedButtons.map((b) => b.name)).resize(),
+    };
+
+    const updated = await editTelegramMessage(
+      originalMessage,
+      answerText,
+      extraParamsWithButtons,
+      ctx,
+      chat,
+    );
+
+    if (updated?.chat.id) {
+      useThreads()[updated.chat.id].msgs.push(updated);
+    }
+  } catch (error) {
+    if (signal?.aborted) return;
+    throw error;
   }
 }

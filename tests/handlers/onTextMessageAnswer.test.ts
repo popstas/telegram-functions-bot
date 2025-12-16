@@ -17,6 +17,7 @@ const threads: Record<
     msgs: Message[];
     messages: Message[];
     completionParams: Record<string, unknown>;
+    dynamicButtons?: { name: string; prompt: string }[];
   }
 > = {
   1: {
@@ -34,13 +35,16 @@ const mockSyncButtons = jest.fn();
 // Mock implementations
 const mockRequestGptAnswer = jest.fn();
 const mockSendTelegramMessage = jest.fn();
+const mockEditTelegramMessage = jest.fn();
 const mockUseConfig = jest.fn();
+const mockGenerateButtonsFromAgent = jest.fn();
 
 // Default mock implementations
 mockRequestGptAnswer.mockImplementation(() => Promise.resolve({ content: "hi" }));
 mockSendTelegramMessage.mockImplementation(() =>
   Promise.resolve({ chat: { id: 1 } } as Message.TextMessage),
 );
+mockGenerateButtonsFromAgent.mockResolvedValue(undefined);
 
 jest.unstable_mockModule("../../src/helpers/google.ts", () => ({
   ensureAuth: mockEnsureAuth,
@@ -55,10 +59,12 @@ jest.unstable_mockModule("../../src/config.ts", () => ({
 
 jest.unstable_mockModule("../../src/helpers/gpt.ts", () => ({
   requestGptAnswer: mockRequestGptAnswer,
+  generateButtonsFromAgent: mockGenerateButtonsFromAgent,
 }));
 
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   sendTelegramMessage: mockSendTelegramMessage,
+  editTelegramMessage: mockEditTelegramMessage,
   sendTelegramDocument: jest.fn(),
   getFullName: jest.fn(),
   getTelegramForwardedUser: jest.fn(),
@@ -93,6 +99,8 @@ const baseChat: ConfigChatType = {
 beforeEach(async () => {
   jest.clearAllMocks();
   jest.resetModules();
+  threads[1].msgs = [];
+  threads[1].dynamicButtons = undefined;
   handlers = await import("../../src/handlers/onTextMessage.ts");
 });
 
@@ -266,6 +274,53 @@ describe("answerToMessage", () => {
       ctx,
       expect.objectContaining({ responseFormat: expectedFormat }),
     );
+  });
+
+  it("edits message after sending when using buttons agent", async () => {
+    mockUseConfig.mockReturnValue({ auth: {} });
+    const callOrder: string[] = [];
+    const sentMessage = {
+      chat: { id: 1 },
+      message_id: 10,
+      text: "hi",
+    } as Message.TextMessage;
+    mockSendTelegramMessage.mockImplementationOnce(async () => {
+      callOrder.push("send");
+      return sentMessage;
+    });
+    mockGenerateButtonsFromAgent.mockImplementationOnce(async () => {
+      callOrder.push("generate");
+      return [{ name: "Next", prompt: "do" }];
+    });
+    mockEditTelegramMessage.mockImplementationOnce(async (_m, _t, extraParams) => {
+      callOrder.push("edit");
+      return {
+        ...sentMessage,
+        message_id: 11,
+        ...(extraParams as object),
+      } as Message.TextMessage;
+    });
+    const msg = {
+      chat: { id: 1, title: "t" },
+      from: { id: 1 },
+      text: "hello",
+      message_id: 1,
+      date: 0,
+    } as Message.TextMessage;
+    const ctx = createCtx(msg);
+    const chat = { ...baseChat, chatParams: { responseButtonsAgent: true } };
+
+    await handlers.answerToMessage(ctx, msg, chat, {});
+
+    expect(callOrder).toEqual(["send", "generate", "edit"]);
+    const extraParams = mockEditTelegramMessage.mock.calls[0][2] as {
+      reply_markup: { keyboard: (string | { text: string })[][] };
+    };
+    const buttonNames = extraParams.reply_markup.keyboard
+      .flat()
+      .map((b) => (typeof b === "string" ? b : b.text));
+    expect(buttonNames).toContain("Next");
+    expect(threads[1].dynamicButtons).toEqual([{ name: "Next", prompt: "do" }]);
   });
 
   it("handles errors", async () => {
