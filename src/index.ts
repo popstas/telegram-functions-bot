@@ -140,10 +140,15 @@ async function launchBot(bot_token: string, bot_name: string) {
       rejectReady = reject;
     });
 
-    const launchPromise = bot.launch({}, () => {
-      log({ msg: `bot started: ${bot_name}` });
-      resolveReady?.();
-    });
+    const launchPromise = bot.launch(
+      {
+        allowedUpdates: ["message", "message_reaction"],
+      },
+      () => {
+        log({ msg: `bot started: ${bot_name}` });
+        resolveReady?.();
+      },
+    );
 
     launchPromise.catch((error) => {
       log({
