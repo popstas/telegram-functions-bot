@@ -1,5 +1,5 @@
 import { jest, describe, it, expect, beforeEach, beforeAll } from "@jest/globals";
-import type { Message } from "telegraf/types";
+import type { Context, Message } from "telegraf/types";
 import type { ConfigChatType, ThreadStateType } from "../../src/types.ts";
 import OpenAI from "openai";
 import type { ChatCompletionStream } from "openai/lib/ChatCompletionStream.js";
@@ -755,6 +755,50 @@ describe("requestGptAnswer", () => {
     const message = sent.mock.calls.pop()?.[1];
     expect(message).toContain("Web search:");
     expect(message).toContain("[T](https://u) (opened)");
+  });
+
+  it("skips sending web search details when sending is disabled", async () => {
+    const api = {
+      responses: {
+        create: jest.fn().mockResolvedValue({
+          output_text: "a",
+          output: [
+            '{"type":"web_search_call","action":{"type":"search","query":"q"}}',
+            '{"type":"web_search_call","action":{"type":"open_page","url":"https://u"}}',
+            {
+              type: "message",
+              content: [
+                {
+                  type: "output_text",
+                  text: "a",
+                  annotations: [
+                    {
+                      type: "url_citation",
+                      title: "T",
+                      url: "https://u",
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      },
+    };
+    mockUseApi.mockReturnValue(api);
+    const msg: Message.TextMessage = { ...baseMsg };
+    await requestGptAnswer(
+      msg,
+      {
+        ...chatConfig,
+        tools: ["web_search_preview"],
+        local_model: undefined,
+        chatParams: { useResponsesApi: true, streaming: false },
+      },
+      { noSendTelegram: true } as unknown as Context,
+    );
+    const sent = (await import("../../src/telegram/send.ts")).sendTelegramMessage as jest.Mock;
+    expect(sent).not.toHaveBeenCalled();
   });
 
   it("sends generated image", async () => {

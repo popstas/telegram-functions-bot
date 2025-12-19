@@ -337,7 +337,7 @@ export async function handleCancelledToolCalls({
     generationName: "after-cancelled-tool",
   });
 
-  if (webSearchDetails && chatConfig.chatParams?.showToolMessages !== false) {
+  if (!noSendTelegram && webSearchDetails && chatConfig.chatParams?.showToolMessages !== false) {
     await sendTelegramMessage(
       msg.chat.id,
       webSearchDetails,
@@ -347,7 +347,7 @@ export async function handleCancelledToolCalls({
     );
   }
 
-  if (images && images.length) {
+  if (!noSendTelegram && images && images.length) {
     for (const img of images) {
       const buffer = Buffer.from(img.result, "base64");
       await sendTelegramDocument(
@@ -820,7 +820,11 @@ export async function requestGptAnswer(
     noSendTelegram: ctx?.noSendTelegram,
   });
 
-  if (webSearchDetails && chatConfig.chatParams?.showToolMessages !== false) {
+  if (
+    !ctx?.noSendTelegram &&
+    webSearchDetails &&
+    chatConfig.chatParams?.showToolMessages !== false
+  ) {
     await sendTelegramMessage(
       msg.chat.id,
       webSearchDetails,
@@ -830,7 +834,7 @@ export async function requestGptAnswer(
     );
   }
 
-  if (images && images.length) {
+  if (!ctx?.noSendTelegram && images && images.length) {
     for (const img of images) {
       const buffer = Buffer.from(img.result, "base64");
       await sendTelegramDocument(
