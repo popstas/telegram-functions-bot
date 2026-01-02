@@ -276,7 +276,7 @@ describe("answerToMessage", () => {
     );
   });
 
-  it("edits message after sending when using buttons agent", async () => {
+  it("sends separate buttons message when using buttons agent", async () => {
     mockUseConfig.mockReturnValue({ auth: {} });
     const callOrder: string[] = [];
     const sentMessage = {
@@ -285,20 +285,20 @@ describe("answerToMessage", () => {
       text: "hi",
     } as Message.TextMessage;
     mockSendTelegramMessage.mockImplementationOnce(async () => {
-      callOrder.push("send");
+      callOrder.push("send-answer");
       return sentMessage;
+    });
+    mockSendTelegramMessage.mockImplementationOnce(async () => {
+      callOrder.push("send-buttons");
+      return {
+        chat: { id: 1 },
+        message_id: 11,
+        text: "- Next: do",
+      } as Message.TextMessage;
     });
     mockGenerateButtonsFromAgent.mockImplementationOnce(async () => {
       callOrder.push("generate");
       return [{ name: "Next", prompt: "do" }];
-    });
-    mockEditTelegramMessage.mockImplementationOnce(async (_m, _t, extraParams) => {
-      callOrder.push("edit");
-      return {
-        ...sentMessage,
-        message_id: 11,
-        ...(extraParams as object),
-      } as Message.TextMessage;
     });
     const msg = {
       chat: { id: 1, title: "t" },
@@ -312,8 +312,9 @@ describe("answerToMessage", () => {
 
     await handlers.answerToMessage(ctx, msg, chat, {});
 
-    expect(callOrder).toEqual(["send", "generate", "edit"]);
-    const extraParams = mockEditTelegramMessage.mock.calls[0][2] as {
+    expect(callOrder).toEqual(["send-answer", "generate", "send-buttons"]);
+    expect(mockEditTelegramMessage).not.toHaveBeenCalled();
+    const extraParams = mockSendTelegramMessage.mock.calls[1][2] as {
       reply_markup: { keyboard: (string | { text: string })[][] };
     };
     const buttonNames = extraParams.reply_markup.keyboard
@@ -321,6 +322,7 @@ describe("answerToMessage", () => {
       .map((b) => (typeof b === "string" ? b : b.text));
     expect(buttonNames).toContain("Next");
     expect(threads[1].dynamicButtons).toEqual([{ name: "Next", prompt: "do" }]);
+    expect(mockSendTelegramMessage.mock.calls[1][1]).toContain("- Next: do");
   });
 
   it("handles errors", async () => {

@@ -322,6 +322,13 @@ async function applyResponseButtonsAgent({
       ...Markup.keyboard(generatedButtons.map((b) => b.name)).resize(),
     };
 
+    const shouldSendButtonsMessage = chat.chatParams?.responseButtonsMessage ?? true;
+    if (shouldSendButtonsMessage) {
+      const buttonsText = generatedButtons.map((b) => `- ${b.name}: ${b.prompt}`).join("\n");
+      await sendTelegramMessage(msg.chat.id, buttonsText, extraParamsWithButtons, ctx, chat);
+      return;
+    }
+
     const updated = await editTelegramMessage(
       originalMessage,
       answerText,

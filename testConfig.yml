@@ -40,6 +40,7 @@ chats:
       showToolMessages: true
       answerReactions: true
       responseButtons: false
+      responseButtonsMessage: true
     toolParams:
       brainstorm:
         promptBefore: Составь только краткий план действий.

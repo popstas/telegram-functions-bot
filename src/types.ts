@@ -116,6 +116,7 @@ export type ChatParamsType = {
   answerReactions?: boolean;
   responseButtons?: boolean;
   responseButtonsAgent?: boolean;
+  responseButtonsMessage?: boolean;
   vector_memory?: boolean;
 };
 
