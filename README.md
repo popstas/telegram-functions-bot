@@ -543,11 +543,12 @@ chatParams:
 
 Each button should contain `name` and `prompt`. When a user clicks a button, its `prompt` is sent as their next message.
 
-To generate buttons automatically from the assistant's reply, enable `chatParams.responseButtonsAgent`. The bot will run the built-in `buttons` agent (defined in `internal-agents/buttons.yml`) with the final answer text and use the returned button list as the response keyboard.
+To generate buttons automatically from the assistant's reply, enable `chatParams.responseButtonsAgent`. The bot will run the built-in `buttons` agent (defined in `internal-agents/buttons.yml`) with the final answer text and use the returned button list as the response keyboard. By default (`chatParams.responseButtonsMessage: true`), the bot sends a separate message with a Markdown list (`- button: prompt`) and attaches the buttons there, so the original answer formatting stays intact.
 
 ```yaml
 chatParams:
   responseButtonsAgent: true
+  responseButtonsMessage: true
 ```
 
 ## Telegram reactions

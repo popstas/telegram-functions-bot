@@ -258,6 +258,7 @@ export function generateConfig(): ConfigType {
           streaming: false,
           responseButtons: false,
           responseButtonsAgent: false,
+          responseButtonsMessage: true,
           vector_memory: false,
         },
         toolParams: {
@@ -322,6 +323,7 @@ export function generateConfig(): ConfigType {
           streaming: false,
           responseButtons: false,
           responseButtonsAgent: false,
+          responseButtonsMessage: true,
           vector_memory: false,
         },
         toolParams: {
