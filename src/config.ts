@@ -20,8 +20,19 @@ import {
 import { log, safeFilename } from "./helpers.ts";
 import { readGoogleSheet } from "./helpers/readGoogleSheet.ts";
 import { OAuth2Client, GoogleAuth } from "google-auth-library";
-import debounce from "lodash.debounce";
 import { useThreads } from "./threads.ts";
+
+// Native debounce implementation
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
 
 function writeFileIfChanged(path: string, content: string) {
   try {

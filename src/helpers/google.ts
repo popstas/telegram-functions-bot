@@ -1,4 +1,3 @@
-import { google } from "googleapis";
 import { useThreads } from "../threads.ts";
 import { OAuth2Client, Credentials, GoogleAuth } from "google-auth-library";
 import fs from "fs";
@@ -56,7 +55,7 @@ export async function ensureAuth(user_id: number): Promise<OAuth2Client | Google
 
   // Check if the user has credentials
   if (creds && creds.expiry_date && creds.expiry_date > Date.now()) {
-    const oauth2Client = new google.auth.OAuth2();
+    const oauth2Client = new OAuth2Client();
     oauth2Client.setCredentials(creds);
 
     // handling token refresh
@@ -74,14 +73,14 @@ export async function ensureAuth(user_id: number): Promise<OAuth2Client | Google
 
   // common service account
   if (config.auth.google_service_account?.private_key) {
-    return new google.auth.GoogleAuth({
+    return new GoogleAuth({
       credentials: config.auth.google_service_account,
       scopes: ["https://www.googleapis.com/auth/spreadsheets"],
     });
   }
 
   // get auth url oauth2Client
-  return new google.auth.OAuth2(
+  return new OAuth2Client(
     config.auth.oauth_google?.client_id,
     config.auth.oauth_google?.client_secret,
     config.auth.oauth_google?.redirect_uri,

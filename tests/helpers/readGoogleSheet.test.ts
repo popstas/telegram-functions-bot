@@ -4,15 +4,13 @@ import type { OAuth2Client } from "google-auth-library";
 const mockSheetsGet = jest.fn();
 const mockValuesGet = jest.fn();
 
-jest.unstable_mockModule("googleapis", () => ({
-  google: {
-    sheets: () => ({
-      spreadsheets: {
-        get: mockSheetsGet,
-        values: { get: mockValuesGet },
-      },
-    }),
-  },
+jest.unstable_mockModule("@googleapis/sheets", () => ({
+  sheets: () => ({
+    spreadsheets: {
+      get: mockSheetsGet,
+      values: { get: mockValuesGet },
+    },
+  }),
 }));
 
 let readGoogleSheetToRows: typeof import("../../src/helpers/readGoogleSheet.ts").default;
