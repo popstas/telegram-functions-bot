@@ -23,7 +23,7 @@ import { OAuth2Client, GoogleAuth } from "google-auth-library";
 import { useThreads } from "./threads.ts";
 
 // Native debounce implementation
-function debounce<T extends (...args: any[]) => any>(
+function debounce<T extends (...args: never[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
