@@ -1,5 +1,13 @@
 import OpenAI from "openai";
+import type { ChatCompletionMessageToolCall } from "openai/resources/chat/completions";
 import type { ResponsesParamsType } from "../../types.ts";
+
+// Type guard for standard function tool calls (OpenAI v6 compatibility)
+function isFunctionToolCall(
+  toolCall: ChatCompletionMessageToolCall
+): toolCall is ChatCompletionMessageToolCall & { function: { name: string; arguments: string } } {
+  return "function" in toolCall && toolCall.function !== undefined;
+}
 
 export function convertResponsesInput(
   apiParams: OpenAI.Chat.Completions.ChatCompletionCreateParams,
@@ -27,12 +35,14 @@ export function convertResponsesInput(
     ) {
       for (const call of (msg as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam)
         .tool_calls as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) {
-        input.push({
-          type: "function_call",
-          name: call.function.name,
-          arguments: call.function.arguments,
-          call_id: call.id,
-        } as OpenAI.Responses.ResponseFunctionToolCall);
+        if (isFunctionToolCall(call)) {
+          input.push({
+            type: "function_call",
+            name: call.function.name,
+            arguments: call.function.arguments,
+            call_id: call.id,
+          } as OpenAI.Responses.ResponseFunctionToolCall);
+        }
       }
       if ((msg as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam).content) {
         const assistantMessage = {

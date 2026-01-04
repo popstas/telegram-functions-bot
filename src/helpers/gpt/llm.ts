@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import type { ChatCompletionMessageToolCall } from "openai/resources/chat/completions";
 import {
   replaceUrlPlaceholders,
   replaceToolPlaceholders,
@@ -15,6 +16,13 @@ import {
   ConfigChatButtonType,
 } from "../../types.ts";
 import { addToHistory, forgetHistory } from "../history.ts";
+
+// Type guard for standard function tool calls (OpenAI v6 compatibility)
+function isFunctionToolCall(
+  toolCall: ChatCompletionMessageToolCall
+): toolCall is ChatCompletionMessageToolCall & { function: { name: string; arguments: string } } {
+  return "function" in toolCall && toolCall.function !== undefined;
+}
 import {
   sendTelegramMessage,
   sendTelegramDocument,
@@ -307,12 +315,14 @@ export async function handleCancelledToolCalls({
   gptContext.thread.messages.push(assistantMessage);
   const cancelMessages = cancellation.cancelMessages?.length
     ? cancellation.cancelMessages
-    : messageAgent.tool_calls?.map((toolCall) =>
-        JSON.stringify({
-          name: toolCall.function.name,
-          arguments: toolCall.function.arguments,
-        }),
-      );
+    : messageAgent.tool_calls
+        ?.filter(isFunctionToolCall)
+        .map((toolCall) =>
+          JSON.stringify({
+            name: toolCall.function.name,
+            arguments: toolCall.function.arguments,
+          }),
+        );
   let cancelText =
     cancelMessages?.map((params) => `tool call cancelled: ${params}`).join("\n") || "";
   if (!cancelText) {
@@ -593,6 +603,9 @@ export async function processToolResults({
         tool_calls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
       }
     ).tool_calls[i];
+
+    if (!isFunctionToolCall(toolCall)) continue;
+
     const chatTool = gptContext.chatTools.find((f) => f.name === toolCall.function.name);
     const isMcp = chatTool?.module.call(chatConfig, gptContext.thread).mcp;
     const showMessages = chatConfig.chatParams?.showToolMessages !== false && !isMcp;
