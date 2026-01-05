@@ -1,6 +1,14 @@
 import OpenAI from "openai";
+import type { ChatCompletionMessageToolCall } from "openai/resources/chat/completions";
 
 import { ModuleType } from "../../types.ts";
+
+// Type guard for standard function tool calls (OpenAI v6 compatibility)
+function isFunctionToolCall(
+  toolCall: ChatCompletionMessageToolCall
+): toolCall is ChatCompletionMessageToolCall & { function: { name: string; arguments: string } } {
+  return "function" in toolCall && toolCall.function !== undefined;
+}
 
 export function prettifyKeyValue(key: string, value: unknown, level = 0): string {
   const prettifiedKey = prettifyKey(key);
@@ -42,6 +50,10 @@ export function formatToolParamsString({
   toolClient: ModuleType;
   toolParams: string;
 }): string {
+  if (!isFunctionToolCall(toolCall)) {
+    return "Invalid tool call";
+  }
+
   if (["expertizeme_search_items", "expertizeme_export_items"].includes(toolCall.function.name)) {
     return prettifyExpertizemeSearchItems(JSON.parse(toolParams), toolCall.function.name);
   }

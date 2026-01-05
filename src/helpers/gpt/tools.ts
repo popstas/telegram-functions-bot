@@ -1,6 +1,7 @@
 import * as Express from "express";
 import { Chat, Message } from "telegraf/types";
 import OpenAI from "openai";
+import type { ChatCompletionMessageToolCall } from "openai/resources/chat/completions";
 import {
   ChatToolType,
   ConfigChatType,
@@ -23,6 +24,13 @@ import { telegramConfirm } from "../../telegram/confirm.ts";
 import { applyConfirmationOverride } from "./toolConfirmation.ts";
 import { applyToolHandler } from "./toolHandlers.ts";
 import { formatToolParamsString, removeNullsParams } from "./toolFormatting.ts";
+
+// Type guard for standard function tool calls (OpenAI v6 compatibility)
+function isFunctionToolCall(
+  toolCall: ChatCompletionMessageToolCall
+): toolCall is ChatCompletionMessageToolCall & { function: { name: string; arguments: string } } {
+  return "function" in toolCall && toolCall.function !== undefined;
+}
 
 type ToolExecutionCancelMetadata = {
   cancelled: true;
@@ -141,6 +149,10 @@ export async function executeTools(
   const cancellationPayloads: string[] = [];
 
   const toolPromises = toolCalls.map(async (toolCall) => {
+    if (!isFunctionToolCall(toolCall)) {
+      return { content: "Tool call is not a function call" };
+    }
+
     const chatTool = chatTools.find((f) => f.name === toolCall.function.name);
     if (!chatTool) return { content: `Tool not found: ${toolCall.function.name}` };
 

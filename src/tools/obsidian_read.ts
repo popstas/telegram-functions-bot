@@ -1,11 +1,10 @@
 import * as fs from "fs";
+import { readdir } from "fs/promises";
 import { aiFunction, AIFunctionsProvider } from "@agentic/core";
 import { z } from "zod";
 import { ConfigChatType, ConfigType, ObsidianConfigType, ToolResponse } from "../types.ts";
 import { readConfig } from "../config.ts";
 import path from "node:path";
-// @ts-expect-error - No type definitions available for recursive-readdir
-import recursiveReaddir from "recursive-readdir";
 
 type ToolArgsType = {
   file_path: string;
@@ -75,19 +74,11 @@ export class ObsidianReadClient extends AIFunctionsProvider {
 
   async prompt_append(): Promise<string> {
     const root_path = this.configChat.toolParams?.obsidian?.root_path || ".";
-    const files = (await new Promise((resolve, reject) => {
-      recursiveReaddir(root_path, (err: string, files: string[]) => {
-        if (err) {
-          reject(err);
-        } else {
-          files = files.map((f) => f.replace(path.resolve(root_path), "")); // relative paths
-          const excludeHidden = files
-            .filter((f) => !f.startsWith("\\."))
-            .filter((f) => !f.startsWith("."));
-          resolve(excludeHidden);
-        }
-      });
-    })) as string[];
+    const allFiles = await readdir(root_path, { recursive: true });
+    const files = allFiles
+      .filter((f) => !f.startsWith(".")) // exclude hidden files
+      .filter((f) => !f.includes("/.")) // exclude hidden directories
+      .map((f) => `/${f}`); // add leading slash for consistency
     return `## Obsidian files:\n${files.map((f) => `- ${f}`).join("\n")}`;
   }
 }

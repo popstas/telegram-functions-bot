@@ -1,4 +1,4 @@
-import { google } from "googleapis";
+import { sheets } from "@googleapis/sheets";
 import { GoogleAuth, OAuth2Client } from "google-auth-library";
 
 export async function readGoogleSheet(
@@ -6,15 +6,15 @@ export async function readGoogleSheet(
   sheetName?: string | null,
   auth?: OAuth2Client | GoogleAuth,
 ): Promise<object[]> {
-  const sheets = google.sheets({ version: "v4", auth });
-  const firstSheet = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
+  const sheetsClient = sheets({ version: "v4", auth });
+  const firstSheet = await sheetsClient.spreadsheets.get({ spreadsheetId: sheetId });
   const sheetNames = firstSheet.data.sheets?.map((sheet) => sheet.properties?.title);
   if (!sheetNames || sheetNames.length === 0) return [];
   if (!sheetName || !sheetNames.includes(sheetName)) {
     sheetName = sheetNames[0];
   }
   const sheetInd = sheetNames.indexOf(sheetName);
-  const response = await sheets.spreadsheets.values.get({
+  const response = await sheetsClient.spreadsheets.values.get({
     spreadsheetId: sheetId,
     range: firstSheet.data.sheets?.[sheetInd].properties?.title || sheetName || "Sheet1",
   });

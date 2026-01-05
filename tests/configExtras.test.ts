@@ -1,4 +1,4 @@
-import { jest, describe, it, beforeEach, expect } from "@jest/globals";
+import { jest, describe, it, beforeEach, afterEach, expect } from "@jest/globals";
 import path from "path";
 import type { OAuth2Client } from "google-auth-library";
 import { ConfigChatType } from "../src/types.ts";
@@ -8,7 +8,6 @@ const mockExistsSync = jest.fn().mockReturnValue(true);
 const mockReadFileSync = jest.fn().mockReturnValue("");
 const mockWatchFile = jest.fn();
 const mockWatch = jest.fn();
-const mockDebounce = jest.fn((fn) => fn);
 const mockUseThreads = jest.fn(() => ({}));
 const mockLoad = jest.fn();
 const mockDump = jest.fn((obj) => JSON.stringify(obj));
@@ -22,18 +21,8 @@ jest.unstable_mockModule("../src/helpers.ts", () => ({
   stringToId: jest.fn(),
 }));
 
-jest.unstable_mockModule("lodash.debounce", () => ({
-  __esModule: true,
-  default: (fn: unknown) => mockDebounce(fn),
-}));
-
 jest.unstable_mockModule("../src/threads.ts", () => ({
   useThreads: () => mockUseThreads(),
-}));
-
-jest.unstable_mockModule("lodash.debounce", () => ({
-  __esModule: true,
-  default: (fn: unknown) => mockDebounce(fn),
 }));
 
 jest.unstable_mockModule("js-yaml", () => ({
@@ -68,7 +57,6 @@ beforeEach(async () => {
   jest.resetModules();
   mockLog.mockClear();
   mockWriteFile.mockClear();
-  mockDebounce.mockClear();
   mockUseThreads.mockClear();
   mockWatchFile.mockClear();
   mockWatch.mockClear();
@@ -187,6 +175,14 @@ describe("getGoogleButtons", () => {
 });
 
 describe("watchConfigChanges", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it("reloads config and updates threads", async () => {
     const threads = { 1: { completionParams: { model: "old" } } } as Record<
       number,
@@ -218,6 +214,7 @@ describe("watchConfigChanges", () => {
     expect(mockWatchFile).toHaveBeenCalledWith("config.yml", expect.any(Function));
     const cb = mockWatchFile.mock.calls[0][1] as () => void;
     cb();
+    jest.runAllTimers();
 
     expect(mockWatchFile).toHaveBeenCalled();
     expect(threads[1].completionParams).toEqual({ model: "new" });
@@ -257,6 +254,7 @@ describe("watchConfigChanges", () => {
 
     const cb = mockWatchFile.mock.calls.find((c) => c[0] === chatPath)?.[1] as () => void;
     cb();
+    jest.runAllTimers();
     expect(threads[1].completionParams).toEqual({ model: "new" });
   });
 
@@ -296,6 +294,7 @@ describe("watchConfigChanges", () => {
     const dirCb = mockWatch.mock.calls[0][1] as (event: string, filename: string) => void;
     const chatPath = path.join("chats", "test.yml");
     dirCb("rename", "test.yml");
+    jest.runAllTimers();
 
     expect(mockWatchFile).toHaveBeenCalledWith(chatPath, expect.any(Function));
 
