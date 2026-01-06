@@ -1,4 +1,47 @@
-## [2025.10.15](https://github.com/popstas/telegram-functions-bot/compare/v2025.10.7...v2025.10.15) (2025-10-28)
+## [2025.10.15](https://github.com/popstas/telegram-functions-bot/compare/v2026.1.3...v2025.10.15) (2026-01-06)
+
+
+### Features
+
+* **form:** add configurable form data collection ([9237fd7](https://github.com/popstas/telegram-functions-bot/commit/9237fd7510102dfc2f304eed0d815428c54d009b))
+
+
+
+## [2026.1.3](https://github.com/popstas/telegram-functions-bot/compare/v2025.12.16...v2026.1.3) (2026-01-03)
+
+
+### Bug Fixes
+
+* skip telegram sends in http mode, fix web_search_preview tool in http mode ([#180](https://github.com/popstas/telegram-functions-bot/issues/180)) ([6df8fa8](https://github.com/popstas/telegram-functions-bot/commit/6df8fa840bdacbfd95f3c31bdd59de13ff65ad80))
+
+
+### Features
+
+* add agent-generated response buttons ([#178](https://github.com/popstas/telegram-functions-bot/issues/178)) ([dccf074](https://github.com/popstas/telegram-functions-bot/commit/dccf07401c95583e9b4e0b5fbed06b77901a9ab1))
+* handle telegram reactions ([#179](https://github.com/popstas/telegram-functions-bot/issues/179)) ([d6e5ec0](https://github.com/popstas/telegram-functions-bot/commit/d6e5ec003dec7cc5060cd9bc581c22edc0fa61e9))
+* response buttons as separated message, responseButtonsMessage for applyResponseButtonsAgent ([#181](https://github.com/popstas/telegram-functions-bot/issues/181)) ([64e0836](https://github.com/popstas/telegram-functions-bot/commit/64e0836b0003e63181b64226531092deb664b1f9))
+
+
+
+## [2025.12.16](https://github.com/popstas/telegram-functions-bot/compare/v2025.11.1...v2025.12.16) (2025-12-16)
+
+
+### Bug Fixes
+
+* handle tool confirmation cancellation flow ([#172](https://github.com/popstas/telegram-functions-bot/issues/172)) ([658610b](https://github.com/popstas/telegram-functions-bot/commit/658610ba7b4dbbe67ec11007aaf5895d3251670b))
+* preserve code fences when splitting messages ([#177](https://github.com/popstas/telegram-functions-bot/issues/177)) ([6050a84](https://github.com/popstas/telegram-functions-bot/commit/6050a84c971d3c7fe45755ac64c88c39c060bb1a))
+* replace gpt-3.5, gpt-4o, gpt-4.1 to gpt-5 ([7a848e8](https://github.com/popstas/telegram-functions-bot/commit/7a848e852e35da2ed19aef3f99dfdd57a81d1a35))
+* **telegram:** merge global private users into access check ([#173](https://github.com/popstas/telegram-functions-bot/issues/173)) ([9bfc23d](https://github.com/popstas/telegram-functions-bot/commit/9bfc23d5dcd0251b629fb0c5fcc3d980ece32686))
+
+
+### Features
+
+* make chat history limit configurable ([#171](https://github.com/popstas/telegram-functions-bot/issues/171)) ([1e14690](https://github.com/popstas/telegram-functions-bot/commit/1e14690b31a8330c7f792dd2d3622e7df4373082))
+* **memory:** add memory_add tool and share logic with Запомни; hide memory tools and auto-include when vector_memory is enabled; docs and tests ([7e135f0](https://github.com/popstas/telegram-functions-bot/commit/7e135f07d41642e846bc5c2c7975806caccf0784))
+
+
+
+## [2025.11.1](https://github.com/popstas/telegram-functions-bot/compare/v2025.10.7...v2025.11.1) (2025-10-31)
 
 
 ### Bug Fixes
@@ -6,10 +49,13 @@
 * add answerId to log, split log by answer id when multiple requests to single agent ([a30eaa0](https://github.com/popstas/telegram-functions-bot/commit/a30eaa0f0c91180e1db139d8e23aa026a8520808))
 * add desktop app icon ([187a9f3](https://github.com/popstas/telegram-functions-bot/commit/187a9f3e09e08d3f81aaa532038ac25af789a485))
 * clean wrong arguments for take_screenshot in png ([fd28294](https://github.com/popstas/telegram-functions-bot/commit/fd282941cb2d740f1a24f98ea5ba0a202b33f6c8))
+* handle remember command with prefix ([#169](https://github.com/popstas/telegram-functions-bot/issues/169)) ([275d329](https://github.com/popstas/telegram-functions-bot/commit/275d3295f67d84593f3fb78bbd7e4ba4375e1491))
+* pass username as instructions to Responses API ([3766168](https://github.com/popstas/telegram-functions-bot/commit/37661682e7e7d45c1c17e851d56ee5ff8fe7ccc7))
 
 
 ### Features
 
+* Add font size controls to desktop log viewer ([#168](https://github.com/popstas/telegram-functions-bot/issues/168)) ([57abdab](https://github.com/popstas/telegram-functions-bot/commit/57abdab92fb56c5ec0e10bf1e11b804e44905552))
 * Add reasoning.effort and text.verbosity support to Responses API ([#163](https://github.com/popstas/telegram-functions-bot/issues/163)) ([245bee7](https://github.com/popstas/telegram-functions-bot/commit/245bee7dc950d365ace57b59821987dd13fd87d9))
 * add tool delay ([b75d309](https://github.com/popstas/telegram-functions-bot/commit/b75d309a8fb16f4a5af7c46429b4ed9ec264af48))
 * Allow send chat_id in http_request for make concurrent requests ([#159](https://github.com/popstas/telegram-functions-bot/issues/159)) ([afed09a](https://github.com/popstas/telegram-functions-bot/commit/afed09a86202fd5cb3a678c321f97d833f2c9478))
