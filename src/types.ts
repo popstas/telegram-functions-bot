@@ -101,6 +101,30 @@ export type ChatEvaluatorType = {
   maxIterations?: number;
 };
 
+// Form field types for structured data collection
+export type FormFieldType = {
+  type: "text" | "button";
+  name: string;
+  placeholder?: string;
+  options?: { label: string }[];
+};
+
+// Form configuration
+export type FormConfigType = {
+  intro: string;
+  end: string;
+  message_template: string;
+  send_to: (string | number)[];
+  items: FormFieldType[];
+};
+
+// Form state stored in thread
+export type FormStateType = {
+  active: boolean;
+  formIndex: number;
+  collectedData: Record<string, string>;
+};
+
 export type ChatParamsType = {
   confirmation?: boolean;
   deleteToolAnswers?: number;
@@ -118,6 +142,7 @@ export type ChatParamsType = {
   responseButtonsAgent?: boolean;
   responseButtonsMessage?: boolean;
   vector_memory?: boolean;
+  form?: FormConfigType[];
 };
 
 export type CompletionParamsType = {
@@ -168,6 +193,7 @@ export type ThreadStateType = {
   nextSystemMessage?: string;
   authClient?: OAuth2Client | GoogleAuth;
   dynamicButtons?: ConfigChatButtonType[];
+  formState?: FormStateType;
 };
 
 export type ConfigChatButtonType = {

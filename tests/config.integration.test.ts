@@ -31,7 +31,9 @@ describe("config integration", () => {
     const configPath = path.join(tmp, "config.yml");
     writeConfig(configPath, cfg);
     const loaded = readConfig(configPath);
-    const userChats = loaded.chats.filter((c) => c.agent_name !== "buttons");
+    const userChats = loaded.chats.filter(
+      (c) => c.agent_name !== "buttons" && c.agent_name !== "form-extractor",
+    );
     expect(userChats.map((c) => c.name)).toEqual(["a", "b"]);
     const chatFile = path.join(chatsDir, "a.yml");
     const before = readFileSync(chatFile, "utf8");

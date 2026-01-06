@@ -15,6 +15,7 @@ import onAudio from "./handlers/onAudio.ts";
 import onUnsupported from "./handlers/onUnsupported.ts";
 import onDocument from "./handlers/onDocument.ts";
 import onReaction from "./handlers/onReaction.ts";
+import { handleFormButtonClick } from "./handlers/formFlow.ts";
 import { useLastCtx } from "./helpers/lastCtx.ts";
 import { agentGetHandler, agentPostHandler, toolPostHandler } from "./httpHandlers.ts";
 import { useMqtt, shutdownMqtt } from "./mqtt.ts";
@@ -131,6 +132,19 @@ async function launchBot(bot_token: string, bot_name: string) {
     // Set up chat action handler
     bot.action("add_chat", handleAddChat);
 
+    // Handle form button clicks - format: f:{fieldIndex}:{optionIndex}
+    bot.action(/^f:(\d+):(\d+)$/, async (ctx) => {
+      const match = ctx.match;
+      if (match && match[1] && match[2]) {
+        await handleFormButtonClick(ctx, parseInt(match[1], 10), parseInt(match[2], 10));
+      }
+    });
+
+    // Handle form label clicks (do nothing, just acknowledge) - format: fl:{fieldIndex}
+    bot.action(/^fl:(\d+)$/, async (ctx) => {
+      await ctx.answerCbQuery();
+    });
+
     // Start the bot
     let resolveReady: (() => void) | undefined;
     let rejectReady: ((error: unknown) => void) | undefined;
@@ -142,7 +156,7 @@ async function launchBot(bot_token: string, bot_name: string) {
 
     const launchPromise = bot.launch(
       {
-        allowedUpdates: ["message", "message_reaction"],
+        allowedUpdates: ["message", "message_reaction", "callback_query"],
       },
       () => {
         log({ msg: `bot started: ${bot_name}` });
@@ -245,6 +259,15 @@ async function telegramPostHandlerTest(req: express.Request, res: express.Respon
   return telegramPostHandler(req, res);
 }
 
+function checkAuth(chatConfig?: { http_token?: string }, token?: string) {
+  const globalToken = useConfig().http?.http_token;
+  const chatToken = chatConfig?.http_token;
+  const requestToken = token?.split(" ")[1];
+  return (
+    (chatToken && requestToken === chatToken) || (globalToken && requestToken === globalToken)
+  );
+}
+
 async function telegramPostHandler(req: express.Request, res: express.Response) {
   const { chatId } = req.params;
   const { text } = req.body || "";
@@ -256,6 +279,13 @@ async function telegramPostHandler(req: express.Request, res: express.Response) 
   }
 
   const chatConfig = useConfig().chats.find((chat) => chat.id === parseInt(chatId));
+
+  // Check authorization
+  const token = req.headers["authorization"] as string | undefined;
+  if (!checkAuth(chatConfig, token)) {
+    log({ msg: `Unauthorized access to /telegram/${chatId}`, logLevel: "warn" });
+    return res.status(401).send("Unauthorized");
+  }
   if (!chatConfig) {
     log({ msg: `http: Chat ${chatId} not found in config`, logLevel: "warn" });
     return res.status(400).send("Wrong chat_id");
@@ -285,26 +315,18 @@ async function telegramPostHandler(req: express.Request, res: express.Response) 
     },
   } as unknown as Context;
 
-  const ctx = useLastCtx() as Context & {
-    expressRes?: Express.Response;
-  };
-  if (!ctx) {
-    log({
-      msg: `http: lastCtx not found`,
-      logLevel: "warn",
-      chatId: chat.id,
-      chatTitle: chat.title,
-    });
-    return res.status(500).send("lastCtx not found.");
-  }
+  const lastCtx = useLastCtx();
 
-  // Create a new context object instead of modifying the readonly properties
+  // Create context - use lastCtx if available, otherwise create minimal context
+  const virtualMessage = (virtualCtx.update as { message: Message.TextMessage }).message;
   const newCtx = {
-    ...ctx,
+    ...(lastCtx || {}),
     update: virtualCtx.update,
     chat: virtualCtx.chat,
+    message: virtualMessage,
+    botInfo: lastCtx?.botInfo || { username: useConfig().bot_name },
     // replace to fake action
-    persistentChatAction: async (action: string, callback: () => Promise<void>) => {
+    persistentChatAction: async (_action: string, callback: () => Promise<void>) => {
       log({ msg: `persistentChatAction stub` });
       return await callback();
     },

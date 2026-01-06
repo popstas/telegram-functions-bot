@@ -16,6 +16,7 @@ import { addOauthToThread, ensureAuth } from "../helpers/google.ts";
 import { generateButtonsFromAgent, requestGptAnswer } from "../helpers/gpt.ts";
 import checkAccessLevel from "./access.ts";
 import resolveChatButtons from "./resolveChatButtons.ts";
+import { handleFormFlow } from "./formFlow.ts";
 import { editTelegramMessage, sendTelegramMessage } from "../telegram/send.ts";
 
 // Track active responses per chat to allow cancellation
@@ -66,6 +67,10 @@ export default async function onTextMessage(
   // may replace msg.text
   const buttonResponse = await resolveChatButtons(ctx, msg, chat, thread, extraMessageParams);
   if (buttonResponse) return buttonResponse;
+
+  // Handle form flow if configured
+  const formResult = await handleFormFlow(ctx, msg, chat, thread, extraMessageParams);
+  if (formResult !== undefined) return formResult;
 
   const originalText = msg.text ?? "";
   const textWithoutPrefix = chat.prefix

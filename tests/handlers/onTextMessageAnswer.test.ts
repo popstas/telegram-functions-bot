@@ -77,6 +77,10 @@ jest.unstable_mockModule("../../src/threads.ts", () => ({
   useThreads: () => threads,
 }));
 
+jest.unstable_mockModule("../../src/handlers/formFlow.ts", () => ({
+  handleFormFlow: jest.fn().mockResolvedValue(undefined),
+}));
+
 let handlers: typeof import("../../src/handlers/onTextMessage.ts");
 
 function createCtx(message: Record<string, unknown>): Context & { secondTry?: boolean } {

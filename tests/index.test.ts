@@ -133,7 +133,7 @@ beforeEach(async () => {
   const config = {
     auth: { bot_token: "t" },
     bot_name: "main",
-    http: { telegram_from_username: "user", port: 3000 },
+    http: { telegram_from_username: "user", port: 3000, http_token: "change_me" },
     chats: [
       {
         id: 1,
@@ -166,7 +166,14 @@ function createRes() {
 describe("telegramPostHandler", () => {
   it("rejects missing text", async () => {
     const res = createRes();
-    await telegramPostHandler({ params: { chatId: "1" }, body: {} } as unknown as Request, res);
+    await telegramPostHandler(
+      {
+        params: { chatId: "1" },
+        body: {},
+        headers: { authorization: "Bearer change_me" },
+      } as unknown as Request,
+      res,
+    );
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
@@ -175,11 +182,15 @@ describe("telegramPostHandler", () => {
     mockUseConfig.mockReturnValueOnce({
       auth: {},
       bot_name: "m",
-      http: { telegram_from_username: "u" },
+      http: { telegram_from_username: "u", http_token: "change_me" },
       chats: [],
     });
     await telegramPostHandler(
-      { params: { chatId: "99" }, body: { text: "hi" } } as unknown as Request,
+      {
+        params: { chatId: "99" },
+        body: { text: "hi" },
+        headers: { authorization: "Bearer change_me" },
+      } as unknown as Request,
       res,
     );
     expect(res.status).toHaveBeenCalledWith(400);
@@ -189,7 +200,11 @@ describe("telegramPostHandler", () => {
     const res = createRes();
     mockUseLastCtx.mockReturnValue({});
     await telegramPostHandler(
-      { params: { chatId: "1" }, body: { text: "hi" } } as unknown as Request,
+      {
+        params: { chatId: "1" },
+        body: { text: "hi" },
+        headers: { authorization: "Bearer change_me" },
+      } as unknown as Request,
       res,
     );
     expect(res.end).toHaveBeenCalledWith("ok");
@@ -198,7 +213,11 @@ describe("telegramPostHandler", () => {
 
 describe("telegramPostHandlerTest", () => {
   it("sets default params", async () => {
-    const req = { params: {}, body: {} } as unknown as Request;
+    const req = {
+      params: {},
+      body: {},
+      headers: { authorization: "Bearer change_me" },
+    } as unknown as Request;
     const res = createRes();
     mockUseLastCtx.mockReturnValue({});
     await telegramPostHandlerTest(req, res);
