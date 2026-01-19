@@ -1,5 +1,5 @@
 # Stage 1: application build
-FROM node:22-bookworm-slim AS builder
+FROM node:24-bookworm-slim AS builder
 
 # install dependencies and build
 WORKDIR /build
@@ -7,7 +7,7 @@ COPY package*.json ./
 RUN npm install
 
 # Stage 2: runtime image with uvx
-FROM node:22-bookworm-slim
+FROM node:24-bookworm-slim
 
 # install ssh, Python and pip, then uv (includes uvx)
 RUN apt-get update \
