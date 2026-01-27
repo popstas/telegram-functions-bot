@@ -184,16 +184,7 @@ export async function toolPostHandler(req: express.Request, res: express.Respons
     } as Message.TextMessage,
     agentConfig,
   );
-  const chatTool = chatTools.find((f) => f.name === toolName);
-  if (!chatTool) {
-    log({
-      msg: `Wrong tool_name: ${toolName}`,
-      logLevel: "warn",
-      logPath: HTTP_LOG_PATH,
-    });
-    return res.status(400).send(`Wrong tool_name: ${toolName}`);
-  }
-  const fn = chatTool.module.call(agentConfig, thread).functions.get(toolName);
+
   const argsStr = typeof args === "string" ? args : JSON.stringify(args || {});
   log({
     msg: `${toolName}: ${argsStr}`,
@@ -203,6 +194,18 @@ export async function toolPostHandler(req: express.Request, res: express.Respons
     role: "user",
     logPath: HTTP_LOG_PATH,
   });
+
+  const chatTool = chatTools.find((f) => f.name === toolName);
+  if (!chatTool) {
+    log({
+      msg: `Wrong tool_name: ${toolName}`,
+      logLevel: "warn",
+      logPath: HTTP_LOG_PATH,
+    });
+    return res.status(400).send(`Wrong tool_name: ${toolName}`);
+  }
+
+  const fn = chatTool.module.call(agentConfig, thread).functions.get(toolName);
   let result;
   try {
     let jsonAnswer;
