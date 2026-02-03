@@ -84,4 +84,39 @@ describe("history helpers", () => {
     expect(threads[1].msgs[0].text).toBe("5");
     expect(threads[1].messages[0].content).toBe("5");
   });
+
+  it("prepends reply metadata when markReplyToMessage is true", () => {
+    const replyDate = 0; // 1970-01-01 00:00:00 UTC
+    const msg = {
+      ...createMsg("my answer"),
+      reply_to_message: {
+        message_id: 2,
+        date: replyDate,
+        chat: { id: 1, type: "private" },
+        from: { id: 2, is_bot: false, first_name: "Jane", username: "jane" },
+        text: "original question",
+      },
+    } as Message.TextMessage;
+    const chat = { ...baseChat, chatParams: { markReplyToMessage: true } };
+    addToHistory(msg, chat);
+    const content = threads[1].messages[0].content as string;
+    expect(content).toMatch(/^\[reply to: \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\+00:00, Jane\]\n/);
+    expect(content).toContain("my answer");
+    expect(content).toBe("[reply to: 1970-01-01 00:00:00+00:00, Jane]\nmy answer");
+  });
+
+  it("does not prepend reply metadata when markReplyToMessage is false", () => {
+    const msg = {
+      ...createMsg("my answer"),
+      reply_to_message: {
+        message_id: 2,
+        date: 0,
+        chat: { id: 1, type: "private" },
+        from: { id: 2, is_bot: false, first_name: "Jane" },
+        text: "original",
+      },
+    } as Message.TextMessage;
+    addToHistory(msg, baseChat);
+    expect(threads[1].messages[0].content).toBe("my answer");
+  });
 });

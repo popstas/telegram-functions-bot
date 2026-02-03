@@ -22,12 +22,20 @@ export function buildUserMessage(
   msg: Message.TextMessage,
   chatConfig: ConfigChatType,
 ): OpenAI.ChatCompletionMessageParam {
-  const content = msg.text || "";
+  let content = msg.text || "";
   const sender = (msg as Message.TextMessage & { forward_from?: User }).forward_from || msg.from;
   const isOur = isOurUser(sender, chatConfig);
   let name = sender?.first_name || sender?.last_name || sender?.username;
   if (isOur && chatConfig?.chatParams?.markOurUsers) {
     name = `${name} (${chatConfig.chatParams.markOurUsers})`;
+  }
+  if (chatConfig.chatParams?.markReplyToMessage && msg.reply_to_message) {
+    const replyDate =
+      new Date(msg.reply_to_message.date * 1000).toISOString().replace("T", " ").slice(0, 19) +
+      "+00:00";
+    const replyFrom = msg.reply_to_message.from;
+    const replyName = replyFrom?.first_name || replyFrom?.last_name || replyFrom?.username || "";
+    content = `[reply to: ${replyDate}, ${replyName}]\n${content}`;
   }
   return {
     role: "user",

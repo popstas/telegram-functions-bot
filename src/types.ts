@@ -142,6 +142,7 @@ export type ChatParamsType = {
   responseButtonsAgent?: boolean;
   responseButtonsMessage?: boolean;
   vector_memory?: boolean;
+  markReplyToMessage?: boolean;
   form?: FormConfigType[];
 };
 

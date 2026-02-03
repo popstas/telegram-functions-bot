@@ -25,7 +25,7 @@ import { useThreads } from "./threads.ts";
 // Native debounce implementation
 function debounce<T extends (...args: never[]) => unknown>(
   func: T,
-  wait: number
+  wait: number,
 ): (...args: Parameters<T>) => void {
   let timeout: NodeJS.Timeout;
   return (...args: Parameters<T>) => {
@@ -271,6 +271,7 @@ export function generateConfig(): ConfigType {
           responseButtonsAgent: false,
           responseButtonsMessage: true,
           vector_memory: false,
+          markReplyToMessage: false,
         },
         toolParams: {
           brainstorm: {
@@ -336,6 +337,7 @@ export function generateConfig(): ConfigType {
           responseButtonsAgent: false,
           responseButtonsMessage: true,
           vector_memory: false,
+          markReplyToMessage: false,
         },
         toolParams: {
           brainstorm: {
