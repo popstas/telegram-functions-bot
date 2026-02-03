@@ -1,9 +1,17 @@
-## [2025.10.15](https://github.com/popstas/telegram-functions-bot/compare/v2026.1.3...v2025.10.15) (2026-01-06)
+## [2026.2.4](https://github.com/popstas/telegram-functions-bot/compare/v2026.1.3...v2026.2.4) (2026-02-03)
+
+
+### Bug Fixes
+
+* **formFlow:** remove unused extractFormData param ([444a28c](https://github.com/popstas/telegram-functions-bot/commit/444a28cb848b3ed9f0ae83144192851090272c0c))
+* log tool usage details before wrong tool name error ([36558be](https://github.com/popstas/telegram-functions-bot/commit/36558be1fddf2ab0e14dbb5f1cf4b9c65b4dfe7f))
 
 
 ### Features
 
+* **chatParams:** add markReplyToMessage option ([08c61db](https://github.com/popstas/telegram-functions-bot/commit/08c61dbcf81ddb2eb8318f04edd502473e6dea64))
 * **form:** add configurable form data collection ([9237fd7](https://github.com/popstas/telegram-functions-bot/commit/9237fd7510102dfc2f304eed0d815428c54d009b))
+* **tools:** override chat_id for telegram_get_messages ([ea572eb](https://github.com/popstas/telegram-functions-bot/commit/ea572eb879ea16e6201ba394e8af8bceeb1e3fd0))
 
 
 
