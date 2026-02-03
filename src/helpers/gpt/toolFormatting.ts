@@ -5,7 +5,7 @@ import { ModuleType } from "../../types.ts";
 
 // Type guard for standard function tool calls (OpenAI v6 compatibility)
 function isFunctionToolCall(
-  toolCall: ChatCompletionMessageToolCall
+  toolCall: ChatCompletionMessageToolCall,
 ): toolCall is ChatCompletionMessageToolCall & { function: { name: string; arguments: string } } {
   return "function" in toolCall && toolCall.function !== undefined;
 }
@@ -39,6 +39,19 @@ export function removeNullsParams(params: string): string {
     Object.entries(JSON.parse(params)).filter(([, value]) => value !== null),
   );
   return JSON.stringify(filteredParams);
+}
+
+export function addChatIdToTelegramGetMessagesParams(
+  params: string,
+  toolName: string,
+  chatId: number,
+): string {
+  if (toolName !== "telegram_get_messages") {
+    return params;
+  }
+  const parsed = JSON.parse(params) as Record<string, unknown>;
+  parsed.chat_id = String(chatId);
+  return JSON.stringify(parsed);
 }
 
 export function formatToolParamsString({

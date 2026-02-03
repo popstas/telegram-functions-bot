@@ -23,11 +23,15 @@ import { publishMqttProgress } from "../../mqtt.ts";
 import { telegramConfirm } from "../../telegram/confirm.ts";
 import { applyConfirmationOverride } from "./toolConfirmation.ts";
 import { applyToolHandler } from "./toolHandlers.ts";
-import { formatToolParamsString, removeNullsParams } from "./toolFormatting.ts";
+import {
+  addChatIdToTelegramGetMessagesParams,
+  formatToolParamsString,
+  removeNullsParams,
+} from "./toolFormatting.ts";
 
 // Type guard for standard function tool calls (OpenAI v6 compatibility)
 function isFunctionToolCall(
-  toolCall: ChatCompletionMessageToolCall
+  toolCall: ChatCompletionMessageToolCall,
 ): toolCall is ChatCompletionMessageToolCall & { function: { name: string; arguments: string } } {
   return "function" in toolCall && toolCall.function !== undefined;
 }
@@ -163,6 +167,11 @@ export async function executeTools(
     const toolClient = chatTool.module.call(chatConfig, thread);
 
     toolParams = removeNullsParams(toolParams);
+    toolParams = addChatIdToTelegramGetMessagesParams(
+      toolParams,
+      toolCall.function.name,
+      msg.chat.id,
+    );
 
     toolParams = applyToolHandler(toolCall.function.name, toolParams, {
       chatConfig,
