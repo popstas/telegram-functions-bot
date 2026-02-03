@@ -263,9 +263,7 @@ function checkAuth(chatConfig?: { http_token?: string }, token?: string) {
   const globalToken = useConfig().http?.http_token;
   const chatToken = chatConfig?.http_token;
   const requestToken = token?.split(" ")[1];
-  return (
-    (chatToken && requestToken === chatToken) || (globalToken && requestToken === globalToken)
-  );
+  return (chatToken && requestToken === chatToken) || (globalToken && requestToken === globalToken);
 }
 
 async function telegramPostHandler(req: express.Request, res: express.Response) {

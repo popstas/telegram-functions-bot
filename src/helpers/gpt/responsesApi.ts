@@ -4,7 +4,7 @@ import type { ResponsesParamsType } from "../../types.ts";
 
 // Type guard for standard function tool calls (OpenAI v6 compatibility)
 function isFunctionToolCall(
-  toolCall: ChatCompletionMessageToolCall
+  toolCall: ChatCompletionMessageToolCall,
 ): toolCall is ChatCompletionMessageToolCall & { function: { name: string; arguments: string } } {
   return "function" in toolCall && toolCall.function !== undefined;
 }

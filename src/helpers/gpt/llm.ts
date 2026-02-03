@@ -19,7 +19,7 @@ import { addToHistory, forgetHistory } from "../history.ts";
 
 // Type guard for standard function tool calls (OpenAI v6 compatibility)
 function isFunctionToolCall(
-  toolCall: ChatCompletionMessageToolCall
+  toolCall: ChatCompletionMessageToolCall,
 ): toolCall is ChatCompletionMessageToolCall & { function: { name: string; arguments: string } } {
   return "function" in toolCall && toolCall.function !== undefined;
 }
@@ -315,14 +315,12 @@ export async function handleCancelledToolCalls({
   gptContext.thread.messages.push(assistantMessage);
   const cancelMessages = cancellation.cancelMessages?.length
     ? cancellation.cancelMessages
-    : messageAgent.tool_calls
-        ?.filter(isFunctionToolCall)
-        .map((toolCall) =>
-          JSON.stringify({
-            name: toolCall.function.name,
-            arguments: toolCall.function.arguments,
-          }),
-        );
+    : messageAgent.tool_calls?.filter(isFunctionToolCall).map((toolCall) =>
+        JSON.stringify({
+          name: toolCall.function.name,
+          arguments: toolCall.function.arguments,
+        }),
+      );
   let cancelText =
     cancelMessages?.map((params) => `tool call cancelled: ${params}`).join("\n") || "";
   if (!cancelText) {

@@ -69,9 +69,7 @@ async function startForm(
 
   // Send intro message with inline buttons for button fields
   const buttons = buildFormButtons(form, thread.formState);
-  const introParams = buttons
-    ? { ...extraParams, ...buttons }
-    : extraParams;
+  const introParams = buttons ? { ...extraParams, ...buttons } : extraParams;
 
   return await sendTelegramMessage(msg.chat.id, form.intro, introParams, ctx, chat);
 }
@@ -141,9 +139,7 @@ async function processFormMessage(
 
   // Send status with buttons for remaining button fields
   const buttons = buildFormButtons(form, formState);
-  const statusParams = buttons
-    ? { ...extraParams, ...buttons }
-    : extraParams;
+  const statusParams = buttons ? { ...extraParams, ...buttons } : extraParams;
 
   return await sendTelegramMessage(msg.chat.id, statusMessage, statusParams, ctx, chat);
 }
@@ -170,9 +166,7 @@ export async function handleFormButtonClick(
 
   // Find the chat config
   const config = useConfig();
-  const chat = config.chats.find(
-    (c) => c.id === chatId || c.ids?.includes(chatId),
-  );
+  const chat = config.chats.find((c) => c.id === chatId || c.ids?.includes(chatId));
 
   if (!chat?.chatParams?.form) {
     await ctx.answerCbQuery("Form not configured");
@@ -448,9 +442,7 @@ function buildFormButtons(
 ): ReturnType<typeof Markup.inlineKeyboard> | undefined {
   const unfilledButtonFields = form.items
     .map((field, index) => ({ field, index }))
-    .filter(
-      ({ field }) => field.type === "button" && !state.collectedData[field.name],
-    );
+    .filter(({ field }) => field.type === "button" && !state.collectedData[field.name]);
 
   if (unfilledButtonFields.length === 0) {
     return undefined;
