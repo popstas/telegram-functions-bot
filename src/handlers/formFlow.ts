@@ -112,7 +112,7 @@ async function processFormMessage(
   }
 
   // Try to extract data from user text using LLM
-  const extractedData = await extractFormData(userText, unfilledFields, msg, chat);
+  const extractedData = await extractFormData(userText, unfilledFields, msg);
 
   if (extractedData && Object.keys(extractedData).length > 0) {
     // Update collected data
@@ -348,7 +348,6 @@ async function extractFormData(
   userText: string,
   unfilledFields: FormFieldType[],
   msg: Message.TextMessage,
-  chatConfig: ConfigChatType,
 ): Promise<Record<string, string> | undefined> {
   // Only extract text fields - button fields are handled by button clicks
   const textFields = unfilledFields.filter((f) => f.type === "text");
