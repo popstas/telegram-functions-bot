@@ -78,6 +78,6 @@ export function isMentioned(
   const hasTagged = new RegExp(`@${botName}`, "i").test(text);
   const isMentioned = hasPrefix || hasTagged || replyToBot;
   if (prefix && !isMentioned) return false;
-  if (replyToOther) return false;
+  if (replyToOther && !isMentioned) return false;
   return true;
 }
