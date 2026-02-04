@@ -48,9 +48,10 @@ describe("isMentioned", () => {
     expect(isMentioned(msg, chat)).toBe(true);
   });
 
-  it("returns false when no prefix and reply to other", () => {
-    const chat = { ...baseChat, prefix: undefined } as ConfigChatType;
+  it("returns false when reply to other and no mention (no prefix, no @bot)", () => {
+    const chat = { ...baseChat, prefix: "!" } as ConfigChatType;
     const msg = createMsg({
+      text: "hi",
       reply_to_message: {
         chat: { id: 1, type: "group" },
         from: { username: "other" },
@@ -96,7 +97,7 @@ describe("isMentioned", () => {
     expect(isMentioned(msg, baseChat)).toBe(true);
   });
 
-  it("ignores prefix when replying to other", () => {
+  it("returns true when reply to other but with mentioned bot (prefix)", () => {
     const msg = createMsg({
       text: "!hello",
       reply_to_message: {
@@ -107,7 +108,21 @@ describe("isMentioned", () => {
         text: "hi",
       } as Message.TextMessage,
     });
-    expect(isMentioned(msg, baseChat)).toBe(false);
+    expect(isMentioned(msg, baseChat)).toBe(true);
+  });
+
+  it("returns true when reply to other but with mentioned bot (@mention)", () => {
+    const msg = createMsg({
+      text: "hi @mybot",
+      reply_to_message: {
+        chat: { id: 1, type: "group" },
+        from: { username: "other" },
+        message_id: 2,
+        date: 0,
+        text: "hi",
+      } as Message.TextMessage,
+    });
+    expect(isMentioned(msg, baseChat)).toBe(true);
   });
 
   it("returns false for group without mention", () => {
