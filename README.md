@@ -406,6 +406,7 @@ MCP (Model Context Protocol) provides external tools and services to the bot. MC
 
 - The format of `config.mcpServers` matches the structure used in Claude Desktop.
 - It is a list of MCP server configurations, each specifying the server address and connection details.
+- For streamable HTTP MCP servers, use the `url` property (e.g. `url: "http://localhost:8000/mcp"`). The `serverUrl` property is deprecated in favor of `url`.
 - Example:
   ```yaml
   {

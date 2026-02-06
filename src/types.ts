@@ -276,5 +276,8 @@ export interface McpToolConfig {
   command?: string;
   args?: string[];
   env?: Record<string, string>;
+  /** Streamable HTTP endpoint for MCP server */
+  url?: string;
+  /** @deprecated Use `url` instead */
   serverUrl?: string;
 }

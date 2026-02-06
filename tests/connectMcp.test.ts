@@ -62,11 +62,11 @@ describe("connectMcp", () => {
     expect(mockConnect).not.toHaveBeenCalled();
   });
 
-  it("connects via serverUrl", async () => {
+  it("connects via url", async () => {
     const clients: Record<string, Client> = {};
     const res = await connectMcp(
       "m",
-      { serverUrl: "http://s" } as unknown as McpToolConfig,
+      { url: "http://s" } as unknown as McpToolConfig,
       clients,
     );
     expect(mockHttp).toHaveBeenCalledWith(new URL("http://s"), {
@@ -103,7 +103,7 @@ describe("connectMcp", () => {
 
   it("returns disconnected on error", async () => {
     mockConnect.mockRejectedValue(new Error("bad"));
-    const res = await connectMcp("m", { serverUrl: "http://s" } as unknown as McpToolConfig, {});
+    const res = await connectMcp("m", { url: "http://s" } as unknown as McpToolConfig, {});
     expect(res).toEqual({ model: "m", client: null, connected: false });
     expect(mockLog).toHaveBeenCalled();
   });

@@ -70,8 +70,8 @@ describe("connectMcp", () => {
     expect(res).toEqual({ model: "m1", client: existing, connected: true });
   });
 
-  it("connects using serverUrl", async () => {
-    const cfg = { serverUrl: "http://srv" } as McpToolConfig;
+  it("connects using url", async () => {
+    const cfg = { url: "http://srv" } as McpToolConfig;
     const clients = {};
     const transport = {};
     StreamableTransportMock.mockReturnValue(transport);
@@ -83,6 +83,26 @@ describe("connectMcp", () => {
     });
     expect(mockClientConnect).toHaveBeenCalledWith(transport);
     expect(res.connected).toBe(true);
+  });
+
+  it("serverUrl still works and logs deprecation", async () => {
+    const cfg = { serverUrl: "http://srv" } as McpToolConfig;
+    const clients = {};
+    const transport = {};
+    StreamableTransportMock.mockReturnValue(transport);
+    // Using type assertion to bypass type checking for tests
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await connectMcp("m2", cfg, clients as any);
+    expect(StreamableTransportMock).toHaveBeenCalledWith(new URL("http://srv"), {
+      sessionId: undefined,
+    });
+    expect(res.connected).toBe(true);
+    expect(mockLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        msg: expect.stringContaining("serverUrl is deprecated"),
+        logLevel: "warn",
+      }),
+    );
   });
 
   it("connects using command", async () => {
@@ -107,7 +127,7 @@ describe("connectMcp", () => {
   });
 
   it("handles connection errors", async () => {
-    const cfg = { serverUrl: "http://srv" } as McpToolConfig;
+    const cfg = { url: "http://srv" } as McpToolConfig;
     const clients = {};
     mockClientConnect.mockRejectedValueOnce(new Error("fail"));
     // Using type assertion to bypass type checking for tests
@@ -128,7 +148,7 @@ describe("init", () => {
     StreamableTransportMock.mockReturnValue({});
     StdioTransportMock.mockReturnValue({});
     const res = await init({
-      m1: { serverUrl: "http://one" } as McpToolConfig,
+      m1: { url: "http://one" } as McpToolConfig,
       m2: { command: "cmd" } as McpToolConfig,
     });
     expect(res).toEqual([{ name: "t1", description: "d", properties: {}, model: "m1" }]);
@@ -137,7 +157,7 @@ describe("init", () => {
   it("logs loading time", async () => {
     listToolsMock.mockResolvedValue({ tools: [] });
     StreamableTransportMock.mockReturnValue({});
-    await init({ m1: { serverUrl: "http://one" } as McpToolConfig });
+    await init({ m1: { url: "http://one" } as McpToolConfig });
     const msgs = mockLog.mock.calls.map((c) => c[0].msg);
     expect(msgs.some((m) => m.includes("MCP loaded for"))).toBe(true);
   });

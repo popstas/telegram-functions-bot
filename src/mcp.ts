@@ -112,10 +112,10 @@ async function getMcpTools({
 }
 
 /**
- * Initialize SSE MCP transport and set up notification handlers
+ * Initialize streamable HTTP MCP transport and set up notification handlers
  */
-function initSseMcp(serverUrl: string, model: string, client: Client) {
-  const transport = new StreamableHTTPClientTransport(new URL(serverUrl), {
+function initStreamableHttpMcp(url: string, model: string, client: Client) {
+  const transport = new StreamableHTTPClientTransport(new URL(url), {
     sessionId: undefined,
   });
 
@@ -171,9 +171,16 @@ export async function connectMcp(
   let transport;
 
   try {
-    if (cfg.serverUrl) {
-      // Connect via SSE HTTP transport
-      transport = initSseMcp(cfg.serverUrl, model, client);
+    const httpUrl = cfg.url ?? cfg.serverUrl;
+    if (cfg.serverUrl && !cfg.url) {
+      log({
+        msg: `[${model}] serverUrl is deprecated, use url instead`,
+        logLevel: "warn",
+      });
+    }
+    if (httpUrl) {
+      // Connect via streamable HTTP transport
+      transport = initStreamableHttpMcp(httpUrl, model, client);
     } else if (cfg.command) {
       transport = new StdioClientTransport({
         command: cfg.command,

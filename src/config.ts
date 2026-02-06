@@ -219,6 +219,9 @@ export function generateConfig(): ConfigType {
         command: "uvx",
         args: ["mcp-server-fetch"],
       },
+      "http-example": {
+        url: "http://localhost:8000/mcp",
+      },
     },
     local_models: [],
     http: {
