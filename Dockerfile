@@ -9,18 +9,15 @@ RUN npm install
 # Stage 2: runtime image with uvx
 FROM node:24-bookworm-slim
 
-# install ssh, Python and pip, then uv (includes uvx)
+# install ssh, ffmpeg
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-      openssh-client ffmpeg wget \
+      openssh-client ffmpeg \
     && rm -rf /var/lib/apt/lists/*
-#   python3 py3-pip \
-#    && python3 -m pip install --upgrade pip \
-#    && pip install uv
 
-# Install uvx
-RUN wget -qO- https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:${PATH}"
+# Copy uv and uvx from official Astral image (recommended over install script)
+# https://docs.astral.sh/uv/guides/integration/docker/
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 # copy application
 WORKDIR /app
