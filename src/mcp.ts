@@ -1,6 +1,10 @@
+import { randomUUID } from "node:crypto";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import {
+  StreamableHTTPClientTransport,
+  StreamableHTTPError,
+} from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import {
   LoggingMessageNotificationSchema,
   ResourceListChangedNotificationSchema,
@@ -12,16 +16,51 @@ import { log } from "./helpers.ts";
 // Store active MCP clients by model key
 const clients: Record<string, Client> = {};
 
+// HTTP transport state for session management and failover reconnect.
+// Session: we pass sessionId when creating transport; on 404 (session invalid) we reconnect without it.
+// SSE resumption (Last-Event-ID) is handled inside StreamableHTTPClientTransport.
+const httpTransports: Record<string, StreamableHTTPClientTransport> = {};
+const mcpConfigs: Record<string, McpToolConfig> = {};
+const sessionIds: Record<string, string | undefined> = {};
+
 export const __test = {
-  /** Reset cached clients - used in tests */
+  /** Reset cached clients and HTTP state - used in tests */
   resetClients() {
     for (const key of Object.keys(clients)) {
       delete clients[key];
     }
+    for (const key of Object.keys(httpTransports)) {
+      delete httpTransports[key];
+    }
+    for (const key of Object.keys(mcpConfigs)) {
+      delete mcpConfigs[key];
+    }
+    for (const key of Object.keys(sessionIds)) {
+      delete sessionIds[key];
+    }
+    reconnectMcpImpl = connectMcp;
   },
   /** Manually set a client for a model - used in tests */
   setClient(model: string, client: Client) {
     clients[model] = client;
+  },
+  /** Set MCP config for a model - used in tests for 404 reconnect path */
+  setMcpConfig(model: string, config: McpToolConfig) {
+    mcpConfigs[model] = config;
+  },
+  /** Override reconnect implementation - used in tests for 404 reconnect path */
+  setReconnectImpl(
+    fn: (
+      model: string,
+      cfg: McpToolConfig,
+      clients: Record<string, Client>,
+    ) => Promise<ConnectMcpResult>,
+  ) {
+    reconnectMcpImpl = fn;
+  },
+  /** Reset reconnect implementation to default */
+  resetReconnectImpl() {
+    reconnectMcpImpl = connectMcp;
   },
 };
 
@@ -38,6 +77,25 @@ type ConnectMcpResult = {
   connected: boolean;
   error?: string | null;
 };
+
+/** True if the error indicates the server session is invalid (404 or "Session not found" etc.). */
+function isSessionInvalidError(err: unknown): boolean {
+  if (err instanceof StreamableHTTPError && err.code === 404) return true;
+  const msg =
+    typeof err === "object" && err !== null && "message" in err
+      ? String((err as { message?: unknown }).message)
+      : String(err);
+  return /session not found|missing session id/i.test(msg);
+}
+
+/** True if the error indicates the server requires a session ID on first request (non-spec). */
+function isMissingSessionIdError(err: unknown): boolean {
+  const msg =
+    typeof err === "object" && err !== null && "message" in err
+      ? String((err as { message?: unknown }).message)
+      : String(err);
+  return /missing session id/i.test(msg);
+}
 
 /**
  * Initialize MCP servers for each configured model using the MCP SDK.
@@ -81,9 +139,9 @@ async function getMcpTools({
   if (!connected || !client) return [];
   const tools: McpTool[] = [];
 
+  const doListTools = (c: Client) => c.listTools();
   try {
-    // Use the client's listTools method
-    const toolsResponse = await client.listTools();
+    const toolsResponse = await doListTools(client);
 
     if (toolsResponse?.tools?.length) {
       tools.push(
@@ -103,6 +161,37 @@ async function getMcpTools({
     clients[model] = client;
     return tools;
   } catch (error) {
+    const hasHttpState = httpTransports[model] ?? mcpConfigs[model];
+    if (isSessionInvalidError(error) && hasHttpState) {
+      const reconnected = await reconnectMcp(model);
+      if (reconnected.connected && reconnected.client) {
+        try {
+          const toolsResponse = await doListTools(reconnected.client);
+          if (toolsResponse?.tools?.length) {
+            tools.push(
+              ...toolsResponse.tools.map((tool) => ({
+                name: tool.name,
+                description: tool.description || "",
+                properties: tool.inputSchema,
+                model,
+              })),
+            );
+            log({
+              msg: `[${model}] Available tools: ${toolsResponse.tools.map((t) => t.name).join(", ")}`,
+              logLevel: "debug",
+            });
+          }
+          clients[model] = reconnected.client;
+          return tools;
+        } catch (retryErr) {
+          log({
+            msg: `[${model}] Failed to list tools after reconnect: ${retryErr instanceof Error ? retryErr.message : String(retryErr)}`,
+            logLevel: "error",
+          });
+          return [];
+        }
+      }
+    }
     log({
       msg: `[${model}] Failed to list tools: ${error instanceof Error ? error.message : String(error)}`,
       logLevel: "error",
@@ -112,11 +201,13 @@ async function getMcpTools({
 }
 
 /**
- * Initialize streamable HTTP MCP transport and set up notification handlers
+ * Initialize streamable HTTP MCP transport and set up notification handlers.
+ * Per MCP spec: first connect uses no session ID; server assigns session at initialization
+ * and returns it in Mcp-Session-Id header; we send it only on subsequent requests.
  */
-function initStreamableHttpMcp(url: string, model: string, client: Client) {
+function initStreamableHttpMcp(url: string, model: string, client: Client, sessionId?: string) {
   const transport = new StreamableHTTPClientTransport(new URL(url), {
-    sessionId: undefined,
+    sessionId,
   });
 
   // Set up notification handlers (logging and resources)
@@ -167,8 +258,8 @@ export async function connectMcp(
       connected: true,
     };
 
-  const client = new Client({ name: model, version: "1.0.0" });
-  let transport;
+  let client = new Client({ name: model, version: "1.0.0" });
+  let transport: StreamableHTTPClientTransport | StdioClientTransport | undefined;
 
   try {
     const httpUrl = cfg.url ?? cfg.serverUrl;
@@ -179,8 +270,35 @@ export async function connectMcp(
       });
     }
     if (httpUrl) {
-      // Connect via streamable HTTP transport
-      transport = initStreamableHttpMcp(httpUrl, model, client);
+      // Per MCP spec: first connect with no session ID; server assigns session at init.
+      // Fallback: if server returns "Missing session ID" (e.g. requires it on GET/SSE),
+      // retry once with a client-generated session ID.
+      let lastErr: unknown = undefined;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          transport = initStreamableHttpMcp(httpUrl, model, client, sessionIds[model]);
+          await client.connect(transport);
+          lastErr = undefined;
+          break;
+        } catch (err) {
+          lastErr = err;
+          if (
+            attempt === 0 &&
+            isMissingSessionIdError(err) &&
+            sessionIds[model] === undefined
+          ) {
+            sessionIds[model] = randomUUID();
+            client = new Client({ name: model, version: "1.0.0" });
+            log({
+              msg: `[${model}] Retrying connect with client-generated session ID`,
+              logLevel: "debug",
+            });
+            continue;
+          }
+          throw err;
+        }
+      }
+      if (lastErr !== undefined) throw lastErr;
     } else if (cfg.command) {
       transport = new StdioClientTransport({
         command: cfg.command,
@@ -191,11 +309,17 @@ export async function connectMcp(
           NODE_OPTIONS: `--unhandled-rejections=warn ${process.env.NODE_OPTIONS || ""}`.trim(),
         },
       });
+      await client.connect(transport);
     } else {
       throw new Error(`No transport available for MCP ${model}`);
     }
 
-    await client.connect(transport);
+    if (httpUrl && transport) {
+      const httpTransport = transport as StreamableHTTPClientTransport;
+      httpTransports[model] = httpTransport;
+      mcpConfigs[model] = cfg;
+      sessionIds[model] = httpTransport.sessionId;
+    }
     return { model, client, connected: true };
   } catch (err) {
     log({
@@ -207,33 +331,98 @@ export async function connectMcp(
 }
 
 /**
+ * Reconnect to an MCP server after session invalid (404 or "Session not found").
+ * Closes existing HTTP transport, clears client and session, then connects again without session id.
+ */
+async function reconnectMcp(model: string): Promise<ConnectMcpResult> {
+  const transport = httpTransports[model];
+  if (transport) {
+    try {
+      await transport.close();
+    } catch (err) {
+      log({
+        msg: `[${model}] Error closing transport on reconnect: ${err}`,
+        logLevel: "warn",
+      });
+    }
+    delete clients[model];
+    delete httpTransports[model];
+  }
+  sessionIds[model] = undefined;
+  const cfg = mcpConfigs[model];
+  if (!cfg) {
+    return { model, client: null, connected: false };
+  }
+  return reconnectMcpImpl(model, cfg, clients);
+}
+
+/** Injected for tests; default is connectMcp. */
+let reconnectMcpImpl: (
+  model: string,
+  cfg: McpToolConfig,
+  clients: Record<string, Client>,
+) => Promise<ConnectMcpResult> = connectMcp;
+
+/**
  * Call a tool on the MCP server for a given model.
+ * On session invalid (404 or "Session not found"), reconnects and retries once.
+ * If client is missing (e.g. after server restart), tries to connect once using stored config.
  */
 export async function callMcp(
   model: string,
   toolName: string,
   args: string,
 ): Promise<ToolResponse> {
-  const client = clients[model];
+  let client = clients[model];
+  if (!client && mcpConfigs[model]) {
+    const reconnected = await connectMcp(model, mcpConfigs[model], clients);
+    if (reconnected.connected && reconnected.client) {
+      client = reconnected.client;
+    }
+  }
   if (!client) {
     return { content: `MCP client not initialized: ${model}` };
   }
-  try {
-    const result = await client.callTool({
+  const parsedArgs = JSON.parse(args);
+  const doCall = (c: Client) =>
+    c.callTool({
       name: toolName,
-      arguments: JSON.parse(args),
+      arguments: parsedArgs,
     });
+  try {
+    const result = await doCall(client);
     return {
       content: typeof result.content === "string" ? result.content : JSON.stringify(result.content),
     };
   } catch (err: unknown) {
+    const hasHttpState = httpTransports[model] ?? mcpConfigs[model];
+    if (isSessionInvalidError(err) && hasHttpState) {
+      const reconnected = await reconnectMcp(model);
+      if (!reconnected.connected || !reconnected.client) {
+        return {
+          content: `MCP call error: session invalid (404), reconnect failed`,
+        };
+      }
+      try {
+        const result = await doCall(reconnected.client);
+        return {
+          content:
+            typeof result.content === "string" ? result.content : JSON.stringify(result.content),
+        };
+      } catch (retryErr: unknown) {
+        const message =
+          typeof retryErr === "object" && retryErr !== null && "message" in retryErr
+            ? (retryErr as { message?: string }).message || ""
+            : String(retryErr);
+        return { content: `MCP call error: ${message}` };
+      }
+    }
     let message;
     if (typeof err === "object" && err !== null && "message" in err) {
       message = (err as { message?: string }).message || "";
     } else {
       message = String(err);
     }
-    // TODO: Error after this: 400 Invalid parameter: messages with role 'tool' must be a response to a preceeding message with 'tool_calls'
     return { content: `MCP call error: ${message}` };
   }
 }

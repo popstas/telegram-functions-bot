@@ -49,4 +49,33 @@ describe("callMcp", () => {
     const res = await callMcp("m3", "foo", "{}");
     expect(res).toEqual({ content: "MCP call error: bad" });
   });
+
+  describe("404 session invalid reconnect", () => {
+    it("reconnects and retries once on 404 (session invalid)", async () => {
+      const { StreamableHTTPError } = await import(
+        "@modelcontextprotocol/sdk/client/streamableHttp.js"
+      );
+      const successClient = {
+        callTool: jest.fn().mockResolvedValue({ content: "ok" }),
+      } as unknown as { callTool: jest.Mock };
+      __test.setReconnectImpl(async (model, _cfg, clients) => {
+        clients[model] =
+          successClient as import("@modelcontextprotocol/sdk/client/index.js").Client;
+        return {
+          model,
+          client: successClient as import("@modelcontextprotocol/sdk/client/index.js").Client,
+          connected: true,
+        };
+      });
+      const client = {
+        callTool: jest.fn().mockRejectedValueOnce(new StreamableHTTPError(404, "session invalid")),
+      } as unknown as { callTool: jest.Mock<Promise<never>, [unknown]> };
+      __test.setClient("m404", client);
+      __test.setMcpConfig("m404", {
+        url: "http://localhost",
+      } as import("../src/types.ts").McpToolConfig);
+      const res = await callMcp("m404", "foo", "{}");
+      expect(res).toEqual({ content: "ok" });
+    });
+  });
 });

@@ -32,6 +32,15 @@ jest.unstable_mockModule("@modelcontextprotocol/sdk/client/streamableHttp.js", (
   StreamableHTTPClientTransport: function (url: unknown, opts: unknown) {
     mockHttp(url, opts);
   },
+  StreamableHTTPError: class StreamableHTTPError extends Error {
+    constructor(
+      public code: number | undefined,
+      message: string | undefined,
+    ) {
+      super(message);
+      this.name = "StreamableHTTPError";
+    }
+  },
 }));
 
 jest.unstable_mockModule("../src/helpers.ts", () => ({
@@ -64,11 +73,7 @@ describe("connectMcp", () => {
 
   it("connects via url", async () => {
     const clients: Record<string, Client> = {};
-    const res = await connectMcp(
-      "m",
-      { url: "http://s" } as unknown as McpToolConfig,
-      clients,
-    );
+    const res = await connectMcp("m", { url: "http://s" } as unknown as McpToolConfig, clients);
     expect(mockHttp).toHaveBeenCalledWith(new URL("http://s"), {
       sessionId: undefined,
     });

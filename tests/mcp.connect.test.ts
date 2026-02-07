@@ -33,6 +33,15 @@ jest.unstable_mockModule("@modelcontextprotocol/sdk/client/stdio", () => ({
 
 jest.unstable_mockModule("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
   StreamableHTTPClientTransport: StreamableTransportMock,
+  StreamableHTTPError: class StreamableHTTPError extends Error {
+    constructor(
+      public code: number | undefined,
+      message: string | undefined,
+    ) {
+      super(message);
+      this.name = "StreamableHTTPError";
+    }
+  },
 }));
 
 jest.unstable_mockModule("@modelcontextprotocol/sdk/types.js", () => ({
