@@ -102,6 +102,25 @@ describe("FileOAuthProvider", () => {
     );
   });
 
+  it("redirectToAuthorization calls onAuthUrl callback", () => {
+    const onAuthUrl = jest.fn();
+    const provider = new FileOAuthProvider(
+      "test-srv",
+      "https://cb.example.com/callback",
+      tmp,
+      onAuthUrl,
+    );
+    const url = new URL("https://auth.example.com/authorize?client_id=123");
+    provider.redirectToAuthorization(url);
+    expect(onAuthUrl).toHaveBeenCalledWith(url);
+  });
+
+  it("redirectToAuthorization works without onAuthUrl callback", () => {
+    const provider = new FileOAuthProvider("test-srv", "https://cb.example.com/callback", tmp);
+    const url = new URL("https://auth.example.com/authorize?client_id=123");
+    expect(() => provider.redirectToAuthorization(url)).not.toThrow();
+  });
+
   it("invalidateCredentials('all') removes all files", () => {
     const provider = new FileOAuthProvider("test", "https://cb.example.com/callback", tmp);
     provider.saveClientInformation({ client_id: "id" });
@@ -174,6 +193,23 @@ describe("createAuthProvider", () => {
     // Verify it works by saving/loading
     provider!.saveTokens({ access_token: "test", token_type: "Bearer" });
     expect(existsSync(join(storePath, "tokens.json"))).toBe(true);
+  });
+
+  it("passes onAuthUrl to FileOAuthProvider", () => {
+    const onAuthUrl = jest.fn();
+    const storePath = join(tmp, "auth-url-test");
+    const provider = createAuthProvider(
+      "srv",
+      {
+        url: "http://localhost",
+        auth: { callbackUrl: "https://cb.example.com/callback", storePath },
+      },
+      onAuthUrl,
+    );
+    expect(provider).toBeInstanceOf(FileOAuthProvider);
+    const url = new URL("https://auth.example.com/authorize");
+    provider!.redirectToAuthorization(url);
+    expect(onAuthUrl).toHaveBeenCalledWith(url);
   });
 });
 

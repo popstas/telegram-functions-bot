@@ -329,6 +329,9 @@ export function generateConfig(): ConfigType {
         ],
         http_token: "change_me",
         tools: ["javascript_interpreter", "brainstorm", "fetch"],
+        mcpServers: {
+          "local-example": { command: "uvx", args: ["mcp-server-fetch"] },
+        },
         evaluators: [{ agent_name: "evaluator", threshold: 4, maxIterations: 2 }],
         responsesParams: {
           reasoning: { effort: "minimal" },

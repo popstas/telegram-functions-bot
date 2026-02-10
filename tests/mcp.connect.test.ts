@@ -183,7 +183,7 @@ describe("connectMcp", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await connectMcp("m5", cfg, clients as any);
 
-    expect(mockCreateAuthProvider).toHaveBeenCalledWith("m5", cfg);
+    expect(mockCreateAuthProvider).toHaveBeenCalledWith("m5", cfg, undefined);
     expect(StreamableTransportMock).toHaveBeenCalledWith(new URL("http://srv"), {
       sessionId: undefined,
       authProvider: fakeProvider,
@@ -226,7 +226,7 @@ describe("connectMcp", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await connectMcp("m7", cfg, clients as any);
 
-    expect(mockCreateAuthProvider).toHaveBeenCalledWith("m7", cfg);
+    expect(mockCreateAuthProvider).toHaveBeenCalledWith("m7", cfg, undefined);
     expect(StreamableTransportMock).toHaveBeenCalledWith(new URL("http://srv"), {
       sessionId: undefined,
       authProvider: undefined,

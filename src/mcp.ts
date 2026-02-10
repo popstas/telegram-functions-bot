@@ -104,7 +104,10 @@ function isMissingSessionIdError(err: unknown): boolean {
  * Initialize MCP servers for each configured model using the MCP SDK.
  * Spawns and connects to external MCP server processes.
  */
-export async function init(configs: Record<string, McpToolConfig>): Promise<McpTool[]> {
+export async function init(
+  configs: Record<string, McpToolConfig>,
+  onAuthUrl?: (url: URL) => void,
+): Promise<McpTool[]> {
   log({
     msg: `Connecting to ${Object.keys(configs).length} MCP servers...`,
     logLevel: "debug",
@@ -114,7 +117,7 @@ export async function init(configs: Record<string, McpToolConfig>): Promise<McpT
 
   const connectPromises = Object.entries(configs).map(([model, cfg]) => {
     const modelStart = Date.now();
-    return connectMcp(model, cfg, clients)
+    return connectMcp(model, cfg, clients, onAuthUrl)
       .then((res) => getMcpTools(res))
       .finally(() => {
         times[model] = (Date.now() - modelStart) / 1000;
@@ -260,6 +263,7 @@ export async function connectMcp(
   model: string,
   cfg: McpToolConfig,
   clients: Record<string, Client>,
+  onAuthUrl?: (url: URL) => void,
 ): Promise<ConnectMcpResult> {
   if (clients[model])
     return {
@@ -280,7 +284,7 @@ export async function connectMcp(
       });
     }
     if (httpUrl) {
-      const authProvider = createAuthProvider(model, cfg);
+      const authProvider = createAuthProvider(model, cfg, onAuthUrl);
       // Per MCP spec: first connect with no session ID; server assigns session at init.
       // Fallback: if server returns "Missing session ID" (e.g. requires it on GET/SSE),
       // retry once with a client-generated session ID.
@@ -449,4 +453,61 @@ export async function callMcp(
     }
     return { content: `MCP call error: ${message}` };
   }
+}
+
+/**
+ * Build a namespaced key for per-chat MCP servers.
+ */
+export function getChatMcpKey(chatId: number, serverName: string): string {
+  return `chat_${chatId}_${serverName}`;
+}
+
+/**
+ * Initialize per-chat MCP servers using namespaced keys.
+ */
+export async function initChatMcp(
+  chatId: number,
+  configs: Record<string, McpToolConfig>,
+  onAuthUrl?: (url: URL) => void,
+): Promise<McpTool[]> {
+  const namespacedConfigs: Record<string, McpToolConfig> = {};
+  for (const [name, cfg] of Object.entries(configs)) {
+    namespacedConfigs[getChatMcpKey(chatId, name)] = cfg;
+  }
+  return init(namespacedConfigs, onAuthUrl);
+}
+
+/**
+ * Disconnect a single MCP client by key and clean up module-level state.
+ */
+export async function disconnectMcp(model: string): Promise<void> {
+  const transport = httpTransports[model];
+  if (transport) {
+    try {
+      await transport.close();
+    } catch {
+      // ignore close errors
+    }
+    delete httpTransports[model];
+  }
+  const client = clients[model];
+  if (client) {
+    try {
+      await client.close();
+    } catch {
+      // ignore close errors
+    }
+    delete clients[model];
+  }
+  delete mcpConfigs[model];
+  delete sessionIds[model];
+}
+
+/**
+ * Disconnect all MCP clients belonging to a specific chat (by prefix match).
+ */
+export async function disconnectChatMcp(chatId: number): Promise<void> {
+  const prefix = `chat_${chatId}_`;
+  const keys = Object.keys(clients).filter((k) => k.startsWith(prefix));
+  await Promise.all(keys.map((k) => disconnectMcp(k)));
 }

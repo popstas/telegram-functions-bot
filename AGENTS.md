@@ -9,6 +9,22 @@ This project is a TypeScript Telegram bot. The codebase uses Node.js tooling wit
 - **Never** change or delete files in `data/` directory in tests.
 - **Never** modify `CHANGELOG.md`; it is a generated file.
 
+## Config type change checklist
+When adding a field to `ConfigType` or `ConfigChatType` in `src/types.ts`:
+1. Add the field to the type definition in `src/types.ts`.
+2. Add a sample value to the `full-example` chat in `generateConfig()` in `src/config.ts` — otherwise `checkConfigSchema()` will warn on unknown fields.
+3. Update README.md documentation.
+
+## Testing patterns and pitfalls
+- Tests use `jest.unstable_mockModule()` with dynamic `import()` in `beforeEach`. All mocks must be declared **before** the `import()` call.
+- **When adding new imports to a source module**, all test files that mock that module must be updated to include the new exports. Search for `jest.unstable_mockModule(".../<module>")` across all test files. Common offenders:
+  - `src/helpers/useTools.ts` is mocked in: `tests/helpers/useTools.test.ts`, `tests/helpers/gptTools.test.ts`, `tests/index.start.test.ts`
+  - `src/mcp.ts` is mocked in: `tests/helpers/useTools.test.ts`, `tests/mcp.test.ts`, `tests/mcp.connect.test.ts`, `tests/helpers/useChatMcpTools.test.ts`
+  - `src/config.ts` is mocked widely — ensure both `readConfig` and `useConfig` are present when a module imports either.
+  - `src/telegram/send.ts` is mocked in many test files — ensure `sendTelegramMessage`, `isAdminUser`, `getFullName`, `sendTelegramDocument` are present.
+- **When adding a parameter to an exported function**, update all test assertions that check the call with `toHaveBeenCalledWith()` — the new param appears as `undefined` in existing callers.
+- Module-level caches (like `chatMcpState` in useTools.ts, `clients` in mcp.ts) should expose `__test` or `__testChatMcp` helpers for tests to reset state between runs.
+
 ## Rules before commit
 - Always run `npm run typecheck` before commit.
 - Run `npm run test-full` before commit.
@@ -44,6 +60,14 @@ Use the npm scripts for development:
 
 
 
+## Key file relationships (MCP and tools)
+- `src/types.ts` — `McpToolConfig`, `ChatToolType`, `ConfigChatType.mcpServers`
+- `src/mcp.ts` — MCP client lifecycle: `init()`, `connectMcp()`, `callMcp()`, `disconnectMcp()`, `initChatMcp()`, `disconnectChatMcp()`
+- `src/mcp-auth.ts` — OAuth provider (`FileOAuthProvider`) and pending auth management
+- `src/helpers/useTools.ts` — Global tool loading (`initTools`), per-chat MCP tools (`useChatMcpTools` with lazy-init cache)
+- `src/helpers/gpt/tools.ts` — `resolveChatTools()` merges global tools + per-chat MCP tools + agent tools; `executeTools()` runs tool calls
+- `src/config.ts` — `generateConfig()` full-example defines schema; `checkConfigSchema()` validates against it
+
   - `index.ts` регистрирует обработчики `onTextMessage`, `onPhoto`, `onAudio` и `onUnsupported`.
   - Если сообщение аудио — выполняется speech-to-text (распознавание речи), результат добавляется в историю сообщений, как текст.
   - Если сообщение фото — извлекается текст с картинки (OCR); если к фото есть подпись (caption), она используется как промпт для задачи над изображением.
@@ -53,6 +77,7 @@ Use the npm scripts for development:
   - `resolveChatButtons` ищет совпадения с кнопками и возвращает промпт.
   - Далее текст сообщения не анализируется, просто добавляется в историю чата `addToHistory`. Если в chatParams включён `markReplyToMessage: true`, в начало содержимого пользовательского сообщения в истории добавляется префикс `[reply to: yyyy-mm-dd hh:ii:ss+00:00, {name}]`, чтобы модель видела контекст ответа на сообщение.
 
+  - `resolveChatTools` в `src/helpers/gpt/tools.ts` собирает итоговый массив инструментов: сначала глобальные tools из `useTools()`, затем per-chat MCP tools из `useChatMcpTools()` (переопределяют глобальные с тем же именем), затем agent tools.
   - Используются функции `getSystemMessage`, `buildMessages`, `resolveChatTools` и `requestGptAnswer`.
 
   - Основные функции: `handleModelAnswer`, `executeTools` и `processToolResults`.
@@ -82,9 +107,10 @@ Use the npm scripts for development:
 - К этому промпту могут добавляться промпты от встроенных инструментов (tools), если они включены в чате.
 - Интеграция tools:
 - Собираются все включенные встроенные инструменты (tools).
-- Через адаптер добавляются mcp-функции от подключенных MCP-серверов (если такие есть и они активны).
+- Через адаптер добавляются mcp-функции от подключенных глобальных MCP-серверов (если такие есть и они активны).
+- Добавляются per-chat MCP инструменты из `chatConfig.mcpServers` (lazy-init при первом сообщении, `useChatMcpTools` в `src/helpers/useTools.ts`). Per-chat MCP tools переопределяют глобальные с тем же именем.
 - Формирование массива инструментов:
-- Инструменты (tools) для запроса формируются из встроенных tools + mcp-функций.
+- Инструменты (tools) для запроса формируются из встроенных tools + глобальных mcp-функций + per-chat mcp-функций.
 - Первый запрос к LLM:
 - Готовится и отправляется запрос к LLM, передается история сообщений, системный промпт и инструменты.
 

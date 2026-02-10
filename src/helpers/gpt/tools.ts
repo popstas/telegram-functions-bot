@@ -13,7 +13,7 @@ import {
 import { useThreads } from "../../threads.ts";
 import { sendTelegramMessage } from "../../telegram/send.ts";
 import { log, sendToHttp, safeFilename } from "../../helpers.ts";
-import useTools from "../useTools.ts";
+import useTools, { useChatMcpTools } from "../useTools.ts";
 import useLangfuse from "../useLangfuse.ts";
 import { isAdminUser } from "../../telegram/send.ts";
 import { useConfig } from "../../config.ts";
@@ -385,7 +385,12 @@ export async function resolveChatTools(msg: Message.TextMessage, chatConfig: Con
     .map((f) => globalTools.find((g) => g.name === f))
     .filter(Boolean) as ChatToolType[];
 
-  return [...effectiveTools, ...agentTools].filter(Boolean);
+  // Merge per-chat MCP tools: auto-included, override global tools with same name
+  const chatMcpTools = await useChatMcpTools(msg.chat.id, chatConfig);
+  const chatMcpToolNames = new Set(chatMcpTools.map((t) => t.name));
+  const filteredEffectiveTools = effectiveTools.filter((t) => !chatMcpToolNames.has(t.name));
+
+  return [...filteredEffectiveTools, ...chatMcpTools, ...agentTools].filter(Boolean);
 }
 
 export async function getToolsPrompts(

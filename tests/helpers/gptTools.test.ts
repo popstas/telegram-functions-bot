@@ -6,6 +6,7 @@ import type { ChatCompletionMessageToolCall } from "openai/resources/chat/comple
 
 // Mocks
 const mockUseTools = jest.fn();
+const mockUseChatMcpTools = jest.fn();
 const mockIsAdminUser = jest.fn();
 const mockUseConfig = jest.fn();
 const mockUseThreads = jest.fn();
@@ -23,6 +24,7 @@ const mockTelegramConfirm = jest.fn();
 
 jest.unstable_mockModule("../../src/helpers/useTools.ts", () => ({
   default: (...args: unknown[]) => mockUseTools(...args),
+  useChatMcpTools: (...args: unknown[]) => mockUseChatMcpTools(...args),
 }));
 
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
@@ -94,6 +96,7 @@ beforeEach(async () => {
   mockUseConfig.mockReturnValue({ chats: [baseConfig] });
   mockUseThreads.mockReturnValue({ 1: { id: 1, msgs: [], messages: [] } });
   mockTelegramConfirm.mockImplementation(async ({ onConfirm }) => onConfirm());
+  mockUseChatMcpTools.mockResolvedValue([]);
   tools = await import("../../src/helpers/gpt/tools.ts");
 });
 
@@ -133,6 +136,46 @@ describe("resolveChatTools", () => {
     };
     const res = await tools.resolveChatTools(baseMsg, cfg);
     expect(res).toEqual([globalTool]);
+  });
+
+  it("includes per-chat MCP tools", async () => {
+    mockUseTools.mockResolvedValue([]);
+    mockIsAdminUser.mockReturnValue(false);
+    const chatMcpTool = { name: "local_tool", module: { call: jest.fn() } };
+    mockUseChatMcpTools.mockResolvedValue([chatMcpTool]);
+    const cfg: ConfigChatType = {
+      ...baseConfig,
+      tools: [],
+      mcpServers: { srv: { command: "uvx", args: ["server"] } },
+    };
+    const res = await tools.resolveChatTools(baseMsg, cfg);
+    expect(res).toContain(chatMcpTool);
+  });
+
+  it("per-chat MCP tools override global tools with same name", async () => {
+    const globalTool = { name: "fetch", module: { call: jest.fn(), description: "global" } };
+    mockUseTools.mockResolvedValue([globalTool]);
+    mockIsAdminUser.mockReturnValue(false);
+    const chatMcpTool = { name: "fetch", module: { call: jest.fn(), description: "local" } };
+    mockUseChatMcpTools.mockResolvedValue([chatMcpTool]);
+    const cfg: ConfigChatType = {
+      ...baseConfig,
+      tools: ["fetch"],
+      mcpServers: { srv: { command: "uvx", args: ["server"] } },
+    };
+    const res = await tools.resolveChatTools(baseMsg, cfg);
+    expect(res).toContain(chatMcpTool);
+    expect(res).not.toContain(globalTool);
+  });
+
+  it("per-chat MCP tools do not affect other chats", async () => {
+    mockUseTools.mockResolvedValue([]);
+    mockIsAdminUser.mockReturnValue(false);
+    mockUseChatMcpTools.mockResolvedValue([]);
+    const cfg: ConfigChatType = { ...baseConfig, tools: [] };
+    const res = await tools.resolveChatTools(baseMsg, cfg);
+    expect(mockUseChatMcpTools).toHaveBeenCalledWith(1, cfg);
+    expect(res).toEqual([]);
   });
 });
 

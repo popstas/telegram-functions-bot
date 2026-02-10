@@ -11,7 +11,7 @@ Telegram bot with functions tools.
 - Bot can use tools to get answer
 - Better fallback answer when telegram markdown is wrong
 - Agent-like pipelines: bot can use several tools to get answer
-- MCP support: use external tools and services to get answer
+- MCP support: use external tools and services to get answer (global and per-chat)
 - Langfuse support: track chat history and tool usage
 - Use agents as tools
 - Agents can be triggered by name via HTTP or MQTT
@@ -421,10 +421,38 @@ MCP (Model Context Protocol) provides external tools and services to the bot. MC
   }
   ```
 
-### Server Sharing
+### Global MCP Servers
 
 - All MCP servers listed in `config.mcpServers` are shared between all chats.
-- There is currently no per-chat isolation of MCP servers; every chat can access all configured MCP tools.
+- Each chat selects which global MCP tools to use via its `tools` list.
+
+### Per-Chat MCP Servers
+
+You can configure MCP servers at the chat level using `mcpServers` inside a chat config. Per-chat MCP servers are isolated to their chat and invisible to other chats.
+
+```yaml
+chats:
+  - name: "My Chat"
+    id: 123456789
+    mcpServers:
+      local-fetch:
+        command: "uvx"
+        args: ["mcp-server-fetch"]
+      remote-api:
+        url: "https://example.com/mcp"
+        auth:
+          callbackUrl: "https://bot.example.com/mcp-auth/callback"
+    tools:
+      - javascript_interpreter
+```
+
+Key behaviors:
+
+- **Auto-included**: per-chat MCP tools are automatically available in their chat without listing them in `tools[]`.
+- **Lazy initialization**: MCP connections are established on the first message in the chat, not at startup.
+- **Override global tools**: if a per-chat MCP tool has the same name as a global MCP tool, the per-chat version replaces the global one for that chat.
+- **Config change detection**: if `mcpServers` config changes, old connections are closed and new ones are created automatically.
+- **OAuth support**: when a per-chat MCP server requires OAuth, the authorization URL is sent directly to the Telegram chat.
 
 ## Evaluators
 

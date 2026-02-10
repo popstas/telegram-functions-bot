@@ -65,6 +65,7 @@ export type ConfigChatType = {
   user_vars?: { username: string; vars: Record<string, string> }[];
   http_token?: string;
   tools?: (string | ToolBotType)[];
+  mcpServers?: Record<string, McpToolConfig>;
   evaluators?: ChatEvaluatorType[];
   responsesParams?: ResponsesParamsType;
   chatParams: ChatParamsType;

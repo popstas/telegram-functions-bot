@@ -30,12 +30,23 @@ jest.unstable_mockModule("../../src/helpers.ts", () => ({
 
 jest.unstable_mockModule("../../src/config.ts", () => ({
   readConfig: () => mockReadConfig(),
+  useConfig: () => mockReadConfig(),
   updateChatInConfig: jest.fn(),
 }));
 
 jest.unstable_mockModule("../../src/mcp.ts", () => ({
   init: (config: Parameters<typeof import("../../src/mcp").init>[0]) => mockInitMcp(config),
   callMcp: (...args: unknown[]) => mockCallMcp(...args),
+  initChatMcp: jest.fn().mockResolvedValue([]),
+  disconnectChatMcp: jest.fn().mockResolvedValue(undefined),
+  getChatMcpKey: jest.fn((chatId: number, name: string) => `chat_${chatId}_${name}`),
+}));
+
+jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
+  sendTelegramMessage: jest.fn(),
+  sendTelegramDocument: jest.fn(),
+  getFullName: () => "User",
+  isAdminUser: jest.fn(),
 }));
 
 import path from "path";

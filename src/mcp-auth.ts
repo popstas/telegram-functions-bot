@@ -22,11 +22,18 @@ export class FileOAuthProvider implements OAuthClientProvider {
   private storePath: string;
   private callbackUrl: string;
   private serverName: string;
+  private onAuthUrl?: (url: URL) => void;
 
-  constructor(serverName: string, callbackUrl: string, storePath: string) {
+  constructor(
+    serverName: string,
+    callbackUrl: string,
+    storePath: string,
+    onAuthUrl?: (url: URL) => void,
+  ) {
     this.serverName = serverName;
     this.callbackUrl = callbackUrl;
     this.storePath = storePath;
+    this.onAuthUrl = onAuthUrl;
     mkdirSync(this.storePath, { recursive: true });
   }
 
@@ -89,6 +96,9 @@ export class FileOAuthProvider implements OAuthClientProvider {
       msg: `[${this.serverName}] OAuth authorization required. Visit this URL to authorize:\n${url.toString()}`,
       logLevel: "warn",
     });
+    if (this.onAuthUrl) {
+      this.onAuthUrl(url);
+    }
   }
 
   invalidateCredentials(scope: "all" | "client" | "tokens" | "verifier"): void {
@@ -118,10 +128,11 @@ const pendingAuths = new Map<string, PendingAuth>();
 export function createAuthProvider(
   serverName: string,
   cfg: McpToolConfig,
+  onAuthUrl?: (url: URL) => void,
 ): FileOAuthProvider | undefined {
   if (!cfg.auth) return undefined;
   const storePath = cfg.auth.storePath || `data/mcp-auth/${serverName}`;
-  return new FileOAuthProvider(serverName, cfg.auth.callbackUrl, storePath);
+  return new FileOAuthProvider(serverName, cfg.auth.callbackUrl, storePath, onAuthUrl);
 }
 
 /**

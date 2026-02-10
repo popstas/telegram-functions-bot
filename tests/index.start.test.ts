@@ -67,6 +67,9 @@ jest.unstable_mockModule("../src/helpers/useTools.ts", () => ({
   __esModule: true,
   initTools: (...args: unknown[]) => mockInitTools(...args),
   default: jest.fn(),
+  useChatMcpTools: jest.fn().mockResolvedValue([]),
+  cleanupChatMcpTools: jest.fn(),
+  __testChatMcp: { getState: jest.fn(() => ({})), clearState: jest.fn() },
 }));
 
 jest.unstable_mockModule("../src/helpers.ts", () => ({
