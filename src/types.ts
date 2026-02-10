@@ -280,4 +280,9 @@ export interface McpToolConfig {
   url?: string;
   /** @deprecated Use `url` instead */
   serverUrl?: string;
+  /** OAuth authentication config for HTTP MCP servers */
+  auth?: {
+    callbackUrl: string;
+    storePath?: string;
+  };
 }

@@ -5,13 +5,16 @@ import {
   StreamableHTTPClientTransport,
   StreamableHTTPError,
 } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js";
 import {
   LoggingMessageNotificationSchema,
   ResourceListChangedNotificationSchema,
   ListResourcesResultSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import type { McpToolConfig, ToolResponse } from "./types.ts";
 import { log } from "./helpers.ts";
+import { createAuthProvider, storePendingAuth } from "./mcp-auth.ts";
 
 // Store active MCP clients by model key
 const clients: Record<string, Client> = {};
@@ -205,9 +208,16 @@ async function getMcpTools({
  * Per MCP spec: first connect uses no session ID; server assigns session at initialization
  * and returns it in Mcp-Session-Id header; we send it only on subsequent requests.
  */
-function initStreamableHttpMcp(url: string, model: string, client: Client, sessionId?: string) {
+function initStreamableHttpMcp(
+  url: string,
+  model: string,
+  client: Client,
+  sessionId?: string,
+  authProvider?: OAuthClientProvider,
+) {
   const transport = new StreamableHTTPClientTransport(new URL(url), {
     sessionId,
+    authProvider,
   });
 
   // Set up notification handlers (logging and resources)
@@ -270,23 +280,37 @@ export async function connectMcp(
       });
     }
     if (httpUrl) {
+      const authProvider = createAuthProvider(model, cfg);
       // Per MCP spec: first connect with no session ID; server assigns session at init.
       // Fallback: if server returns "Missing session ID" (e.g. requires it on GET/SSE),
       // retry once with a client-generated session ID.
       let lastErr: unknown = undefined;
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
-          transport = initStreamableHttpMcp(httpUrl, model, client, sessionIds[model]);
+          transport = initStreamableHttpMcp(
+            httpUrl,
+            model,
+            client,
+            sessionIds[model],
+            authProvider,
+          );
           await client.connect(transport);
           lastErr = undefined;
           break;
         } catch (err) {
+          if (err instanceof UnauthorizedError) {
+            log({
+              msg: `[${model}] OAuth authorization pending - server requires authentication`,
+              logLevel: "warn",
+            });
+            if (transport) {
+              storePendingAuth(model, transport as StreamableHTTPClientTransport, model);
+              mcpConfigs[model] = cfg;
+            }
+            return { model, client: null, connected: false };
+          }
           lastErr = err;
-          if (
-            attempt === 0 &&
-            isMissingSessionIdError(err) &&
-            sessionIds[model] === undefined
-          ) {
+          if (attempt === 0 && isMissingSessionIdError(err) && sessionIds[model] === undefined) {
             sessionIds[model] = randomUUID();
             client = new Client({ name: model, version: "1.0.0" });
             log({

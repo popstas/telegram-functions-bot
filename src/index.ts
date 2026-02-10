@@ -20,6 +20,7 @@ import { useLastCtx } from "./helpers/lastCtx.ts";
 import { agentGetHandler, agentPostHandler, toolPostHandler } from "./httpHandlers.ts";
 import { useMqtt, shutdownMqtt } from "./mqtt.ts";
 import { healthHandler } from "./healthcheck.ts";
+import { completePendingAuth } from "./mcp-auth.ts";
 
 let activeBots: Telegraf[] = [];
 let httpServer: http.Server | null = null;
@@ -237,6 +238,22 @@ function createHttpApp() {
   app.post("/agent/:agentName", agentPostHandler);
   // call tool directly
   app.post("/agent/:agentName/tool/:toolName", toolPostHandler);
+
+  // OAuth callback for MCP server authentication
+  app.get("/mcp-auth/callback", async (req, res) => {
+    const { code, state } = req.query;
+    if (!code || !state || typeof code !== "string" || typeof state !== "string") {
+      res.status(400).send("Missing code or state parameter");
+      return;
+    }
+    const ok = await completePendingAuth(state, code);
+    if (ok) {
+      res.contentType("text/html; charset=utf-8");
+      res.send("<h1>Authorization successful</h1><p>You can close this window.</p>");
+    } else {
+      res.status(404).send("No pending authorization for this state");
+    }
+  });
 
   return { app, port };
 }

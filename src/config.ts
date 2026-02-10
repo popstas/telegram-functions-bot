@@ -222,6 +222,13 @@ export function generateConfig(): ConfigType {
       "http-example": {
         url: "http://localhost:8000/mcp",
       },
+      "http-with-auth-example": {
+        url: "https://example.com/mcp",
+        auth: {
+          callbackUrl: "https://bot.example.com/mcp-auth/callback",
+          storePath: "data/mcp-auth/http-with-auth-example",
+        },
+      },
     },
     local_models: [],
     http: {

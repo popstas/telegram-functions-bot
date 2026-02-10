@@ -23,6 +23,16 @@ const createMockClient = (): ReturnType<typeof MockClient> =>
 const StdioTransportMock = jest.fn();
 const StreamableTransportMock = jest.fn();
 
+class MockUnauthorizedError extends Error {
+  constructor(message?: string) {
+    super(message ?? "Unauthorized");
+    this.name = "UnauthorizedError";
+  }
+}
+
+const mockCreateAuthProvider = jest.fn().mockReturnValue(undefined);
+const mockStorePendingAuth = jest.fn();
+
 jest.unstable_mockModule("@modelcontextprotocol/sdk/client/index.js", () => ({
   Client: MockClient,
 }));
@@ -44,6 +54,10 @@ jest.unstable_mockModule("@modelcontextprotocol/sdk/client/streamableHttp.js", (
   },
 }));
 
+jest.unstable_mockModule("@modelcontextprotocol/sdk/client/auth.js", () => ({
+  UnauthorizedError: MockUnauthorizedError,
+}));
+
 jest.unstable_mockModule("@modelcontextprotocol/sdk/types.js", () => ({
   LoggingMessageNotificationSchema: {},
   ResourceListChangedNotificationSchema: {},
@@ -57,6 +71,11 @@ jest.unstable_mockModule("../src/helpers.ts", () => ({
   stringToId: jest.fn(),
 }));
 
+jest.unstable_mockModule("../src/mcp-auth.ts", () => ({
+  createAuthProvider: (...args: unknown[]) => mockCreateAuthProvider(...args),
+  storePendingAuth: (...args: unknown[]) => mockStorePendingAuth(...args),
+}));
+
 let connectMcp: typeof import("../src/mcp.ts").connectMcp;
 let init: typeof import("../src/mcp.ts").init;
 
@@ -66,6 +85,8 @@ beforeEach(async () => {
   mockClientConnect.mockReset();
   StdioTransportMock.mockReset();
   StreamableTransportMock.mockReset();
+  mockCreateAuthProvider.mockReset().mockReturnValue(undefined);
+  mockStorePendingAuth.mockReset();
   ({ connectMcp, init } = await import("../src/mcp.ts"));
 });
 
@@ -89,6 +110,7 @@ describe("connectMcp", () => {
     const res = await connectMcp("m2", cfg, clients as any);
     expect(StreamableTransportMock).toHaveBeenCalledWith(new URL("http://srv"), {
       sessionId: undefined,
+      authProvider: undefined,
     });
     expect(mockClientConnect).toHaveBeenCalledWith(transport);
     expect(res.connected).toBe(true);
@@ -104,6 +126,7 @@ describe("connectMcp", () => {
     const res = await connectMcp("m2", cfg, clients as any);
     expect(StreamableTransportMock).toHaveBeenCalledWith(new URL("http://srv"), {
       sessionId: undefined,
+      authProvider: undefined,
     });
     expect(res.connected).toBe(true);
     expect(mockLog).toHaveBeenCalledWith(
@@ -144,6 +167,70 @@ describe("connectMcp", () => {
     const res = await connectMcp("m4", cfg, clients as any);
     expect(res).toEqual({ model: "m4", client: null, connected: false });
     expect(mockLog).toHaveBeenCalled();
+  });
+
+  it("passes authProvider to transport when auth config exists", async () => {
+    const fakeProvider = { redirectUrl: "https://cb.example.com" };
+    mockCreateAuthProvider.mockReturnValue(fakeProvider);
+
+    const cfg = {
+      url: "http://srv",
+      auth: { callbackUrl: "https://cb.example.com" },
+    } as McpToolConfig;
+    const clients = {};
+    const transport = {};
+    StreamableTransportMock.mockReturnValue(transport);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await connectMcp("m5", cfg, clients as any);
+
+    expect(mockCreateAuthProvider).toHaveBeenCalledWith("m5", cfg);
+    expect(StreamableTransportMock).toHaveBeenCalledWith(new URL("http://srv"), {
+      sessionId: undefined,
+      authProvider: fakeProvider,
+    });
+    expect(res.connected).toBe(true);
+  });
+
+  it("handles UnauthorizedError and stores pending auth", async () => {
+    const fakeProvider = { redirectUrl: "https://cb.example.com" };
+    mockCreateAuthProvider.mockReturnValue(fakeProvider);
+
+    const cfg = {
+      url: "http://srv",
+      auth: { callbackUrl: "https://cb.example.com" },
+    } as McpToolConfig;
+    const clients = {};
+    const transport = {};
+    StreamableTransportMock.mockReturnValue(transport);
+    mockClientConnect.mockRejectedValueOnce(new MockUnauthorizedError());
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await connectMcp("m6", cfg, clients as any);
+
+    expect(res.connected).toBe(false);
+    expect(res.client).toBeNull();
+    expect(mockStorePendingAuth).toHaveBeenCalledWith("m6", transport, "m6");
+    expect(mockLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        msg: expect.stringContaining("OAuth authorization pending"),
+        logLevel: "warn",
+      }),
+    );
+  });
+
+  it("does not pass authProvider when no auth config", async () => {
+    const cfg = { url: "http://srv" } as McpToolConfig;
+    const clients = {};
+    const transport = {};
+    StreamableTransportMock.mockReturnValue(transport);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await connectMcp("m7", cfg, clients as any);
+
+    expect(mockCreateAuthProvider).toHaveBeenCalledWith("m7", cfg);
+    expect(StreamableTransportMock).toHaveBeenCalledWith(new URL("http://srv"), {
+      sessionId: undefined,
+      authProvider: undefined,
+    });
   });
 });
 
