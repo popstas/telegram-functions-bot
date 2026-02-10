@@ -92,6 +92,12 @@ export async function sendTelegramMessage(
     // parse_mode: 'HTML'
   };
 
+  // plainText: true — send as-is, no parse_mode (e.g. for URLs with % encoding)
+  const plainText = Boolean(params.plainText);
+  if (plainText) {
+    delete params.plainText;
+  }
+
   // strip <final_answer> tags, preserve content
   text = text.replace(/<final_answer>(.*?)<\/final_answer>/ms, "$1");
 
@@ -112,8 +118,8 @@ export async function sendTelegramMessage(
     await sendTelegramMessage(chat_id, thinkText, params, ctx, chatConfig);
   }
 
-  // Автоматически определить режим разметки, если не задан явно
-  if (!params.parse_mode) {
+  // Автоматически определить режим разметки, если не задан явно (skip when plainText to avoid double-encoding URLs)
+  if (!plainText && !params.parse_mode) {
     if (text.trim().startsWith("<") && !text.trim().startsWith("<think>")) {
       params.parse_mode = "HTML";
     } else {
@@ -123,10 +129,10 @@ export async function sendTelegramMessage(
 
   let processedText = text;
 
-  // Process the text based on parse_mode
-  if (params.parse_mode === "HTML") {
+  // Process the text based on parse_mode (plainText leaves text unchanged)
+  if (!plainText && params.parse_mode === "HTML") {
     processedText = sanitizeTelegramHtml(text);
-  } else if (params.parse_mode === "MarkdownV2" || params.parse_mode === "Markdown") {
+  } else if (!plainText && (params.parse_mode === "MarkdownV2" || params.parse_mode === "Markdown")) {
     processedText = telegramifyWithCodeBlocks(text);
   }
 

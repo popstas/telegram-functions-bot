@@ -171,6 +171,7 @@ export async function useChatMcpTools(
     sendTelegramMessage(
       chatId,
       `🔐 MCP OAuth authorization required. Visit this URL to authorize:\n${url.toString()}`,
+      { plainText: true },
     );
   };
 

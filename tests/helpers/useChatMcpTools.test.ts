@@ -230,6 +230,7 @@ describe("useChatMcpTools", () => {
     expect(mockSendTelegramMessage).toHaveBeenCalledWith(
       200,
       expect.stringContaining("https://auth.example.com/authorize"),
+      { plainText: true },
     );
   });
 
