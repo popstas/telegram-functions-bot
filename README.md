@@ -99,6 +99,7 @@ Empty `config.yml` should be generated. Fill it with your data:
 - bot_name (deprecated)
 - auth.token
 - auth.chatgpt_api_key
+- auth.proxy_url (optional) – HTTP/HTTPS proxy for OpenAI and Telegram Bot API requests
 - stt.whisperBaseUrl
 - http.http_token (per-chat tokens use chat.http_token)
 - useChatsDir (optional, default `false`) – when enabled, chat configs are loaded from separate files
