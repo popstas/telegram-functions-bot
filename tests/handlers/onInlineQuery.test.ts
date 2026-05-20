@@ -231,7 +231,7 @@ describe("onChosenInlineResult", () => {
     expect(editMessageText).not.toHaveBeenCalled();
   });
 
-  it("does not throw when the LLM call rejects", async () => {
+  it("surfaces the error in the inline message when the LLM call rejects", async () => {
     mockUseConfig.mockReturnValue(baseConfig());
     mockRequestGptAnswer.mockRejectedValue(new Error("boom"));
     const editMessageText = jest.fn();
@@ -248,7 +248,28 @@ describe("onChosenInlineResult", () => {
     } as unknown as Context;
 
     await expect(mod.onChosenInlineResult(ctx)).resolves.toBeUndefined();
-    expect(editMessageText).not.toHaveBeenCalled();
+    // The ⏳ placeholder is replaced with an error message so the user is not
+    // left waiting forever.
+    expect(editMessageText).toHaveBeenCalledWith(undefined, undefined, "abc", "Error: boom");
+  });
+
+  it("does not throw when the error-surfacing edit also fails", async () => {
+    mockUseConfig.mockReturnValue(baseConfig());
+    mockRequestGptAnswer.mockRejectedValue(new Error("boom"));
+    const editMessageText = jest.fn().mockRejectedValue(new Error("edit failed"));
+    const ctx = {
+      update: {
+        chosen_inline_result: {
+          result_id: "btn:0",
+          query: "x",
+          inline_message_id: "abc",
+          from: { id: 9 },
+        },
+      },
+      telegram: { editMessageText },
+    } as unknown as Context;
+
+    await expect(mod.onChosenInlineResult(ctx)).resolves.toBeUndefined();
   });
 
   it("ignores a malformed result_id", async () => {

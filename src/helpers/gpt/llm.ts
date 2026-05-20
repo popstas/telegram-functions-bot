@@ -784,7 +784,15 @@ export async function requestGptAnswer(
   const tools =
     allTools.length > 0 ? (allTools as OpenAI.Chat.Completions.ChatCompletionTool[]) : undefined;
 
-  let systemMessage = await getSystemMessage(chatConfig, chatTools, thread);
+  // Per-turn system prompt override (chat buttons, secretary, guest modes).
+  // The override replaces the chat's base systemMessage but still goes through
+  // the full prompt-building pipeline below (tool prompts, {date}, URL/tool/var
+  // placeholder expansion), so an overridden turn keeps consistent instructions.
+  const overrideSystem = thread.nextSystemMessage || undefined;
+  if (thread.nextSystemMessage) {
+    thread.nextSystemMessage = "";
+  }
+  let systemMessage = await getSystemMessage(chatConfig, chatTools, thread, overrideSystem);
   const date = new Date().toISOString();
   systemMessage = systemMessage.replace(/\{date}/g, date);
   systemMessage = await replaceUrlPlaceholders(
@@ -800,11 +808,6 @@ export async function requestGptAnswer(
   );
   const userVars = chatConfig.user_vars?.find((u) => u.username === msg.from?.username)?.vars || {};
   systemMessage = replaceVarsPlaceholders(systemMessage, userVars);
-  if (thread.nextSystemMessage) {
-    systemMessage = thread.nextSystemMessage || "";
-    thread.nextSystemMessage = "";
-    systemMessage = replaceVarsPlaceholders(systemMessage, userVars);
-  }
 
   const messages = await buildMessages(systemMessage, thread.messages);
 

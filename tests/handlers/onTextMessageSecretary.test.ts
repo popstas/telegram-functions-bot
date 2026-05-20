@@ -144,7 +144,7 @@ describe("onTextMessage secretary mode", () => {
     const msg = makeMsg("hi", 1);
     mockCheckAccessLevel.mockResolvedValue({ msg, chat: secretaryChat });
 
-    await onTextMessage(createCtx(msg), undefined, jest.fn());
+    await onTextMessage(createCtx(msg));
 
     expect(mockAddToHistory).toHaveBeenCalledTimes(1);
     expect(mockRequestGptAnswer).not.toHaveBeenCalled();
@@ -163,11 +163,11 @@ describe("onTextMessage secretary mode", () => {
       .mockResolvedValueOnce({ msg: msg2, chat: secretaryChat })
       .mockResolvedValueOnce({ msg: msg3, chat: secretaryChat });
 
-    await onTextMessage(createCtx(msg1), undefined, jest.fn());
+    await onTextMessage(createCtx(msg1));
     await jest.advanceTimersByTimeAsync(5000);
-    await onTextMessage(createCtx(msg2), undefined, jest.fn());
+    await onTextMessage(createCtx(msg2));
     await jest.advanceTimersByTimeAsync(5000);
-    await onTextMessage(createCtx(msg3), undefined, jest.fn());
+    await onTextMessage(createCtx(msg3));
 
     // All three added to history, but no answer yet.
     expect(mockAddToHistory).toHaveBeenCalledTimes(3);
@@ -186,7 +186,7 @@ describe("onTextMessage secretary mode", () => {
     const msg = makeMsg("hi", 1);
     mockCheckAccessLevel.mockResolvedValue({ msg, chat });
 
-    await onTextMessage(createCtx(msg), undefined, jest.fn());
+    await onTextMessage(createCtx(msg));
     await jest.advanceTimersByTimeAsync(10000);
 
     expect(sharedThread.nextSystemMessage).toBe("act as secretary");
@@ -203,6 +203,20 @@ describe("onTextMessage secretary mode", () => {
     const msg = makeMsg("hi", 1);
     mockCheckAccessLevel.mockResolvedValue({ msg, chat });
 
+    await onTextMessage(createCtx(msg), undefined, jest.fn());
+    await Promise.resolve();
+
+    expect(mockRequestGptAnswer).toHaveBeenCalledTimes(1);
+    expect(handlers.__testSecretary.has(1)).toBe(false);
+    await jest.runAllTimersAsync();
+  });
+
+  it("bypasses the debounce when a callback is supplied (HTTP interface)", async () => {
+    const msg = makeMsg("hi", 1);
+    mockCheckAccessLevel.mockResolvedValue({ msg, chat: secretaryChat });
+
+    // The HTTP path passes a callback that ends the response; deferring it into
+    // the secretary timer would hang the request, so it must answer immediately.
     await onTextMessage(createCtx(msg), undefined, jest.fn());
     await Promise.resolve();
 
