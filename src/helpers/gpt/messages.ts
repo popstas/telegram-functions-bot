@@ -66,9 +66,11 @@ export async function getSystemMessage(
   chatConfig: ConfigChatType,
   chatTools: ChatToolType[],
   thread: ThreadStateType = { messages: [], msgs: [], id: 0 },
+  overrideSystem?: string,
 ): Promise<string> {
   const systemMessages = await getToolsSystemMessages(chatTools, chatConfig, thread);
   const system =
+    overrideSystem ||
     chatConfig.systemMessage ||
     systemMessages[0] ||
     "You are using functions to answer the questions. Current date: {date}";

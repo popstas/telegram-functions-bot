@@ -1,7 +1,7 @@
 import { Context, Markup } from "telegraf";
 import { Chat, Message } from "telegraf/types";
 import { useThreads } from "../threads.ts";
-import { ConfigChatType } from "../types.ts";
+import { ConfigChatType, ThreadStateType } from "../types.ts";
 import { syncButtons, useConfig } from "../config.ts";
 import { log } from "../helpers.ts";
 import {
@@ -54,6 +54,21 @@ export const __testSecretary = {
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Guest mode: when the bot is mentioned in a reply to another user, apply the
+// configured guest prompt as the per-turn system instruction. Applied at the
+// point the answer is launched (not on batched secretary turns) so the override
+// always matches the message actually being answered.
+function applyGuestModeOverride(
+  thread: ThreadStateType,
+  msg: Message.TextMessage,
+  chat: ConfigChatType,
+) {
+  const guestPrompt = useConfig().guestMode?.prompt;
+  if (guestPrompt && isGuestModeReply(msg, chat)) {
+    thread.nextSystemMessage = guestPrompt;
+  }
 }
 
 // Cancel any in-flight answer for the chat, then start a new one. Bookkeeping
@@ -182,19 +197,17 @@ export default async function onTextMessage(
   addToHistory(msg, chat);
   forgetHistoryOnTimeout(chat, msg);
 
-  // Guest mode: when the bot is mentioned in a reply to another user, apply the
-  // configured guest prompt as the system instruction for this turn.
-  const guestMode = useConfig().guestMode;
-  if (guestMode?.prompt && isGuestModeReply(msg, chat)) {
-    thread.nextSystemMessage = guestMode.prompt;
-  }
-
   // Secretary mode: debounce answers per chat. The first message starts a
   // timer; messages arriving within the window are added to history above but
   // do not trigger an answer. On expiry the bot answers once using the latest
   // message context.
+  // On the context_length_exceeded retry (secondTry), the answer should fire
+  // immediately rather than wait another debounce window.
+  // When a callback is supplied (HTTP interface), bypass debounce entirely:
+  // the callback ends the HTTP response, so deferring it into the timer would
+  // hang the request for the delay window and orphan superseded responses.
   const secretary = chat.chatParams?.secretary;
-  if (secretary && secretary.firstAnswerDelay > 0) {
+  if (secretary && secretary.firstAnswerDelay > 0 && !ctx.secondTry && !callback) {
     const existing = secretaryTimers.get(chatId);
     if (existing) {
       // Already waiting — update to the latest message and keep batching.
@@ -208,8 +221,15 @@ export default async function onTextMessage(
     const state: SecretaryState = { timer: undefined as never, ctx, msg, chat, callback };
     state.timer = setTimeout(() => {
       secretaryTimers.delete(chatId);
-      if (state.chat.chatParams?.secretary?.prompt) {
-        thread.nextSystemMessage = state.chat.chatParams.secretary.prompt;
+      // Resolve the per-turn system override from the final batched message.
+      // Secretary prompt takes precedence; otherwise fall back to guest mode
+      // evaluated against the latest message, so a guest prompt that applied to
+      // an earlier batched turn cannot leak into a non-guest answer.
+      const secretaryPrompt = state.chat.chatParams?.secretary?.prompt;
+      if (secretaryPrompt) {
+        thread.nextSystemMessage = secretaryPrompt;
+      } else {
+        applyGuestModeOverride(thread, state.msg, state.chat);
       }
       launchAnswer(state.ctx, state.msg, state.chat, state.callback);
     }, secretary.firstAnswerDelay * 1000);
@@ -217,6 +237,9 @@ export default async function onTextMessage(
     return;
   }
 
+  // Non-debounced path (no secretary, HTTP callback, or secondTry retry):
+  // apply the guest-mode override for this exact message before answering.
+  applyGuestModeOverride(thread, msg, chat);
   launchAnswer(ctx, msg, chat, callback);
 }
 

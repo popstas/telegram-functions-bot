@@ -216,7 +216,16 @@ export async function onChosenInlineResult(ctx: Context) {
     const text = (answer || "(empty answer)").slice(0, TELEGRAM_MAX_MESSAGE_LENGTH);
     await ctx.telegram.editMessageText(undefined, undefined, inline_message_id, text);
   } catch (e) {
-    log({ msg: `inline chosen result error: ${(e as Error).message}`, logLevel: "warn" });
+    const message = (e as Error).message;
+    log({ msg: `inline chosen result error: ${message}`, logLevel: "warn" });
+    // Replace the ⏳ placeholder with an error so the user is not left waiting
+    // forever. Guard the edit itself so a failed edit cannot throw out of here.
+    try {
+      const text = `Error: ${message}`.slice(0, TELEGRAM_MAX_MESSAGE_LENGTH);
+      await ctx.telegram.editMessageText(undefined, undefined, inline_message_id, text);
+    } catch {
+      // ignore — nothing more we can do to update the inline message
+    }
   }
 }
 
