@@ -75,14 +75,14 @@ Flow: in `isMentioned()` allow processing when the bot is explicitly mentioned (
 
 ### Task 2: Secretary mode
 
-- [ ] Add `secretary?: { firstAnswerDelay: number; prompt?: string }` to `ChatParamsType` in `src/types.ts`.
-- [ ] In `src/handlers/onTextMessage.ts` (`answerToMessage`), implement a per-chat debounce: first message starts a `firstAnswerDelay`-second timer, follow-ups within the window are added to history without answering, and the answer fires once on expiry; reset/extend correctly on new messages.
-- [ ] Apply `secretary.prompt` as the system message override (via `thread.nextSystemMessage` / `getSystemMessage`).
-- [ ] Ensure interaction with existing `activeResponses` abort logic is correct (no duplicate or orphaned answers).
-- [ ] Add a sample `secretary` block to `full-example.chatParams` in `generateConfig()` (`src/config.ts`).
-- [ ] Document Secretary Mode in `README.md`.
-- [ ] write tests for debounce batching and prompt override
-- [ ] run project tests - must pass before next task
+- [x] Add `secretary?: { firstAnswerDelay: number; prompt?: string }` to `ChatParamsType` in `src/types.ts`.
+- [x] In `src/handlers/onTextMessage.ts` (`answerToMessage`), implement a per-chat debounce: first message starts a `firstAnswerDelay`-second timer, follow-ups within the window are added to history without answering, and the answer fires once on expiry; reset/extend correctly on new messages.
+- [x] Apply `secretary.prompt` as the system message override (via `thread.nextSystemMessage` / `getSystemMessage`).
+- [x] Ensure interaction with existing `activeResponses` abort logic is correct (no duplicate or orphaned answers).
+- [x] Add a sample `secretary` block to `full-example.chatParams` in `generateConfig()` (`src/config.ts`).
+- [x] Document Secretary Mode in `README.md`.
+- [x] write tests for debounce batching and prompt override
+- [x] run project tests - must pass before next task
 
 ### Task 3: Guest mode
 

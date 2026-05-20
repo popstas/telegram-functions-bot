@@ -28,8 +28,102 @@ interface ActiveResponse {
 
 const activeResponses = new Map<number, ActiveResponse>();
 
+// Secretary mode: per-chat debounce state. While a timer is pending, incoming
+// messages are added to history without triggering an answer; on expiry the
+// bot answers once using the latest message context.
+interface SecretaryState {
+  timer: ReturnType<typeof setTimeout>;
+  ctx: Context & { secondTry?: boolean };
+  msg: Message.TextMessage;
+  chat: ConfigChatType;
+  callback?: (msg: Message.TextMessage) => Promise<void> | void;
+}
+
+const secretaryTimers = new Map<number, SecretaryState>();
+
+// Exposed for tests to reset module-level state between runs.
+export const __testSecretary = {
+  clear() {
+    for (const state of secretaryTimers.values()) clearTimeout(state.timer);
+    secretaryTimers.clear();
+  },
+  has(chatId: number) {
+    return secretaryTimers.has(chatId);
+  },
+};
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Cancel any in-flight answer for the chat, then start a new one. Bookkeeping
+// for cancellation lives in `activeResponses`.
+function launchAnswer(
+  ctx: Context & { secondTry?: boolean },
+  msg: Message.TextMessage,
+  chat: ConfigChatType,
+  callback?: (msg: Message.TextMessage) => Promise<void> | void,
+) {
+  const chatId = msg.chat.id;
+  const answerId = msg.message_id?.toString() || "";
+  const extraMessageParams = ctx.message?.message_id
+    ? { reply_to_message_id: ctx.message?.message_id }
+    : {};
+
+  // Cancel any existing response for this chat
+  const existingResponse = activeResponses.get(chatId);
+  if (existingResponse) {
+    log({
+      msg: "cancelling previous response",
+      chatId,
+      answerId,
+      chatTitle: (msg.chat as Chat.TitleChat).title,
+      role: "system",
+      username: msg?.from?.username,
+      logLevel: "debug",
+    });
+    if (!existingResponse.isCompleted) {
+      existingResponse.abortController.abort();
+      existingResponse.buttonsAbortController?.abort();
+    }
+    activeResponses.delete(chatId);
+  }
+
+  // Create a new abort controller for this response
+  const abortController = new AbortController();
+
+  // Start responding immediately
+  const responsePromise = answerToMessage(ctx, msg, chat, {
+    ...extraMessageParams,
+    signal: abortController.signal,
+  });
+
+  // Store the active response for potential cancellation
+  const activeResponse: ActiveResponse = {
+    abortController,
+    isCompleted: false,
+  };
+  activeResponses.set(chatId, activeResponse);
+
+  responsePromise
+    .then((msgSent) => {
+      if (msgSent && typeof callback === "function") {
+        return callback(msgSent);
+      }
+    })
+    .catch((error) => {
+      // Ignore errors from aborted requests
+      if (!abortController.signal.aborted) {
+        console.error("Error in response handler:", error);
+      }
+    })
+    .finally(() => {
+      const currentResponse = activeResponses.get(chatId);
+      if (currentResponse === activeResponse) {
+        activeResponse.isCompleted = true;
+        activeResponses.delete(chatId);
+      }
+    });
 }
 
 export default async function onTextMessage(
@@ -88,60 +182,35 @@ export default async function onTextMessage(
   addToHistory(msg, chat);
   forgetHistoryOnTimeout(chat, msg);
 
-  // Cancel any existing response for this chat
-  const existingResponse = activeResponses.get(chatId);
-  if (existingResponse) {
-    log({
-      msg: "cancelling previous response",
-      chatId,
-      answerId,
-      chatTitle: (msg.chat as Chat.TitleChat).title,
-      role: "system",
-      username: msg?.from?.username,
-      logLevel: "debug",
-    });
-    if (!existingResponse.isCompleted) {
-      existingResponse.abortController.abort();
-      existingResponse.buttonsAbortController?.abort();
+  // Secretary mode: debounce answers per chat. The first message starts a
+  // timer; messages arriving within the window are added to history above but
+  // do not trigger an answer. On expiry the bot answers once using the latest
+  // message context.
+  const secretary = chat.chatParams?.secretary;
+  if (secretary && secretary.firstAnswerDelay > 0) {
+    const existing = secretaryTimers.get(chatId);
+    if (existing) {
+      // Already waiting — update to the latest message and keep batching.
+      existing.ctx = ctx;
+      existing.msg = msg;
+      existing.chat = chat;
+      existing.callback = callback;
+      return;
     }
-    activeResponses.delete(chatId);
+
+    const state: SecretaryState = { timer: undefined as never, ctx, msg, chat, callback };
+    state.timer = setTimeout(() => {
+      secretaryTimers.delete(chatId);
+      if (state.chat.chatParams?.secretary?.prompt) {
+        thread.nextSystemMessage = state.chat.chatParams.secretary.prompt;
+      }
+      launchAnswer(state.ctx, state.msg, state.chat, state.callback);
+    }, secretary.firstAnswerDelay * 1000);
+    secretaryTimers.set(chatId, state);
+    return;
   }
 
-  // Create a new abort controller for this response
-  const abortController = new AbortController();
-
-  // Start responding immediately
-  const responsePromise = answerToMessage(ctx, msg, chat, {
-    ...extraMessageParams,
-    signal: abortController.signal,
-  });
-
-  // Store the active response for potential cancellation
-  const activeResponse: ActiveResponse = {
-    abortController,
-    isCompleted: false,
-  };
-  activeResponses.set(chatId, activeResponse);
-
-  responsePromise
-    .then((msgSent) => {
-      if (msgSent && typeof callback === "function") {
-        return callback(msgSent);
-      }
-    })
-    .catch((error) => {
-      // Ignore errors from aborted requests
-      if (!abortController.signal.aborted) {
-        console.error("Error in response handler:", error);
-      }
-    })
-    .finally(() => {
-      const currentResponse = activeResponses.get(chatId);
-      if (currentResponse === activeResponse) {
-        activeResponse.isCompleted = true;
-        activeResponses.delete(chatId);
-      }
-    });
+  launchAnswer(ctx, msg, chat, callback);
 }
 
 export async function answerToMessage(

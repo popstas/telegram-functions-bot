@@ -356,6 +356,10 @@ export function generateConfig(): ConfigType {
           responseButtonsMessage: true,
           vector_memory: false,
           markReplyToMessage: false,
+          secretary: {
+            firstAnswerDelay: 15,
+            prompt: "You are a secretary, answer once after collecting the user's messages.",
+          },
         },
         toolParams: {
           brainstorm: {
