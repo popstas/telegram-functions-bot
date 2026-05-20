@@ -149,6 +149,46 @@ describe("onInlineQuery", () => {
   });
 });
 
+describe("computeInlineAnswer", () => {
+  it("seeds the query into an isolated thread and cleans it up", async () => {
+    mockUseConfig.mockReturnValue(baseConfig());
+    const threadsMod = await import("../../src/threads.ts");
+    let seededMessages: unknown;
+    let seededChatId: unknown;
+    mockRequestGptAnswer.mockImplementation((...args: unknown[]) => {
+      const m = args[0] as { chat: { id: number } };
+      seededChatId = m.chat.id;
+      seededMessages = threadsMod.useThreads()[m.chat.id]?.messages;
+      return Promise.resolve({ content: "ok" });
+    });
+
+    const answer = await mod.computeInlineAnswer("a prompt", "my question", { id: 5 });
+
+    expect(answer).toBe("ok");
+    // The model must actually receive the typed query (it is read from
+    // thread.messages, not msg.text).
+    expect(seededMessages).toEqual([{ role: "user", content: "my question", name: "inline" }]);
+    // The synthetic thread must not collide with the user's private DM id.
+    expect(seededChatId).not.toBe(5);
+    // The throwaway thread is removed after the run (no pollution / leak).
+    expect(threadsMod.useThreads()[seededChatId as number]).toBeUndefined();
+    expect(Object.keys(threadsMod.useThreads())).toHaveLength(0);
+  });
+
+  it("propagates the prompt as the chat systemMessage", async () => {
+    mockUseConfig.mockReturnValue(baseConfig());
+    let seenSystem: unknown;
+    mockRequestGptAnswer.mockImplementation((...args: unknown[]) => {
+      const chatConfig = args[1] as { systemMessage?: string };
+      seenSystem = chatConfig.systemMessage;
+      return Promise.resolve({ content: "ok" });
+    });
+
+    await mod.computeInlineAnswer("button prompt", "q", { id: 9 });
+    expect(seenSystem).toBe("button prompt");
+  });
+});
+
 describe("onChosenInlineResult", () => {
   it("runs the chosen button prompt and edits the message", async () => {
     mockUseConfig.mockReturnValue(baseConfig());
@@ -180,6 +220,66 @@ describe("onChosenInlineResult", () => {
         chosen_inline_result: {
           result_id: "btn:0",
           query: "x",
+          from: { id: 9 },
+        },
+      },
+      telegram: { editMessageText },
+    } as unknown as Context;
+
+    await mod.onChosenInlineResult(ctx);
+    expect(mockRequestGptAnswer).not.toHaveBeenCalled();
+    expect(editMessageText).not.toHaveBeenCalled();
+  });
+
+  it("does not throw when the LLM call rejects", async () => {
+    mockUseConfig.mockReturnValue(baseConfig());
+    mockRequestGptAnswer.mockRejectedValue(new Error("boom"));
+    const editMessageText = jest.fn();
+    const ctx = {
+      update: {
+        chosen_inline_result: {
+          result_id: "btn:0",
+          query: "x",
+          inline_message_id: "abc",
+          from: { id: 9 },
+        },
+      },
+      telegram: { editMessageText },
+    } as unknown as Context;
+
+    await expect(mod.onChosenInlineResult(ctx)).resolves.toBeUndefined();
+    expect(editMessageText).not.toHaveBeenCalled();
+  });
+
+  it("ignores a malformed result_id", async () => {
+    mockUseConfig.mockReturnValue(baseConfig());
+    const editMessageText = jest.fn();
+    const ctx = {
+      update: {
+        chosen_inline_result: {
+          result_id: "garbage",
+          query: "x",
+          inline_message_id: "abc",
+          from: { id: 9 },
+        },
+      },
+      telegram: { editMessageText },
+    } as unknown as Context;
+
+    await mod.onChosenInlineResult(ctx);
+    expect(mockRequestGptAnswer).not.toHaveBeenCalled();
+    expect(editMessageText).not.toHaveBeenCalled();
+  });
+
+  it("ignores an out-of-range button index", async () => {
+    mockUseConfig.mockReturnValue(baseConfig());
+    const editMessageText = jest.fn();
+    const ctx = {
+      update: {
+        chosen_inline_result: {
+          result_id: "btn:99",
+          query: "x",
+          inline_message_id: "abc",
           from: { id: 9 },
         },
       },

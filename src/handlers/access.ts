@@ -6,6 +6,12 @@ import { getCtxChatMsg } from "../telegram/context.ts";
 import { isAdminUser, sendTelegramMessage } from "../telegram/send.ts";
 import { log } from "../helpers.ts";
 
+// Escape regex metacharacters so config-supplied prefix/bot_name values are
+// matched literally and cannot break or alter the matching regex.
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export default async function checkAccessLevel(
   ctx: Context,
 ): Promise<{ msg: Message.TextMessage; chat: ConfigChatType } | false | undefined> {
@@ -74,8 +80,9 @@ export function isMentioned(
   const replyToBot = isReply && replyAuthor === botName;
   const replyToOther = isReply && replyAuthor !== botName;
 
-  const hasPrefix = new RegExp(`^${prefix}`, "i").test(text);
-  const hasTagged = new RegExp(`@${botName}`, "i").test(text);
+  // Empty prefix keeps the original always-match behavior (regex `^`).
+  const hasPrefix = new RegExp(`^${escapeRegExp(prefix)}`, "i").test(text);
+  const hasTagged = new RegExp(`@${escapeRegExp(botName)}`, "i").test(text);
   const isMentioned = hasPrefix || hasTagged || replyToBot;
   if (prefix && !isMentioned) return false;
   if (replyToOther && !isMentioned) return false;
@@ -101,7 +108,7 @@ export function isGuestModeReply(
   if (msg.from?.username === replyAuthor) return false;
   const text = msg.text || msg.caption || "";
   const prefix = chat.prefix ?? "";
-  const hasPrefix = prefix ? new RegExp(`^${prefix}`, "i").test(text) : false;
-  const hasTagged = new RegExp(`@${botName}`, "i").test(text);
+  const hasPrefix = prefix ? new RegExp(`^${escapeRegExp(prefix)}`, "i").test(text) : false;
+  const hasTagged = new RegExp(`@${escapeRegExp(botName)}`, "i").test(text);
   return hasPrefix || hasTagged;
 }

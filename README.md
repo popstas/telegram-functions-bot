@@ -31,6 +31,9 @@ Telegram bot with functions tools.
 - Dynamic reply buttons returned from LLM responses (enable with `chatParams.responseButtons`)
 - Treat Telegram reactions as short messages (toggle with `chatParams.answerReactions`)
 - Enforce structured outputs by setting `response_format` in chat configuration
+- Inline mode: invoke the bot from any chat with `@bot_name query` (enable with global `inlineMode`)
+- Secretary mode: debounce and batch rapid messages into one reply (enable with `chatParams.secretary`)
+- Guest mode: answer when mentioned in a reply to another user, with reply context (enable with global `guestMode`)
 
 ## Desktop launcher
 
@@ -213,7 +216,7 @@ responsesParams:
   reasoning:
     effort: minimal # or low | medium | high
   text:
-    verbosity: low     # or medium | high
+    verbosity: low # or medium | high
 ```
 
 These values are passed to `client.responses.create` calls so you can balance speed, reasoning depth and verbosity depending on
@@ -600,7 +603,10 @@ Configured buttons appear as inline results; selecting one runs that button's pr
 the typed query and posts the LLM answer in place.
 
 Enable inline queries for your bot in [BotFather](https://core.telegram.org/bots/features) first
-(`/setinline`), then add a global `inlineMode` block to `config.yml`:
+(`/setinline`). The answer is computed when a result is chosen, so you must also enable inline
+feedback in BotFather (`/setinlinefeedback`) — otherwise Telegram never delivers the
+`chosen_inline_result` update and the picked result keeps showing the `⏳` placeholder. Then add
+a global `inlineMode` block to `config.yml`:
 
 ```yaml
 inlineMode:
@@ -616,7 +622,9 @@ inlineMode:
 - A default `Ask` button is always added when not present; its prompt defaults to the
   `default` chat's `systemMessage`.
 - When `live_answer` is enabled, the bot additionally computes a debounced answer for the
-  typed query and offers it as an extra inline result.
+  typed query in the background. Because the computation is asynchronous, the extra "Live answer"
+  result appears once it finishes — i.e. on a subsequent refresh of the same query, not on the
+  first request.
 
 ## Secretary mode
 
