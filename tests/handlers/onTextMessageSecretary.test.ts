@@ -1,0 +1,212 @@
+import { jest, describe, it, expect, beforeEach, afterEach, beforeAll } from "@jest/globals";
+import type { Context, Message } from "telegraf/types";
+import type { ConfigChatType } from "../../src/types.ts";
+
+interface Thread {
+  id: number;
+  msgs: Message[];
+  messages: Message[];
+  completionParams: Record<string, unknown>;
+  nextSystemMessage?: string;
+}
+
+const sharedThread: Thread = { id: 1, msgs: [], messages: [], completionParams: {} };
+const threads: Record<number, Thread> = { 1: sharedThread };
+
+const mockCheckAccessLevel = jest.fn<
+  Promise<{ msg: Message.TextMessage; chat: ConfigChatType } | false | undefined>,
+  [Context]
+>();
+const mockAddToHistory = jest.fn<Message.TextMessage, [Message.TextMessage]>();
+const mockResolveChatButtons = jest.fn<Message.TextMessage | undefined, [Message.TextMessage]>();
+const mockGenerateButtonsFromAgent = jest.fn();
+const mockRequestGptAnswer = jest.fn(() => Promise.resolve({ content: "ok" })) as jest.Mock;
+const mockSendTelegramMessage = jest.fn(() =>
+  Promise.resolve({ chat: { id: 1 }, message_id: 100, text: "ok" } as Message.TextMessage),
+);
+const mockUseConfig = jest.fn();
+
+beforeEach(() => {
+  console.error = jest.fn();
+});
+
+jest.unstable_mockModule("../../src/handlers/access.ts", () => ({
+  __esModule: true,
+  default: mockCheckAccessLevel,
+}));
+
+jest.unstable_mockModule("../../src/helpers/history.ts", () => ({
+  addToHistory: mockAddToHistory,
+  forgetHistoryOnTimeout: jest.fn(),
+  forgetHistory: jest.fn(),
+  initThread: jest.fn(() => sharedThread),
+}));
+
+jest.unstable_mockModule("../../src/handlers/resolveChatButtons.ts", () => ({
+  __esModule: true,
+  default: mockResolveChatButtons,
+}));
+
+jest.unstable_mockModule("../../src/handlers/formFlow.ts", () => ({
+  handleFormFlow: jest.fn(() => Promise.resolve(undefined)),
+}));
+
+jest.unstable_mockModule("../../src/helpers/gpt.ts", () => ({
+  requestGptAnswer: mockRequestGptAnswer,
+  generateButtonsFromAgent: mockGenerateButtonsFromAgent,
+}));
+
+jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
+  sendTelegramMessage: mockSendTelegramMessage,
+  sendTelegramDocument: jest.fn(),
+  editTelegramMessage: jest.fn(),
+  getFullName: jest.fn(),
+  getTelegramForwardedUser: jest.fn(),
+  isAdminUser: jest.fn(),
+  buildButtonRows: jest.fn(),
+}));
+
+jest.unstable_mockModule("../../src/config.ts", () => ({
+  __esModule: true,
+  useConfig: () => mockUseConfig(),
+  syncButtons: jest.fn(),
+  readConfig: jest.fn(),
+  writeConfig: jest.fn(),
+  generateConfig: jest.fn(),
+  validateConfig: jest.fn(),
+  watchConfigChanges: jest.fn(),
+  generatePrivateChatConfig: jest.fn(),
+  checkConfigSchema: jest.fn(),
+  logConfigChanges: jest.fn(),
+  setConfigPath: jest.fn(),
+  updateChatInConfig: jest.fn(),
+}));
+
+jest.unstable_mockModule("../../src/threads.ts", () => ({
+  useThreads: () => threads,
+}));
+
+let handlers: typeof import("../../src/handlers/onTextMessage.ts");
+let onTextMessage: typeof import("../../src/handlers/onTextMessage.ts").default;
+
+function createCtx(message: Record<string, unknown>): Context & { secondTry?: boolean } {
+  return {
+    message,
+    update: { message },
+    persistentChatAction: async (_: string, fn: () => Promise<void>) => {
+      await fn();
+    },
+  } as unknown as Context & { secondTry?: boolean };
+}
+
+function makeMsg(text: string, message_id: number): Message.TextMessage {
+  return {
+    chat: { id: 1, type: "private" },
+    from: { id: 1 },
+    text,
+    message_id,
+  } as Message.TextMessage;
+}
+
+beforeAll(async () => {
+  handlers = await import("../../src/handlers/onTextMessage.ts");
+  onTextMessage = handlers.default;
+});
+
+beforeEach(() => {
+  jest.useFakeTimers();
+  jest.clearAllMocks();
+  handlers.__testSecretary.clear();
+  delete sharedThread.nextSystemMessage;
+  mockUseConfig.mockReturnValue({ auth: {} });
+  mockResolveChatButtons.mockImplementation(() => undefined);
+  mockAddToHistory.mockImplementation((msg) => msg);
+  mockRequestGptAnswer.mockResolvedValue({ content: "ok" });
+  mockGenerateButtonsFromAgent.mockResolvedValue(undefined);
+  mockSendTelegramMessage.mockResolvedValue({ chat: { id: 1 } } as unknown as Message.TextMessage);
+});
+
+afterEach(() => {
+  handlers.__testSecretary.clear();
+  jest.useRealTimers();
+});
+
+describe("onTextMessage secretary mode", () => {
+  const secretaryChat: ConfigChatType = {
+    name: "chat",
+    completionParams: {},
+    chatParams: { secretary: { firstAnswerDelay: 15 } },
+    toolParams: {},
+  } as ConfigChatType;
+
+  it("does not answer immediately, answers once after the delay", async () => {
+    const msg = makeMsg("hi", 1);
+    mockCheckAccessLevel.mockResolvedValue({ msg, chat: secretaryChat });
+
+    await onTextMessage(createCtx(msg), undefined, jest.fn());
+
+    expect(mockAddToHistory).toHaveBeenCalledTimes(1);
+    expect(mockRequestGptAnswer).not.toHaveBeenCalled();
+
+    await jest.advanceTimersByTimeAsync(15000);
+
+    expect(mockRequestGptAnswer).toHaveBeenCalledTimes(1);
+  });
+
+  it("batches rapid follow-ups into a single answer", async () => {
+    const msg1 = makeMsg("a", 1);
+    const msg2 = makeMsg("b", 2);
+    const msg3 = makeMsg("c", 3);
+    mockCheckAccessLevel
+      .mockResolvedValueOnce({ msg: msg1, chat: secretaryChat })
+      .mockResolvedValueOnce({ msg: msg2, chat: secretaryChat })
+      .mockResolvedValueOnce({ msg: msg3, chat: secretaryChat });
+
+    await onTextMessage(createCtx(msg1), undefined, jest.fn());
+    await jest.advanceTimersByTimeAsync(5000);
+    await onTextMessage(createCtx(msg2), undefined, jest.fn());
+    await jest.advanceTimersByTimeAsync(5000);
+    await onTextMessage(createCtx(msg3), undefined, jest.fn());
+
+    // All three added to history, but no answer yet.
+    expect(mockAddToHistory).toHaveBeenCalledTimes(3);
+    expect(mockRequestGptAnswer).not.toHaveBeenCalled();
+
+    await jest.advanceTimersByTimeAsync(15000);
+
+    expect(mockRequestGptAnswer).toHaveBeenCalledTimes(1);
+  });
+
+  it("applies secretary.prompt as the system message override", async () => {
+    const chat: ConfigChatType = {
+      ...secretaryChat,
+      chatParams: { secretary: { firstAnswerDelay: 10, prompt: "act as secretary" } },
+    } as ConfigChatType;
+    const msg = makeMsg("hi", 1);
+    mockCheckAccessLevel.mockResolvedValue({ msg, chat });
+
+    await onTextMessage(createCtx(msg), undefined, jest.fn());
+    await jest.advanceTimersByTimeAsync(10000);
+
+    expect(sharedThread.nextSystemMessage).toBe("act as secretary");
+    expect(mockRequestGptAnswer).toHaveBeenCalledTimes(1);
+  });
+
+  it("answers immediately when secretary mode is disabled", async () => {
+    const chat: ConfigChatType = {
+      name: "chat",
+      completionParams: {},
+      chatParams: {},
+      toolParams: {},
+    } as ConfigChatType;
+    const msg = makeMsg("hi", 1);
+    mockCheckAccessLevel.mockResolvedValue({ msg, chat });
+
+    await onTextMessage(createCtx(msg), undefined, jest.fn());
+    await Promise.resolve();
+
+    expect(mockRequestGptAnswer).toHaveBeenCalledTimes(1);
+    expect(handlers.__testSecretary.has(1)).toBe(false);
+    await jest.runAllTimersAsync();
+  });
+});

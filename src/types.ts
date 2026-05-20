@@ -151,7 +151,14 @@ export type ChatParamsType = {
   responseButtonsMessage?: boolean;
   vector_memory?: boolean;
   markReplyToMessage?: boolean;
+  secretary?: SecretaryConfigType;
   form?: FormConfigType[];
+};
+
+// Secretary mode configuration (per-chat debounce)
+export type SecretaryConfigType = {
+  firstAnswerDelay: number; // seconds to wait after the first message before answering
+  prompt?: string; // overrides the system message while in secretary mode
 };
 
 export type CompletionParamsType = {

@@ -618,6 +618,29 @@ inlineMode:
 - When `live_answer` is enabled, the bot additionally computes a debounced answer for the
   typed query and offers it as an extra inline result.
 
+## Secretary mode
+
+Secretary mode debounces answers per chat: after the first incoming message the bot waits
+`firstAnswerDelay` seconds, batching any rapid follow-ups into the thread history, then answers
+once. This is useful for chats where users send several short messages in a row and you want a
+single consolidated reply.
+
+Enable it via `chatParams.secretary`:
+
+```yaml
+chatParams:
+  secretary:
+    firstAnswerDelay: 15 # seconds to wait after the first message before answering
+    prompt: "You are a secretary, answer once after collecting the user's messages." # optional system message override
+```
+
+- The first message starts the timer. Messages arriving within the window are added to history
+  but do not trigger an answer; the bot answers once when the timer expires using the latest
+  message context.
+- When `prompt` is set, it overrides the system message for that answer (via
+  `thread.nextSystemMessage`).
+- Set `firstAnswerDelay` to `0` (or omit `secretary`) to answer immediately as usual.
+
 ## Default response format
 
 Set `response_format` in a chat configuration to force the model to reply in a specific structure.
