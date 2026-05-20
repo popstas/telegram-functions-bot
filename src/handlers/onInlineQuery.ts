@@ -4,10 +4,16 @@ import type { Message } from "telegraf/types";
 import { useConfig } from "../config.ts";
 import { log } from "../helpers.ts";
 import { requestGptAnswer } from "../helpers/gpt/llm.ts";
+import { useThreads } from "../threads.ts";
 import type { ConfigChatType } from "../types.ts";
 
 const DEFAULT_DEBOUNCE_MS = 1000;
 const LIVE_RESULT_ID = "live";
+// Telegram caps message text at 4096 characters.
+const TELEGRAM_MAX_MESSAGE_LENGTH = 4096;
+
+// Monotonic counter used to build a unique, throwaway thread id per inline run.
+let inlineThreadCounter = 0;
 
 // Cache of computed live answers keyed by query string.
 const liveAnswerCache = new Map<string, string>();
@@ -51,31 +57,57 @@ function buildInlineChatConfig(prompt: string): ConfigChatType {
 export async function computeInlineAnswer(
   prompt: string,
   query: string,
-  from: { id: number; username?: string; first_name?: string } | undefined,
+  from: { id: number; first_name?: string } | undefined,
 ): Promise<string> {
   const chatConfig = buildInlineChatConfig(prompt);
-  const chatId = from?.id || 0;
+  // Use an isolated, throwaway thread id. In a private chat Telegram sets
+  // chat.id === user.id, so reusing from.id here would read from and write into
+  // the user's real DM history. A unique synthetic key keeps inline runs
+  // isolated and is removed in the finally block below.
+  const inlineChatId = `inline:${from?.id ?? 0}:${inlineThreadCounter++}` as unknown as number;
+  const threads = useThreads();
+  const name = from?.first_name || "inline";
   const msg = {
     text: query,
-    chat: { id: chatId, type: "private", first_name: from?.first_name || "inline" },
-    from: from || { id: chatId, is_bot: false, first_name: "inline" },
+    chat: { id: inlineChatId, type: "private", first_name: name },
+    from: from || { id: 0, is_bot: false, first_name: "inline" },
     message_id: Date.now(),
     date: Math.floor(Date.now() / 1000),
   } as unknown as Message.TextMessage;
 
-  const result = await requestGptAnswer(
-    msg,
-    chatConfig,
-    { noSendTelegram: true } as Context & { noSendTelegram?: boolean },
-    { skipEvaluators: true },
-  );
-  return result?.content || "";
+  // Seed the thread with the user's query. requestGptAnswer builds the prompt
+  // from thread.messages (not msg.text), so without this the model would never
+  // see what the user typed.
+  threads[inlineChatId] = {
+    id: inlineChatId,
+    msgs: [],
+    messages: query ? [{ role: "user", content: query, name }] : [],
+    completionParams: chatConfig.completionParams,
+  };
+
+  try {
+    const result = await requestGptAnswer(
+      msg,
+      chatConfig,
+      { noSendTelegram: true } as Context & { noSendTelegram?: boolean },
+      { skipEvaluators: true },
+    );
+    return result?.content || "";
+  } finally {
+    delete threads[inlineChatId];
+  }
 }
 
 // Schedule a debounced live-answer computation for the given query.
+// Cache key is scoped per user so one user's live answer is never surfaced to
+// another user who happens to type the same query string.
+function liveCacheKey(userId: number, query: string): string {
+  return `${userId}:${query}`;
+}
+
 function scheduleLiveAnswer(
   query: string,
-  from: { id: number; username?: string; first_name?: string },
+  from: { id: number; first_name?: string },
   prompt: string,
   debounceMs: number,
 ) {
@@ -86,7 +118,7 @@ function scheduleLiveAnswer(
     void (async () => {
       try {
         const answer = await computeInlineAnswer(prompt, query, from);
-        if (answer) liveAnswerCache.set(query, answer);
+        if (answer) liveAnswerCache.set(liveCacheKey(from.id, query), answer);
       } catch (e) {
         log({ msg: `inline live answer error: ${(e as Error).message}`, logLevel: "warn" });
       }
@@ -120,7 +152,7 @@ export async function onInlineQuery(ctx: Context) {
   if (config.inlineMode.live_answer && query) {
     const from = inlineQuery.from;
     const askPrompt = buttons.find((b) => b.name === "Ask")?.prompt || buttons[0]?.prompt || "";
-    const cached = liveAnswerCache.get(query);
+    const cached = liveAnswerCache.get(liveCacheKey(from.id, query));
     if (cached) {
       results.unshift({
         type: "article",
@@ -166,12 +198,8 @@ export async function onChosenInlineResult(ctx: Context) {
 
   try {
     const answer = await computeInlineAnswer(button.prompt, query || "", from);
-    await ctx.telegram.editMessageText(
-      undefined,
-      undefined,
-      inline_message_id,
-      answer || "(empty answer)",
-    );
+    const text = (answer || "(empty answer)").slice(0, TELEGRAM_MAX_MESSAGE_LENGTH);
+    await ctx.telegram.editMessageText(undefined, undefined, inline_message_id, text);
   } catch (e) {
     log({ msg: `inline chosen result error: ${(e as Error).message}`, logLevel: "warn" });
   }
