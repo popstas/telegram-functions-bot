@@ -593,6 +593,31 @@ chatParams:
   answerReactions: false
 ```
 
+## Inline mode
+
+Inline mode lets users invoke the bot from any chat by typing `@your_bot_name your query`.
+Configured buttons appear as inline results; selecting one runs that button's prompt against
+the typed query and posts the LLM answer in place.
+
+Enable inline queries for your bot in [BotFather](https://core.telegram.org/bots/features) first
+(`/setinline`), then add a global `inlineMode` block to `config.yml`:
+
+```yaml
+inlineMode:
+  buttons:
+    - name: Ask
+      prompt: You are a helpful assistant. Answer the question.
+    - name: Summarize
+      prompt: Summarize the following text concisely.
+  live_answer: false # optional, off by default
+  debounce_ms: 1000 # debounce window for live answers
+```
+
+- A default `Ask` button is always added when not present; its prompt defaults to the
+  `default` chat's `systemMessage`.
+- When `live_answer` is enabled, the bot additionally computes a debounced answer for the
+  typed query and offers it as an extra inline result.
+
 ## Default response format
 
 Set `response_format` in a chat configuration to force the model to reply in a specific structure.

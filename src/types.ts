@@ -40,7 +40,14 @@ export type ConfigType = {
   };
   useChatsDir?: boolean;
   chatsDir?: string;
+  inlineMode?: InlineModeConfigType;
   chats: ConfigChatType[];
+};
+
+export type InlineModeConfigType = {
+  buttons?: { name: string; prompt: string }[];
+  live_answer?: boolean;
+  debounce_ms?: number;
 };
 
 export type ConfigChatType = {

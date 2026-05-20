@@ -64,14 +64,14 @@ Flow: in `isMentioned()` allow processing when the bot is explicitly mentioned (
 
 ### Task 1: Inline mode
 
-- [ ] Add `inlineMode?: { buttons?: {name; prompt}[]; live_answer?: boolean; debounce_ms?: number }` to `ConfigType` in `src/types.ts`.
-- [ ] Create `src/handlers/onInlineQuery.ts`: build `InlineQueryResultArticle[]` from configured buttons, always including a default `Ask` button whose prompt defaults to the chat `systemMessage`; encode the chosen button in the result `id`.
-- [ ] Add `bot.on("inline_query", onInlineQuery)` and a `chosen_inline_result` handler in `src/index.ts` that runs the selected button's prompt against the query via `requestGptAnswer`.
-- [ ] Implement optional `live_answer` (off by default) with `debounce_ms` debouncing for query-driven live results.
-- [ ] Add a sample `inlineMode` block to the global config in `generateConfig()` (`src/config.ts`) and confirm `checkConfigSchema()` does not warn.
-- [ ] Document inline mode in `README.md` (incl. enabling inline mode via BotFather).
-- [ ] write tests for inline query handling (button results, default Ask, live_answer off/on)
-- [ ] run project tests - must pass before next task
+- [x] Add `inlineMode?: { buttons?: {name; prompt}[]; live_answer?: boolean; debounce_ms?: number }` to `ConfigType` in `src/types.ts`.
+- [x] Create `src/handlers/onInlineQuery.ts`: build `InlineQueryResultArticle[]` from configured buttons, always including a default `Ask` button whose prompt defaults to the chat `systemMessage`; encode the chosen button in the result `id`.
+- [x] Add `bot.on("inline_query", onInlineQuery)` and a `chosen_inline_result` handler in `src/index.ts` that runs the selected button's prompt against the query via `requestGptAnswer`.
+- [x] Implement optional `live_answer` (off by default) with `debounce_ms` debouncing for query-driven live results.
+- [x] Add a sample `inlineMode` block to the global config in `generateConfig()` (`src/config.ts`) and confirm `checkConfigSchema()` does not warn.
+- [x] Document inline mode in `README.md` (incl. enabling inline mode via BotFather).
+- [x] write tests for inline query handling (button results, default Ask, live_answer off/on)
+- [x] run project tests - must pass before next task
 
 ### Task 2: Secretary mode
 
