@@ -97,10 +97,10 @@ Flow: in `isMentioned()` allow processing when the bot is explicitly mentioned (
 
 ### Task 4: Verify acceptance criteria
 
-- [ ] verify all three features from Overview are implemented and configurable
-- [ ] run full project test suite (`npm run test-full`)
-- [ ] run project linter (`npm run lint src tests`) - all issues must be fixed
-- [ ] run `npm run format src tests`
+- [x] verify all three features from Overview are implemented and configurable
+- [x] run full project test suite (`npm run test-full`)
+- [x] run project linter (`npm run lint src tests`) - all issues must be fixed
+- [x] run `npm run format src tests`
 
 ## Post-Completion
 
