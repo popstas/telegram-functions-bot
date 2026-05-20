@@ -41,6 +41,7 @@ export type ConfigType = {
   useChatsDir?: boolean;
   chatsDir?: string;
   inlineMode?: InlineModeConfigType;
+  guestMode?: GuestModeConfigType;
   chats: ConfigChatType[];
 };
 
@@ -48,6 +49,11 @@ export type InlineModeConfigType = {
   buttons?: { name: string; prompt: string }[];
   live_answer?: boolean;
   debounce_ms?: number;
+};
+
+// Guest mode configuration: process bot mentions in replies to other users
+export type GuestModeConfigType = {
+  prompt: string; // system instruction applied for guest-mode turns
 };
 
 export type ConfigChatType = {

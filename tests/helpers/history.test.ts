@@ -11,6 +11,14 @@ jest.unstable_mockModule("../../src/threads.ts", () => ({
 jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   getFullName: () => "John Doe",
   isOurUser: jest.fn(),
+  isAdminUser: jest.fn(),
+  sendTelegramMessage: jest.fn(),
+  sendTelegramDocument: jest.fn(),
+}));
+
+jest.unstable_mockModule("../../src/config.ts", () => ({
+  useConfig: () => ({ bot_name: "mybot" }),
+  updateChatInConfig: jest.fn(),
 }));
 
 const { addToHistory, forgetHistoryOnTimeout } = await import("../../src/helpers/history.ts");

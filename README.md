@@ -641,6 +641,26 @@ chatParams:
   `thread.nextSystemMessage`).
 - Set `firstAnswerDelay` to `0` (or omit `secretary`) to answer immediately as usual.
 
+## Guest mode
+
+Guest mode lets the bot respond when it is explicitly mentioned (by `@bot_name` or the chat
+`prefix`) in a **reply to another user's message** in a group chat. The replied-to message is
+added to the thread history alongside the user's message so the model keeps the conversational
+context, and the configured `prompt` is applied as the system instruction for that turn.
+
+Enable it via the global `guestMode` block in `config.yml`:
+
+```yaml
+guestMode:
+  prompt: "You are answering in a group chat. The user replied to another person's message, which is included for context."
+```
+
+- Guest mode only triggers on replies to other (non-bot) users when the bot is explicitly
+  mentioned; replies to the bot itself and ordinary messages are unaffected.
+- The replied-to message text is inserted into history as a user message before the user's own
+  message.
+- Omit the `guestMode` block to disable the feature.
+
 ## Default response format
 
 Set `response_format` in a chat configuration to force the model to reply in a specific structure.

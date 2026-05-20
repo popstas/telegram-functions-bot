@@ -81,3 +81,27 @@ export function isMentioned(
   if (replyToOther && !isMentioned) return false;
   return true;
 }
+
+// Guest mode: the bot is explicitly mentioned (tag/prefix) in a reply to another
+// (non-bot) user. When global guest mode is enabled, such turns are processed and
+// the replied-to message is added to history for conversational continuity.
+export function isGuestModeReply(
+  msg: Message.TextMessage & { caption?: string },
+  chat: ConfigChatType,
+): boolean {
+  if (msg.chat.type === "private") return false;
+  const reply = msg.reply_to_message as Message.TextMessage | undefined;
+  if (!reply) return false;
+  const guestMode = useConfig().guestMode;
+  if (!guestMode?.prompt) return false;
+  const botName = chat.bot_name || useConfig().bot_name;
+  const replyAuthor = reply.from?.username;
+  // Not a guest-mode reply when replying to the bot itself or to one's own message.
+  if (!replyAuthor || replyAuthor === botName) return false;
+  if (msg.from?.username === replyAuthor) return false;
+  const text = msg.text || msg.caption || "";
+  const prefix = chat.prefix ?? "";
+  const hasPrefix = prefix ? new RegExp(`^${prefix}`, "i").test(text) : false;
+  const hasTagged = new RegExp(`@${botName}`, "i").test(text);
+  return hasPrefix || hasTagged;
+}

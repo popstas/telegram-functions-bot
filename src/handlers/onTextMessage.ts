@@ -14,7 +14,7 @@ import { rememberSave, isRememberCommand, stripRememberPrefix } from "../helpers
 import { setLastCtx } from "../helpers/lastCtx.ts";
 import { addOauthToThread, ensureAuth } from "../helpers/google.ts";
 import { generateButtonsFromAgent, requestGptAnswer } from "../helpers/gpt.ts";
-import checkAccessLevel from "./access.ts";
+import checkAccessLevel, { isGuestModeReply } from "./access.ts";
 import resolveChatButtons from "./resolveChatButtons.ts";
 import { handleFormFlow } from "./formFlow.ts";
 import { editTelegramMessage, sendTelegramMessage } from "../telegram/send.ts";
@@ -181,6 +181,13 @@ export default async function onTextMessage(
   // addToHistory should be after replace msg.text
   addToHistory(msg, chat);
   forgetHistoryOnTimeout(chat, msg);
+
+  // Guest mode: when the bot is mentioned in a reply to another user, apply the
+  // configured guest prompt as the system instruction for this turn.
+  const guestMode = useConfig().guestMode;
+  if (guestMode?.prompt && isGuestModeReply(msg, chat)) {
+    thread.nextSystemMessage = guestMode.prompt;
+  }
 
   // Secretary mode: debounce answers per chat. The first message starts a
   // timer; messages arriving within the window are added to history above but
