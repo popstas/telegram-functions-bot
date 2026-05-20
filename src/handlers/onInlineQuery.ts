@@ -15,8 +15,23 @@ const TELEGRAM_MAX_MESSAGE_LENGTH = 4096;
 // Monotonic counter used to build a unique, throwaway thread id per inline run.
 let inlineThreadCounter = 0;
 
-// Cache of computed live answers keyed by query string.
+// Cache of computed live answers keyed by query string. Bounded to avoid
+// unbounded growth: each distinct query produces a new key, so without a cap
+// the map would grow for the lifetime of the process. Oldest entries are
+// evicted first (Map preserves insertion order).
+const LIVE_ANSWER_CACHE_MAX = 500;
 const liveAnswerCache = new Map<string, string>();
+
+function setLiveAnswer(key: string, answer: string) {
+  // Refresh insertion order so recently-used keys survive eviction.
+  if (liveAnswerCache.has(key)) liveAnswerCache.delete(key);
+  liveAnswerCache.set(key, answer);
+  while (liveAnswerCache.size > LIVE_ANSWER_CACHE_MAX) {
+    const oldest = liveAnswerCache.keys().next().value;
+    if (oldest === undefined) break;
+    liveAnswerCache.delete(oldest);
+  }
+}
 // Active debounce timers keyed by user id.
 const liveTimers = new Map<number, NodeJS.Timeout>();
 
@@ -118,7 +133,7 @@ function scheduleLiveAnswer(
     void (async () => {
       try {
         const answer = await computeInlineAnswer(prompt, query, from);
-        if (answer) liveAnswerCache.set(liveCacheKey(from.id, query), answer);
+        if (answer) setLiveAnswer(liveCacheKey(from.id, query), answer);
       } catch (e) {
         log({ msg: `inline live answer error: ${(e as Error).message}`, logLevel: "warn" });
       }
