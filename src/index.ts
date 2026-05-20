@@ -15,6 +15,7 @@ import onAudio from "./handlers/onAudio.ts";
 import onUnsupported from "./handlers/onUnsupported.ts";
 import onDocument from "./handlers/onDocument.ts";
 import onReaction from "./handlers/onReaction.ts";
+import { onInlineQuery, onChosenInlineResult } from "./handlers/onInlineQuery.ts";
 import { handleFormButtonClick } from "./handlers/formFlow.ts";
 import { useLastCtx } from "./helpers/lastCtx.ts";
 import { agentGetHandler, agentPostHandler, toolPostHandler } from "./httpHandlers.ts";
@@ -119,6 +120,8 @@ async function launchBot(bot_token: string, bot_name: string) {
     bot.on(message("video_note"), onUnsupported);
     bot.on(message("document"), onDocument);
     bot.on("message_reaction", onReaction);
+    bot.on("inline_query", onInlineQuery);
+    bot.on("chosen_inline_result", onChosenInlineResult);
 
     bot.catch((err, ctx) => {
       log({
@@ -157,7 +160,13 @@ async function launchBot(bot_token: string, bot_name: string) {
 
     const launchPromise = bot.launch(
       {
-        allowedUpdates: ["message", "message_reaction", "callback_query"],
+        allowedUpdates: [
+          "message",
+          "message_reaction",
+          "callback_query",
+          "inline_query",
+          "chosen_inline_result",
+        ],
       },
       () => {
         log({ msg: `bot started: ${bot_name}` });

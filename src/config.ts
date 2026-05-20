@@ -255,6 +255,11 @@ export function generateConfig(): ConfigType {
     },
     useChatsDir: false,
     chatsDir: "data/chats",
+    inlineMode: {
+      buttons: [{ name: "Ask", prompt: "You are a helpful assistant. Answer the question." }],
+      live_answer: false,
+      debounce_ms: 1000,
+    },
     chats: [
       {
         name: "default",
