@@ -260,6 +260,10 @@ export function generateConfig(): ConfigType {
       live_answer: false,
       debounce_ms: 1000,
     },
+    guestMode: {
+      prompt:
+        "You are answering in a group chat. The user replied to another person's message, which is included for context.",
+    },
     chats: [
       {
         name: "default",

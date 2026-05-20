@@ -18,6 +18,7 @@ jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
 
 jest.unstable_mockModule("../../src/handlers/access.ts", () => ({
   __esModule: true,
+  isGuestModeReply: () => false,
   default: mockCheckAccessLevel,
 }));
 

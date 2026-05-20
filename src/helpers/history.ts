@@ -1,6 +1,7 @@
 import { Message, User } from "telegraf/types";
 import { ConfigChatType } from "../types.ts";
 import { isOurUser } from "../telegram/send.ts";
+import { isGuestModeReply } from "../handlers/access.ts";
 import OpenAI from "openai";
 import { useThreads } from "../threads.ts";
 
@@ -57,6 +58,22 @@ export function addToHistory(
     threads[key].messages.push({ role: "system", content: answer });
     threads[key].messages = threads[key].messages.slice(-historyLimit);
   } else {
+    // Guest mode: include the replied-to message in history so the model keeps
+    // the conversational context of the message the user is replying to.
+    if (msg.reply_to_message && isGuestModeReply(msg, chatConfig)) {
+      const reply = msg.reply_to_message as Message.TextMessage & { caption?: string };
+      const replyText = reply.text || reply.caption || "";
+      if (replyText) {
+        const replyFrom = reply.from;
+        const replyName =
+          replyFrom?.first_name || replyFrom?.last_name || replyFrom?.username || undefined;
+        threads[key].messages.push({
+          role: "user",
+          content: replyText,
+          name: replyName,
+        } as OpenAI.ChatCompletionMessageParam);
+      }
+    }
     const messageItem = buildUserMessage(msg, chatConfig);
     threads[key].messages.push(messageItem);
     threads[key].messages = threads[key].messages.slice(-historyLimit);

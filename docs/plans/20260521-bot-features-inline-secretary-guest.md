@@ -86,14 +86,14 @@ Flow: in `isMentioned()` allow processing when the bot is explicitly mentioned (
 
 ### Task 3: Guest mode
 
-- [ ] Add `guestMode?: { prompt: string }` to `ConfigType` in `src/types.ts`.
-- [ ] In `src/handlers/access.ts` (`isMentioned`), allow processing when the bot is explicitly mentioned (tag/prefix) in a reply to another user while guest mode is enabled.
-- [ ] In `src/helpers/history.ts` (`buildUserMessage`/`addToHistory`), when guest mode applies to such a reply, add the replied-to message into thread history alongside the user's message (preserving continuity).
-- [ ] Apply `guestMode.prompt` as the system instruction for guest-mode turns.
-- [ ] Add a sample `guestMode` block to the global config in `generateConfig()` (`src/config.ts`).
-- [ ] Document Guest Mode in `README.md`.
-- [ ] write tests for reply-context inclusion and guest prompt
-- [ ] run project tests - must pass before next task
+- [x] Add `guestMode?: { prompt: string }` to `ConfigType` in `src/types.ts`.
+- [x] In `src/handlers/access.ts` (`isMentioned`), allow processing when the bot is explicitly mentioned (tag/prefix) in a reply to another user while guest mode is enabled.
+- [x] In `src/helpers/history.ts` (`buildUserMessage`/`addToHistory`), when guest mode applies to such a reply, add the replied-to message into thread history alongside the user's message (preserving continuity).
+- [x] Apply `guestMode.prompt` as the system instruction for guest-mode turns.
+- [x] Add a sample `guestMode` block to the global config in `generateConfig()` (`src/config.ts`).
+- [x] Document Guest Mode in `README.md`.
+- [x] write tests for reply-context inclusion and guest prompt
+- [x] run project tests - must pass before next task
 
 ### Task 4: Verify acceptance criteria
 
