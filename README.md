@@ -644,15 +644,45 @@ Enable it via `chatParams.secretary`:
 chatParams:
   secretary:
     firstAnswerDelay: 15 # seconds to wait after the first message before answering
+    sessionDurationSeconds: 600 # inactivity window (s) that keeps a session alive; default 600
     prompt: "You are a secretary, answer once after collecting the user's messages." # optional system message override
 ```
 
-- The first message starts the timer. Messages arriving within the window are added to history
-  but do not trigger an answer; the bot answers once when the timer expires using the latest
-  message context.
+- The delay applies only to the **first message of a session**: that message starts the timer,
+  rapid follow-ups within the window are batched into history, and the bot answers once when the
+  timer expires using the latest message context.
+- While a session is **active**, follow-up messages are answered **immediately** (no delay). A
+  session stays alive as long as messages keep arriving and expires after
+  `sessionDurationSeconds` of inactivity (sliding window, default 600); the next message after a
+  quiet gap starts a new session and is debounced again.
 - When `prompt` is set, it overrides the system message for that answer (via
-  `thread.nextSystemMessage`).
+  `thread.nextSystemMessage`), for both the opening and in-session answers.
 - Set `firstAnswerDelay` to `0` (or omit `secretary`) to answer immediately as usual.
+
+### Telegram Business ("Chat automation")
+
+Secretary mode also works when the bot is connected to a **Telegram Business** account via
+**Settings → Business → Chat automation** (the account owner picks which chats the bot manages
+under "included chats"). In that mode Telegram delivers customers' messages to the bot as
+`business_message` updates (not regular `message` updates), and replies must be tagged with the
+connection id so they are sent as the business account.
+
+The bot handles this automatically:
+
+- It subscribes to `business_connection` and `business_message` updates.
+- For each business message it resolves the **connection owner** (from the `business_connection`
+  update, or lazily via `getBusinessConnection`) and applies the chat config whose `username`
+  matches that owner — e.g. a config with `username: popstas` and `chatParams.secretary` handles
+  business messages for the popstas Business account.
+- The answer is sent into the customer's chat as the business account (`business_connection_id`
+  is threaded to `sendMessage`). The per-chat secretary debounce applies per customer chat.
+
+Set up: enable Business → Chat automation for your account, connect the bot, grant it permission
+to reply, and add a chat config with `username: <owner>` plus the desired `chatParams.secretary`.
+
+Current limitations: text messages only (business voice/photo/documents are ignored); streaming
+is disabled for business turns (a single consolidated reply is sent); button/form replies are not
+tagged with `business_connection_id`.
 
 ## Guest mode
 
