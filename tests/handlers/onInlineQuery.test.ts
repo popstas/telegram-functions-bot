@@ -4,6 +4,7 @@ import type { ConfigType } from "../../src/types.ts";
 
 const mockUseConfig = jest.fn();
 const mockRequestGptAnswer = jest.fn();
+const mockLog = jest.fn();
 
 jest.unstable_mockModule("../../src/config.ts", () => ({
   __esModule: true,
@@ -17,7 +18,7 @@ jest.unstable_mockModule("../../src/helpers/gpt/llm.ts", () => ({
 
 jest.unstable_mockModule("../../src/helpers.ts", () => ({
   __esModule: true,
-  log: jest.fn(),
+  log: (...args: unknown[]) => mockLog(...args),
 }));
 
 let mod: typeof import("../../src/handlers/onInlineQuery.ts");
@@ -42,9 +43,13 @@ beforeEach(async () => {
   jest.useRealTimers();
   mockUseConfig.mockReset();
   mockRequestGptAnswer.mockReset();
+  mockLog.mockReset();
   mod = await import("../../src/handlers/onInlineQuery.ts");
   mod.__resetInlineState();
 });
+
+const loggedMessages = (): string[] =>
+  (mockLog.mock.calls as unknown[][]).map((c) => (c[0] as { msg: string }).msg);
 
 describe("getInlineButtons", () => {
   it("adds a default Ask button using default chat systemMessage", () => {
@@ -89,6 +94,8 @@ describe("onInlineQuery", () => {
     expect(results).toHaveLength(1);
     expect(results[0].id).toBe("btn:0");
     expect(results[0].title).toBe("Ask");
+    expect(loggedMessages()).toContainEqual(expect.stringContaining("buttons=1"));
+    expect(loggedMessages()).toContainEqual(expect.stringContaining("answering 1 results"));
   });
 
   it("does nothing when inlineMode is not configured", async () => {
@@ -210,6 +217,7 @@ describe("onChosenInlineResult", () => {
 
     expect(mockRequestGptAnswer).toHaveBeenCalledTimes(1);
     expect(editMessageText).toHaveBeenCalledWith(undefined, undefined, "abc123", "the answer");
+    expect(loggedMessages()).toContainEqual(expect.stringContaining("inline answer delivered"));
   });
 
   it("ignores results without inline_message_id", async () => {
@@ -229,6 +237,7 @@ describe("onChosenInlineResult", () => {
     await mod.onChosenInlineResult(ctx);
     expect(mockRequestGptAnswer).not.toHaveBeenCalled();
     expect(editMessageText).not.toHaveBeenCalled();
+    expect(loggedMessages()).toContainEqual(expect.stringContaining("no inline_message_id"));
   });
 
   it("surfaces the error in the inline message when the LLM call rejects", async () => {
