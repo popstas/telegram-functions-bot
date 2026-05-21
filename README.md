@@ -657,6 +657,11 @@ chatParams:
   quiet gap starts a new session and is debounced again.
 - When `prompt` is set, it overrides the system message for that answer (via
   `thread.nextSystemMessage`), for both the opening and in-session answers.
+- **Manual takeover (Telegram Business):** if the connection owner replies to a customer
+  manually, the bot pauses auto-answers in that chat for the rest of the session and resumes
+  in the next session (after `sessionDurationSeconds` of inactivity). The bot's own sent
+  messages are ignored for this detection (via `sender_business_bot`), so its replies never
+  count as a takeover. This is detectable only for Business chats.
 - Set `firstAnswerDelay` to `0` (or omit `secretary`) to answer immediately as usual.
 
 ### Telegram Business ("Chat automation")

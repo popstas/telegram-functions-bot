@@ -41,11 +41,29 @@ interface SecretaryState {
 
 const secretaryTimers = new Map<number, SecretaryState>();
 
-// Per-chat last-activity timestamp (epoch ms). A secretary "session" stays alive
-// while messages keep arriving; the firstAnswerDelay debounce applies only to the
-// first message of a session (i.e. after sessionDurationSeconds of inactivity).
+// Per-chat secretary session. A "session" stays alive while messages keep arriving;
+// it expires after sessionDurationSeconds of inactivity (sliding window). The
+// firstAnswerDelay debounce applies only to the first message of a session.
+// `handover` is set when the owner replies manually (Telegram Business): while a
+// handed-over session is active the bot stays silent in that chat.
+interface SecretarySession {
+  lastActivity: number;
+  handover: boolean;
+}
 const DEFAULT_SESSION_DURATION_SECONDS = 600;
-const secretarySessions = new Map<number, number>();
+const secretarySessions = new Map<number, SecretarySession>();
+
+// Called when the connection owner replies manually in a Business chat: cancel any
+// pending opening answer and mark the session handed over so auto-answers pause until
+// the session expires.
+export function noteSecretaryHumanReply(chatId: number) {
+  const timer = secretaryTimers.get(chatId);
+  if (timer) {
+    clearTimeout(timer.timer);
+    secretaryTimers.delete(chatId);
+  }
+  secretarySessions.set(chatId, { lastActivity: Date.now(), handover: true });
+}
 
 // Exposed for tests to reset module-level state between runs.
 export const __testSecretary = {
@@ -265,12 +283,28 @@ export default async function onTextMessage(
     // A session stays alive while messages keep arriving; it expires after
     // sessionDurationSeconds of inactivity (sliding window).
     const sessionMs = (secretary.sessionDurationSeconds ?? DEFAULT_SESSION_DURATION_SECONDS) * 1000;
-    const last = secretarySessions.get(chatId);
-    const sessionActive = last !== undefined && Date.now() - last <= sessionMs;
+    const sess = secretarySessions.get(chatId);
+    const sessionActive = sess !== undefined && Date.now() - sess.lastActivity <= sessionMs;
+
+    if (sessionActive && sess.handover) {
+      // The owner is handling this chat manually — stay silent, but keep the session
+      // alive so suppression lasts until the conversation goes quiet.
+      sess.lastActivity = Date.now();
+      log({
+        msg: "secretary: suppressed (owner handling this session)",
+        logLevel: "debug",
+        chatId,
+        answerId,
+        chatTitle,
+        role: "system",
+        username: msg?.from?.username,
+      });
+      return;
+    }
 
     if (sessionActive) {
       // Mid-session: answer immediately and slide the session window forward.
-      secretarySessions.set(chatId, Date.now());
+      sess.lastActivity = Date.now();
       applySecretaryTurnOverride(thread, msg, chat);
       log({
         msg: "secretary: session active, answering immediately",
@@ -285,12 +319,16 @@ export default async function onTextMessage(
       return;
     }
 
+    // New session: a fresh session clears any prior handover (bot resumes).
+    secretarySessions.set(chatId, { lastActivity: Date.now(), handover: false });
     const state: SecretaryState = { timer: undefined as never, ctx, msg, chat, callback };
     state.timer = setTimeout(() => {
       secretaryTimers.delete(chatId);
       try {
         // The session becomes active once the opening answer fires.
-        secretarySessions.set(chatId, Date.now());
+        const current = secretarySessions.get(chatId);
+        if (current) current.lastActivity = Date.now();
+        else secretarySessions.set(chatId, { lastActivity: Date.now(), handover: false });
         log({
           msg: "secretary: delay elapsed, answering",
           logLevel: "info",

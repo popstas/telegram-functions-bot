@@ -4,6 +4,7 @@ import type { ConfigType } from "../../src/types.ts";
 
 const mockUseConfig = jest.fn();
 const mockOnTextMessage = jest.fn(() => Promise.resolve(undefined));
+const mockNoteSecretaryHumanReply = jest.fn();
 const mockLog = jest.fn();
 
 jest.unstable_mockModule("../../src/config.ts", () => ({
@@ -19,6 +20,7 @@ jest.unstable_mockModule("../../src/helpers.ts", () => ({
 jest.unstable_mockModule("../../src/handlers/onTextMessage.ts", () => ({
   __esModule: true,
   default: (...args: unknown[]) => mockOnTextMessage(...args),
+  noteSecretaryHumanReply: (...args: unknown[]) => mockNoteSecretaryHumanReply(...args),
 }));
 
 let mod: typeof import("../../src/handlers/onBusinessMessage.ts");
@@ -60,6 +62,7 @@ beforeEach(async () => {
   jest.resetModules();
   mockUseConfig.mockReset();
   mockOnTextMessage.mockReset();
+  mockNoteSecretaryHumanReply.mockReset();
   mockLog.mockReset();
   mockOnTextMessage.mockResolvedValue(undefined);
   mod = await import("../../src/handlers/onBusinessMessage.ts");
@@ -162,6 +165,70 @@ describe("onBusinessMessage", () => {
       },
     );
     await mod.onBusinessMessage(ctx);
+    expect(mockOnTextMessage).not.toHaveBeenCalled();
+  });
+
+  it("pauses auto-answer when the owner replies manually (matched by id)", async () => {
+    const connCtx = {
+      update: {
+        business_connection: {
+          id: "conn1",
+          user: { id: 100, username: "popstas" },
+          can_reply: true,
+          is_enabled: true,
+        },
+      },
+    } as unknown as Context;
+    await mod.onBusinessConnection(connCtx);
+
+    // Message authored by the owner (from.id === connection owner id).
+    const ctx = businessCtx(
+      {},
+      {
+        business_message: {
+          text: "I'll take it from here",
+          message_id: 9,
+          chat: { id: 42, type: "private" },
+          from: { id: 100, username: "popstas" },
+          business_connection_id: "conn1",
+        },
+      },
+    );
+    await mod.onBusinessMessage(ctx);
+
+    expect(mockNoteSecretaryHumanReply).toHaveBeenCalledWith(42);
+    expect(mockOnTextMessage).not.toHaveBeenCalled();
+  });
+
+  it("ignores the bot's own sent messages (sender_business_bot)", async () => {
+    const connCtx = {
+      update: {
+        business_connection: {
+          id: "conn1",
+          user: { id: 100, username: "popstas" },
+          can_reply: true,
+          is_enabled: true,
+        },
+      },
+    } as unknown as Context;
+    await mod.onBusinessConnection(connCtx);
+
+    const ctx = businessCtx(
+      {},
+      {
+        business_message: {
+          text: "auto reply",
+          message_id: 9,
+          chat: { id: 42, type: "private" },
+          from: { id: 100, username: "popstas" },
+          sender_business_bot: { id: 555, is_bot: true },
+          business_connection_id: "conn1",
+        },
+      },
+    );
+    await mod.onBusinessMessage(ctx);
+
+    expect(mockNoteSecretaryHumanReply).not.toHaveBeenCalled();
     expect(mockOnTextMessage).not.toHaveBeenCalled();
   });
 });

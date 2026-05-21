@@ -1,7 +1,7 @@
 import { Context } from "telegraf";
 import type { Message } from "telegraf/types";
 import { log } from "../helpers.ts";
-import onTextMessage from "./onTextMessage.ts";
+import onTextMessage, { noteSecretaryHumanReply } from "./onTextMessage.ts";
 
 // Telegram Business support. Telegraf 4.16.3 has no business typings, so these
 // updates are handled by inspecting the raw `ctx.update`. A business_message is
@@ -18,6 +18,7 @@ export type BusinessCtx = Context & {
 };
 
 interface BusinessConnectionInfo {
+  ownerId?: number;
   ownerUsername?: string;
   canReply: boolean;
 }
@@ -33,7 +34,7 @@ export function __resetBusinessConnections() {
 type BusinessConnectionUpdate = {
   business_connection?: {
     id: string;
-    user?: { username?: string };
+    user?: { id?: number; username?: string };
     can_reply?: boolean;
     is_enabled?: boolean;
   };
@@ -43,6 +44,7 @@ export async function onBusinessConnection(ctx: Context) {
   const conn = (ctx.update as BusinessConnectionUpdate).business_connection;
   if (!conn?.id) return;
   businessConnections.set(conn.id, {
+    ownerId: conn.user?.id,
     ownerUsername: conn.user?.username,
     canReply: Boolean(conn.can_reply) && conn.is_enabled !== false,
   });
@@ -61,11 +63,12 @@ async function resolveBusinessConnection(
     const conn = (await (
       telegram as unknown as { callApi: (m: string, p: object) => Promise<unknown> }
     ).callApi("getBusinessConnection", { business_connection_id: connectionId })) as {
-      user?: { username?: string };
+      user?: { id?: number; username?: string };
       can_reply?: boolean;
       is_enabled?: boolean;
     };
     const info: BusinessConnectionInfo = {
+      ownerId: conn?.user?.id,
       ownerUsername: conn?.user?.username,
       canReply: Boolean(conn?.can_reply) && conn?.is_enabled !== false,
     };
@@ -103,6 +106,29 @@ export async function onBusinessMessage(ctx: Context) {
       msg: `business message: cannot route (owner=${info?.ownerUsername}, canReply=${info?.canReply}, conn=${connectionId})`,
       logLevel: "warn",
     });
+    return;
+  }
+
+  // Messages the bot itself sent on behalf of the business carry sender_business_bot.
+  // Ignore them so our own replies never look like a manual owner takeover.
+  if ((bm as { sender_business_bot?: unknown }).sender_business_bot) {
+    log({ msg: "business: ignoring bot-sent message", logLevel: "debug" });
+    return;
+  }
+
+  // A message authored by the connection owner (not the customer) means the owner is
+  // handling this chat manually — pause secretary auto-answers for the session.
+  const isOwner =
+    (info.ownerId !== undefined && bm.from?.id === info.ownerId) ||
+    (!!info.ownerUsername && bm.from?.username === info.ownerUsername);
+  if (isOwner) {
+    log({
+      msg: `secretary: owner replied manually, pausing auto-answer (chat ${bm.chat?.id})`,
+      chatId: bm.chat?.id,
+      role: "system",
+      username: bm.from?.username,
+    });
+    if (bm.chat?.id !== undefined) noteSecretaryHumanReply(bm.chat.id);
     return;
   }
 
