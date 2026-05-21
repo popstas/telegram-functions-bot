@@ -25,10 +25,24 @@ const mockSendTelegramMessage = jest.fn(() =>
   Promise.resolve({ chat: { id: 1 }, message_id: 100, text: "ok" } as Message.TextMessage),
 );
 const mockUseConfig = jest.fn();
+const mockLog = jest.fn();
 
 beforeEach(() => {
   console.error = jest.fn();
 });
+
+jest.unstable_mockModule("../../src/helpers.ts", () => ({
+  __esModule: true,
+  log: (...args: unknown[]) => mockLog(...args),
+  subscribeToLogs: jest.fn(),
+  ensureDirectoryExists: jest.fn(),
+  safeFilename: (filename: string, def: string) => filename || def,
+  sendToHttp: jest.fn(),
+  agentNameToId: (name: string) =>
+    -Math.abs([...name].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 0)),
+  stringToId: (name: string) =>
+    -Math.abs([...name].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 0)),
+}));
 
 jest.unstable_mockModule("../../src/handlers/access.ts", () => ({
   __esModule: true,
@@ -117,6 +131,7 @@ beforeAll(async () => {
 beforeEach(() => {
   jest.useFakeTimers();
   jest.clearAllMocks();
+  mockLog.mockReset();
   handlers.__testSecretary.clear();
   delete sharedThread.nextSystemMessage;
   mockUseConfig.mockReturnValue({ auth: {} });
@@ -131,6 +146,9 @@ afterEach(() => {
   handlers.__testSecretary.clear();
   jest.useRealTimers();
 });
+
+const loggedMessages = (): string[] =>
+  (mockLog.mock.calls as unknown[][]).map((c) => (c[0] as { msg: string }).msg);
 
 describe("onTextMessage secretary mode", () => {
   const secretaryChat: ConfigChatType = {
@@ -148,10 +166,12 @@ describe("onTextMessage secretary mode", () => {
 
     expect(mockAddToHistory).toHaveBeenCalledTimes(1);
     expect(mockRequestGptAnswer).not.toHaveBeenCalled();
+    expect(loggedMessages()).toContainEqual(expect.stringContaining("secretary: waiting 15s"));
 
     await jest.advanceTimersByTimeAsync(15000);
 
     expect(mockRequestGptAnswer).toHaveBeenCalledTimes(1);
+    expect(loggedMessages()).toContainEqual(expect.stringContaining("secretary: delay elapsed"));
   });
 
   it("batches rapid follow-ups into a single answer", async () => {

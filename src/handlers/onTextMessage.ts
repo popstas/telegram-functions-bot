@@ -127,9 +127,17 @@ function launchAnswer(
       }
     })
     .catch((error) => {
-      // Ignore errors from aborted requests
+      // Ignore errors from aborted requests (superseded responses abort on purpose).
       if (!abortController.signal.aborted) {
-        console.error("Error in response handler:", error);
+        log({
+          msg: `response handler error: ${error instanceof Error ? error.message : String(error)}`,
+          logLevel: "error",
+          chatId,
+          answerId,
+          chatTitle: (msg.chat as Chat.TitleChat).title,
+          role: "system",
+          username: msg?.from?.username,
+        });
       }
     })
     .finally(() => {
@@ -215,25 +223,62 @@ export default async function onTextMessage(
       existing.msg = msg;
       existing.chat = chat;
       existing.callback = callback;
+      log({
+        msg: "secretary: batched message into pending answer",
+        logLevel: "debug",
+        chatId,
+        answerId,
+        chatTitle,
+        role: "system",
+        username: msg?.from?.username,
+      });
       return;
     }
 
     const state: SecretaryState = { timer: undefined as never, ctx, msg, chat, callback };
     state.timer = setTimeout(() => {
       secretaryTimers.delete(chatId);
-      // Resolve the per-turn system override from the final batched message.
-      // Secretary prompt takes precedence; otherwise fall back to guest mode
-      // evaluated against the latest message, so a guest prompt that applied to
-      // an earlier batched turn cannot leak into a non-guest answer.
-      const secretaryPrompt = state.chat.chatParams?.secretary?.prompt;
-      if (secretaryPrompt) {
-        thread.nextSystemMessage = secretaryPrompt;
-      } else {
-        applyGuestModeOverride(thread, state.msg, state.chat);
+      try {
+        log({
+          msg: "secretary: delay elapsed, answering",
+          logLevel: "info",
+          chatId,
+          chatTitle,
+          role: "system",
+        });
+        // Resolve the per-turn system override from the final batched message.
+        // Secretary prompt takes precedence; otherwise fall back to guest mode
+        // evaluated against the latest message, so a guest prompt that applied to
+        // an earlier batched turn cannot leak into a non-guest answer.
+        const secretaryPrompt = state.chat.chatParams?.secretary?.prompt;
+        if (secretaryPrompt) {
+          thread.nextSystemMessage = secretaryPrompt;
+        } else {
+          applyGuestModeOverride(thread, state.msg, state.chat);
+        }
+        launchAnswer(state.ctx, state.msg, state.chat, state.callback);
+      } catch (e) {
+        // A synchronous throw here would otherwise be an unhandled exception:
+        // no log, no answer. Record it so the failing step is visible.
+        log({
+          msg: `secretary timer error: ${(e as Error).message}`,
+          logLevel: "error",
+          chatId,
+          chatTitle,
+          role: "system",
+        });
       }
-      launchAnswer(state.ctx, state.msg, state.chat, state.callback);
     }, secretary.firstAnswerDelay * 1000);
     secretaryTimers.set(chatId, state);
+    log({
+      msg: `secretary: waiting ${secretary.firstAnswerDelay}s before answering`,
+      logLevel: "info",
+      chatId,
+      answerId,
+      chatTitle,
+      role: "system",
+      username: msg?.from?.username,
+    });
     return;
   }
 
