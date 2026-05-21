@@ -41,11 +41,18 @@ interface SecretaryState {
 
 const secretaryTimers = new Map<number, SecretaryState>();
 
+// Per-chat last-activity timestamp (epoch ms). A secretary "session" stays alive
+// while messages keep arriving; the firstAnswerDelay debounce applies only to the
+// first message of a session (i.e. after sessionDurationSeconds of inactivity).
+const DEFAULT_SESSION_DURATION_SECONDS = 600;
+const secretarySessions = new Map<number, number>();
+
 // Exposed for tests to reset module-level state between runs.
 export const __testSecretary = {
   clear() {
     for (const state of secretaryTimers.values()) clearTimeout(state.timer);
     secretaryTimers.clear();
+    secretarySessions.clear();
   },
   has(chatId: number) {
     return secretaryTimers.has(chatId);
@@ -71,6 +78,23 @@ function applyGuestModeOverride(
   }
 }
 
+// Resolve the per-turn system override for a secretary answer: the secretary prompt
+// takes precedence; otherwise fall back to the guest-mode override evaluated against
+// the message actually being answered. Used by both the debounced (session start) and
+// the immediate (in-session) secretary paths.
+function applySecretaryTurnOverride(
+  thread: ThreadStateType,
+  msg: Message.TextMessage,
+  chat: ConfigChatType,
+) {
+  const secretaryPrompt = chat.chatParams?.secretary?.prompt;
+  if (secretaryPrompt) {
+    thread.nextSystemMessage = secretaryPrompt;
+  } else {
+    applyGuestModeOverride(thread, msg, chat);
+  }
+}
+
 // Cancel any in-flight answer for the chat, then start a new one. Bookkeeping
 // for cancellation lives in `activeResponses`.
 function launchAnswer(
@@ -81,9 +105,11 @@ function launchAnswer(
 ) {
   const chatId = msg.chat.id;
   const answerId = msg.message_id?.toString() || "";
-  const extraMessageParams = ctx.message?.message_id
-    ? { reply_to_message_id: ctx.message?.message_id }
-    : {};
+  const businessConnectionId = (ctx as { businessConnectionId?: string }).businessConnectionId;
+  const extraMessageParams = {
+    ...(ctx.message?.message_id ? { reply_to_message_id: ctx.message?.message_id } : {}),
+    ...(businessConnectionId ? { business_connection_id: businessConnectionId } : {}),
+  };
 
   // Cancel any existing response for this chat
   const existingResponse = activeResponses.get(chatId);
@@ -235,10 +261,36 @@ export default async function onTextMessage(
       return;
     }
 
+    // The firstAnswerDelay debounce applies only to the first message of a session.
+    // A session stays alive while messages keep arriving; it expires after
+    // sessionDurationSeconds of inactivity (sliding window).
+    const sessionMs = (secretary.sessionDurationSeconds ?? DEFAULT_SESSION_DURATION_SECONDS) * 1000;
+    const last = secretarySessions.get(chatId);
+    const sessionActive = last !== undefined && Date.now() - last <= sessionMs;
+
+    if (sessionActive) {
+      // Mid-session: answer immediately and slide the session window forward.
+      secretarySessions.set(chatId, Date.now());
+      applySecretaryTurnOverride(thread, msg, chat);
+      log({
+        msg: "secretary: session active, answering immediately",
+        logLevel: "debug",
+        chatId,
+        answerId,
+        chatTitle,
+        role: "system",
+        username: msg?.from?.username,
+      });
+      launchAnswer(ctx, msg, chat, callback);
+      return;
+    }
+
     const state: SecretaryState = { timer: undefined as never, ctx, msg, chat, callback };
     state.timer = setTimeout(() => {
       secretaryTimers.delete(chatId);
       try {
+        // The session becomes active once the opening answer fires.
+        secretarySessions.set(chatId, Date.now());
         log({
           msg: "secretary: delay elapsed, answering",
           logLevel: "info",
@@ -246,16 +298,10 @@ export default async function onTextMessage(
           chatTitle,
           role: "system",
         });
-        // Resolve the per-turn system override from the final batched message.
-        // Secretary prompt takes precedence; otherwise fall back to guest mode
-        // evaluated against the latest message, so a guest prompt that applied to
-        // an earlier batched turn cannot leak into a non-guest answer.
-        const secretaryPrompt = state.chat.chatParams?.secretary?.prompt;
-        if (secretaryPrompt) {
-          thread.nextSystemMessage = secretaryPrompt;
-        } else {
-          applyGuestModeOverride(thread, state.msg, state.chat);
-        }
+        // Resolve the per-turn system override from the final batched message, so a
+        // guest prompt that applied to an earlier batched turn cannot leak into a
+        // non-guest answer.
+        applySecretaryTurnOverride(thread, state.msg, state.chat);
         launchAnswer(state.ctx, state.msg, state.chat, state.callback);
       } catch (e) {
         // A synchronous throw here would otherwise be an unhandled exception:

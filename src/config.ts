@@ -362,6 +362,7 @@ export function generateConfig(): ConfigType {
           markReplyToMessage: false,
           secretary: {
             firstAnswerDelay: 15,
+            sessionDurationSeconds: 600,
             prompt: "You are a secretary, answer once after collecting the user's messages.",
           },
         },

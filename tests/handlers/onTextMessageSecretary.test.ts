@@ -244,4 +244,60 @@ describe("onTextMessage secretary mode", () => {
     expect(handlers.__testSecretary.has(1)).toBe(false);
     await jest.runAllTimersAsync();
   });
+
+  const sessionChat: ConfigChatType = {
+    name: "chat",
+    completionParams: {},
+    chatParams: { secretary: { firstAnswerDelay: 15, sessionDurationSeconds: 600 } },
+    toolParams: {},
+  } as ConfigChatType;
+
+  it("answers immediately for follow-ups within an active session", async () => {
+    const msg1 = makeMsg("hi", 1);
+    const msg2 = makeMsg("again", 2);
+    mockCheckAccessLevel
+      .mockResolvedValueOnce({ msg: msg1, chat: sessionChat })
+      .mockResolvedValueOnce({ msg: msg2, chat: sessionChat });
+
+    // First message of the session is debounced.
+    await onTextMessage(createCtx(msg1));
+    expect(mockRequestGptAnswer).not.toHaveBeenCalled();
+    expect(loggedMessages()).toContainEqual(expect.stringContaining("secretary: waiting 15s"));
+    await jest.advanceTimersByTimeAsync(15000);
+    expect(mockRequestGptAnswer).toHaveBeenCalledTimes(1);
+
+    // Session is now active: a follow-up answers immediately, no second wait.
+    mockLog.mockReset();
+    await onTextMessage(createCtx(msg2));
+    await jest.advanceTimersByTimeAsync(0);
+    expect(mockRequestGptAnswer).toHaveBeenCalledTimes(2);
+    expect(loggedMessages()).toContainEqual(
+      expect.stringContaining("secretary: session active, answering immediately"),
+    );
+    expect(loggedMessages()).not.toContainEqual(expect.stringContaining("secretary: waiting"));
+  });
+
+  it("debounces again after the session expires (inactivity)", async () => {
+    const msg1 = makeMsg("hi", 1);
+    const msg2 = makeMsg("later", 2);
+    mockCheckAccessLevel
+      .mockResolvedValueOnce({ msg: msg1, chat: sessionChat })
+      .mockResolvedValueOnce({ msg: msg2, chat: sessionChat });
+
+    await onTextMessage(createCtx(msg1));
+    await jest.advanceTimersByTimeAsync(15000);
+    expect(mockRequestGptAnswer).toHaveBeenCalledTimes(1);
+
+    // Quiet for longer than sessionDurationSeconds → next message starts a new
+    // session and is debounced again.
+    await jest.advanceTimersByTimeAsync(601_000);
+    mockLog.mockReset();
+    await onTextMessage(createCtx(msg2));
+    expect(mockRequestGptAnswer).toHaveBeenCalledTimes(1);
+    expect(handlers.__testSecretary.has(1)).toBe(true);
+    expect(loggedMessages()).toContainEqual(expect.stringContaining("secretary: waiting 15s"));
+
+    await jest.advanceTimersByTimeAsync(15000);
+    expect(mockRequestGptAnswer).toHaveBeenCalledTimes(2);
+  });
 });

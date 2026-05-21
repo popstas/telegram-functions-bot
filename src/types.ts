@@ -165,6 +165,7 @@ export type ChatParamsType = {
 export type SecretaryConfigType = {
   firstAnswerDelay: number; // seconds to wait after the first message before answering
   prompt?: string; // overrides the system message while in secretary mode
+  sessionDurationSeconds?: number; // inactivity window (s) keeping a session alive; the delay applies only to the first message of a session. Default 600.
 };
 
 export type CompletionParamsType = {
