@@ -19,11 +19,38 @@ function isAccessAllowed(chatConfig: ConfigChatType, ctxChat: Chat) {
 }
 
 function getChatConfig(ctxChat: Chat, ctx: Context): ConfigChatType | undefined {
+  const defaultChat = useConfig().chats.find((c) => c.name === "default");
+
+  // Telegram Business: a business_message arrives in the customer's chat, but the
+  // config to apply belongs to the connection OWNER (resolved upstream and passed on
+  // ctx). Match the owner's chat by username; the Telegram connection is the access
+  // gate, so skip the usual id/bot-name/whitelist resolution. Disable streaming for
+  // the turn — streaming edits would each need business_connection_id (out of scope);
+  // send one consolidated message instead.
+  const businessOwnerUsername = (ctx as { businessOwnerUsername?: string }).businessOwnerUsername;
+  if (businessOwnerUsername) {
+    const ownerChat = useConfig().chats.find((c) => c.username === businessOwnerUsername);
+    if (!ownerChat) return undefined;
+    let merged = defaultChat ? ({ ...defaultChat, ...ownerChat } as ConfigChatType) : ownerChat;
+    if (defaultChat) {
+      merged = { ...merged };
+      const mergedParams = {
+        ...(defaultChat.chatParams || {}),
+        ...(ownerChat.chatParams || {}),
+      };
+      merged.chatParams = mergedParams;
+      merged.completionParams = {
+        ...(defaultChat.completionParams || {}),
+        ...(ownerChat.completionParams || {}),
+      };
+    }
+    merged.chatParams = { ...(merged.chatParams || {}), streaming: false };
+    return merged;
+  }
+
   let chat =
     useConfig().chats.find((c) => c.id == ctxChat?.id || c.ids?.includes(ctxChat?.id) || 0) ||
     ({} as ConfigChatType);
-
-  const defaultChat = useConfig().chats.find((c) => c.name === "default");
 
   if (!chat.id) {
     chat =
