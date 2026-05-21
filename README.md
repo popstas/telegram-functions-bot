@@ -603,10 +603,11 @@ Configured buttons appear as inline results; selecting one runs that button's pr
 the typed query and posts the LLM answer in place.
 
 Enable inline queries for your bot in [BotFather](https://core.telegram.org/bots/features) first
-(`/setinline`). The answer is computed when a result is chosen, so you must also enable inline
-feedback in BotFather (`/setinlinefeedback`) — otherwise Telegram never delivers the
-`chosen_inline_result` update and the picked result keeps showing the `⏳` placeholder. Then add
-a global `inlineMode` block to `config.yml`:
+(`/setinline`). The answer is computed when a result is chosen, so you must also set inline
+feedback in BotFather (`/setinlinefeedback`) to **100%** — otherwise Telegram delivers the
+`chosen_inline_result` update for only that fraction of selections (or never, at 0%), and the
+picked result silently keeps showing the `⏳` placeholder. Then add a global `inlineMode` block to
+`config.yml`:
 
 ```yaml
 inlineMode:
@@ -625,6 +626,10 @@ inlineMode:
   typed query in the background. Because the computation is asynchronous, the extra "Live answer"
   result appears once it finishes — i.e. on a subsequent refresh of the same query, not on the
   first request.
+- The inline handlers log each step to `data/messages.log`. If a picked result yields no answer,
+  check the log: an `inline query: ...` line with no following `inline chosen result: ...` line
+  means the `chosen_inline_result` update never arrived (inline feedback is not at 100%); a
+  `no inline_message_id` warning points at the same cause.
 
 ## Secretary mode
 

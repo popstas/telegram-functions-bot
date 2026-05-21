@@ -150,6 +150,7 @@ export async function onInlineQuery(ctx: Context) {
 
   const query = inlineQuery.query || "";
   const buttons = getInlineButtons();
+  log({ msg: `inline query: "${query}" from ${inlineQuery.from?.id}, buttons=${buttons.length}` });
 
   const results: InlineQueryResultArticle[] = buttons.map((button, index) => ({
     type: "article",
@@ -164,6 +165,7 @@ export async function onInlineQuery(ctx: Context) {
     },
   }));
 
+  let liveIncluded = false;
   if (config.inlineMode.live_answer && query) {
     const from = inlineQuery.from;
     const askPrompt = buttons.find((b) => b.name === "Ask")?.prompt || buttons[0]?.prompt || "";
@@ -176,6 +178,7 @@ export async function onInlineQuery(ctx: Context) {
         description: cached.slice(0, 100),
         input_message_content: { message_text: cached },
       });
+      liveIncluded = true;
     } else {
       scheduleLiveAnswer(
         query,
@@ -186,6 +189,7 @@ export async function onInlineQuery(ctx: Context) {
     }
   }
 
+  log({ msg: `inline query: answering ${results.length} results (live=${liveIncluded})` });
   await ctx.answerInlineQuery(results, { cache_time: 0 });
 }
 
@@ -200,21 +204,40 @@ export async function onChosenInlineResult(ctx: Context) {
   if (!chosen) return;
 
   const { result_id, query, inline_message_id, from } = chosen;
-  if (!inline_message_id) return;
+  log({
+    msg: `inline chosen result: id=${result_id}, inline_message_id=${inline_message_id ? "yes" : "no"}, from=${from?.id}`,
+  });
+  if (!inline_message_id) {
+    log({
+      msg: "inline chosen result: no inline_message_id (set /setinlinefeedback to 100% in BotFather)",
+      logLevel: "warn",
+    });
+    return;
+  }
 
-  if (result_id === LIVE_RESULT_ID) return;
+  if (result_id === LIVE_RESULT_ID) {
+    log({ msg: "inline chosen result: live answer picked, nothing to compute" });
+    return;
+  }
 
   const match = /^btn:(\d+)$/.exec(result_id);
-  if (!match) return;
+  if (!match) {
+    log({ msg: `inline chosen result: unrecognized result_id "${result_id}"` });
+    return;
+  }
   const index = parseInt(match[1], 10);
   const buttons = getInlineButtons();
   const button = buttons[index];
-  if (!button) return;
+  if (!button) {
+    log({ msg: `inline chosen result: button index ${index} out of range` });
+    return;
+  }
 
   try {
     const answer = await computeInlineAnswer(button.prompt, query || "", from);
     const text = (answer || "(empty answer)").slice(0, TELEGRAM_MAX_MESSAGE_LENGTH);
     await ctx.telegram.editMessageText(undefined, undefined, inline_message_id, text);
+    log({ msg: `inline answer delivered (${text.length} chars) for "${button.name}"` });
   } catch (e) {
     const message = (e as Error).message;
     log({ msg: `inline chosen result error: ${message}`, logLevel: "warn" });
