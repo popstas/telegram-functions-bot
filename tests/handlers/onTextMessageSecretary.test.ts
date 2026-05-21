@@ -300,4 +300,38 @@ describe("onTextMessage secretary mode", () => {
     await jest.advanceTimersByTimeAsync(15000);
     expect(mockRequestGptAnswer).toHaveBeenCalledTimes(2);
   });
+
+  it("suppresses auto-answers after the owner replies manually, until the session ends", async () => {
+    const msg1 = makeMsg("hi", 1);
+    const msg2 = makeMsg("still there?", 2);
+    const msg3 = makeMsg("hello again", 3);
+    mockCheckAccessLevel
+      .mockResolvedValueOnce({ msg: msg1, chat: sessionChat })
+      .mockResolvedValueOnce({ msg: msg2, chat: sessionChat })
+      .mockResolvedValueOnce({ msg: msg3, chat: sessionChat });
+
+    // Establish a session and answer the opener.
+    await onTextMessage(createCtx(msg1));
+    await jest.advanceTimersByTimeAsync(15000);
+    expect(mockRequestGptAnswer).toHaveBeenCalledTimes(1);
+
+    // Owner takes over this chat manually.
+    handlers.noteSecretaryHumanReply(1);
+
+    // Customer keeps writing within the session → bot stays silent.
+    mockLog.mockReset();
+    await onTextMessage(createCtx(msg2));
+    await jest.advanceTimersByTimeAsync(0);
+    expect(mockRequestGptAnswer).toHaveBeenCalledTimes(1);
+    expect(loggedMessages()).toContainEqual(
+      expect.stringContaining("secretary: suppressed (owner handling this session)"),
+    );
+
+    // After the session goes quiet, a new session resumes auto-answers.
+    await jest.advanceTimersByTimeAsync(601_000);
+    await onTextMessage(createCtx(msg3));
+    expect(handlers.__testSecretary.has(1)).toBe(true);
+    await jest.advanceTimersByTimeAsync(15000);
+    expect(mockRequestGptAnswer).toHaveBeenCalledTimes(2);
+  });
 });

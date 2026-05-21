@@ -73,6 +73,7 @@ jest.unstable_mockModule("../src/mqtt.ts", () => ({
 jest.unstable_mockModule("../src/handlers/onTextMessage.ts", () => ({
   __esModule: true,
   default: (...args: unknown[]) => mockOnTextMessage(...args),
+  noteSecretaryHumanReply: jest.fn(),
 }));
 
 jest.unstable_mockModule("../src/handlers/onPhoto.ts", () => ({
