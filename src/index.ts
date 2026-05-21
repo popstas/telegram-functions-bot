@@ -16,6 +16,7 @@ import onUnsupported from "./handlers/onUnsupported.ts";
 import onDocument from "./handlers/onDocument.ts";
 import onReaction from "./handlers/onReaction.ts";
 import { onInlineQuery, onChosenInlineResult } from "./handlers/onInlineQuery.ts";
+import { onBusinessMessage, onBusinessConnection } from "./handlers/onBusinessMessage.ts";
 import { handleFormButtonClick } from "./handlers/formFlow.ts";
 import { useLastCtx } from "./helpers/lastCtx.ts";
 import { agentGetHandler, agentPostHandler, toolPostHandler } from "./httpHandlers.ts";
@@ -122,6 +123,10 @@ async function launchBot(bot_token: string, bot_name: string) {
     bot.on("message_reaction", onReaction);
     bot.on("inline_query", onInlineQuery);
     bot.on("chosen_inline_result", onChosenInlineResult);
+    // Telegram Business ("Chat automation"). These update types are not typed by
+    // telegraf 4.16.3, so cast the filter strings.
+    bot.on("business_connection" as unknown as "message", onBusinessConnection);
+    bot.on("business_message" as unknown as "message", onBusinessMessage);
 
     bot.catch((err, ctx) => {
       log({
@@ -166,7 +171,9 @@ async function launchBot(bot_token: string, bot_name: string) {
           "callback_query",
           "inline_query",
           "chosen_inline_result",
-        ],
+          "business_connection",
+          "business_message",
+        ] as unknown as ("message" | "callback_query")[],
       },
       () => {
         log({ msg: `bot started: ${bot_name}` });
