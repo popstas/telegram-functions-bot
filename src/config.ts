@@ -364,6 +364,13 @@ export function generateConfig(): ConfigType {
             firstAnswerDelay: 15,
             sessionDurationSeconds: 600,
             prompt: "You are a secretary, answer once after collecting the user's messages.",
+            usernames: [
+              {
+                username: "vip_client",
+                prompt: "Be extra concise and proactive.",
+                override: false,
+              },
+            ],
           },
         },
         toolParams: {

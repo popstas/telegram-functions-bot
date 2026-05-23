@@ -114,10 +114,10 @@ function createCtx(message: Record<string, unknown>): Context & { secondTry?: bo
   } as unknown as Context & { secondTry?: boolean };
 }
 
-function makeMsg(text: string, message_id: number): Message.TextMessage {
+function makeMsg(text: string, message_id: number, username?: string): Message.TextMessage {
   return {
     chat: { id: 1, type: "private" },
-    from: { id: 1 },
+    from: { id: 1, username },
     text,
     message_id,
   } as Message.TextMessage;
@@ -333,5 +333,51 @@ describe("onTextMessage secretary mode", () => {
     expect(handlers.__testSecretary.has(1)).toBe(true);
     await jest.advanceTimersByTimeAsync(15000);
     expect(mockRequestGptAnswer).toHaveBeenCalledTimes(2);
+  });
+
+  const usernamesChat: ConfigChatType = {
+    name: "chat",
+    completionParams: {},
+    chatParams: {
+      secretary: {
+        firstAnswerDelay: 10,
+        prompt: "base prompt",
+        usernames: [
+          { username: "VipClient", prompt: "vip extra", override: false },
+          { username: "boss", prompt: "boss only", override: true },
+        ],
+      },
+    },
+    toolParams: {},
+  } as ConfigChatType;
+
+  it("appends the per-username prompt when override is false (case-insensitive)", async () => {
+    const msg = makeMsg("hi", 1, "vipclient");
+    mockCheckAccessLevel.mockResolvedValue({ msg, chat: usernamesChat });
+
+    await onTextMessage(createCtx(msg));
+    await jest.advanceTimersByTimeAsync(10000);
+
+    expect(sharedThread.nextSystemMessage).toBe("base prompt\n\nvip extra");
+  });
+
+  it("replaces the prompt when override is true", async () => {
+    const msg = makeMsg("hi", 1, "boss");
+    mockCheckAccessLevel.mockResolvedValue({ msg, chat: usernamesChat });
+
+    await onTextMessage(createCtx(msg));
+    await jest.advanceTimersByTimeAsync(10000);
+
+    expect(sharedThread.nextSystemMessage).toBe("boss only");
+  });
+
+  it("uses the base prompt for a non-matching username", async () => {
+    const msg = makeMsg("hi", 1, "someone_else");
+    mockCheckAccessLevel.mockResolvedValue({ msg, chat: usernamesChat });
+
+    await onTextMessage(createCtx(msg));
+    await jest.advanceTimersByTimeAsync(10000);
+
+    expect(sharedThread.nextSystemMessage).toBe("base prompt");
   });
 });

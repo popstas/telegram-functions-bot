@@ -166,6 +166,11 @@ export type SecretaryConfigType = {
   firstAnswerDelay: number; // seconds to wait after the first message before answering
   prompt?: string; // overrides the system message while in secretary mode
   sessionDurationSeconds?: number; // inactivity window (s) keeping a session alive; the delay applies only to the first message of a session. Default 600.
+  usernames?: {
+    username: string; // customer username to match (case-insensitive, no @)
+    prompt: string; // per-user prompt
+    override?: boolean; // true = replace secretary.prompt; false/omitted = append to it
+  }[];
 };
 
 export type CompletionParamsType = {
