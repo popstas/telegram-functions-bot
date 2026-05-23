@@ -105,9 +105,22 @@ function applySecretaryTurnOverride(
   msg: Message.TextMessage,
   chat: ConfigChatType,
 ) {
-  const secretaryPrompt = chat.chatParams?.secretary?.prompt;
-  if (secretaryPrompt) {
-    thread.nextSystemMessage = secretaryPrompt;
+  const secretary = chat.chatParams?.secretary;
+  const base = secretary?.prompt;
+  // Per-customer override: append the matched user's prompt to the base prompt, or
+  // replace it entirely when override is true. Match the message sender's username
+  // case-insensitively (consistent with includesUser).
+  const username = msg.from?.username?.toLowerCase();
+  const match = username
+    ? secretary?.usernames?.find((u) => u.username.toLowerCase() === username)
+    : undefined;
+  const prompt = match
+    ? match.override
+      ? match.prompt
+      : [base, match.prompt].filter(Boolean).join("\n\n")
+    : base;
+  if (prompt) {
+    thread.nextSystemMessage = prompt;
   } else {
     applyGuestModeOverride(thread, msg, chat);
   }

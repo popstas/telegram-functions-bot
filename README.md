@@ -657,6 +657,22 @@ chatParams:
   quiet gap starts a new session and is debounced again.
 - When `prompt` is set, it overrides the system message for that answer (via
   `thread.nextSystemMessage`), for both the opening and in-session answers.
+- `usernames` adds per-customer prompts. When the customer's username matches an entry
+  (case-insensitive, no `@`), its `prompt` is **appended** to `secretary.prompt`, or
+  **replaces** it when `override: true`. Non-matching customers get the base prompt:
+
+  ```yaml
+  chatParams:
+    secretary:
+      prompt: "You are a secretary, answer once after collecting the user's messages."
+      usernames:
+        - username: vip_client
+          prompt: "Be extra concise and proactive."
+          override: false # append to secretary.prompt (default)
+        - username: boss
+          prompt: "Reply only: 'forwarded to Stas'."
+          override: true # replace secretary.prompt entirely
+  ```
 - **Manual takeover (Telegram Business):** if the connection owner replies to a customer
   manually, the bot pauses auto-answers in that chat for the rest of the session and resumes
   in the next session (after `sessionDurationSeconds` of inactivity). The bot's own sent
