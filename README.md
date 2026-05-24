@@ -645,6 +645,7 @@ chatParams:
   secretary:
     firstAnswerDelay: 15 # seconds to wait after the first message before answering
     sessionDurationSeconds: 600 # inactivity window (s) that keeps a session alive; default 600
+    markAsReaded: false # mark the answered message as read after replying (Telegram Business chats only)
     prompt: "You are a secretary, answer once after collecting the user's messages." # optional system message override
 ```
 
@@ -678,6 +679,10 @@ chatParams:
   in the next session (after `sessionDurationSeconds` of inactivity). The bot's own sent
   messages are ignored for this detection (via `sender_business_bot`), so its replies never
   count as a takeover. This is detectable only for Business chats.
+- **Mark as read (Telegram Business):** set `markAsReaded: true` to mark the customer's
+  message as read once the bot answers (via the `readBusinessMessage` Bot API method). This
+  works only in Business chats — the Bot API has no mark-as-read for regular chats, so the
+  option is a no-op elsewhere.
 - Set `firstAnswerDelay` to `0` (or omit `secretary`) to answer immediately as usual.
 
 ### Telegram Business ("Chat automation")
