@@ -81,6 +81,35 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// Mark an incoming Business message as read on behalf of the connected business account.
+// Telegram's Bot API exposes this only via `readBusinessMessage` (Bot API 9.0), which
+// requires a business_connection_id — there is no mark-as-read for regular chats.
+// telegraf 4.16.3 has no typings for this method, so call it via the raw callApi cast
+// (same pattern as onBusinessMessage.ts).
+async function markBusinessMessageRead(
+  ctx: Context,
+  chatId: number,
+  messageId: number,
+  businessConnectionId: string,
+) {
+  try {
+    await (
+      ctx.telegram as unknown as { callApi: (m: string, p: object) => Promise<unknown> }
+    ).callApi("readBusinessMessage", {
+      business_connection_id: businessConnectionId,
+      chat_id: chatId,
+      message_id: messageId,
+    });
+  } catch (e) {
+    log({
+      msg: `readBusinessMessage failed: ${(e as Error).message}`,
+      logLevel: "warn",
+      chatId,
+      role: "system",
+    });
+  }
+}
+
 // Guest mode: when the bot is mentioned in a reply to another user, apply the
 // configured guest prompt as the per-turn system instruction. Applied at the
 // point the answer is launched (not on batched secretary turns) so the override
@@ -178,7 +207,23 @@ function launchAnswer(
   activeResponses.set(chatId, activeResponse);
 
   responsePromise
-    .then((msgSent) => {
+    .then(async (msgSent) => {
+      // Mark the answered message as read (Business chats only). Only when we actually
+      // answered (msgSent truthy) and a business connection is present — there is no
+      // Bot API mark-as-read for regular chats.
+      if (msgSent && chat.chatParams?.secretary?.markAsReaded) {
+        if (businessConnectionId) {
+          await markBusinessMessageRead(ctx, chatId, msg.message_id, businessConnectionId);
+        } else {
+          log({
+            msg: "secretary: markAsReaded skipped (not a Business chat, no business_connection_id)",
+            logLevel: "debug",
+            chatId,
+            answerId,
+            role: "system",
+          });
+        }
+      }
       if (msgSent && typeof callback === "function") {
         return callback(msgSent);
       }

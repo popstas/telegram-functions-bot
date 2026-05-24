@@ -380,4 +380,67 @@ describe("onTextMessage secretary mode", () => {
 
     expect(sharedThread.nextSystemMessage).toBe("base prompt");
   });
+
+  describe("markAsReaded", () => {
+    const callApi = jest.fn(() => Promise.resolve());
+
+    function createBusinessCtx(
+      message: Record<string, unknown>,
+    ): Context & { secondTry?: boolean } {
+      return {
+        ...createCtx(message),
+        businessConnectionId: "conn-1",
+        telegram: { callApi },
+      } as unknown as Context & { secondTry?: boolean };
+    }
+
+    const readChat: ConfigChatType = {
+      ...secretaryChat,
+      chatParams: { secretary: { firstAnswerDelay: 15, markAsReaded: true } },
+    } as ConfigChatType;
+
+    beforeEach(() => {
+      callApi.mockClear();
+    });
+
+    it("marks the answered message as read in a Business chat", async () => {
+      const msg = makeMsg("hi", 42);
+      mockCheckAccessLevel.mockResolvedValue({ msg, chat: readChat });
+
+      await onTextMessage(createBusinessCtx(msg));
+      await jest.advanceTimersByTimeAsync(15000);
+      await Promise.resolve();
+
+      expect(callApi).toHaveBeenCalledWith("readBusinessMessage", {
+        business_connection_id: "conn-1",
+        chat_id: 1,
+        message_id: 42,
+      });
+    });
+
+    it("does not mark as read when markAsReaded is unset", async () => {
+      const msg = makeMsg("hi", 42);
+      mockCheckAccessLevel.mockResolvedValue({ msg, chat: secretaryChat });
+
+      await onTextMessage(createBusinessCtx(msg));
+      await jest.advanceTimersByTimeAsync(15000);
+      await Promise.resolve();
+
+      expect(callApi).not.toHaveBeenCalled();
+    });
+
+    it("is a no-op (still answers) without a business connection", async () => {
+      const msg = makeMsg("hi", 42);
+      mockCheckAccessLevel.mockResolvedValue({ msg, chat: readChat });
+
+      await onTextMessage(createCtx(msg));
+      await jest.advanceTimersByTimeAsync(15000);
+      await Promise.resolve();
+
+      expect(mockRequestGptAnswer).toHaveBeenCalledTimes(1);
+      expect(loggedMessages()).toContainEqual(
+        expect.stringContaining("secretary: markAsReaded skipped"),
+      );
+    });
+  });
 });
