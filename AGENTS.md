@@ -30,6 +30,25 @@ When adding a field to `ConfigType` or `ConfigChatType` in `src/types.ts`:
 - Run `npm run test-full` before commit.
 - Run `npm run format` before commit.
 
+## Release process
+Releases are calendar-versioned `YYYY.M.D` (e.g. `2026.5.28`) and tagged `vYYYY.M.D`.
+
+To cut a release from `master` (clean tree, all work merged):
+
+```sh
+npm version <YYYY.M.D>
+```
+
+This runs the npm lifecycle, which does everything:
+1. `version` script — regenerates `CHANGELOG.md` via `conventional-changelog` (angular preset) and stages it. **Never** edit `CHANGELOG.md` by hand.
+2. Bumps `package.json`, commits as `<YYYY.M.D>`, and creates the `v<YYYY.M.D>` tag.
+3. `postversion` script — `git push` then `npm run release`, which creates the GitHub release via `conventional-github-releaser` (needs `CONVENTIONAL_GITHUB_RELEASER_TOKEN`).
+
+Notes:
+- Only `feat:` and `fix:` commits appear in the changelog / release notes; `chore:`/`docs:`/`task:` are excluded.
+- Pick the version from today's date (year.month.day). Confirm the number before running — the scheme is not strictly monotonic across past tags.
+- Verify after: `git ls-remote --tags origin v<YYYY.M.D>` and `gh release view v<YYYY.M.D>`.
+
 ## Coverage improve rules
 - Run `npm test` and `npm run coverage-info` to check coverage, sorted by lines_uncovered.
 - Prefer less covered files.
