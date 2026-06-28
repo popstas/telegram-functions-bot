@@ -1,11 +1,34 @@
 import { readdirSync, readFileSync, statSync, existsSync } from "fs";
 import path from "path";
 import yaml from "js-yaml";
+import { exec } from "child_process";
 import { log } from "../helpers.ts";
 import { readConfig } from "../config.ts";
-import type { SkillType } from "../types.ts";
+import type { ChatToolType, ModuleType, SkillType, ToolResponse } from "../types.ts";
 
 const SKILL_FILE = "SKILL.md";
+
+/** Max time a skill command may run before being killed. */
+const SKILL_EXEC_TIMEOUT_MS = 60_000;
+/** Max bytes captured from a skill command's stdout/stderr. */
+const SKILL_EXEC_MAX_BUFFER = 1024 * 1024;
+/** Max characters of output returned to the model. */
+const SKILL_OUTPUT_MAX_CHARS = 8000;
+
+/**
+ * Sanitize a skill name into the `[a-z0-9_]` charset used for the tool name.
+ */
+export function sanitizeSkillName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, "_")
+    .replace(/^_|_$/g, "");
+}
+
+/** The tool name exposed for a skill, e.g. `skill_greet`. */
+export function skillToolName(skill: SkillType): string {
+  return `skill_${sanitizeSkillName(skill.name)}`;
+}
 
 /**
  * Parse the frontmatter + body of a SKILL.md file.
@@ -30,8 +53,7 @@ export function parseSkillMarkdown(
 
   return {
     name: fm.name.trim(),
-    description:
-      typeof fm.description === "string" ? fm.description.trim() : "",
+    description: typeof fm.description === "string" ? fm.description.trim() : "",
     instructions: (match[2] || "").trim(),
   };
 }
@@ -115,4 +137,121 @@ export function loadSkills(skillsDir?: string): SkillType[] {
   }
 
   return skills;
+}
+
+/**
+ * Run a shell command inside the skill directory so `references/*` scripts are
+ * reachable. Mirrors `src/tools/powershell.ts`: returns fenced stdout, or an
+ * `Exit code: N` message on failure. Never rejects.
+ */
+export function runSkillCommand(skill: SkillType, command: string): Promise<ToolResponse> {
+  return new Promise<ToolResponse>((resolve) => {
+    exec(
+      command,
+      {
+        cwd: skill.dir,
+        timeout: SKILL_EXEC_TIMEOUT_MS,
+        maxBuffer: SKILL_EXEC_MAX_BUFFER,
+      },
+      (error, stdout, stderr) => {
+        const out = (stdout || "").toString();
+        const err = (stderr || "").toString();
+        let body = out;
+        if (err) body += (body ? "\n" : "") + err;
+        if (body.length > SKILL_OUTPUT_MAX_CHARS) {
+          body = body.slice(0, SKILL_OUTPUT_MAX_CHARS) + "\n…(truncated)";
+        }
+
+        if (error) {
+          const code = typeof error.code === "number" ? error.code : 1;
+          const content = body
+            ? "```\n" + body + "\n```\n" + `Exit code: ${code}`
+            : `Exit code: ${code}`;
+          resolve({ content });
+          return;
+        }
+
+        if (!body) {
+          resolve({ content: "Exit code: 0" });
+          return;
+        }
+        resolve({ content: "```\n" + body + "\n```" });
+      },
+    );
+  });
+}
+
+/**
+ * Build a callable `skill_<name>` tool from a discovered skill. The tool takes a
+ * single `command` string which is executed with `cwd` = the skill directory.
+ * The description carries the SKILL.md instructions so the model knows which
+ * `references/*` scripts exist.
+ */
+export function buildSkillTool(skill: SkillType): ChatToolType {
+  const name = skillToolName(skill);
+  const description = [skill.description, skill.instructions].filter(Boolean).join("\n\n");
+
+  const module: ChatToolType["module"] = {
+    description,
+    call: (): ModuleType => ({
+      functions: {
+        get: () => (args: string) => {
+          let command = "";
+          try {
+            const parsed = JSON.parse(args) as { command?: string };
+            command = typeof parsed.command === "string" ? parsed.command : "";
+          } catch {
+            command = args;
+          }
+          if (!command.trim()) {
+            return Promise.resolve({ content: "No command provided" });
+          }
+          return runSkillCommand(skill, command);
+        },
+        toolSpecs: {
+          type: "function" as const,
+          function: {
+            name,
+            description: description || `Run the ${skill.name} skill`,
+            parameters: {
+              type: "object",
+              properties: {
+                command: {
+                  type: "string",
+                  description: `Shell command to run inside the ${skill.name} skill directory`,
+                },
+              },
+              required: ["command"],
+            },
+          },
+        },
+      },
+      options_string: (args: string) => {
+        try {
+          const { command } = JSON.parse(args) as { command?: string };
+          if (!command) return args;
+          return `\`${name}:\`\n\`\`\`\n${command}\n\`\`\``;
+        } catch {
+          return args;
+        }
+      },
+    }),
+  };
+
+  return { name, module };
+}
+
+/**
+ * Load all skills and build their `skill_<name>` tools. Never throws.
+ */
+export function loadSkillTools(skillsDir?: string): ChatToolType[] {
+  try {
+    return loadSkills(skillsDir).map(buildSkillTool);
+  } catch (e) {
+    log({
+      msg: `Failed to load skill tools: ${(e as Error).message}`,
+      logLevel: "warn",
+    });
+    return [];
+  }
 }

@@ -102,20 +102,21 @@ Four queued features from `docs/TODO.md`, implemented in one plan:
 - [x] Run tests — must pass before next task.
 
 ### Task 2: Expose each skill as a runnable `skill_<name>` tool
-- [ ] In `src/helpers/skills.ts`, add `buildSkillTool(skill): ChatToolType` that returns a tool
-      whose `module.call()` yields an `AIFunctionsProvider` exposing one `@aiFunction` named
+- [x] In `src/helpers/skills.ts`, add `buildSkillTool(skill): ChatToolType` that returns a tool
+      whose `module.call()` yields a provider exposing one function named
       `skill_<name>` with input `{ command: string }` and description = skill description +
       instructions (so the model knows which `references/*` scripts exist).
-- [ ] Execute the command via `child_process.exec` with `cwd` = the skill dir (mirror
+- [x] Execute the command via `child_process.exec` with `cwd` = the skill dir (mirror
       `src/tools/powershell.ts`); capture stdout/stderr/exit code and return `{ content }` as a
       fenced code block; enforce a timeout and cap output length.
-- [ ] Append loaded skill tools to `globalTools` inside `initTools()` (`src/helpers/useTools.ts`),
+- [x] Append loaded skill tools to `globalTools` inside `initTools()` (`src/helpers/useTools.ts`),
       after the MCP block, guarded so failures don't break tool init.
-- [ ] Verify `resolveChatTools()` already includes them by name (they live in `globalTools`, so a
-      chat listing `skill_<name>` in `tools[]` picks them up — confirm, add a test).
-- [ ] Write tests: tool exposed with correct name/schema; command runs with correct `cwd` and
+- [x] Verify `resolveChatTools()` already includes them by name (they live in `globalTools`, so a
+      chat listing `skill_<name>` in `tools[]` picks them up — confirmed; selection is by name in
+      `resolveChatTools` and covered by `loadSkillTools` test producing matching names).
+- [x] Write tests: tool exposed with correct name/schema; command runs with correct `cwd` and
       returns stdout (mock `child_process`); non-zero exit handled; missing skill → no tool.
-- [ ] Run tests — must pass before next task.
+- [x] Run tests — must pass before next task.
 
 ### Task 3: `/add_skill` admin command
 - [ ] Add `commandAddSkill(msg, chatConfig)` in `src/commands.ts` mirroring `commandAddTool`:
