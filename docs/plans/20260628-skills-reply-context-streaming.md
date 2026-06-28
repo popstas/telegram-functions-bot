@@ -88,18 +88,18 @@ Four queued features from `docs/TODO.md`, implemented in one plan:
 ## Implementation Steps
 
 ### Task 1: Skill discovery and SKILL.md loader
-- [ ] Add `src/helpers/skills.ts` with `loadSkills(skillsDir?: string)` that scans the skills
+- [x] Add `src/helpers/skills.ts` with `loadSkills(skillsDir?: string)` that scans the skills
       directory (default from new `config.skillsDir`, fallback `"skills"`), and for each subdir
       containing `SKILL.md` parses YAML frontmatter (`name`, `description`) + body instructions
       via `js-yaml` (already a dependency); returns `SkillType[]` `{ name, description,
       instructions, dir }`.
-- [ ] Define `SkillType` and `ConfigType.skillsDir?: string` in `src/types.ts`.
-- [ ] Handle missing dir / missing `SKILL.md` / malformed frontmatter gracefully (skip + `log`
+- [x] Define `SkillType` and `ConfigType.skillsDir?: string` in `src/types.ts`.
+- [x] Handle missing dir / missing `SKILL.md` / malformed frontmatter gracefully (skip + `log`
       warn), never throw on startup.
-- [ ] Write tests for `loadSkills`: a valid skill, a skill missing frontmatter, a non-skill dir,
+- [x] Write tests for `loadSkills`: a valid skill, a skill missing frontmatter, a non-skill dir,
       and a missing `skillsDir` (use a temp fixtures dir under the test's own tmp — never touch
       `data/`).
-- [ ] Run tests — must pass before next task.
+- [x] Run tests — must pass before next task.
 
 ### Task 2: Expose each skill as a runnable `skill_<name>` tool
 - [ ] In `src/helpers/skills.ts`, add `buildSkillTool(skill): ChatToolType` that returns a tool

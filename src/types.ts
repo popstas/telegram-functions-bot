@@ -40,6 +40,7 @@ export type ConfigType = {
   };
   useChatsDir?: boolean;
   chatsDir?: string;
+  skillsDir?: string;
   inlineMode?: InlineModeConfigType;
   guestMode?: GuestModeConfigType;
   chats: ConfigChatType[];
@@ -230,6 +231,13 @@ export type ConfigChatButtonType = {
   prompt: string;
   row?: number;
   waitMessage?: string;
+};
+
+export type SkillType = {
+  name: string;
+  description: string;
+  instructions: string;
+  dir: string;
 };
 
 export type ChatToolType = {
