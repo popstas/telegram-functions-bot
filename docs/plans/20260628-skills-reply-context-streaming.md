@@ -164,13 +164,13 @@ Four queued features from `docs/TODO.md`, implemented in one plan:
 - [x] Run tests — must pass before next task.
 
 ### Task 6: Config schema + verify acceptance criteria
-- [ ] Add samples for `skillsDir` and `chatParams.streamMode` to the `full-example` chat in
+- [x] Add samples for `skillsDir` and `chatParams.streamMode` to the `full-example` chat in
       `generateConfig()` (`src/config.ts`) so `checkConfigSchema()` does not warn; run a config
       load to confirm no schema warnings.
-- [ ] Verify all four Overview requirements are implemented and edge cases handled.
-- [ ] Run full test suite (`npm run test-full` = tests + typecheck + lint) — all green.
-- [ ] Run `npm run format src tests`.
-- [ ] Verify coverage did not regress (`npm run coverage-info`).
+- [x] Verify all four Overview requirements are implemented and edge cases handled.
+- [x] Run full test suite (`npm run test-full` = tests + typecheck + lint) — all green.
+- [x] Run `npm run format src tests`.
+- [x] Verify coverage did not regress (`npm run coverage-info`).
 
 ### Task 7: [Final] Documentation
 - [ ] Update `README.md`: skills (`skills/` layout, `SKILL.md`, `references/`, `skillsDir`),
