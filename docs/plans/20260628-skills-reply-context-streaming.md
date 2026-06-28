@@ -173,12 +173,12 @@ Four queued features from `docs/TODO.md`, implemented in one plan:
 - [x] Verify coverage did not regress (`npm run coverage-info`).
 
 ### Task 7: [Final] Documentation
-- [ ] Update `README.md`: skills (`skills/` layout, `SKILL.md`, `references/`, `skillsDir`),
+- [x] Update `README.md`: skills (`skills/` layout, `SKILL.md`, `references/`, `skillsDir`),
       `/add_skill` admin command, reply-context-in-history behavior, and `streamMode: draft`
       (Bot API 9.3+ requirement).
-- [ ] Note the `sendMessageDraft` Bot API version requirement and the always-on reply-context
+- [x] Note the `sendMessageDraft` Bot API version requirement and the always-on reply-context
       behavior change in the docs.
-- [ ] Update project knowledge docs / `CLAUDE.md` "Key file relationships" if the skills module
+- [x] Update project knowledge docs / `CLAUDE.md` "Key file relationships" if the skills module
       introduces a new subsystem worth indexing.
 
 *Note: ralphex automatically moves completed plans to `docs/plans/completed/`.*

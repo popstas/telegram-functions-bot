@@ -34,6 +34,9 @@ Telegram bot with functions tools.
 - Inline mode: invoke the bot from any chat with `@bot_name query` (enable with global `inlineMode`)
 - Secretary mode: debounce and batch rapid messages into one reply (enable with `chatParams.secretary`)
 - Guest mode: answer when mentioned in a reply to another user, with reply context (enable with global `guestMode`)
+- Reply-to-message context is always added to history when the bot is mentioned (not gated on guest mode)
+- Skills: Claude-Code-style `SKILL.md` directories exposed as runnable `skill_<name>` tools, attachable per chat with `/add_skill`
+- Draft streaming mode: stream partial answers as an ephemeral Telegram draft via `sendMessageDraft` (`chatParams.streamMode: draft`)
 
 ## Desktop launcher
 
@@ -93,6 +96,55 @@ Until the rebuild succeeds (or the opt-in flag is omitted) the bot continues to 
 - `web_search_preview` - use OpenAI internal web search tool (only for Responses API)
 - `image_generation` - generate images using OpenAI image model (only for Responses API)
 - ... and thousands of tools from MCP
+
+## Skills
+
+Skills are Claude-Code-style command bundles. Each skill is a folder containing a `SKILL.md`
+descriptor and an optional `references/` subdirectory of scripts. The bot scans the skills
+directory at startup and exposes every valid skill as a runnable tool named `skill_<name>`. When
+the model invokes that tool it passes a `command` string, which is executed with the working
+directory set to the skill folder so `references/*` scripts are reachable.
+
+### Layout
+
+```
+skills/
+  greet/
+    SKILL.md
+    references/
+      hello.py
+```
+
+`SKILL.md` has YAML frontmatter (`name`, `description`) followed by usage instructions for the
+model. The body is included in the tool description so the model knows which `references/*`
+scripts exist and how to call them:
+
+```markdown
+---
+name: greet
+description: Greet a person by name
+---
+
+Run `python references/hello.py <name>` to print a greeting.
+```
+
+- The tool name is `skill_<name>`, with `name` sanitized to the `[a-z0-9_]` charset
+  (e.g. a skill named `Greet Person` becomes `skill_greet_person`).
+- The command runs via `child_process.exec` with `cwd` = the skill directory, a 60s timeout, and
+  a capped output (stdout/stderr returned as a fenced code block; non-zero exits report
+  `Exit code: N`). Commands run on the host with the bot user's privileges, so skills are
+  admin-gated per chat just like the `powershell`/`ssh_command` tools.
+- The skills directory defaults to `skills` and is configurable with the top-level `skillsDir`
+  config option. A missing directory, a missing `SKILL.md`, or malformed frontmatter is skipped
+  with a warning and never breaks startup.
+
+### Attaching a skill to a chat (`/add_skill`)
+
+Skills, like other tools, only run in a chat that lists them in its `tools[]`. Admins can attach a
+discovered skill from Telegram with the admin-only `/add_skill` command (mirroring `/add_tool`):
+it lists discovered skills as inline buttons, and tapping one adds `skill_<name>` to the chat's
+`tools[]` and persists the config. Adding a skill that is already attached is a no-op, and if no
+skills are discovered the command replies with a helpful message.
 
 ## Config
 
@@ -729,6 +781,38 @@ guestMode:
 - The replied-to message text is inserted into history as a user message before the user's own
   message.
 - Omit the `guestMode` block to disable the feature.
+
+### Reply context in history (always on)
+
+Independent of guest mode, whenever the bot is mentioned in a **reply to another user's message**
+(in private chats and groups alike), the replied-to message is added to the thread history so the
+model keeps the conversational context. This used to require an enabled `guestMode.prompt`; it now
+always happens when the bot is mentioned. The `guestMode` block still controls the guest-mode
+*system prompt*, but no longer gates reply-context inclusion. Replies to the bot's own prior
+message (already in history) and to one's own message are skipped to avoid duplication.
+
+## Telegram streaming mode
+
+Enable live streaming of the model's answer into Telegram with `chatParams.streaming: true`. Two
+rendering modes are available via `chatParams.streamMode`:
+
+```yaml
+chatParams:
+  streaming: true
+  streamMode: edit # or "draft"
+```
+
+- `edit` (default) — the bot sends a real message and edits it every ~2s as new text arrives. This
+  is the original behavior and works on any Telegram Bot API version.
+- `draft` — the bot pushes partial text as an **ephemeral message draft** via the Bot API
+  `sendMessageDraft` method, then persists one final message when generation finishes. The draft
+  is a short-lived (~30s) preview that does not spam edits; the final answer is sent through the
+  normal send path.
+
+The `draft` mode requires a Telegram Bot API backend that supports `sendMessageDraft`
+(**Bot API 9.3**, December 2025; available to all bots from 9.5, March 2026). If your backend is
+older, use `streamMode: edit`. Streaming of either mode is disabled for image answers and for
+Telegram Business turns. The active mode is shown in `/info` next to "Streaming".
 
 ## Default response format
 

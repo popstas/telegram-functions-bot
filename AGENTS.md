@@ -87,6 +87,12 @@ Use the npm scripts for development:
 - `src/helpers/gpt/tools.ts` — `resolveChatTools()` merges global tools + per-chat MCP tools + agent tools; `executeTools()` runs tool calls
 - `src/config.ts` — `generateConfig()` full-example defines schema; `checkConfigSchema()` validates against it
 
+## Key file relationships (skills, reply context, streaming)
+- `src/helpers/skills.ts` — Skills subsystem: `loadSkills()` scans `config.skillsDir` (default `skills/`) for `SKILL.md` dirs; `buildSkillTool()`/`loadSkillTools()` expose each as a `skill_<name>` tool that `exec`s a command with `cwd` = skill dir (mirrors `src/tools/powershell.ts`); appended to `globalTools` in `initTools()`. Types: `SkillType`, `ConfigType.skillsDir` in `src/types.ts`.
+- `src/commands.ts` — `commandAddSkill()`/`handleAddSkill` implement the admin-only `/add_skill` command (mirrors `/add_tool`): lists discovered skills as inline buttons, adds `skill_<name>` to `chatConfig.tools[]` and `writeConfig()`s.
+- `src/handlers/access.ts` — `shouldIncludeReplyInHistory()` decides reply-context inclusion (always on when the bot is mentioned, not gated on `guestMode`); `isGuestModeReply()` still drives the guest-mode prompt. Used by `addToHistory()` in `src/helpers/history.ts`.
+- `src/helpers/gpt/streaming.ts` — `createFlusher()` (edit mode) and `createDraftFlusher()` (draft mode via raw `bot.telegram.callApi("sendMessageDraft", …)`); `handleStream()` picks by `chatParams.streamMode`. Gate is `chatParams.streaming`; mode is `ChatParamsType.streamMode?: "edit" | "draft"` in `src/types.ts`.
+
   - `index.ts` регистрирует обработчики `onTextMessage`, `onPhoto`, `onAudio` и `onUnsupported`.
   - Если сообщение аудио — выполняется speech-to-text (распознавание речи), результат добавляется в историю сообщений, как текст.
   - Если сообщение фото — извлекается текст с картинки (OCR); если к фото есть подпись (caption), она используется как промпт для задачи над изображением.
