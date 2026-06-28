@@ -331,7 +331,7 @@ export async function getInfoMessage(msg: Message.TextMessage, chatConfig: Confi
   }
 
   if (chatConfig.chatParams?.streaming) {
-    lines.push("Streaming: yes");
+    lines.push(`Streaming: yes (${chatConfig.chatParams.streamMode ?? "edit"} mode)`);
   }
 
   if (chatConfig.chatParams?.useResponsesApi && !chatConfig.local_model) {

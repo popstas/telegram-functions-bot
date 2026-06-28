@@ -148,20 +148,20 @@ Four queued features from `docs/TODO.md`, implemented in one plan:
 - [x] Run tests — must pass before next task.
 
 ### Task 5: `sendMessageDraft` streaming mode
-- [ ] Add `ChatParamsType.streamMode?: "edit" | "draft"` in `src/types.ts` (default behavior =
+- [x] Add `ChatParamsType.streamMode?: "edit" | "draft"` in `src/types.ts` (default behavior =
       `"edit"`, preserving current path); keep existing `streaming?: boolean` as the on/off gate.
-- [ ] In `src/helpers/gpt/streaming.ts`, add `createDraftFlusher(bot, msg)` that on each flush
+- [x] In `src/helpers/gpt/streaming.ts`, add `createDraftFlusher(bot, msg)` that on each flush
       calls `bot.telegram.callApi("sendMessageDraft", { chat_id, text, message_thread_id })`
       (raw, since Telegraf 4.16.3 lacks the typed method) instead of `safeSend`/`safeEdit`; on
       `finish()` it persists the final answer via the normal send path and clears the draft.
-- [ ] In the flusher selection (in `createFlusher`/`handleStream` or `llm.ts`), pick the draft
+- [x] In the flusher selection (in `createFlusher`/`handleStream` or `llm.ts`), pick the draft
       flusher when `streaming && streamMode === "draft"` and not a business chat; otherwise the
       edit flusher. Reuse `getRetryAfter`/`delay` for 429 handling on `callApi`.
-- [ ] Surface the active mode in `/info` (`src/commands.ts` info message) next to "Streaming".
-- [ ] Write tests in `tests/helpers/streaming.test.ts`: draft mode calls `callApi`
+- [x] Surface the active mode in `/info` (`src/commands.ts` info message) next to "Streaming".
+- [x] Write tests in `tests/helpers/streaming.test.ts`: draft mode calls `callApi`
       `sendMessageDraft` with accumulated text + `message_thread_id`; finish persists a final
       message; edit mode path unchanged; 429 retry honored (mock `callApi`).
-- [ ] Run tests — must pass before next task.
+- [x] Run tests — must pass before next task.
 
 ### Task 6: Config schema + verify acceptance criteria
 - [ ] Add samples for `skillsDir` and `chatParams.streamMode` to the `full-example` chat in
