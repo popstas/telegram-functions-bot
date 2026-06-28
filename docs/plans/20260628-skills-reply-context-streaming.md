@@ -132,20 +132,20 @@ Four queued features from `docs/TODO.md`, implemented in one plan:
 - [x] Run tests — must pass before next task.
 
 ### Task 4: Reply-to-message context always added when mentioned
-- [ ] In `src/handlers/access.ts`, add `shouldIncludeReplyInHistory(msg, chat)`: true when
+- [x] In `src/handlers/access.ts`, add `shouldIncludeReplyInHistory(msg, chat)`: true when
       `msg.reply_to_message` exists, the replied-to author is not the bot and not the sender
       themselves. Keep `isGuestModeReply` (it still drives the guest-mode *prompt*), but no longer
       require `guestMode.prompt` for *history inclusion*.
-- [ ] In `src/helpers/history.ts` `addToHistory()`, replace the `isGuestModeReply(...)` gate
+- [x] In `src/helpers/history.ts` `addToHistory()`, replace the `isGuestModeReply(...)` gate
       (line ~63) with `shouldIncludeReplyInHistory(...)` so the replied-to message is pushed to
       history whenever the bot is mentioned (private + group), independent of `guestMode`.
-- [ ] Ensure no duplication: if the replied-to message is the bot's own prior answer it is skipped
+- [x] Ensure no duplication: if the replied-to message is the bot's own prior answer it is skipped
       (already in history as assistant/system turn).
-- [ ] Write tests in `tests/helpers/history.test.ts`: reply included without `guestMode` enabled;
+- [x] Write tests in `tests/helpers/history.test.ts`: reply included without `guestMode` enabled;
       reply-to-bot skipped; reply-to-self skipped; non-reply unchanged. Update
       `tests/helpers/historyGuestMode.test.ts` expectations (reply now included even when guest
       mode disabled).
-- [ ] Run tests — must pass before next task.
+- [x] Run tests — must pass before next task.
 
 ### Task 5: `sendMessageDraft` streaming mode
 - [ ] Add `ChatParamsType.streamMode?: "edit" | "draft"` in `src/types.ts` (default behavior =

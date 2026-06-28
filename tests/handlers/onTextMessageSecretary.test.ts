@@ -47,6 +47,7 @@ jest.unstable_mockModule("../../src/helpers.ts", () => ({
 jest.unstable_mockModule("../../src/handlers/access.ts", () => ({
   __esModule: true,
   isGuestModeReply: () => false,
+  shouldIncludeReplyInHistory: () => false,
   default: mockCheckAccessLevel,
 }));
 

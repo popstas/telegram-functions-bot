@@ -1,7 +1,7 @@
 import { Message, User } from "telegraf/types";
 import { ConfigChatType } from "../types.ts";
 import { isOurUser } from "../telegram/send.ts";
-import { isGuestModeReply } from "../handlers/access.ts";
+import { shouldIncludeReplyInHistory } from "../handlers/access.ts";
 import OpenAI from "openai";
 import { useThreads } from "../threads.ts";
 
@@ -58,9 +58,11 @@ export function addToHistory(
     threads[key].messages.push({ role: "system", content: answer });
     threads[key].messages = threads[key].messages.slice(-historyLimit);
   } else {
-    // Guest mode: include the replied-to message in history so the model keeps
-    // the conversational context of the message the user is replying to.
-    if (msg.reply_to_message && isGuestModeReply(msg, chatConfig)) {
+    // Include the replied-to message in history so the model keeps the
+    // conversational context of the message the user is replying to. This always
+    // happens when the bot is mentioned (independent of guest mode), but skips
+    // replies to the bot's own answer or to the sender's own message.
+    if (msg.reply_to_message && shouldIncludeReplyInHistory(msg, chatConfig)) {
       const reply = msg.reply_to_message as Message.TextMessage & { caption?: string };
       const replyText = reply.text || reply.caption || "";
       if (replyText) {
