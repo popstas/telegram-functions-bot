@@ -9,6 +9,7 @@ import { getSystemMessage, getTokensCount, resolveChatTools } from "./helpers/gp
 import { forgetHistory } from "./helpers/history.ts";
 import { commandGoogleOauth } from "./helpers/google.ts";
 import useTools from "./helpers/useTools.ts";
+import { loadSkills, skillToolName } from "./helpers/skills.ts";
 import { includesUser } from "./utils/users.ts";
 
 export async function handleForget(ctx: Context) {
@@ -33,6 +34,12 @@ export async function handleAddTool(ctx: Context) {
   const { msg, chat }: { msg?: Message.TextMessage; chat?: ConfigChatType } = getCtxChatMsg(ctx);
   if (!chat || !msg) return;
   await commandAddTool(msg, chat);
+}
+
+export async function handleAddSkill(ctx: Context) {
+  const { msg, chat }: { msg?: Message.TextMessage; chat?: ConfigChatType } = getCtxChatMsg(ctx);
+  if (!chat || !msg) return;
+  await commandAddSkill(msg, chat);
 }
 
 export async function handleAddChat(ctx: Context) {
@@ -90,6 +97,8 @@ export async function initCommands(bot: Telegraf) {
 
   bot.command("add_tool", handleAddTool);
 
+  bot.command("add_skill", handleAddSkill);
+
   await bot.telegram.setMyCommands([
     {
       command: "/forget",
@@ -106,6 +115,10 @@ export async function initCommands(bot: Telegraf) {
     {
       command: "/add_tool",
       description: "Add/edit tool (admins only)",
+    },
+    {
+      command: "/add_skill",
+      description: "Add skill to chat (admins only)",
     },
   ]);
 }
@@ -175,6 +188,73 @@ export async function commandAddTool(msg: Message.TextMessage, chatConfig: Confi
   }
 
   const buttons = tools.map((t: string) => [{ text: t, callback_data: `add_tool_${t}` }]);
+  const params = { reply_markup: { inline_keyboard: buttons } };
+  return await sendTelegramMessage(msg.chat.id, text, params, undefined, chatConfig);
+}
+
+// add skill tool to chat config
+export async function commandAddSkill(msg: Message.TextMessage, chatConfig: ConfigChatType) {
+  const skills = loadSkills();
+  if (skills.length === 0) {
+    return await sendTelegramMessage(
+      msg.chat.id,
+      "No skills found. Add a skill folder with SKILL.md to the skills directory.",
+      undefined,
+      undefined,
+      chatConfig,
+    );
+  }
+
+  const config = useConfig();
+  const skillsInfo = skills
+    .map((s) => `- ${skillToolName(s)}${s.description ? ` - ${s.description}` : ""}`)
+    .join("\n\n");
+  const text = `Available skills:\n\n${skillsInfo}\n\nSelect skill to add:`;
+
+  for (const skill of skills) {
+    const toolName = skillToolName(skill);
+    useBot(chatConfig.bot_token!).action(`add_skill_${toolName}`, async (ctx) => {
+      const chatId = ctx.chat?.id;
+      if (!chatId) return;
+
+      // check admin
+      const { user } = getActionUserMsg(ctx);
+      const username = user?.username || "without_username";
+      if (!user || !includesUser(config.adminUsers, username)) return;
+
+      let targetChat: ConfigChatType | undefined;
+      if (ctx.chat?.type === "private") {
+        // edit/add private chat
+        targetChat = config.chats.find((chat) => username && chat.username === username);
+        if (!targetChat) {
+          targetChat = generatePrivateChatConfig(username);
+          config.chats.push(targetChat);
+        }
+      } else {
+        // edit group chat
+        targetChat = config.chats.find((chat) => chat.id === chatId || chat.ids?.includes(chatId));
+        if (!targetChat) {
+          void ctx.reply("Chat not found in config");
+        }
+      }
+      if (!targetChat) return;
+
+      if (!targetChat.tools) targetChat.tools = [];
+      const hasTool = (targetChat.tools || []).some((t) => typeof t === "string" && t === toolName);
+      if (hasTool) {
+        await ctx.reply(`Skill already added: ${toolName}`);
+        return;
+      }
+      targetChat.tools.push(toolName);
+      writeConfig(undefined, config);
+      await ctx.reply(`Skill added: ${toolName}`);
+    });
+  }
+
+  const buttons = skills.map((s) => {
+    const toolName = skillToolName(s);
+    return [{ text: toolName, callback_data: `add_skill_${toolName}` }];
+  });
   const params = { reply_markup: { inline_keyboard: buttons } };
   return await sendTelegramMessage(msg.chat.id, text, params, undefined, chatConfig);
 }

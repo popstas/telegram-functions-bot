@@ -21,6 +21,15 @@ jest.unstable_mockModule("../src/helpers/useTools.ts", () => ({
   default: () => mockUseTools(),
 }));
 
+const mockLoadSkills = jest.fn();
+
+jest.unstable_mockModule("../src/helpers/skills.ts", () => ({
+  __esModule: true,
+  loadSkills: () => mockLoadSkills(),
+  skillToolName: (skill: { name: string }) =>
+    `skill_${skill.name.toLowerCase().replace(/[^a-z0-9_]+/g, "_")}`,
+}));
+
 jest.unstable_mockModule("../src/telegram/send.ts", () => ({
   __esModule: true,
   sendTelegramMessage: (...args: unknown[]) => mockSendTelegramMessage(...args),
@@ -105,6 +114,7 @@ beforeEach(async () => {
   mockGetSystemMessage.mockReset().mockResolvedValue("sys");
   mockGetTokensCount.mockReset().mockReturnValue(1);
   mockResolveChatTools.mockReset().mockResolvedValue([]);
+  mockLoadSkills.mockReset().mockReturnValue([]);
 
   commands = await import("../src/commands.ts");
 });
@@ -194,6 +204,129 @@ describe("commandAddTool", () => {
     expect(config.chats[0].toolParams).toEqual({ p: 1 });
     expect(ctxReply).toHaveBeenCalledWith(expect.stringContaining("Tool added: foo"));
     expect(mockWriteConfig).toHaveBeenCalled();
+  });
+});
+
+describe("commandAddSkill", () => {
+  it("sends skill list and admin adds skill", async () => {
+    mockLoadSkills.mockReturnValue([
+      { name: "greet", description: "Greet skill", dir: "/s/greet" },
+    ]);
+    const msg = createMsg();
+    const chat: ConfigChatType = {
+      bot_token: "t",
+      completionParams: {},
+      chatParams: {},
+      toolParams: {},
+      name: "c",
+    } as ConfigChatType;
+    mockSendTelegramMessage.mockResolvedValue("ok");
+    const res = await commands.commandAddSkill(msg, chat);
+    expect(res).toBe("ok");
+    expect(mockSendTelegramMessage).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("Available skills"),
+      expect.objectContaining({
+        reply_markup: {
+          inline_keyboard: [[{ text: "skill_greet", callback_data: "add_skill_skill_greet" }]],
+        },
+      }),
+      undefined,
+      chat,
+    );
+    expect(mockAction).toHaveBeenCalledWith("add_skill_skill_greet", expect.any(Function));
+    const ctxReply = jest.fn();
+    await actionCb({ chat: { id: 2, type: "private" }, reply: ctxReply });
+    expect(config.chats[0].tools).toContain("skill_greet");
+    expect(ctxReply).toHaveBeenCalledWith("Skill added: skill_greet");
+    expect(mockWriteConfig).toHaveBeenCalled();
+  });
+
+  it("replies with helpful message when no skills found", async () => {
+    mockLoadSkills.mockReturnValue([]);
+    mockAction.mockClear();
+    const msg = createMsg();
+    const chat: ConfigChatType = {
+      bot_token: "t",
+      completionParams: {},
+      chatParams: {},
+      toolParams: {},
+      name: "c",
+    } as ConfigChatType;
+    mockSendTelegramMessage.mockResolvedValue("none");
+    const res = await commands.commandAddSkill(msg, chat);
+    expect(res).toBe("none");
+    expect(mockSendTelegramMessage).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("No skills found"),
+      undefined,
+      undefined,
+      chat,
+    );
+    expect(mockAction).not.toHaveBeenCalled();
+  });
+
+  it("ignores non-admin tap", async () => {
+    mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
+    mockGetActionUserMsg.mockReturnValue({ user: { username: "intruder" } });
+    const msg = createMsg();
+    const chat: ConfigChatType = {
+      bot_token: "t",
+      completionParams: {},
+      chatParams: {},
+      toolParams: {},
+      name: "c",
+    } as ConfigChatType;
+    mockSendTelegramMessage.mockResolvedValue("ok");
+    await commands.commandAddSkill(msg, chat);
+    const ctxReply = jest.fn();
+    await actionCb({ chat: { id: 2, type: "private" }, reply: ctxReply });
+    expect(config.chats.length).toBe(0);
+    expect(ctxReply).not.toHaveBeenCalled();
+    expect(mockWriteConfig).not.toHaveBeenCalled();
+  });
+
+  it("does not add a duplicate skill", async () => {
+    mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
+    config.chats.push({
+      username: "admin",
+      tools: ["skill_greet"],
+      completionParams: {},
+      chatParams: {},
+      toolParams: {},
+    });
+    const msg = createMsg();
+    const chat: ConfigChatType = {
+      bot_token: "t",
+      completionParams: {},
+      chatParams: {},
+      toolParams: {},
+      name: "c",
+    } as ConfigChatType;
+    mockSendTelegramMessage.mockResolvedValue("ok");
+    await commands.commandAddSkill(msg, chat);
+    const ctxReply = jest.fn();
+    await actionCb({ chat: { id: 2, type: "private" }, reply: ctxReply });
+    expect(config.chats[0].tools).toEqual(["skill_greet"]);
+    expect(ctxReply).toHaveBeenCalledWith("Skill already added: skill_greet");
+    expect(mockWriteConfig).not.toHaveBeenCalled();
+  });
+});
+
+describe("handleAddSkill", () => {
+  it("delegates to commandAddSkill", async () => {
+    mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
+    const ctx = { chat: { id: 1 } } as unknown as Context;
+    const msg = createMsg();
+    const chat = {
+      bot_token: "t",
+      completionParams: {},
+      chatParams: {},
+      toolParams: {},
+    } as ConfigChatType;
+    mockGetCtxChatMsg.mockReturnValue({ msg, chat });
+    await commands.handleAddSkill(ctx);
+    expect(mockSendTelegramMessage).toHaveBeenCalled();
   });
 });
 

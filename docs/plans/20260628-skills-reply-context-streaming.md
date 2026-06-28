@@ -119,17 +119,17 @@ Four queued features from `docs/TODO.md`, implemented in one plan:
 - [x] Run tests — must pass before next task.
 
 ### Task 3: `/add_skill` admin command
-- [ ] Add `commandAddSkill(msg, chatConfig)` in `src/commands.ts` mirroring `commandAddTool`:
+- [x] Add `commandAddSkill(msg, chatConfig)` in `src/commands.ts` mirroring `commandAddTool`:
       list discovered skills, send inline buttons `add_skill_<name>`, and on tap verify
       `includesUser(config.adminUsers, username)` before adding `skill_<name>` to
       `chatConfig.tools[]` and `writeConfig()`.
-- [ ] Register `handleAddSkill` + `bot.command("add_skill", …)` in `initCommands()` and add it to
+- [x] Register `handleAddSkill` + `bot.command("add_skill", …)` in `initCommands()` and add it to
       `setMyCommands()` (admins only, like `/add_tool`).
-- [ ] Handle "no skills found" (reply with a helpful message) and de-dupe (don't add twice).
-- [ ] Write tests: admin adds a skill (config updated + persisted), non-admin tap is ignored,
+- [x] Handle "no skills found" (reply with a helpful message) and de-dupe (don't add twice).
+- [x] Write tests: admin adds a skill (config updated + persisted), non-admin tap is ignored,
       duplicate add is a no-op, empty skill list path. Update any `commands` mock sites for new
       exports.
-- [ ] Run tests — must pass before next task.
+- [x] Run tests — must pass before next task.
 
 ### Task 4: Reply-to-message context always added when mentioned
 - [ ] In `src/handlers/access.ts`, add `shouldIncludeReplyInHistory(msg, chat)`: true when
