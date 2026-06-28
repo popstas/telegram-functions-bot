@@ -201,7 +201,8 @@ export function buildSkillTool(skill: SkillType): ChatToolType {
             const parsed = JSON.parse(args) as { command?: string };
             command = typeof parsed.command === "string" ? parsed.command : "";
           } catch {
-            command = args;
+            // Malformed tool-call args: fail closed rather than running raw text as a shell command.
+            command = "";
           }
           if (!command.trim()) {
             return Promise.resolve({ content: "No command provided" });

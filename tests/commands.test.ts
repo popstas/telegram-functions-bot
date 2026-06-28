@@ -286,6 +286,50 @@ describe("commandAddSkill", () => {
     expect(mockWriteConfig).not.toHaveBeenCalled();
   });
 
+  it("adds a skill to a matching group chat", async () => {
+    mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
+    config.chats.push({
+      id: 2,
+      tools: [],
+      completionParams: {},
+      chatParams: {},
+      toolParams: {},
+    });
+    const msg = createMsg();
+    const chat: ConfigChatType = {
+      bot_token: "t",
+      completionParams: {},
+      chatParams: {},
+      toolParams: {},
+      name: "c",
+    } as ConfigChatType;
+    mockSendTelegramMessage.mockResolvedValue("ok");
+    await commands.commandAddSkill(msg, chat);
+    const ctxReply = jest.fn();
+    await actionCb({ chat: { id: 2, type: "supergroup" }, reply: ctxReply });
+    expect(config.chats[0].tools).toContain("skill_greet");
+    expect(ctxReply).toHaveBeenCalledWith("Skill added: skill_greet");
+    expect(mockWriteConfig).toHaveBeenCalled();
+  });
+
+  it("replies 'Chat not found in config' for an unconfigured group chat", async () => {
+    mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
+    const msg = createMsg();
+    const chat: ConfigChatType = {
+      bot_token: "t",
+      completionParams: {},
+      chatParams: {},
+      toolParams: {},
+      name: "c",
+    } as ConfigChatType;
+    mockSendTelegramMessage.mockResolvedValue("ok");
+    await commands.commandAddSkill(msg, chat);
+    const ctxReply = jest.fn();
+    await actionCb({ chat: { id: 999, type: "supergroup" }, reply: ctxReply });
+    expect(ctxReply).toHaveBeenCalledWith("Chat not found in config");
+    expect(mockWriteConfig).not.toHaveBeenCalled();
+  });
+
   it("does not add a duplicate skill", async () => {
     mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
     config.chats.push({
@@ -352,6 +396,25 @@ describe("getInfoMessage", () => {
     expect(res).toContain("Chat is memoryless");
     expect(res).toContain("Tools:\n- foo");
     expect(res).toContain("Настройки приватного режима");
+  });
+
+  it("shows the streaming mode when streaming is enabled", async () => {
+    mockUseTools.mockResolvedValue([]);
+    const msg = createMsg();
+    const editChat: ConfigChatType = {
+      name: "c",
+      completionParams: { model: "m" },
+      chatParams: { streaming: true },
+      toolParams: {},
+    } as ConfigChatType;
+    expect(await commands.getInfoMessage(msg, editChat)).toContain("Streaming: yes (edit mode)");
+    const draftChat: ConfigChatType = {
+      name: "c",
+      completionParams: { model: "m" },
+      chatParams: { streaming: true, streamMode: "draft" },
+      toolParams: {},
+    } as ConfigChatType;
+    expect(await commands.getInfoMessage(msg, draftChat)).toContain("Streaming: yes (draft mode)");
   });
 });
 

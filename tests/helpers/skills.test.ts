@@ -189,6 +189,24 @@ describe("skills loader", () => {
       expect(mockExec).not.toHaveBeenCalled();
     });
 
+    it("fails closed on malformed JSON args instead of running raw text", async () => {
+      const tool = buildSkillTool(skill);
+      const fn = tool.module.call({} as never, {} as never).functions.get("skill_my_skill");
+      const res = await fn("rm -rf /");
+      expect(res.content).toBe("No command provided");
+      expect(mockExec).not.toHaveBeenCalled();
+    });
+
+    it("truncates output longer than the cap", async () => {
+      mockExec.mockImplementation((_cmd: string, _opts: unknown, cb: ExecCb) => {
+        cb(null, "x".repeat(9000), "");
+      });
+      const res = await runSkillCommand(skill, "spew");
+      expect(res.content).toContain("…(truncated)");
+      // 8000 chars + fences + truncation marker, but well under the raw 9000.
+      expect(res.content.length).toBeLessThan(9000);
+    });
+
     it("formats options_string with the command", () => {
       const tool = buildSkillTool(skill);
       const mod = tool.module.call({} as never, {} as never);

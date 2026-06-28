@@ -132,8 +132,9 @@ Run `python references/hello.py <name>` to print a greeting.
   (e.g. a skill named `Greet Person` becomes `skill_greet_person`).
 - The command runs via `child_process.exec` with `cwd` = the skill directory, a 60s timeout, and
   a capped output (stdout/stderr returned as a fenced code block; non-zero exits report
-  `Exit code: N`). Commands run on the host with the bot user's privileges, so skills are
-  admin-gated per chat just like the `powershell`/`ssh_command` tools.
+  `Exit code: N`). Commands run on the host with the bot user's privileges. A skill only runs in a
+  chat that lists it in `tools[]`, and only admins can attach it (via `/add_skill` or by editing
+  config) — the same trust model as the `powershell`/`ssh_command` tools.
 - The skills directory defaults to `skills` and is configurable with the top-level `skillsDir`
   config option. A missing directory, a missing `SKILL.md`, or malformed frontmatter is skipped
   with a warning and never breaks startup.
@@ -812,7 +813,8 @@ chatParams:
 The `draft` mode requires a Telegram Bot API backend that supports `sendMessageDraft`
 (**Bot API 9.3**, December 2025; available to all bots from 9.5, March 2026). If your backend is
 older, use `streamMode: edit`. Streaming of either mode is disabled for image answers and for
-Telegram Business turns. The active mode is shown in `/info` next to "Streaming".
+turns that do not send a Telegram message (inline queries and form-flow turns). The active mode is
+shown in `/info` next to "Streaming".
 
 ## Default response format
 

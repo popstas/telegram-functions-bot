@@ -174,6 +174,13 @@ describe("safeSendDraft", () => {
     await p;
     expect(telegramMock.callApi).toHaveBeenCalledTimes(2);
   });
+
+  it("swallows a non-429 error without throwing", async () => {
+    const bot = { telegram: telegramMock } as never;
+    telegramMock.callApi.mockRejectedValueOnce(new Error("backend lacks sendMessageDraft"));
+    await expect(safeSendDraft(bot, 1, "text")).resolves.toBeUndefined();
+    expect(telegramMock.callApi).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("handleCompletionStream draft mode", () => {
