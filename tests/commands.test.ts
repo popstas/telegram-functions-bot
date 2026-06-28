@@ -175,7 +175,7 @@ describe("commandAddTool", () => {
     mockUseTools.mockResolvedValue([
       { name: "foo", module: { description: "Foo", defaultParams: { p: 1 } } },
     ]);
-    const msg = createMsg();
+    const msg = createMsg("admin");
     const chat: ConfigChatType = {
       bot_token: "t",
       completionParams: {},
@@ -205,6 +205,21 @@ describe("commandAddTool", () => {
     expect(ctxReply).toHaveBeenCalledWith(expect.stringContaining("Tool added: foo"));
     expect(mockWriteConfig).toHaveBeenCalled();
   });
+
+  it("ignores a non-admin invocation before listing tools", async () => {
+    mockUseTools.mockResolvedValue([{ name: "foo", module: { description: "Foo" } }]);
+    const msg = createMsg("intruder");
+    const chat: ConfigChatType = {
+      bot_token: "t",
+      completionParams: {},
+      chatParams: {},
+      toolParams: {},
+      name: "c",
+    } as ConfigChatType;
+    const res = await commands.commandAddTool(msg, chat);
+    expect(res).toBeUndefined();
+    expect(mockSendTelegramMessage).not.toHaveBeenCalled();
+  });
 });
 
 describe("commandAddSkill", () => {
@@ -212,7 +227,7 @@ describe("commandAddSkill", () => {
     mockLoadSkills.mockReturnValue([
       { name: "greet", description: "Greet skill", dir: "/s/greet" },
     ]);
-    const msg = createMsg();
+    const msg = createMsg("admin");
     const chat: ConfigChatType = {
       bot_token: "t",
       completionParams: {},
@@ -245,7 +260,7 @@ describe("commandAddSkill", () => {
   it("replies with helpful message when no skills found", async () => {
     mockLoadSkills.mockReturnValue([]);
     mockAction.mockClear();
-    const msg = createMsg();
+    const msg = createMsg("admin");
     const chat: ConfigChatType = {
       bot_token: "t",
       completionParams: {},
@@ -269,7 +284,7 @@ describe("commandAddSkill", () => {
   it("ignores non-admin tap", async () => {
     mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
     mockGetActionUserMsg.mockReturnValue({ user: { username: "intruder" } });
-    const msg = createMsg();
+    const msg = createMsg("admin");
     const chat: ConfigChatType = {
       bot_token: "t",
       completionParams: {},
@@ -295,7 +310,7 @@ describe("commandAddSkill", () => {
       chatParams: {},
       toolParams: {},
     });
-    const msg = createMsg();
+    const msg = createMsg("admin");
     const chat: ConfigChatType = {
       bot_token: "t",
       completionParams: {},
@@ -314,7 +329,7 @@ describe("commandAddSkill", () => {
 
   it("replies 'Chat not found in config' for an unconfigured group chat", async () => {
     mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
-    const msg = createMsg();
+    const msg = createMsg("admin");
     const chat: ConfigChatType = {
       bot_token: "t",
       completionParams: {},
@@ -339,7 +354,7 @@ describe("commandAddSkill", () => {
       chatParams: {},
       toolParams: {},
     });
-    const msg = createMsg();
+    const msg = createMsg("admin");
     const chat: ConfigChatType = {
       bot_token: "t",
       completionParams: {},
@@ -355,13 +370,29 @@ describe("commandAddSkill", () => {
     expect(ctxReply).toHaveBeenCalledWith("Skill already added: skill_greet");
     expect(mockWriteConfig).not.toHaveBeenCalled();
   });
+
+  it("ignores a non-admin invocation before listing skills", async () => {
+    mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
+    const msg = createMsg("intruder");
+    const chat: ConfigChatType = {
+      bot_token: "t",
+      completionParams: {},
+      chatParams: {},
+      toolParams: {},
+      name: "c",
+    } as ConfigChatType;
+    const res = await commands.commandAddSkill(msg, chat);
+    expect(res).toBeUndefined();
+    expect(mockSendTelegramMessage).not.toHaveBeenCalled();
+    expect(mockLoadSkills).not.toHaveBeenCalled();
+  });
 });
 
 describe("handleAddSkill", () => {
   it("delegates to commandAddSkill", async () => {
     mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
     const ctx = { chat: { id: 1 } } as unknown as Context;
-    const msg = createMsg();
+    const msg = createMsg("admin");
     const chat = {
       bot_token: "t",
       completionParams: {},
@@ -459,7 +490,7 @@ describe("handleGoogleAuth", () => {
 describe("handleAddTool", () => {
   it("delegates to commandAddTool", async () => {
     const ctx = { chat: { id: 1 } } as unknown as Context;
-    const msg = createMsg();
+    const msg = createMsg("admin");
     const chat = {
       completionParams: {},
       chatParams: {},

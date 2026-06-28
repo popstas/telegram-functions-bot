@@ -152,6 +152,31 @@ describe("createDraftFlusher", () => {
       text: "",
     });
   });
+
+  it("finish waits for a 429-retrying in-flight flush before clearing the draft", async () => {
+    const bot = { telegram: telegramMock } as never;
+    const msg = {
+      chat: { id: 8, type: "private" },
+      message_id: 1,
+      text: "hi",
+    } as unknown as Message.TextMessage;
+    // First draft send 429s (safeSendDraft sleeps and will retry the stale text),
+    // then succeeds. The clear must come AFTER that retry, not race ahead of it.
+    telegramMock.callApi
+      .mockRejectedValueOnce({ response: { error_code: 429, parameters: { retry_after: 1 } } })
+      .mockResolvedValue(undefined);
+    const flusher = createDraftFlusher(bot, msg);
+    flusher.add("stale");
+    await jest.advanceTimersByTimeAsync(2000); // timeout fires; flush 429s, now sleeping
+    const finishP = flusher.finish();
+    await jest.advanceTimersByTimeAsync(1000); // release the retry delay
+    await finishP;
+    // Final call must be the empty clear, so no stale text is left in the draft.
+    expect(telegramMock.callApi).toHaveBeenLastCalledWith("sendMessageDraft", {
+      chat_id: 8,
+      text: "",
+    });
+  });
 });
 
 describe("safeSendDraft", () => {

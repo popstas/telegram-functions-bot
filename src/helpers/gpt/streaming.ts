@@ -168,6 +168,10 @@ export function createDraftFlusher(bot: ReturnType<typeof useBot>, msg: Message.
   let fullText = "";
   let flushTimeout: NodeJS.Timeout | undefined;
   let processing = true;
+  // Promise for an in-flight flush (which may be sleeping on a 429 retry inside
+  // safeSendDraft). finish() must await it before clearing, otherwise a late
+  // flush can write stale text back over the cleared draft.
+  let activeFlush: Promise<void> | undefined;
   const messageThreadId = (msg as { message_thread_id?: number }).message_thread_id;
 
   async function flush() {
@@ -178,7 +182,12 @@ export function createDraftFlusher(bot: ReturnType<typeof useBot>, msg: Message.
     if (flushTimeout) return;
     flushTimeout = setTimeout(async () => {
       flushTimeout = undefined;
-      await flush();
+      activeFlush = flush();
+      try {
+        await activeFlush;
+      } finally {
+        activeFlush = undefined;
+      }
       if (processing) scheduleFlush();
     }, 2000);
   }
@@ -194,6 +203,8 @@ export function createDraftFlusher(bot: ReturnType<typeof useBot>, msg: Message.
       clearTimeout(flushTimeout);
       flushTimeout = undefined;
     }
+    // Wait for any in-flight flush to settle so it cannot overwrite the clear below.
+    if (activeFlush) await activeFlush;
     // Clear the ephemeral draft; the persisted final answer is sent by the normal send path.
     await safeSendDraft(bot, msg.chat.id, "", messageThreadId);
     return { fullText, sentMessages } as const;

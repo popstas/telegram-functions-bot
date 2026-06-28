@@ -29,6 +29,7 @@ let buildSkillTool: typeof import("../../src/helpers/skills.ts").buildSkillTool;
 let runSkillCommand: typeof import("../../src/helpers/skills.ts").runSkillCommand;
 let loadSkillTools: typeof import("../../src/helpers/skills.ts").loadSkillTools;
 let skillToolName: typeof import("../../src/helpers/skills.ts").skillToolName;
+let sanitizeSkillName: typeof import("../../src/helpers/skills.ts").sanitizeSkillName;
 
 let tmpRoot: string;
 
@@ -52,6 +53,7 @@ describe("skills loader", () => {
       runSkillCommand,
       loadSkillTools,
       skillToolName,
+      sanitizeSkillName,
     } = await import("../../src/helpers/skills.ts"));
   });
 
@@ -216,6 +218,25 @@ describe("skills loader", () => {
     });
   });
 
+  describe("sanitizeSkillName", () => {
+    it("lowercases and collapses non-alnum runs to underscores", () => {
+      expect(sanitizeSkillName("My Skill")).toBe("my_skill");
+      expect(sanitizeSkillName("foo-bar")).toBe("foo_bar");
+    });
+
+    it("returns empty string for a name with no usable characters", () => {
+      expect(sanitizeSkillName("✓✓✓")).toBe("");
+    });
+
+    it("caps the sanitized name so callback_data stays within Telegram limits", () => {
+      const long = "a".repeat(200);
+      const sanitized = sanitizeSkillName(long);
+      expect(sanitized.length).toBeLessThanOrEqual(48);
+      // `add_skill_skill_<name>` must fit in 64 bytes.
+      expect(`add_skill_skill_${sanitized}`.length).toBeLessThanOrEqual(64);
+    });
+  });
+
   describe("loadSkillTools", () => {
     it("builds tools for discovered skills", () => {
       makeSkill(tmpRoot, "greet", `---\nname: greet\ndescription: d\n---\nbody`);
@@ -226,6 +247,20 @@ describe("skills loader", () => {
     it("returns empty array when no skills found", () => {
       const tools = loadSkillTools(path.join(tmpRoot, "missing"));
       expect(tools).toEqual([]);
+    });
+
+    it("skips a skill whose name sanitizes to empty", () => {
+      makeSkill(tmpRoot, "weird", `---\nname: "✓✓✓"\ndescription: d\n---\nbody`);
+      makeSkill(tmpRoot, "ok", `---\nname: ok\ndescription: d\n---\nbody`);
+      const tools = loadSkillTools(tmpRoot);
+      expect(tools.map((t) => t.name)).toEqual(["skill_ok"]);
+    });
+
+    it("skips skills that collide on the same sanitized tool name", () => {
+      makeSkill(tmpRoot, "a", `---\nname: "Foo Bar"\ndescription: d\n---\nbody`);
+      makeSkill(tmpRoot, "b", `---\nname: "foo-bar"\ndescription: d\n---\nbody`);
+      const tools = loadSkillTools(tmpRoot);
+      expect(tools.map((t) => t.name)).toEqual(["skill_foo_bar"]);
     });
   });
 });

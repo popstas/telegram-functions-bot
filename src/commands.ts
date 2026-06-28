@@ -125,12 +125,16 @@ export async function initCommands(bot: Telegraf) {
 
 // add tool to chat config
 export async function commandAddTool(msg: Message.TextMessage, chatConfig: ConfigChatType) {
+  const config = useConfig();
+  // Admin-only (as advertised in setMyCommands): gate before listing tools.
+  const requester = msg.from?.username || "without_username";
+  if (!includesUser(config.adminUsers, requester)) return;
+
   const excluded = ["change_chat_settings", "memory_add", "memory_delete", "memory_search"];
   const globalTools = await useTools();
   const tools = globalTools.filter((t) => !excluded.includes(t.name)).map((t) => t.name);
   const toolsInfo = await getToolsInfo(tools, msg);
   const text = `Available tools:\n\n${toolsInfo.join("\n\n")}\n\nSelect tool to add:`;
-  const config = useConfig();
 
   for (const tool of globalTools) {
     useBot(chatConfig.bot_token!).action(`add_tool_${tool.name}`, async (ctx) => {
@@ -194,7 +198,21 @@ export async function commandAddTool(msg: Message.TextMessage, chatConfig: Confi
 
 // add skill tool to chat config
 export async function commandAddSkill(msg: Message.TextMessage, chatConfig: ConfigChatType) {
-  const skills = loadSkills();
+  const config = useConfig();
+  // Admin-only (as advertised in setMyCommands): gate before listing the local
+  // skill inventory so non-admins cannot enumerate it.
+  const requester = msg.from?.username || "without_username";
+  if (!includesUser(config.adminUsers, requester)) return;
+
+  // Drop skills whose name sanitizes to empty or collides with another skill's
+  // tool name, mirroring loadSkillTools so the buttons match the runnable tools.
+  const seenToolNames = new Set<string>();
+  const skills = loadSkills().filter((s) => {
+    const toolName = skillToolName(s);
+    if (toolName === "skill_" || seenToolNames.has(toolName)) return false;
+    seenToolNames.add(toolName);
+    return true;
+  });
   if (skills.length === 0) {
     return await sendTelegramMessage(
       msg.chat.id,
@@ -205,7 +223,6 @@ export async function commandAddSkill(msg: Message.TextMessage, chatConfig: Conf
     );
   }
 
-  const config = useConfig();
   const skillsInfo = skills
     .map((s) => `- ${skillToolName(s)}${s.description ? ` - ${s.description}` : ""}`)
     .join("\n\n");

@@ -16,13 +16,23 @@ const SKILL_EXEC_MAX_BUFFER = 1024 * 1024;
 const SKILL_OUTPUT_MAX_CHARS = 8000;
 
 /**
+ * Max length of the sanitized portion of a skill name. The `/add_skill` command
+ * embeds the tool name in Telegram `callback_data` (`add_skill_skill_<name>`),
+ * which is capped at 64 bytes — keep the sanitized part short enough to fit.
+ */
+const MAX_SANITIZED_SKILL_NAME = 48;
+
+/**
  * Sanitize a skill name into the `[a-z0-9_]` charset used for the tool name.
+ * Returns an empty string when nothing usable remains (caller must skip such skills).
  */
 export function sanitizeSkillName(name: string): string {
   return name
     .toLowerCase()
     .replace(/[^a-z0-9_]+/g, "_")
-    .replace(/^_|_$/g, "");
+    .replace(/^_|_$/g, "")
+    .slice(0, MAX_SANITIZED_SKILL_NAME)
+    .replace(/_$/g, "");
 }
 
 /** The tool name exposed for a skill, e.g. `skill_greet`. */
@@ -247,7 +257,29 @@ export function buildSkillTool(skill: SkillType): ChatToolType {
  */
 export function loadSkillTools(skillsDir?: string): ChatToolType[] {
   try {
-    return loadSkills(skillsDir).map(buildSkillTool);
+    const tools: ChatToolType[] = [];
+    const seen = new Set<string>();
+    for (const skill of loadSkills(skillsDir)) {
+      const sanitized = sanitizeSkillName(skill.name);
+      if (!sanitized) {
+        log({
+          msg: `Skipping skill "${skill.name}": name sanitizes to an empty tool name`,
+          logLevel: "warn",
+        });
+        continue;
+      }
+      const tool = buildSkillTool(skill);
+      if (seen.has(tool.name)) {
+        log({
+          msg: `Skipping skill "${skill.name}": duplicate tool name ${tool.name}`,
+          logLevel: "warn",
+        });
+        continue;
+      }
+      seen.add(tool.name);
+      tools.push(tool);
+    }
+    return tools;
   } catch (e) {
     log({
       msg: `Failed to load skill tools: ${(e as Error).message}`,
