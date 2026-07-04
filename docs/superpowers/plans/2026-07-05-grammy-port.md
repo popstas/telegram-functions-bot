@@ -2077,9 +2077,20 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 Live-bot testing during and after the port uses REAL infrastructure the user granted:
 
-- **Bot:** `popstas_functions_bot` — token already in `config.yml` (`auth.bot_token`). ⚠️ Only ONE process may poll a token: **stop the production instance of this bot before any e2e run** (a second poller gets Telegram 409 `getUpdates` conflicts and both misbehave).
+- **Bot:** `popstas_functions_bot` — token already in `config.yml` (`auth.bot_token`). It is a TEST-ONLY bot and its external instance is stopped — no polling-conflict coordination needed; just never run two local `npm start` at once. Bot profile: secretary mode disabled, **inline mode enabled** (inline-query e2e is possible). Some MCP servers in `config.yml` are known-broken — MCP connect errors in startup logs are pre-existing, NOT port regressions (verify by comparing against a pre-port `master` run if unsure).
 - **Test group:** `-4897751120`, configured by `data/chats/gpt_responses_api.yml` — already has `streaming: true`, `confirmation: true`, `useResponsesApi: true`, and tools (`javascript_interpreter`, `web_search_preview`, …), which covers rich sends, rich-draft streaming, tool calls, and the confirmation flow in one chat.
-- **Permission:** the user explicitly allows modifying `config.yml` and `data/chats/gpt_responses_api.yml` for e2e purposes (e.g. temporarily toggling `streaming`, `confirmation`, adding a `prefix`, changing model). This permission is for LIVE runs only — the CLAUDE.md rule "never change or delete files in `data/` in tests" still applies to Jest tests. Restore any temporary config edits after the e2e session (`git diff config.yml data/chats/gpt_responses_api.yml` must come back clean; note `config.yml` may be gitignored — check with `git check-ignore config.yml` and restore from a backup copy you make before editing).
+- **Permission:** BACKUP FIRST (`cp config.yml config.yml.e2e-backup && cp data/chats/gpt_responses_api.yml data/chats/gpt_responses_api.yml.e2e-backup`), then the user allows changing EVERYTHING in `config.yml` and the chat config for e2e (toggle `streaming`/`confirmation`, remove broken MCP servers, add `prefix`, change model, …). This permission is for LIVE runs only — the CLAUDE.md rule "never change or delete files in `data/` in tests" still applies to Jest tests. Restore from the backups when e2e is done and delete the backup files.
+- **Real user account (inbound polling path + readback):** the user's account is scriptable via the telegram-assistant project:
+
+```bash
+cd /home/popstas/projects/python/telegram-assistant
+./.venv/bin/telegram-assistant messages send --text "test message" --entity @popstas_functions_bot   # or --entity -4897751120
+./.venv/bin/telegram-assistant messages recent --entity -4897751120       # read back bot answers (verify rich message arrived)
+./.venv/bin/telegram-assistant messages react ...                          # trigger the reaction handler (message_reaction e2e)
+./.venv/bin/telegram-assistant messages delete ...                         # clean up own test messages
+```
+
+  (Run `--help` on each subcommand for exact flags before first use.) This makes the TRUE inbound path testable end-to-end without the user: send via `messages send` → bot polls the update → handler → answer lands in chat → verify via `messages recent`. Reactions likewise. Prefer this over the HTTP endpoint for anything testing the update-ingestion side; keep HTTP for pipeline-only checks.
 - **Driving the pipeline programmatically:** the HTTP emulation endpoint exercises the full LLM→tools→rich-send path with real Telegram sends into the group:
 
 ```bash
@@ -2091,12 +2102,13 @@ curl -s -X POST "http://localhost:<http.port>/telegram/-4897751120" \
 ```
 
 The HTTP body returns the final answer text (rich path synthesizes `.text` — Task 11); the message itself lands in the group. Watch stdout logs for `sendRichMessage`/draft warnings.
-- **What only a human can verify** (Claude triggers, user eyeballs): draft preview appearing/updating/clearing in the chat UI, rich rendering quality, clicking inline buttons (confirm/cancel, `add_tool`, form `f:`/`fl:`), voice/photo/document/reaction/inline-query/business flows sent from a real user account.
+- **What only a human can verify** (everything else above is automatable): draft preview appearing/updating/clearing in the chat UI, rich rendering QUALITY (correct API calls are verifiable via logs + `messages recent`; how it LOOKS is not), clicking inline buttons (confirm/cancel, `add_tool`, form `f:`/`fl:`), sending voice/photo/document, typing an inline query, business-account flows.
+- **Manual-check policy (user-requested):** GROUP and DEFER all human checks to the latest possible point — do not interrupt the user per item. Run every automatable check first; collect the human items into ONE batched session at Task 23 (plus at most one batch mid-port only if something automatable is blocked on it). Summon the user via the AskUserQuestion tool with a compact numbered list of "click/look/send this, tell me what you see" items.
 
 **E2E checkpoints during execution:**
-1. **After Task 16** (first bootable grammY state): stop the prod bot → `npm start` → expect `bot started: <name>` in logs, then run the curl above → HTTP 200 with answer text, message visible in group `-4897751120`. This catches lifecycle/context wiring bugs 5 tasks before the full gate.
-2. **After Task 21** (full green): repeat the curl; also send a >4096-char-answer prompt (single rich message expected) and a streaming prompt while watching logs for `sendRichMessageDraft` calls without errors.
-3. **Task 23**: the full manual checklist below, using this same environment (no separate dev config needed — the Task 23 setup paragraph is superseded by this section).
+1. **After Task 16** (first bootable grammY state): `npm start` → expect `bot started: <name>` in logs (ignore pre-existing MCP connect errors), then `telegram-assistant messages send --text "ping" --entity -4897751120` → answer appears (verify via `messages recent`); also run the curl above → HTTP 200 with answer text. This catches lifecycle/context wiring bugs 5 tasks before the full gate. Fully automated — no user needed.
+2. **After Task 21** (full green): repeat checkpoint 1; add a >4096-char-answer prompt (expect ONE rich message via `messages recent`), a streaming prompt (logs show `sendRichMessageDraft` without errors), and a `messages react` on a bot answer (reaction handler fires). Fully automated.
+3. **Task 23**: run all automatable items below first, then ONE batched AskUserQuestion session for the human items (no separate dev config needed — the Task 23 setup paragraph is superseded by this section).
 
 ---
 
@@ -2128,7 +2140,9 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 **Files:** none (manual verification; record results in the PR description)
 
-Setup: use the **E2E test environment** section above — bot `popstas_functions_bot`, group `-4897751120` (`data/chats/gpt_responses_api.yml`), existing `config.yml`. Stop the production bot instance first, then `npm start`; watch logs for `bot started: <name>`. Items marked "human" need the user in the Telegram client; the rest can be driven via the group + the HTTP endpoint.
+Setup: use the **E2E test environment** section above — bot `popstas_functions_bot`, group `-4897751120` (`data/chats/gpt_responses_api.yml`), existing `config.yml` (backup both first), `npm start`, watch for `bot started: <name>`.
+
+Execution order (per the manual-check policy): run the AUTO items first via telegram-assistant + HTTP + logs, then batch the HUMAN items into one AskUserQuestion session. Classification: AUTO — 1 (proxy, if configured), 2 (multi-bot, if a second bot_token chat exists), 3 (concurrency: `messages send` to the group + simultaneous HTTP post to another configured chat), 4 (message arrival/oneness via `messages recent`; rendering quality → HUMAN), 6 (flood), 7 (fallback via logs), 8-reaction (`messages react`), 12 (HTTP + lifecycle). HUMAN (batched) — 4-rendering-quality, 5 (draft preview look; API side is AUTO via logs), 8-voice/photo/document, 9 (business, optional — secretary mode is off on this bot), 10 (inline query typing), 11 (button clicks: confirmation Yes/No, `/add_tool`, form buttons).
 
 - [ ] 1. **Proxy startup** (only if `auth.proxy_url` is used in prod): set it in the dev config → bot starts and answers. Failure: startup hang or `HttpError` — the `baseFetchConfig.agent` mapping is wrong (Risk 12 in the spec).
 - [ ] 2. **Multi-bot routing**: with a second bot configured, message each bot → each answers as itself (check the answering bot's username). Failure: wrong bot answers or `chatConfig {}` behavior — a missed `ctx.me`/`botInfo` read.
