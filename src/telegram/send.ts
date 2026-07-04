@@ -132,7 +132,10 @@ export async function sendTelegramMessage(
   // Process the text based on parse_mode (plainText leaves text unchanged)
   if (!plainText && params.parse_mode === "HTML") {
     processedText = sanitizeTelegramHtml(text);
-  } else if (!plainText && (params.parse_mode === "MarkdownV2" || params.parse_mode === "Markdown")) {
+  } else if (
+    !plainText &&
+    (params.parse_mode === "MarkdownV2" || params.parse_mode === "Markdown")
+  ) {
     processedText = telegramifyWithCodeBlocks(text);
   }
 

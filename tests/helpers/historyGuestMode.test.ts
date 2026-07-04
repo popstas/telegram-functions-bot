@@ -67,10 +67,17 @@ describe("addToHistory guest mode", () => {
     expect(threads[1].messages[1].content).toBe("@mybot what do you think?");
   });
 
-  it("does not include the replied-to message when guest mode is disabled", () => {
+  it("still includes the replied-to message when guest mode is disabled", () => {
+    // Reply context is now always added when the bot is mentioned, independent
+    // of guest mode (Task 4).
     mockUseConfig.mockReturnValue({ bot_name: "mybot" });
     addToHistory(guestMsg(), baseChat);
-    expect(threads[1].messages).toHaveLength(1);
-    expect(threads[1].messages[0].content).toBe("@mybot what do you think?");
+    expect(threads[1].messages).toHaveLength(2);
+    expect(threads[1].messages[0]).toEqual({
+      role: "user",
+      content: "original question",
+      name: "Other",
+    });
+    expect(threads[1].messages[1].content).toBe("@mybot what do you think?");
   });
 });

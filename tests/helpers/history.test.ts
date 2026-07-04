@@ -107,7 +107,9 @@ describe("history helpers", () => {
     } as Message.TextMessage;
     const chat = { ...baseChat, chatParams: { markReplyToMessage: true } };
     addToHistory(msg, chat);
-    const content = threads[1].messages[0].content as string;
+    // The replied-to message is now also added to history; the user's marked
+    // message is the last entry.
+    const content = threads[1].messages[threads[1].messages.length - 1].content as string;
     expect(content).toMatch(/^\[reply to: \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\+00:00, Jane\]\n/);
     expect(content).toContain("my answer");
     expect(content).toBe("[reply to: 1970-01-01 00:00:00+00:00, Jane]\nmy answer");
@@ -125,6 +127,73 @@ describe("history helpers", () => {
       },
     } as Message.TextMessage;
     addToHistory(msg, baseChat);
-    expect(threads[1].messages[0].content).toBe("my answer");
+    expect(threads[1].messages[threads[1].messages.length - 1].content).toBe("my answer");
+  });
+
+  describe("reply context in history (shouldIncludeReplyInHistory)", () => {
+    function replyMsg(opts: {
+      replyFrom?: { id: number; is_bot?: boolean; first_name?: string; username?: string };
+      replyText?: string;
+      from?: { id: number; is_bot?: boolean; first_name?: string; username?: string };
+    }): Message.TextMessage {
+      return {
+        chat: { id: 1, type: "group" },
+        from: opts.from ?? { id: 1, is_bot: false, username: "user", first_name: "User" },
+        message_id: 5,
+        date: 0,
+        text: "@mybot what do you think?",
+        reply_to_message: {
+          chat: { id: 1, type: "group" },
+          from: opts.replyFrom ?? {
+            id: 2,
+            is_bot: false,
+            username: "other",
+            first_name: "Other",
+          },
+          message_id: 4,
+          date: 0,
+          text: opts.replyText ?? "original question",
+        },
+      } as Message.TextMessage;
+    }
+
+    it("includes the replied-to message even without guest mode enabled", () => {
+      addToHistory(replyMsg({}), baseChat);
+      expect(threads[1].messages).toHaveLength(2);
+      expect(threads[1].messages[0]).toEqual({
+        role: "user",
+        content: "original question",
+        name: "Other",
+      });
+      expect(threads[1].messages[1].content).toBe("@mybot what do you think?");
+    });
+
+    it("skips a reply to the bot's own message", () => {
+      const msg = replyMsg({
+        replyFrom: { id: 99, is_bot: true, username: "mybot", first_name: "Bot" },
+        replyText: "previous bot answer",
+      });
+      addToHistory(msg, baseChat);
+      expect(threads[1].messages).toHaveLength(1);
+      expect(threads[1].messages[0].content).toBe("@mybot what do you think?");
+    });
+
+    it("skips a reply to the sender's own message", () => {
+      const msg = replyMsg({
+        from: { id: 1, is_bot: false, username: "user", first_name: "User" },
+        replyFrom: { id: 1, is_bot: false, username: "user", first_name: "User" },
+        replyText: "my earlier message",
+      });
+      addToHistory(msg, baseChat);
+      expect(threads[1].messages).toHaveLength(1);
+      expect(threads[1].messages[0].content).toBe("@mybot what do you think?");
+    });
+
+    it("leaves non-reply messages unchanged", () => {
+      const msg = createMsg("hi");
+      addToHistory(msg, baseChat);
+      expect(threads[1].messages).toHaveLength(1);
+      expect(threads[1].messages[0].content).toBe("hi");
+    });
   });
 });

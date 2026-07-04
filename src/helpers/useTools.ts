@@ -3,6 +3,7 @@ import { log } from "../helpers.ts";
 import { readConfig } from "../config.ts";
 import { init as initMcp, callMcp, initChatMcp, disconnectChatMcp } from "../mcp.ts";
 import { sendTelegramMessage } from "../telegram/send.ts";
+import { loadSkillTools } from "./skills.ts";
 import type { ChatToolType, ConfigChatType } from "../types.ts";
 
 let globalTools: ChatToolType[] = [];
@@ -80,6 +81,17 @@ export async function initTools(): Promise<ChatToolType[]> {
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         log({ msg: `MCP tools loading error: ${msg}`, logLevel: "error" });
+      }
+
+      // --- Add skill tools ---
+      try {
+        const skillTools = loadSkillTools();
+        for (const tool of skillTools) {
+          globalTools.push(tool);
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        log({ msg: `Skill tools loading error: ${msg}`, logLevel: "error" });
       }
 
       return globalTools;

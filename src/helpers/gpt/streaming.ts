@@ -61,6 +61,37 @@ export async function safeEdit(
   }
 }
 
+export async function safeSendDraft(
+  bot: ReturnType<typeof useBot>,
+  chatId: number | string,
+  text: string,
+  messageThreadId?: number,
+): Promise<void> {
+  const api = (
+    bot.telegram as unknown as {
+      callApi: (method: string, payload: Record<string, unknown>) => Promise<unknown>;
+    }
+  ).callApi;
+  for (;;) {
+    try {
+      await api.call(bot.telegram, "sendMessageDraft", {
+        chat_id: chatId,
+        text,
+        ...(messageThreadId !== undefined ? { message_thread_id: messageThreadId } : {}),
+      });
+      return;
+    } catch (err) {
+      const wait = getRetryAfter(err);
+      if (wait) {
+        await delay(wait);
+        continue;
+      }
+      console.warn("sendMessageDraft failed", err);
+      return;
+    }
+  }
+}
+
 export async function safeDelete(
   bot: ReturnType<typeof useBot>,
   m: Message.TextMessage,
@@ -132,6 +163,56 @@ function createFlusher(bot: ReturnType<typeof useBot>, msg: Message.TextMessage)
   return { add, finish, sentMessages } as const;
 }
 
+export function createDraftFlusher(bot: ReturnType<typeof useBot>, msg: Message.TextMessage) {
+  const sentMessages: Message.TextMessage[] = [];
+  let fullText = "";
+  let flushTimeout: NodeJS.Timeout | undefined;
+  let processing = true;
+  // Promise for an in-flight flush (which may be sleeping on a 429 retry inside
+  // safeSendDraft). finish() must await it before clearing, otherwise a late
+  // flush can write stale text back over the cleared draft.
+  let activeFlush: Promise<void> | undefined;
+  const messageThreadId = (msg as { message_thread_id?: number }).message_thread_id;
+
+  async function flush() {
+    await safeSendDraft(bot, msg.chat.id, fullText, messageThreadId);
+  }
+
+  function scheduleFlush() {
+    if (flushTimeout) return;
+    flushTimeout = setTimeout(async () => {
+      flushTimeout = undefined;
+      activeFlush = flush();
+      try {
+        await activeFlush;
+      } finally {
+        activeFlush = undefined;
+      }
+      if (processing) scheduleFlush();
+    }, 2000);
+  }
+
+  function add(delta: string) {
+    fullText += delta;
+    scheduleFlush();
+  }
+
+  async function finish() {
+    processing = false;
+    if (flushTimeout) {
+      clearTimeout(flushTimeout);
+      flushTimeout = undefined;
+    }
+    // Wait for any in-flight flush to settle so it cannot overwrite the clear below.
+    if (activeFlush) await activeFlush;
+    // Clear the ephemeral draft; the persisted final answer is sent by the normal send path.
+    await safeSendDraft(bot, msg.chat.id, "", messageThreadId);
+    return { fullText, sentMessages } as const;
+  }
+
+  return { add, finish, sentMessages } as const;
+}
+
 export async function handleStream<T, R>(
   stream: AsyncIterable<T>,
   msg: Message.TextMessage,
@@ -164,7 +245,8 @@ export async function handleStream<T, R>(
   },
 ): Promise<R & { sentMessages: Message.TextMessage[] }> {
   const bot = useBot(chatConfig?.bot_token);
-  const flusher = createFlusher(bot, msg);
+  const useDraft = chatConfig?.chatParams?.streamMode === "draft";
+  const flusher = useDraft ? createDraftFlusher(bot, msg) : createFlusher(bot, msg);
   const finalToolCalls: Record<
     number,
     {

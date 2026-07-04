@@ -255,6 +255,7 @@ export function generateConfig(): ConfigType {
     },
     useChatsDir: false,
     chatsDir: "data/chats",
+    skillsDir: "skills",
     inlineMode: {
       buttons: [{ name: "Ask", prompt: "You are a helpful assistant. Answer the question." }],
       live_answer: false,
@@ -355,6 +356,7 @@ export function generateConfig(): ConfigType {
           answerReactions: true,
           useResponsesApi: false,
           streaming: false,
+          streamMode: "edit",
           responseButtons: false,
           responseButtonsAgent: false,
           responseButtonsMessage: true,

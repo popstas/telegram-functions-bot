@@ -89,6 +89,29 @@ export function isMentioned(
   return true;
 }
 
+// Reply context for history: whenever an incoming message replies to another
+// (non-bot, non-self) user's message, that replied-to message should be added to
+// LLM history for conversational continuity. Unlike isGuestModeReply this does
+// NOT require guestMode.prompt — the caller (addToHistory) is only reached when
+// the bot is already mentioned, so reply context is included regardless of guest
+// mode (private and group chats alike).
+export function shouldIncludeReplyInHistory(
+  msg: Message.TextMessage & { caption?: string },
+  chat: ConfigChatType,
+): boolean {
+  const reply = msg.reply_to_message as Message.TextMessage | undefined;
+  if (!reply) return false;
+  // Skip replies to the bot's own prior message — it is already in history.
+  if (reply.from?.is_bot) return false;
+  const botName = chat.bot_name || useConfig().bot_name;
+  const replyAuthor = reply.from?.username;
+  if (replyAuthor && botName && replyAuthor === botName) return false;
+  // Skip replies to one's own message (no extra context to add).
+  if (msg.from?.id && reply.from?.id && msg.from.id === reply.from.id) return false;
+  if (msg.from?.username && replyAuthor && msg.from.username === replyAuthor) return false;
+  return true;
+}
+
 // Guest mode: the bot is explicitly mentioned (tag/prefix) in a reply to another
 // (non-bot) user. When global guest mode is enabled, such turns are processed and
 // the replied-to message is added to history for conversational continuity.

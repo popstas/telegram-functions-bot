@@ -4,6 +4,7 @@ import * as fs from "fs";
 const mockReaddirSync = jest.fn();
 const mockLog = jest.fn();
 const mockReadConfig = jest.fn();
+const mockLoadSkillTools = jest.fn();
 
 // Mock function with type assertion
 const mockInitMcp = jest.fn() as unknown as jest.MockedFunction<
@@ -49,6 +50,10 @@ jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
   isAdminUser: jest.fn(),
 }));
 
+jest.unstable_mockModule("../../src/helpers/skills.ts", () => ({
+  loadSkillTools: (...args: unknown[]) => mockLoadSkillTools(...args),
+}));
+
 import path from "path";
 import { ConfigChatType, ThreadStateType } from "../../src/types.ts";
 
@@ -73,6 +78,7 @@ beforeEach(async () => {
   jest.clearAllMocks();
   mockReaddirSync.mockReturnValue(["foo.ts", "bar.ts"]);
   mockReadConfig.mockReturnValue({});
+  mockLoadSkillTools.mockReturnValue([]);
   mockInitMcp.mockResolvedValue(
     [] as Array<{
       name: string;
@@ -92,6 +98,24 @@ describe("initTools", () => {
     expect(mockLog).toHaveBeenCalledWith({
       msg: "Function bar has no call() method",
       logLevel: "warn",
+    });
+  });
+
+  it("appends skill tools from loadSkillTools to globalTools", async () => {
+    mockLoadSkillTools.mockReturnValue([{ name: "skill_greet", module: { call: () => ({}) } }]);
+    const tools = await initTools();
+    expect(tools.map((t) => t.name)).toEqual(["foo", "skill_greet"]);
+  });
+
+  it("does not break tool init when loadSkillTools throws", async () => {
+    mockLoadSkillTools.mockImplementation(() => {
+      throw new Error("boom");
+    });
+    const tools = await initTools();
+    expect(tools.map((t) => t.name)).toEqual(["foo"]);
+    expect(mockLog).toHaveBeenCalledWith({
+      msg: "Skill tools loading error: boom",
+      logLevel: "error",
     });
   });
 

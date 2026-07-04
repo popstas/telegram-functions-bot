@@ -9,6 +9,7 @@ import { getSystemMessage, getTokensCount, resolveChatTools } from "./helpers/gp
 import { forgetHistory } from "./helpers/history.ts";
 import { commandGoogleOauth } from "./helpers/google.ts";
 import useTools from "./helpers/useTools.ts";
+import { loadSkills, skillToolName } from "./helpers/skills.ts";
 import { includesUser } from "./utils/users.ts";
 
 export async function handleForget(ctx: Context) {
@@ -33,6 +34,12 @@ export async function handleAddTool(ctx: Context) {
   const { msg, chat }: { msg?: Message.TextMessage; chat?: ConfigChatType } = getCtxChatMsg(ctx);
   if (!chat || !msg) return;
   await commandAddTool(msg, chat);
+}
+
+export async function handleAddSkill(ctx: Context) {
+  const { msg, chat }: { msg?: Message.TextMessage; chat?: ConfigChatType } = getCtxChatMsg(ctx);
+  if (!chat || !msg) return;
+  await commandAddSkill(msg, chat);
 }
 
 export async function handleAddChat(ctx: Context) {
@@ -90,6 +97,8 @@ export async function initCommands(bot: Telegraf) {
 
   bot.command("add_tool", handleAddTool);
 
+  bot.command("add_skill", handleAddSkill);
+
   await bot.telegram.setMyCommands([
     {
       command: "/forget",
@@ -107,17 +116,25 @@ export async function initCommands(bot: Telegraf) {
       command: "/add_tool",
       description: "Add/edit tool (admins only)",
     },
+    {
+      command: "/add_skill",
+      description: "Add skill to chat (admins only)",
+    },
   ]);
 }
 
 // add tool to chat config
 export async function commandAddTool(msg: Message.TextMessage, chatConfig: ConfigChatType) {
+  const config = useConfig();
+  // Admin-only (as advertised in setMyCommands): gate before listing tools.
+  const requester = msg.from?.username || "without_username";
+  if (!includesUser(config.adminUsers, requester)) return;
+
   const excluded = ["change_chat_settings", "memory_add", "memory_delete", "memory_search"];
   const globalTools = await useTools();
   const tools = globalTools.filter((t) => !excluded.includes(t.name)).map((t) => t.name);
   const toolsInfo = await getToolsInfo(tools, msg);
   const text = `Available tools:\n\n${toolsInfo.join("\n\n")}\n\nSelect tool to add:`;
-  const config = useConfig();
 
   for (const tool of globalTools) {
     useBot(chatConfig.bot_token!).action(`add_tool_${tool.name}`, async (ctx) => {
@@ -175,6 +192,86 @@ export async function commandAddTool(msg: Message.TextMessage, chatConfig: Confi
   }
 
   const buttons = tools.map((t: string) => [{ text: t, callback_data: `add_tool_${t}` }]);
+  const params = { reply_markup: { inline_keyboard: buttons } };
+  return await sendTelegramMessage(msg.chat.id, text, params, undefined, chatConfig);
+}
+
+// add skill tool to chat config
+export async function commandAddSkill(msg: Message.TextMessage, chatConfig: ConfigChatType) {
+  const config = useConfig();
+  // Admin-only (as advertised in setMyCommands): gate before listing the local
+  // skill inventory so non-admins cannot enumerate it.
+  const requester = msg.from?.username || "without_username";
+  if (!includesUser(config.adminUsers, requester)) return;
+
+  // Drop skills whose name sanitizes to empty or collides with another skill's
+  // tool name, mirroring loadSkillTools so the buttons match the runnable tools.
+  const seenToolNames = new Set<string>();
+  const skills = loadSkills().filter((s) => {
+    const toolName = skillToolName(s);
+    if (toolName === "skill_" || seenToolNames.has(toolName)) return false;
+    seenToolNames.add(toolName);
+    return true;
+  });
+  if (skills.length === 0) {
+    return await sendTelegramMessage(
+      msg.chat.id,
+      "No skills found. Add a skill folder with SKILL.md to the skills directory.",
+      undefined,
+      undefined,
+      chatConfig,
+    );
+  }
+
+  const skillsInfo = skills
+    .map((s) => `- ${skillToolName(s)}${s.description ? ` - ${s.description}` : ""}`)
+    .join("\n\n");
+  const text = `Available skills:\n\n${skillsInfo}\n\nSelect skill to add:`;
+
+  for (const skill of skills) {
+    const toolName = skillToolName(skill);
+    useBot(chatConfig.bot_token!).action(`add_skill_${toolName}`, async (ctx) => {
+      const chatId = ctx.chat?.id;
+      if (!chatId) return;
+
+      // check admin
+      const { user } = getActionUserMsg(ctx);
+      const username = user?.username || "without_username";
+      if (!user || !includesUser(config.adminUsers, username)) return;
+
+      let targetChat: ConfigChatType | undefined;
+      if (ctx.chat?.type === "private") {
+        // edit/add private chat
+        targetChat = config.chats.find((chat) => username && chat.username === username);
+        if (!targetChat) {
+          targetChat = generatePrivateChatConfig(username);
+          config.chats.push(targetChat);
+        }
+      } else {
+        // edit group chat
+        targetChat = config.chats.find((chat) => chat.id === chatId || chat.ids?.includes(chatId));
+        if (!targetChat) {
+          void ctx.reply("Chat not found in config");
+        }
+      }
+      if (!targetChat) return;
+
+      if (!targetChat.tools) targetChat.tools = [];
+      const hasTool = (targetChat.tools || []).some((t) => typeof t === "string" && t === toolName);
+      if (hasTool) {
+        await ctx.reply(`Skill already added: ${toolName}`);
+        return;
+      }
+      targetChat.tools.push(toolName);
+      writeConfig(undefined, config);
+      await ctx.reply(`Skill added: ${toolName}`);
+    });
+  }
+
+  const buttons = skills.map((s) => {
+    const toolName = skillToolName(s);
+    return [{ text: toolName, callback_data: `add_skill_${toolName}` }];
+  });
   const params = { reply_markup: { inline_keyboard: buttons } };
   return await sendTelegramMessage(msg.chat.id, text, params, undefined, chatConfig);
 }
@@ -251,7 +348,7 @@ export async function getInfoMessage(msg: Message.TextMessage, chatConfig: Confi
   }
 
   if (chatConfig.chatParams?.streaming) {
-    lines.push("Streaming: yes");
+    lines.push(`Streaming: yes (${chatConfig.chatParams.streamMode ?? "edit"} mode)`);
   }
 
   if (chatConfig.chatParams?.useResponsesApi && !chatConfig.local_model) {

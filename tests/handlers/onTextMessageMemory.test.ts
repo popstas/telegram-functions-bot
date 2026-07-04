@@ -23,6 +23,7 @@ const mockAddToHistory = jest.fn();
 jest.unstable_mockModule("../../src/handlers/access.ts", () => ({
   __esModule: true,
   isGuestModeReply: () => false,
+  shouldIncludeReplyInHistory: () => false,
   default: (...args: unknown[]) => mockCheckAccessLevel(...args),
 }));
 

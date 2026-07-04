@@ -40,6 +40,7 @@ export type ConfigType = {
   };
   useChatsDir?: boolean;
   chatsDir?: string;
+  skillsDir?: string;
   inlineMode?: InlineModeConfigType;
   guestMode?: GuestModeConfigType;
   chats: ConfigChatType[];
@@ -151,6 +152,7 @@ export type ChatParamsType = {
   placeholderCacheTime?: number;
   useResponsesApi?: boolean;
   streaming?: boolean;
+  streamMode?: "edit" | "draft"; // how streaming partial text is shown; "edit" (default) edits a real message, "draft" uses Telegram sendMessageDraft (Bot API 9.3+)
   answerReactions?: boolean;
   responseButtons?: boolean;
   responseButtonsAgent?: boolean;
@@ -230,6 +232,13 @@ export type ConfigChatButtonType = {
   prompt: string;
   row?: number;
   waitMessage?: string;
+};
+
+export type SkillType = {
+  name: string;
+  description: string;
+  instructions: string;
+  dir: string;
 };
 
 export type ChatToolType = {
