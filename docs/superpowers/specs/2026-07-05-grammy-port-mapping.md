@@ -1,4 +1,12 @@
-# Telegraf → grammY Migration Plan (merged from 5 codebase audits + grammY docs research)
+# Telegraf → grammY migration mapping (merged from 5 codebase audits + grammY docs research)
+
+> **Addendum 2026-07-05:** the streaming/outbound design was revised after this audit
+> (see the design spec, Phase 2). Superseded rows: **#23** (raw `callApi("sendMessageDraft")`
+> — replaced by typed Bot API 10.1 `sendRichMessageDraft`/`sendMessageDraft`; no raw
+> proxy needed) and the streaming.ts parts of **#7**/**#25** (edit-mode streaming is
+> dropped entirely, so its `editMessageText` calls and retry loops are deleted, not
+> ported). Outbound sends move to `sendRichMessage` with a legacy fallback; no
+> 4096-char splitting on the rich path.
 
 Target: `grammy@^1.44.0` (Bot API 10.1, `@grammyjs/types@3.28`), plus `@grammyjs/runner` (required, see Risk 1) and optionally `@grammyjs/auto-retry`. Node 24 and `"type":"module"` are compatible. grammY uses node-fetch@2 internally, so `http.Agent`-based proxying works.
 

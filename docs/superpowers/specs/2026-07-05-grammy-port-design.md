@@ -7,8 +7,10 @@ Status: approved
 
 Replace `telegraf@4.16.3` with `grammy` as the Telegram framework, to unlock grammY's
 actively-maintained Bot API coverage and plugin ecosystem (auto-retry, runner,
-conversations, hydrate). The port targets behavior parity first; idiom adoption that
-changes behavior lands separately after parity is verified.
+conversations, hydrate). The port targets behavior parity everywhere EXCEPT the
+outbound send/streaming pipeline, which is deliberately rewritten on Bot API 10.1
+rich messages (Phase 2 — approved scope revision); conversations/hydrate idiom
+adoption lands separately after the port is verified.
 
 ## Decisions (recorded from brainstorming)
 
@@ -20,6 +22,9 @@ changes behavior lands separately after parity is verified.
 | Plugins in port | `@grammyjs/auto-retry`, `@grammyjs/runner` (+ `sequentialize`) |
 | Plugins deferred to follow-up PR | `@grammyjs/conversations` (formFlow rewrite), `@grammyjs/hydrate` |
 | Deliberate behavior improvements | Answer `add_tool`/`add_skill` callback queries; HTTP emulation works from boot |
+| Streaming (revised 2026-07-05) | Drop legacy edit-message streaming entirely; drafts via typed Bot API 10.1 `sendRichMessageDraft` |
+| Outbound sends (revised 2026-07-05) | `sendRichMessage` (`{ markdown }`) becomes the default send path for ALL answers, replacing telegramify-markdown; legacy MarkdownV2 path retained only as fallback and for `plainText` sends |
+| Config change | `ChatParamsType.streamMode` removed (`streaming: true` now always means rich-draft streaming) |
 | Verification | `npm run test-full` + manual smoke pass against a dev bot token |
 
 Why runner is in scope despite being "optional": Telegraf processes updates
@@ -29,13 +34,16 @@ every other chat. `sequentialize` keyed on chat id preserves per-chat ordering.
 
 ## Target stack
 
-- `grammy@^1.44` (Bot API 10.x types via `@grammyjs/types`); `telegraf` removed
-  entirely — no coexistence period.
+- `grammy@^1.44` (Bot API 10.1 types via `@grammyjs/types`); `telegraf` removed
+  entirely — no coexistence period. Bot API 10.1 (2026-06-11) natively types
+  `sendRichMessage`, `sendRichMessageDraft`, `sendMessageDraft`, and
+  `InputRichMessage` (`{ markdown }` / `{ html }` content, `is_rtl`,
+  `skip_entity_detection`) — no raw-API casts needed anywhere.
 - `@grammyjs/runner`: `run(bot)` per bot; `RunnerHandle` stored beside each bot;
   `sequentialize(ctx => chat-or-business-connection key)` as the first middleware.
 - `@grammyjs/auto-retry`: installed via `bot.api.config.use(autoRetry(...))` on every
-  bot with bounded attempts/delay. Raw API calls pass through transformers, so it also
-  covers the raw `sendMessageDraft` call.
+  bot with bounded attempts/delay. All outbound calls — including the typed
+  `sendRichMessage`/`sendRichMessageDraft` — pass through the transformer.
 - One context flavor replaces today's scattered intersection casts:
 
   ```ts
@@ -123,20 +131,72 @@ every other chat. `sequentialize` keyed on chat id preserves per-chat ordering.
      update, construct a real `Context`, attach `expressRes`/`noSendTelegram` flavor.
      HTTP emulation works from boot (approved improvement).
 
-### Phase 2 — Send/streaming layer
+### Phase 2 — Rich outbound pipeline (send + streaming rewrite)
 
-10. `src/telegram/send.ts`: `telegram` → `api`; `editMessageText` drops the
-    `undefined` inline positional arg (grammY: `(chatId, msgId, text, other)`);
-    `Input.fromBuffer/fromLocalFile` → `new InputFile(...)`; error branches through
-    `errors.ts`; `reply_to_message_id` → `reply_parameters: { message_id }`
-    (grammY typings reject the old key — coordinate with handler callers);
-    signature retype after Markup removal.
-11. `src/helpers/gpt/streaming.ts`: `api` rename; `safeSend/safeEdit/safeDelete/
-    safeSendDraft` keep names and no-throw semantics but lose retry loops (auto-retry
-    owns 429). `sendMessageDraft` is NOT in the Bot API — stays a raw call via
-    grammY's `api.raw` proxy (forwards unknown method names; cast required). Draft
-    flusher semantics preserved: in-flight-flush guard, empty-draft clear on finish,
-    intentionally empty `sentMessages`.
+This phase is deliberately NOT parity (approved 2026-07-05): the outbound path moves
+to Bot API 10.1 rich messages, and legacy edit-message streaming is deleted.
+
+Verified API surface (from `@grammyjs/types` source):
+
+```ts
+sendRichMessage({ business_connection_id?, chat_id, message_thread_id?,
+  direct_messages_topic_id?, rich_message: InputRichMessage, disable_notification?,
+  protect_content?, allow_paid_broadcast?, message_effect_id?,
+  suggested_post_parameters?, reply_parameters?, reply_markup? }): Message.RichMessageMessage
+sendRichMessageDraft({ chat_id, message_thread_id?, draft_id, rich_message }): true
+sendMessageDraft({ chat_id, message_thread_id?, draft_id, text?, parse_mode?, entities? }): true
+```
+
+`InputRichMessage` takes raw `{ markdown }` (or `{ html }`) — headings, code blocks,
+tables, media, LaTeX — no parse_mode/entity juggling. Drafts are ephemeral ~30-second
+previews; `draft_id` is client-generated and reusing it updates the draft in place
+(undocumented but implied by the streaming purpose — verify in smoke test).
+
+10. `src/telegram/send.ts` — rich-first outbound:
+    - `sendTelegramMessage` sends via `api.sendRichMessage` with
+      `rich_message: { markdown: text }`, passing through `reply_markup`,
+      `reply_parameters`, `business_connection_id`, `message_thread_id`,
+      `deleteAfter`/`plainText` custom params handling unchanged.
+    - No message splitting on the rich path: rich messages support long content, so
+      the `splitBigMessage` 4096-char chunking loop (and its 500 ms inter-chunk
+      delay) does not apply to rich sends — one answer, one message.
+    - Legacy path (`sendMessage` + telegramify-markdown MarkdownV2 +
+      `splitBigMessage`) is retained for `plainText` sends and as automatic fallback
+      when `sendRichMessage` fails (`GrammyError` — e.g. media-permission errors:
+      markdown containing image URLs becomes media blocks, which require the bot to
+      have media rights in the chat).
+    - `telegramify-markdown` stays as a dependency for the fallback path only.
+    - Also: `telegram` → `api`; `Input.fromBuffer/fromLocalFile` →
+      `new InputFile(...)`; error branches through `errors.ts`;
+      `reply_to_message_id` → `reply_parameters: { message_id }` (coordinate with
+      handler callers); the remaining `editMessageText` call drops the `undefined`
+      inline positional arg (grammY: `(chatId, msgId, text, other)`); signature
+      retype after Markup removal.
+    - Callers reading fields off the returned sent message must be checked:
+      `sendRichMessage` returns `Message.RichMessageMessage`, not
+      `Message.TextMessage` (`message_id`/`chat` present; `.text` is not).
+11. `src/helpers/gpt/streaming.ts` — draft-only rewrite:
+    - DELETE: `createFlusher` (edit-mode), `safeSend`, `safeEdit`, `safeDelete`,
+      `getRetryAfter` and all hand-rolled retry loops (auto-retry owns 429; remaining
+      errors warn-and-continue as today).
+    - The single flusher streams via typed
+      `api.sendRichMessageDraft({ chat_id, message_thread_id?, draft_id,
+      rich_message: { markdown: fullText } })` on the existing 2 s cadence, one
+      client-generated `draft_id` per answer (monotonic counter), preserving the
+      in-flight-flush guard.
+    - `finish()` clears the draft (empty draft update — `sendMessageDraft` explicitly
+      allows empty text since 10.1; verify it clears a rich draft too, else send an
+      empty-markdown rich draft) and hands `fullText` to the normal (now rich) send
+      path, exactly as draft mode does today.
+    - `handleStream`/`handleResponseStream`/`handleCompletionStream` finalize
+      callbacks lose the `sentMessages` edit/delete machinery (edit-mode leftovers);
+      `sentMessages` stays an always-empty array only if removing it from return
+      shapes churns too many call sites — prefer removing it.
+    - `ChatParamsType.streamMode` is removed from `src/types.ts`; `streaming: true`
+      now always means rich-draft streaming. Config checklist applies: update
+      `generateConfig()` full-example in `src/config.ts` and README (users with
+      `streamMode` in configs get a `checkConfigSchema` unknown-field warning —
+      intended).
 12. `src/helpers/vision.ts`: `getFileLink().href` → `getFile()` +
     `https://api.telegram.org/file/bot<token>/<file_path>` with per-bot `bot.token`;
     error sniffing via `getErrorDescription`. The same `getFile` change in
@@ -193,11 +253,15 @@ every other chat. `sequentialize` keyed on chat id preserves per-chat ordering.
     mock `grammy`'s `Bot`, assert new constructor option shape, init, stop.
 19. ~17 files targeted edits: `telegram:` → `api:` fake keys (~14 files);
     429 fixtures to `GrammyError` shape (top-level `error_code`/`parameters`);
-    `api.raw.sendMessageDraft` assertions; `editMessageTextInline` assertions
-    (6+ in onInlineQuery tests); runner/init lifecycle fake in `index.start.test.ts`
-    (grammY `start()` resolves on STOP — the launch-fake contract changes);
-    `bot.callbackQuery` capture in commands/confirm tests; `answerCallbackQuery`;
-    `ctx.me`; `getFile` fakes; chat-action helper mocks.
+    `tests/helpers/streaming.test.ts` largely rewritten — edit-mode flusher tests
+    deleted, draft tests assert typed `api.sendRichMessageDraft({ chat_id, draft_id,
+    rich_message })` calls; send tests grow rich-first assertions
+    (`api.sendRichMessage` with `rich_message.markdown`) plus fallback-path cases;
+    `editMessageTextInline` assertions (6+ in onInlineQuery tests); runner/init
+    lifecycle fake in `index.start.test.ts` (grammY `start()` resolves on STOP — the
+    launch-fake contract changes); `bot.callbackQuery` capture in commands/confirm
+    tests; `answerCallbackQuery`; `ctx.me`; `getFile` fakes; chat-action helper
+    mocks.
 20. ~18 files: import-path swap only. Fix the 15 files importing a phantom `Context`
     from `telegraf/types` (nonexistent export — tests are not typechecked; all port
     breakage is runtime, mitigated by the Phase 0 src-level seams).
@@ -211,9 +275,14 @@ every other chat. `sequentialize` keyed on chat id preserves per-chat ordering.
     1. Startup through proxy (if `proxy_url` configured).
     2. Multi-bot launch; per-bot routing via `ctx.me.username`.
     3. **Two chats messaging simultaneously answered in parallel** (runner check).
-    4. Streaming edit mode: long answer splitting + flood 429 (auto-retry).
-    5. Streaming draft mode — confirms the backend still accepts raw
-       `sendMessageDraft`, and that auto-retry interception doesn't break draft timing.
+    4. Rich sends: an answer with headings, code blocks, and a table renders
+       natively; an over-4096-char answer arrives as a single rich message (no
+       splitting); forms/confirmation `reply_markup` buttons attach to rich
+       messages; `plainText`/`deleteAfter` sends still use the legacy path.
+    5. Rich-draft streaming: draft updates in place under the same `draft_id` on the
+       2 s cadence; draft clears when the final answer arrives; flood 429 handled by
+       auto-retry; fallback path fires when `sendRichMessage` is rejected (e.g. an
+       answer with an image URL in a chat where the bot lacks media rights).
     6. Re-dispatch paths: voice→STT, photo OCR (with/without caption), document,
        reaction, business message (mark-as-read + typing indicator).
     7. Inline query → chosen result → inline message edit.
@@ -225,9 +294,12 @@ every other chat. `sequentialize` keyed on chat id preserves per-chat ordering.
         Telegram message.
     11. Blocked-user 403 path (block the dev bot from a test account).
     12. Graceful shutdown (SIGINT), restart-on-error path, `healthcheck.ts`.
-24. Docs: README (framework mentions, any Telegraf-specific config docs),
-    CLAUDE.md/AGENTS.md key-file descriptions that name Telegraf. No `ConfigType`
-    changes → no `generateConfig()` changes.
+24. Docs: README (framework mentions, Telegraf-specific config docs, `streamMode`
+    removal, rich-message streaming description), CLAUDE.md/AGENTS.md key-file
+    descriptions that name Telegraf and the streaming section that documents
+    `createFlusher`/`streamMode`. Config change: `ChatParamsType.streamMode` removed
+    → `generateConfig()` full-example updated in the same commit (checklist from
+    CLAUDE.md).
 
 ## Follow-up PR (out of port scope; own design pass later)
 
@@ -257,8 +329,23 @@ every other chat. `sequentialize` keyed on chat id preserves per-chat ordering.
    enumerated call sites.
 8. `editMessageText` positional changes may compile and put text in the wrong slot;
    inline variant needs `editMessageTextInline`.
-9. `sendMessageDraft` is non-standard; verify backend accepts it through `api.raw` +
-   transformers.
+9. Rich outbound pipeline is new API surface (Bot API 10.1, released 2026-06-11):
+   - `draft_id` update-in-place semantics are undocumented — verify on the dev bot.
+   - Rich-draft clearing mechanism (empty draft) must be verified for the rich
+     variant; plain `sendMessageDraft` explicitly allows empty text.
+   - Long tool executions between flushes can exceed the ~30 s draft lifetime — the
+     preview vanishes until the next flush; acceptable (it is a preview), but note it.
+   - LLM markdown vs Telegram's rich-markdown dialect may diverge (auto entity
+     detection can surprise; `skip_entity_detection` is the escape hatch).
+   - Markdown containing image/media URLs becomes media blocks and requires media
+     rights in the chat — the send fallback covers rejection, but rendering intent
+     changes.
+   - Rich messages support long content — no 4096-char splitting on the rich path;
+     `splitBigMessage` survives only inside the legacy fallback/`plainText` path.
+   - `sendRichMessage` returns `Message.RichMessageMessage` (no `.text`) — audit
+     callers of `sendTelegramMessage` reading fields off the returned message.
+   - `sendRichMessageDraft` has no `business_connection_id` — fine, business chats
+     already disable streaming.
 10. Bot API version jump (Telegraf ~7.x-era types → 10.x): expect unrelated new
     typecheck errors (`ChatFullInfo` split, `MaybeInaccessibleMessage`, removed
     fields); heavy `as unknown as` casting means some mismatches surface only at
