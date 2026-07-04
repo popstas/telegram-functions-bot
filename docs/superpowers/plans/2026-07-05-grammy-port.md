@@ -2073,6 +2073,33 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
+## E2E test environment (user-provided, 2026-07-05)
+
+Live-bot testing during and after the port uses REAL infrastructure the user granted:
+
+- **Bot:** `popstas_functions_bot` — token already in `config.yml` (`auth.bot_token`). ⚠️ Only ONE process may poll a token: **stop the production instance of this bot before any e2e run** (a second poller gets Telegram 409 `getUpdates` conflicts and both misbehave).
+- **Test group:** `-4897751120`, configured by `data/chats/gpt_responses_api.yml` — already has `streaming: true`, `confirmation: true`, `useResponsesApi: true`, and tools (`javascript_interpreter`, `web_search_preview`, …), which covers rich sends, rich-draft streaming, tool calls, and the confirmation flow in one chat.
+- **Permission:** the user explicitly allows modifying `config.yml` and `data/chats/gpt_responses_api.yml` for e2e purposes (e.g. temporarily toggling `streaming`, `confirmation`, adding a `prefix`, changing model). This permission is for LIVE runs only — the CLAUDE.md rule "never change or delete files in `data/` in tests" still applies to Jest tests. Restore any temporary config edits after the e2e session (`git diff config.yml data/chats/gpt_responses_api.yml` must come back clean; note `config.yml` may be gitignored — check with `git check-ignore config.yml` and restore from a backup copy you make before editing).
+- **Driving the pipeline programmatically:** the HTTP emulation endpoint exercises the full LLM→tools→rich-send path with real Telegram sends into the group:
+
+```bash
+# port + http_token: config.yml `http:` section (lines ~34-36)
+curl -s -X POST "http://localhost:<http.port>/telegram/-4897751120" \
+  -H "Authorization: Bearer <http.http_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Ответь заголовком, таблицей 2x2 и блоком кода — тест rich messages"}'
+```
+
+The HTTP body returns the final answer text (rich path synthesizes `.text` — Task 11); the message itself lands in the group. Watch stdout logs for `sendRichMessage`/draft warnings.
+- **What only a human can verify** (Claude triggers, user eyeballs): draft preview appearing/updating/clearing in the chat UI, rich rendering quality, clicking inline buttons (confirm/cancel, `add_tool`, form `f:`/`fl:`), voice/photo/document/reaction/inline-query/business flows sent from a real user account.
+
+**E2E checkpoints during execution:**
+1. **After Task 16** (first bootable grammY state): stop the prod bot → `npm start` → expect `bot started: <name>` in logs, then run the curl above → HTTP 200 with answer text, message visible in group `-4897751120`. This catches lifecycle/context wiring bugs 5 tasks before the full gate.
+2. **After Task 21** (full green): repeat the curl; also send a >4096-char-answer prompt (single rich message expected) and a streaming prompt while watching logs for `sendRichMessageDraft` calls without errors.
+3. **Task 23**: the full manual checklist below, using this same environment (no separate dev config needed — the Task 23 setup paragraph is superseded by this section).
+
+---
+
 ### Task 22: Documentation
 
 **Files:**
@@ -2101,7 +2128,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 **Files:** none (manual verification; record results in the PR description)
 
-Setup: create a dev config — copy your production `config.yml` (config path: see `readConfig` in `src/config.ts`; `grep -n "config.yml\|CONFIG" src/config.ts` for the env override if present), set `auth.bot_token` to a spare @BotFather token, point `chats` at a private test chat + one test group (add a second `bot_token`ed chat if verifying multi-bot), then `npm start`. Watch logs for `bot started: <name>`.
+Setup: use the **E2E test environment** section above — bot `popstas_functions_bot`, group `-4897751120` (`data/chats/gpt_responses_api.yml`), existing `config.yml`. Stop the production bot instance first, then `npm start`; watch logs for `bot started: <name>`. Items marked "human" need the user in the Telegram client; the rest can be driven via the group + the HTTP endpoint.
 
 - [ ] 1. **Proxy startup** (only if `auth.proxy_url` is used in prod): set it in the dev config → bot starts and answers. Failure: startup hang or `HttpError` — the `baseFetchConfig.agent` mapping is wrong (Risk 12 in the spec).
 - [ ] 2. **Multi-bot routing**: with a second bot configured, message each bot → each answers as itself (check the answering bot's username). Failure: wrong bot answers or `chatConfig {}` behavior — a missed `ctx.me`/`botInfo` read.
