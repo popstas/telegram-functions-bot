@@ -199,10 +199,11 @@ export function runSkillCommand(skill: SkillType, command: string): Promise<Tool
  */
 export function buildSkillTool(skill: SkillType): ChatToolType {
   const name = skillToolName(skill);
-  const description = [skill.description, skill.instructions].filter(Boolean).join("\n\n");
+  const fullDescription = [skill.description, skill.instructions].filter(Boolean).join("\n\n");
 
   const module: ChatToolType["module"] = {
-    description,
+    // Short description only: /info and /add_tool list this, full instructions stay in toolSpecs.
+    description: skill.description,
     call: (): ModuleType => ({
       functions: {
         get: () => (args: string) => {
@@ -223,7 +224,7 @@ export function buildSkillTool(skill: SkillType): ChatToolType {
           type: "function" as const,
           function: {
             name,
-            description: description || `Run the ${skill.name} skill`,
+            description: fullDescription || `Run the ${skill.name} skill`,
             parameters: {
               type: "object",
               properties: {
