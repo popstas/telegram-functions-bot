@@ -68,9 +68,31 @@ describe("sendTelegramMessage rich path", () => {
     expect(mockSendRichMessage).toHaveBeenCalledWith(
       1,
       { markdown: "# Title\n\nlong text" },
-      { reply_markup: kb, reply_parameters: { message_id: 7 } },
+      {
+        reply_markup: kb,
+        reply_parameters: { message_id: 7, allow_sending_without_reply: true },
+      },
     );
     expect(mockSendMessage).not.toHaveBeenCalled(); // no splitting, no legacy call
+  });
+
+  it("drops reply_parameters for synthetic out-of-range reply_to_message_id", async () => {
+    const kb = { inline_keyboard: [] };
+    await sendTelegramMessage(
+      1,
+      "# Title\n\nlong text",
+      { reply_markup: kb, reply_to_message_id: 1783224040440 },
+      undefined,
+      chatConfig,
+    );
+    expect(mockSendRichMessage).toHaveBeenCalledWith(
+      1,
+      { markdown: "# Title\n\nlong text" },
+      { reply_markup: kb },
+    );
+    const [, , options] = mockSendRichMessage.mock.calls[0];
+    expect(options).not.toHaveProperty("reply_parameters");
+    expect(options).not.toHaveProperty("reply_to_message_id");
   });
 
   it("returns a message carrying .text on the rich path", async () => {

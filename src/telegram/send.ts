@@ -88,8 +88,16 @@ export async function sendTelegramMessage(
   }
 
   // Bot API 7+ replaced reply_to_message_id; translate so handlers stay unchanged.
+  // Synthetic contexts (HTTP emulation) carry Date.now() message ids — out of
+  // Telegram's int32 range; replying to those can never succeed, so drop the reply.
   if (params.reply_to_message_id) {
-    params.reply_parameters = { message_id: params.reply_to_message_id };
+    const replyToId = Number(params.reply_to_message_id);
+    if (Number.isSafeInteger(replyToId) && replyToId > 0 && replyToId < 2 ** 31) {
+      params.reply_parameters = {
+        message_id: replyToId,
+        allow_sending_without_reply: true,
+      };
+    }
     delete params.reply_to_message_id;
   }
 
