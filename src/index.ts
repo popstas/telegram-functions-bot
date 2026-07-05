@@ -3,7 +3,7 @@ import { message, editedMessage } from "telegraf/filters";
 import { Message } from "telegraf/types";
 import type http from "node:http";
 import { useConfig, validateConfig, watchConfigChanges } from "./config.ts";
-import { initCommands, handleAddChat } from "./commands.ts";
+import { initCommands, handleAddChat, registerCommandActions } from "./commands.ts";
 import { log } from "./helpers.ts";
 import { initTools } from "./helpers/useTools.ts";
 import express from "express";
@@ -113,6 +113,7 @@ async function launchBot(bot_token: string, bot_name: string) {
     await initCommands(bot);
 
     registerConfirmActions(bot);
+    registerCommandActions(bot);
 
     // Set up message handlers
     bot.on([message("text"), editedMessage("text")], onTextMessage);

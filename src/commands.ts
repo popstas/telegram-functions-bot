@@ -2,7 +2,6 @@ import { Telegraf, Context } from "telegraf";
 import { Message } from "telegraf/types";
 import { ConfigChatType, ChatToolType, ToolParamsType, ToolBotType } from "./types.ts";
 import { generatePrivateChatConfig, useConfig, writeConfig, readConfig } from "./config.ts";
-import { useBot } from "./bot.ts";
 import { getActionUserMsg, getCtxChatMsg } from "./telegram/context.ts";
 import { sendTelegramMessage } from "./telegram/send.ts";
 import { getSystemMessage, getTokensCount, resolveChatTools } from "./helpers/gpt.ts";
@@ -123,6 +122,121 @@ export async function initCommands(bot: Telegraf) {
   ]);
 }
 
+const EXCLUDED_TOOLS = ["change_chat_settings", "memory_add", "memory_delete", "memory_search"];
+
+async function handleAddToolAction(ctx: Context, toolName: string) {
+  const config = useConfig();
+  const chatId = ctx.chat?.id;
+  if (!chatId) return;
+
+  const { user } = getActionUserMsg(ctx);
+  const username = user?.username || "without_username";
+  if (!user || !includesUser(config.adminUsers, username)) return;
+
+  const globalTools = await useTools();
+  const tool = globalTools.find((t) => t.name === toolName);
+  if (!tool) {
+    await (ctx as Context & { answerCbQuery: (t?: string) => Promise<unknown> }).answerCbQuery(
+      "Unknown tool",
+    );
+    return;
+  }
+
+  let chatConfig: ConfigChatType | undefined;
+  if (ctx.chat?.type === "private") {
+    chatConfig = config.chats.find((chat) => username && chat.username === username);
+    if (!chatConfig) {
+      chatConfig = generatePrivateChatConfig(username);
+      config.chats.push(chatConfig);
+    }
+  } else {
+    chatConfig = config.chats.find((chat) => chat.id === chatId || chat.ids?.includes(chatId));
+    if (!chatConfig) {
+      void ctx.reply("Chat not found in config");
+    }
+  }
+  if (!chatConfig) return;
+
+  if (!chatConfig.tools) chatConfig.tools = [];
+  const hasTool = (chatConfig.tools || []).some((t) => typeof t === "string" && t === tool.name);
+  if (!hasTool) chatConfig.tools.push(tool.name);
+  chatConfig.tools = chatConfig.tools.filter((t) => {
+    if (typeof t === "object" && ("agent_name" in t || "bot_name" in t)) return true;
+    return !EXCLUDED_TOOLS.includes(t as string);
+  });
+
+  if (!chatConfig.toolParams) chatConfig.toolParams = {} as ToolParamsType;
+  if (tool.module.defaultParams) {
+    chatConfig.toolParams = { ...tool.module.defaultParams, ...chatConfig.toolParams };
+  }
+  writeConfig(undefined, config);
+  await ctx.reply(
+    `Tool added: ${tool.name}${tool.module.defaultParams ? `, with default config: ${JSON.stringify(tool.module.defaultParams)}` : ""}`,
+  );
+}
+
+async function handleAddSkillAction(ctx: Context, toolName: string) {
+  const config = useConfig();
+  const chatId = ctx.chat?.id;
+  if (!chatId) return;
+
+  // check admin
+  const { user } = getActionUserMsg(ctx);
+  const username = user?.username || "without_username";
+  if (!user || !includesUser(config.adminUsers, username)) return;
+
+  const skill = loadSkills().find((s) => skillToolName(s) === toolName);
+  if (!skill) {
+    await (ctx as Context & { answerCbQuery: (t?: string) => Promise<unknown> }).answerCbQuery(
+      "Unknown skill",
+    );
+    return;
+  }
+
+  let targetChat: ConfigChatType | undefined;
+  if (ctx.chat?.type === "private") {
+    // edit/add private chat
+    targetChat = config.chats.find((chat) => username && chat.username === username);
+    if (!targetChat) {
+      targetChat = generatePrivateChatConfig(username);
+      config.chats.push(targetChat);
+    }
+  } else {
+    // edit group chat
+    targetChat = config.chats.find((chat) => chat.id === chatId || chat.ids?.includes(chatId));
+    if (!targetChat) {
+      void ctx.reply("Chat not found in config");
+    }
+  }
+  if (!targetChat) return;
+
+  if (!targetChat.tools) targetChat.tools = [];
+  const hasTool = (targetChat.tools || []).some((t) => typeof t === "string" && t === toolName);
+  if (hasTool) {
+    await ctx.reply(`Skill already added: ${toolName}`);
+    return;
+  }
+  targetChat.tools.push(toolName);
+  writeConfig(undefined, config);
+  await ctx.reply(`Skill added: ${toolName}`);
+}
+
+/**
+ * Static handler for add_tool_<name>/add_skill_<name> buttons. Registered ONCE
+ * per bot at startup (launchBot) instead of one dynamic bot.action() per
+ * tool/skill on every /add_tool or /add_skill invocation.
+ */
+export function registerCommandActions(bot: Telegraf): void {
+  bot.action(/^add_tool_(.+)$/, async (ctx) => {
+    await handleAddToolAction(ctx, (ctx.match as RegExpExecArray)[1]);
+    await ctx.answerCbQuery();
+  });
+  bot.action(/^add_skill_(.+)$/, async (ctx) => {
+    await handleAddSkillAction(ctx, (ctx.match as RegExpExecArray)[1]);
+    await ctx.answerCbQuery();
+  });
+}
+
 // add tool to chat config
 export async function commandAddTool(msg: Message.TextMessage, chatConfig: ConfigChatType) {
   const config = useConfig();
@@ -130,66 +244,10 @@ export async function commandAddTool(msg: Message.TextMessage, chatConfig: Confi
   const requester = msg.from?.username || "without_username";
   if (!includesUser(config.adminUsers, requester)) return;
 
-  const excluded = ["change_chat_settings", "memory_add", "memory_delete", "memory_search"];
   const globalTools = await useTools();
-  const tools = globalTools.filter((t) => !excluded.includes(t.name)).map((t) => t.name);
+  const tools = globalTools.filter((t) => !EXCLUDED_TOOLS.includes(t.name)).map((t) => t.name);
   const toolsInfo = await getToolsInfo(tools, msg);
   const text = `Available tools:\n\n${toolsInfo.join("\n\n")}\n\nSelect tool to add:`;
-
-  for (const tool of globalTools) {
-    useBot(chatConfig.bot_token!).action(`add_tool_${tool.name}`, async (ctx) => {
-      const chatId = ctx.chat?.id;
-      if (!chatId) return;
-
-      // check admin
-      const { user } = getActionUserMsg(ctx);
-      const username = user?.username || "without_username";
-      if (!user || !includesUser(config.adminUsers, username)) return;
-
-      let chatConfig: ConfigChatType | undefined;
-      if (ctx.chat?.type === "private") {
-        // edit/add private chat
-        chatConfig = config.chats.find((chat) => username && chat.username === username);
-        if (!chatConfig) {
-          chatConfig = generatePrivateChatConfig(username);
-          config.chats.push(chatConfig);
-        }
-      } else {
-        // edit group chat
-        chatConfig = config.chats.find((chat) => chat.id === chatId || chat.ids?.includes(chatId));
-        if (!chatConfig) {
-          void ctx.reply("Chat not found in config");
-        }
-      }
-      if (!chatConfig) return;
-
-      if (!chatConfig.tools) chatConfig.tools = [];
-      const hasTool = (chatConfig.tools || []).some(
-        (t) => typeof t === "string" && t === tool.name,
-      );
-      if (!hasTool) {
-        chatConfig.tools.push(tool.name);
-      }
-      chatConfig.tools = chatConfig.tools.filter((t) => {
-        if (typeof t === "object" && ("agent_name" in t || "bot_name" in t)) {
-          return true;
-        }
-        return !excluded.includes(t as string);
-      });
-
-      if (!chatConfig.toolParams) chatConfig.toolParams = {} as ToolParamsType;
-      if (tool.module.defaultParams) {
-        chatConfig.toolParams = {
-          ...tool.module.defaultParams,
-          ...chatConfig.toolParams,
-        };
-      }
-      writeConfig(undefined, config);
-      await ctx.reply(
-        `Tool added: ${tool.name}${tool.module.defaultParams ? `, with default config: ${JSON.stringify(tool.module.defaultParams)}` : ""}`,
-      );
-    });
-  }
 
   const buttons = tools.map((t: string) => [{ text: t, callback_data: `add_tool_${t}` }]);
   const params = { reply_markup: { inline_keyboard: buttons } };
@@ -227,46 +285,6 @@ export async function commandAddSkill(msg: Message.TextMessage, chatConfig: Conf
     .map((s) => `- ${skillToolName(s)}${s.description ? ` - ${s.description}` : ""}`)
     .join("\n\n");
   const text = `Available skills:\n\n${skillsInfo}\n\nSelect skill to add:`;
-
-  for (const skill of skills) {
-    const toolName = skillToolName(skill);
-    useBot(chatConfig.bot_token!).action(`add_skill_${toolName}`, async (ctx) => {
-      const chatId = ctx.chat?.id;
-      if (!chatId) return;
-
-      // check admin
-      const { user } = getActionUserMsg(ctx);
-      const username = user?.username || "without_username";
-      if (!user || !includesUser(config.adminUsers, username)) return;
-
-      let targetChat: ConfigChatType | undefined;
-      if (ctx.chat?.type === "private") {
-        // edit/add private chat
-        targetChat = config.chats.find((chat) => username && chat.username === username);
-        if (!targetChat) {
-          targetChat = generatePrivateChatConfig(username);
-          config.chats.push(targetChat);
-        }
-      } else {
-        // edit group chat
-        targetChat = config.chats.find((chat) => chat.id === chatId || chat.ids?.includes(chatId));
-        if (!targetChat) {
-          void ctx.reply("Chat not found in config");
-        }
-      }
-      if (!targetChat) return;
-
-      if (!targetChat.tools) targetChat.tools = [];
-      const hasTool = (targetChat.tools || []).some((t) => typeof t === "string" && t === toolName);
-      if (hasTool) {
-        await ctx.reply(`Skill already added: ${toolName}`);
-        return;
-      }
-      targetChat.tools.push(toolName);
-      writeConfig(undefined, config);
-      await ctx.reply(`Skill added: ${toolName}`);
-    });
-  }
 
   const buttons = skills.map((s) => {
     const toolName = skillToolName(s);
