@@ -10,7 +10,7 @@ import { useBot } from "../bot.ts";
 import { useConfig } from "../config.ts";
 import { includesUser } from "../utils/users.ts";
 import { ConfigChatButtonType, ConfigChatType } from "../types.ts";
-import { Context, Markup, Input } from "telegraf";
+import { Context, Input } from "telegraf";
 import { log } from "../helpers.ts";
 import telegramifyMarkdown from "telegramify-markdown";
 import { splitBigMessage } from "../utils/text.ts";
@@ -63,7 +63,7 @@ export interface ExtraCtx {
 export async function sendTelegramMessage(
   chat_id: number,
   text: string,
-  extraMessageParams?: Record<string, unknown> | Markup.Markup<ReplyKeyboardMarkup>,
+  extraMessageParams?: Record<string, unknown>,
   ctx?: Context & ExtraCtx,
   chatConfig?: ConfigChatType,
 ): Promise<Message.TextMessage | undefined> {
@@ -212,7 +212,7 @@ export async function sendTelegramMessage(
 export async function editTelegramMessage(
   message: Message.TextMessage,
   text: string,
-  extraMessageParams?: Record<string, unknown> | Markup.Markup<ReplyKeyboardMarkup>,
+  extraMessageParams?: Record<string, unknown>,
   ctx?: Context & ExtraCtx,
   chatConfig?: ConfigChatType,
 ): Promise<Message.TextMessage | undefined> {

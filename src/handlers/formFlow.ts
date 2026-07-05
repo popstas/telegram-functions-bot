@@ -1,4 +1,4 @@
-import { Context, Markup } from "telegraf";
+import { Context } from "telegraf";
 import { Message, Chat } from "telegraf/types";
 import OpenAI from "openai";
 import {
@@ -438,7 +438,7 @@ function getUnfilledFields(form: FormConfigType, state: FormStateType): FormFiel
 function buildFormButtons(
   form: FormConfigType,
   state: FormStateType,
-): ReturnType<typeof Markup.inlineKeyboard> | undefined {
+): { reply_markup: { inline_keyboard: { text: string; callback_data: string }[][] } } | undefined {
   const unfilledButtonFields = form.items
     .map((field, index) => ({ field, index }))
     .filter(({ field }) => field.type === "button" && !state.collectedData[field.name]);
@@ -473,7 +473,7 @@ function buildFormButtons(
     }
   }
 
-  return buttons.length > 0 ? Markup.inlineKeyboard(buttons) : undefined;
+  return buttons.length > 0 ? { reply_markup: { inline_keyboard: buttons } } : undefined;
 }
 
 /**

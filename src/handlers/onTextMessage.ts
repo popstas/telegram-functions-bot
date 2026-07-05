@@ -1,5 +1,5 @@
-import { Context, Markup } from "telegraf";
-import { Chat, Message } from "telegraf/types";
+import { Context } from "telegraf";
+import { Chat, Message, ReplyKeyboardMarkup } from "telegraf/types";
 import { useThreads } from "../threads.ts";
 import { ConfigChatType, ThreadStateType } from "../types.ts";
 import { syncButtons, useConfig } from "../config.ts";
@@ -18,6 +18,17 @@ import checkAccessLevel, { isGuestModeReply } from "./access.ts";
 import resolveChatButtons from "./resolveChatButtons.ts";
 import { handleFormFlow } from "./formFlow.ts";
 import { editTelegramMessage, sendTelegramMessage } from "../telegram/send.ts";
+
+// Reproduces Telegraf's reply-keyboard builder output byte-identically (verified in Task 3 Step 1):
+// {"reply_markup":{"keyboard":[["a"],["b"],["c"]],"resize_keyboard":true}}
+function buildReplyKeyboard(names: string[]): { reply_markup: ReplyKeyboardMarkup } {
+  return {
+    reply_markup: {
+      keyboard: names.map((n) => [n]),
+      resize_keyboard: true,
+    },
+  };
+}
 
 // Track active responses per chat to allow cancellation
 interface ActiveResponse {
@@ -459,7 +470,7 @@ export async function answerToMessage(
           return;
         }
 
-        const extraParams = Markup.keyboard(buttons.map((b) => b.name)).resize();
+        const extraParams = buildReplyKeyboard(buttons.map((b) => b.name));
         const answer = `Готово: ${buttons.map((b) => b.name).join(", ")}`;
         syncResult = await sendTelegramMessage(msg.chat.id, answer, extraParams, ctx, chat);
       });
@@ -520,7 +531,7 @@ export async function answerToMessage(
       const buttons = res?.buttons || chat.buttonsSynced || chat.buttons;
       thread.dynamicButtons = res?.buttons;
       if (buttons) {
-        const extraParamsButtons = Markup.keyboard(buttons.map((b) => b.name)).resize();
+        const extraParamsButtons = buildReplyKeyboard(buttons.map((b) => b.name));
         Object.assign(extraParams, extraParamsButtons);
       }
       const chatTitle = (msg.chat as Chat.TitleChat).title;
@@ -610,7 +621,7 @@ async function applyResponseButtonsAgent({
 
     const extraParamsWithButtons = {
       ...baseExtraParams,
-      ...Markup.keyboard(generatedButtons.map((b) => b.name)).resize(),
+      ...buildReplyKeyboard(generatedButtons.map((b) => b.name)),
     };
 
     const shouldSendButtonsMessage = chat.chatParams?.responseButtonsMessage ?? true;
