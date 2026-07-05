@@ -84,4 +84,31 @@ describe("onTextMessage outer", () => {
     expect(res).toBe("ok");
     expect(mockAddToHistory).not.toHaveBeenCalled();
   });
+
+  it("answers edited_message updates without throwing (ctx.message is undefined)", async () => {
+    // grammY derives ctx.message only from update.message; an edited_message
+    // update leaves ctx.message undefined while msg comes from access. The
+    // chatTitle lookup must read msg.chat, not ctx.message?.chat.
+    const msg = {
+      chat: { id: 1, title: "Group" },
+      text: "edited hi",
+      message_id: 42,
+    } as unknown as Message.TextMessage;
+    mockCheckAccessLevel.mockResolvedValue({
+      msg,
+      chat: { completionParams: {} },
+    });
+    mockResolveChatButtons.mockResolvedValue("ok");
+    const ctx = {
+      message: undefined,
+      update: { edited_message: msg },
+      persistentChatAction: async (_: string, fn: () => Promise<void>) => {
+        await fn();
+      },
+    } as unknown as Context & { secondTry?: boolean };
+
+    // Does not throw (rejection would fail the resolves assertion) and an
+    // answer was attempted via the button path.
+    await expect(onTextMessage(ctx)).resolves.toBe("ok");
+  });
 });

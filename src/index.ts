@@ -43,6 +43,32 @@ process.on("uncaughtException", (error, source) => {
 process.env.DOTENV_CONFIG_QUIET = "true";
 if (process.env.NODE_ENV !== "test" && process.env.NODE_ENV !== "desktop") {
   void start();
+  registerShutdownSignals();
+}
+
+let shuttingDown = false;
+export function registerShutdownSignals() {
+  const shutdown = (signal: NodeJS.Signals) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    log({ msg: `Received ${signal}, shutting down...` });
+    void (async () => {
+      try {
+        // Stops ALL runner handles + HTTP + MQTT (multi-bot). The config file
+        // watcher (fs.watchFile) keeps the event loop alive, so exit explicitly.
+        await stopBot();
+      } catch (error: unknown) {
+        log({
+          msg: `Error during shutdown: ${error instanceof Error ? error.message : String(error)}`,
+          logLevel: "warn",
+        });
+      } finally {
+        process.exit(0);
+      }
+    })();
+  };
+  process.once("SIGINT", () => shutdown("SIGINT"));
+  process.once("SIGTERM", () => shutdown("SIGTERM"));
 }
 
 async function start() {

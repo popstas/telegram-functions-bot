@@ -93,18 +93,13 @@ describe("useBot (grammy)", () => {
     expect(inst.options).toBeUndefined();
   });
 
-  it("registers SIGINT and SIGTERM handlers that best-effort stop the bot", () => {
+  it("does not register per-token process signal handlers (shutdown is wired in index.ts)", () => {
     const onceSpy = jest.spyOn(process, "once").mockImplementation(() => process);
 
     useBot("tok-sig");
 
-    expect(onceSpy).toHaveBeenCalledWith("SIGINT", expect.any(Function));
-    expect(onceSpy).toHaveBeenCalledWith("SIGTERM", expect.any(Function));
-
-    const inst = botInstances.find((b) => b.token === "tok-sig")!;
-    const sigintHandler = onceSpy.mock.calls.find((call) => call[0] === "SIGINT")![1] as () => void;
-    expect(() => sigintHandler()).not.toThrow();
-    expect(inst.stop).toHaveBeenCalled();
+    expect(onceSpy).not.toHaveBeenCalledWith("SIGINT", expect.any(Function));
+    expect(onceSpy).not.toHaveBeenCalledWith("SIGTERM", expect.any(Function));
 
     onceSpy.mockRestore();
   });

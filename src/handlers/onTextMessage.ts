@@ -12,7 +12,6 @@ import {
   initThread,
 } from "../helpers/history.ts";
 import { rememberSave, isRememberCommand, stripRememberPrefix } from "../helpers/memory.ts";
-import { setLastCtx } from "../helpers/lastCtx.ts";
 import { addOauthToThread, ensureAuth } from "../helpers/google.ts";
 import { generateButtonsFromAgent, requestGptAnswer } from "../helpers/gpt.ts";
 import checkAccessLevel, { isGuestModeReply } from "./access.ts";
@@ -263,13 +262,11 @@ export default async function onTextMessage(
   next?: () => Promise<void> | void,
   callback?: (msg: Message.TextMessage) => Promise<void> | void,
 ) {
-  setLastCtx(ctx);
-
   const access = await checkAccessLevel(ctx);
   if (!access) return;
   const { msg, chat } = access;
 
-  const chatTitle = (ctx.message?.chat as TitleChat).title || "";
+  const chatTitle = (msg.chat as TitleChat)?.title || "";
   const chatId = msg.chat.id;
   const answerId = msg.message_id?.toString() || "";
 

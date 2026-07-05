@@ -32,8 +32,6 @@ export function useBot(bot_token?: string): Bot<BotContext> {
       delete bots[token];
       delete initPromises[token];
     });
-    process.once("SIGINT", () => void bots[token]?.stop().catch(() => {}));
-    process.once("SIGTERM", () => void bots[token]?.stop().catch(() => {}));
   }
   return bots[token];
 }
