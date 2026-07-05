@@ -1,4 +1,4 @@
-import { Context } from "telegraf";
+import type { BotContext } from "../telegram/botContext.ts";
 import { Message, ReplyKeyboardMarkup } from "grammy/types";
 import type { TitleChat } from "../telegram/updateTypes.ts";
 import { useThreads } from "../threads.ts";
@@ -46,7 +46,7 @@ const activeResponses = new Map<number, ActiveResponse>();
 // bot answers once using the latest message context.
 interface SecretaryState {
   timer: ReturnType<typeof setTimeout>;
-  ctx: Context & { secondTry?: boolean };
+  ctx: BotContext;
   msg: Message.TextMessage;
   chat: ConfigChatType;
   callback?: (msg: Message.TextMessage) => Promise<void> | void;
@@ -97,18 +97,19 @@ function escapeRegExp(value: string): string {
 // Mark an incoming Business message as read on behalf of the connected business account.
 // Telegram's Bot API exposes this only via `readBusinessMessage` (Bot API 9.0), which
 // requires a business_connection_id — there is no mark-as-read for regular chats.
-// telegraf 4.16.3 has no typings for this method, so call it via the raw callApi cast
-// (same pattern as onBusinessMessage.ts).
+// The synthetic ctx built by onBusinessMessage.ts (still telegraf-shaped, Task 19) only
+// exposes `ctx.telegram.callApi`, so this is accessed via a raw cast (same pattern as
+// onBusinessMessage.ts) rather than grammY's `ctx.api`.
 async function markBusinessMessageRead(
-  ctx: Context,
+  ctx: BotContext,
   chatId: number,
   messageId: number,
   businessConnectionId: string,
 ) {
   try {
     await (
-      ctx.telegram as unknown as { callApi: (m: string, p: object) => Promise<unknown> }
-    ).callApi("readBusinessMessage", {
+      ctx as unknown as { telegram: { callApi: (m: string, p: object) => Promise<unknown> } }
+    ).telegram.callApi("readBusinessMessage", {
       business_connection_id: businessConnectionId,
       chat_id: chatId,
       message_id: messageId,
@@ -171,14 +172,14 @@ function applySecretaryTurnOverride(
 // Cancel any in-flight answer for the chat, then start a new one. Bookkeeping
 // for cancellation lives in `activeResponses`.
 function launchAnswer(
-  ctx: Context & { secondTry?: boolean },
+  ctx: BotContext,
   msg: Message.TextMessage,
   chat: ConfigChatType,
   callback?: (msg: Message.TextMessage) => Promise<void> | void,
 ) {
   const chatId = msg.chat.id;
   const answerId = msg.message_id?.toString() || "";
-  const businessConnectionId = (ctx as { businessConnectionId?: string }).businessConnectionId;
+  const businessConnectionId = ctx.businessConnectionId;
   const extraMessageParams = {
     ...(ctx.message?.message_id ? { reply_to_message_id: ctx.message?.message_id } : {}),
     ...(businessConnectionId ? { business_connection_id: businessConnectionId } : {}),
@@ -265,7 +266,7 @@ function launchAnswer(
 }
 
 export default async function onTextMessage(
-  ctx: Context & { secondTry?: boolean },
+  ctx: BotContext,
   next?: () => Promise<void> | void,
   callback?: (msg: Message.TextMessage) => Promise<void> | void,
 ) {
@@ -444,7 +445,7 @@ export default async function onTextMessage(
 }
 
 export async function answerToMessage(
-  ctx: Context & { secondTry?: boolean },
+  ctx: BotContext,
   msg: Message.TextMessage,
   chat: ConfigChatType,
   extraMessageParams: Record<string, unknown> & { signal?: AbortSignal },
@@ -605,7 +606,7 @@ async function applyResponseButtonsAgent({
   answerText: string;
   baseExtraParams: Record<string, unknown>;
   chat: ConfigChatType;
-  ctx: Context;
+  ctx: BotContext;
   msg: Message.TextMessage;
   originalMessage: Message.TextMessage;
   signal?: AbortSignal;

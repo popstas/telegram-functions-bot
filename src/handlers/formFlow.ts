@@ -1,4 +1,4 @@
-import { Context } from "telegraf";
+import type { BotContext } from "../telegram/botContext.ts";
 import { Message } from "grammy/types";
 import type { TitleChat } from "../telegram/updateTypes.ts";
 import OpenAI from "openai";
@@ -19,7 +19,7 @@ import { llmCall } from "../helpers/gpt/llm.ts";
  * Returns a message if the form was handled, undefined to continue normal processing.
  */
 export async function handleFormFlow(
-  ctx: Context,
+  ctx: BotContext,
   msg: Message.TextMessage,
   chat: ConfigChatType,
   thread: ThreadStateType,
@@ -44,7 +44,7 @@ export async function handleFormFlow(
  * Start a new form flow
  */
 async function startForm(
-  ctx: Context,
+  ctx: BotContext,
   msg: Message.TextMessage,
   chat: ConfigChatType,
   thread: ThreadStateType,
@@ -79,7 +79,7 @@ async function startForm(
  * Process a message in an active form flow
  */
 async function processFormMessage(
-  ctx: Context,
+  ctx: BotContext,
   msg: Message.TextMessage,
   chat: ConfigChatType,
   thread: ThreadStateType,
@@ -151,26 +151,23 @@ async function processFormMessage(
  * @param optionIndex - index of the option in field.options
  */
 export async function handleFormButtonClick(
-  ctx: Context,
+  ctx: BotContext,
   fieldIndex: number,
   optionIndex: number,
 ): Promise<void> {
   const callbackQuery = ctx.callbackQuery;
-  if (!callbackQuery || !("message" in callbackQuery)) {
+  const cbMessage = callbackQuery?.message;
+  if (!callbackQuery || !cbMessage || cbMessage.date === 0) {
     return;
   }
-
-  const chatId = callbackQuery.message?.chat.id;
-  if (!chatId) {
-    return;
-  }
+  const chatId = cbMessage.chat.id;
 
   // Find the chat config
   const config = useConfig();
   const chat = config.chats.find((c) => c.id === chatId || c.ids?.includes(chatId));
 
   if (!chat?.chatParams?.form) {
-    await ctx.answerCbQuery("Form not configured");
+    await ctx.answerCallbackQuery("Form not configured");
     return;
   }
 
@@ -180,7 +177,7 @@ export async function handleFormButtonClick(
   const thread = threads[chatId];
 
   if (!thread?.formState?.active) {
-    await ctx.answerCbQuery("No active form");
+    await ctx.answerCallbackQuery("No active form");
     return;
   }
 
@@ -188,20 +185,20 @@ export async function handleFormButtonClick(
   const form = chat.chatParams.form[formState.formIndex];
 
   if (!form) {
-    await ctx.answerCbQuery("Form not found");
+    await ctx.answerCallbackQuery("Form not found");
     return;
   }
 
   // Get field and option by index
   const field = form.items[fieldIndex];
   if (!field || field.type !== "button" || !field.options) {
-    await ctx.answerCbQuery("Invalid field");
+    await ctx.answerCallbackQuery("Invalid field");
     return;
   }
 
   const option = field.options[optionIndex];
   if (!option) {
-    await ctx.answerCbQuery("Invalid option");
+    await ctx.answerCallbackQuery("Invalid option");
     return;
   }
 
@@ -211,7 +208,7 @@ export async function handleFormButtonClick(
   // Update collected data with button selection
   formState.collectedData[fieldName] = value;
 
-  const chatTitle = (callbackQuery.message?.chat as TitleChat).title || "";
+  const chatTitle = (cbMessage.chat as TitleChat).title || "";
   log({
     msg: `Form button clicked: ${fieldName} = ${value}`,
     chatId,
@@ -221,7 +218,7 @@ export async function handleFormButtonClick(
   });
 
   // Answer callback to remove loading state
-  await ctx.answerCbQuery(`${fieldName}: ${value}`);
+  await ctx.answerCallbackQuery(`${fieldName}: ${value}`);
 
   // Check if form is complete
   const stillUnfilled = getUnfilledFields(form, formState);
@@ -230,7 +227,7 @@ export async function handleFormButtonClick(
     // Complete the form
     const virtualMsg = {
       chat: { id: chatId },
-      message_id: callbackQuery.message?.message_id,
+      message_id: cbMessage.message_id,
       from: callbackQuery.from,
       text: "",
       date: Math.floor(Date.now() / 1000),
@@ -259,7 +256,7 @@ export async function handleFormButtonClick(
  * Complete the form and send results
  */
 async function completeForm(
-  ctx: Context,
+  ctx: BotContext,
   msg: Message.TextMessage,
   chat: ConfigChatType,
   thread: ThreadStateType,

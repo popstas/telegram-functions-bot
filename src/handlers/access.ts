@@ -1,4 +1,4 @@
-import { Context } from "telegraf";
+import type { BotContext } from "../telegram/botContext.ts";
 import { Message } from "grammy/types";
 import { ConfigChatType } from "../types.ts";
 import { useConfig } from "../config.ts";
@@ -14,7 +14,7 @@ function escapeRegExp(value: string): string {
 }
 
 export default async function checkAccessLevel(
-  ctx: Context,
+  ctx: BotContext,
 ): Promise<{ msg: Message.TextMessage; chat: ConfigChatType } | false | undefined> {
   const { msg, chat } = getCtxChatMsg(ctx);
   if (!msg) {

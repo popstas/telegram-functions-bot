@@ -1,10 +1,10 @@
-import { Context } from "telegraf";
+import type { BotContext } from "../telegram/botContext.ts";
 import { Message } from "grammy/types";
 import { ConfigChatButtonType, ConfigChatType, ThreadStateType } from "../types.ts";
 import { sendTelegramMessage } from "../telegram/send.ts";
 
 export default async function resolveChatButtons(
-  ctx: Context,
+  ctx: BotContext,
   msg: Message.TextMessage,
   chat: ConfigChatType,
   thread: ThreadStateType,
