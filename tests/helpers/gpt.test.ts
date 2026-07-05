@@ -18,7 +18,7 @@ beforeAll(() => {
 // Mock the bot module with proper typing
 jest.mock("../../src/bot", () => ({
   useBot: () => ({
-    telegram: {
+    api: {
       sendMessage: jest.fn().mockImplementation(() => Promise.resolve({ message_id: 1 })),
     },
   }),

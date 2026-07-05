@@ -6,8 +6,8 @@ import {
   replaceVarsPlaceholders,
 } from "../placeholders.ts";
 import express, { Response } from "express";
-import { Context } from "telegraf";
 import { Message } from "grammy/types";
+import type { BotContext } from "../../telegram/botContext.ts";
 import type { TitleChat } from "../../telegram/updateTypes.ts";
 import {
   ConfigChatType,
@@ -731,11 +731,7 @@ export async function processToolResults({
 export async function requestGptAnswer(
   msg: Message.TextMessage,
   chatConfig: ConfigChatType,
-  ctx?: Context & {
-    expressRes?: express.Response;
-    progressCallback?: (msg: string) => void;
-    noSendTelegram?: boolean;
-  },
+  ctx?: BotContext,
   options?: {
     skipEvaluators?: boolean;
     responseFormat?: OpenAI.Chat.Completions.ChatCompletionCreateParams["response_format"];

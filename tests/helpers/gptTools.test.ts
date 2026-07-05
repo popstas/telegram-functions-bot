@@ -17,8 +17,7 @@ const mockPublish = jest.fn();
 const mockUseLangfuse = jest.fn().mockReturnValue({ trace: null });
 const mockRequestGptAnswer = jest.fn();
 const mockUseBot = jest.fn(() => ({
-  action: jest.fn((_, cb) => cb()),
-  telegram: { sendMessage: jest.fn() },
+  api: { sendMessage: jest.fn() },
 }));
 const mockTelegramConfirm = jest.fn();
 

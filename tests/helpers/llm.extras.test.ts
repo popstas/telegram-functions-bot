@@ -27,10 +27,9 @@ const mockIsAdminUser = jest.fn();
 const mockForward = jest.fn();
 const mockUseConfig = jest.fn();
 const mockUseBot = jest.fn(() => ({
-  telegram: {
-    sendMessage: jest.fn(),
-    editMessageText: jest.fn(),
-    deleteMessage: jest.fn(),
+  api: {
+    sendRichMessageDraft: jest.fn(),
+    sendMessageDraft: jest.fn(),
   },
 }));
 

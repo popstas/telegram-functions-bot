@@ -9,7 +9,7 @@ const mockForgetHistory = jest.fn();
 const mockSendTelegramMessage = jest.fn();
 const mockSendTelegramDocument = jest.fn();
 const mockUseBot = jest.fn(() => ({
-  telegram: {
+  api: {
     sendMessage: jest.fn(),
     editMessageText: jest.fn(),
     deleteMessage: jest.fn(),
