@@ -1,8 +1,9 @@
 import { Context } from "telegraf";
-import { Chat, Message } from "telegraf/types";
+import { Message } from "telegraf/types";
 import { ConfigChatType } from "../types.ts";
 import { useConfig } from "../config.ts";
 import { getCtxChatMsg } from "../telegram/context.ts";
+import type { TitleChat } from "../telegram/updateTypes.ts";
 import { isAdminUser, sendTelegramMessage } from "../telegram/send.ts";
 import { log } from "../helpers.ts";
 
@@ -21,7 +22,7 @@ export default async function checkAccessLevel(
     return;
   }
 
-  const chatTitle = (ctx.message?.chat as Chat.TitleChat)?.title || "";
+  const chatTitle = (ctx.message?.chat as TitleChat)?.title || "";
   const chatId = msg.chat.id;
   const isPrivate = msg.chat.type === "private";
 

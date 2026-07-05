@@ -7,7 +7,8 @@ import {
 } from "../placeholders.ts";
 import express, { Response } from "express";
 import { Context } from "telegraf";
-import { Chat, Message } from "telegraf/types";
+import { Message } from "telegraf/types";
+import type { TitleChat } from "../../telegram/updateTypes.ts";
 import {
   ConfigChatType,
   GptContextType,
@@ -437,7 +438,7 @@ export async function generateButtonsFromAgent(
 
   if (options?.signal?.aborted) return undefined;
 
-  const chatTitle = (msg.chat as Chat.TitleChat).title;
+  const chatTitle = (msg.chat as TitleChat).title;
   const answerId = msg.message_id?.toString() || "";
   log({
     msg: "start generate buttons",

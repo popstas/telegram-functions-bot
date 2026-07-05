@@ -5,9 +5,10 @@ import checkAccessLevel from "./access.ts";
 import { processImageMessage } from "../helpers/vision.ts";
 import { log } from "../helpers.ts";
 import { createNewContext } from "../telegram/context.ts";
+import type { MessageUpdate } from "../telegram/updateTypes.ts";
 
 // Type guard to check if update has a message
-function isMessageUpdate(update: Update): update is Update.MessageUpdate {
+function isMessageUpdate(update: Update): update is MessageUpdate {
   return "message" in update;
 }
 

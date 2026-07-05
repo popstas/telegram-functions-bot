@@ -1,5 +1,6 @@
 import { Context } from "telegraf";
-import { Message, Chat } from "telegraf/types";
+import { Message } from "telegraf/types";
+import type { TitleChat } from "../telegram/updateTypes.ts";
 import OpenAI from "openai";
 import {
   ConfigChatType,
@@ -58,7 +59,7 @@ async function startForm(
     collectedData: {},
   };
 
-  const chatTitle = (msg.chat as Chat.TitleChat).title || "";
+  const chatTitle = (msg.chat as TitleChat).title || "";
   log({
     msg: `Form started: ${form.intro.slice(0, 50)}...`,
     chatId: msg.chat.id,
@@ -101,7 +102,7 @@ async function processFormMessage(
   }
 
   const userText = msg.text || "";
-  const chatTitle = (msg.chat as Chat.TitleChat).title || "";
+  const chatTitle = (msg.chat as TitleChat).title || "";
 
   // Get unfilled fields
   const unfilledFields = getUnfilledFields(form, formState);
@@ -210,7 +211,7 @@ export async function handleFormButtonClick(
   // Update collected data with button selection
   formState.collectedData[fieldName] = value;
 
-  const chatTitle = (callbackQuery.message?.chat as Chat.TitleChat).title || "";
+  const chatTitle = (callbackQuery.message?.chat as TitleChat).title || "";
   log({
     msg: `Form button clicked: ${fieldName} = ${value}`,
     chatId,
@@ -270,7 +271,7 @@ async function completeForm(
     return undefined;
   }
 
-  const chatTitle = (msg.chat as Chat.TitleChat).title || "";
+  const chatTitle = (msg.chat as TitleChat).title || "";
 
   // Format the message using template
   const formattedMessage = formatTemplate(form.message_template, formState.collectedData);

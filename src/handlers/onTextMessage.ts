@@ -1,5 +1,6 @@
 import { Context } from "telegraf";
-import { Chat, Message, ReplyKeyboardMarkup } from "telegraf/types";
+import { Message, ReplyKeyboardMarkup } from "telegraf/types";
+import type { TitleChat } from "../telegram/updateTypes.ts";
 import { useThreads } from "../threads.ts";
 import { ConfigChatType, ThreadStateType } from "../types.ts";
 import { syncButtons, useConfig } from "../config.ts";
@@ -190,7 +191,7 @@ function launchAnswer(
       msg: "cancelling previous response",
       chatId,
       answerId,
-      chatTitle: (msg.chat as Chat.TitleChat).title,
+      chatTitle: (msg.chat as TitleChat).title,
       role: "system",
       username: msg?.from?.username,
       logLevel: "debug",
@@ -248,7 +249,7 @@ function launchAnswer(
           logLevel: "error",
           chatId,
           answerId,
-          chatTitle: (msg.chat as Chat.TitleChat).title,
+          chatTitle: (msg.chat as TitleChat).title,
           role: "system",
           username: msg?.from?.username,
         });
@@ -274,7 +275,7 @@ export default async function onTextMessage(
   if (!access) return;
   const { msg, chat } = access;
 
-  const chatTitle = (ctx.message?.chat as Chat.TitleChat).title || "";
+  const chatTitle = (ctx.message?.chat as TitleChat).title || "";
   const chatId = msg.chat.id;
   const answerId = msg.message_id?.toString() || "";
 
@@ -535,7 +536,7 @@ export async function answerToMessage(
         const extraParamsButtons = buildReplyKeyboard(buttons.map((b) => b.name));
         Object.assign(extraParams, extraParamsButtons);
       }
-      const chatTitle = (msg.chat as Chat.TitleChat).title;
+      const chatTitle = (msg.chat as TitleChat).title;
       const answerId = msg.message_id?.toString() || "";
       log({
         msg: text,

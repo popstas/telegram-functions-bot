@@ -1,4 +1,4 @@
-import { Message, User } from "telegraf/types";
+import { Message } from "telegraf/types";
 import { ConfigChatType } from "../types.ts";
 import { isOurUser } from "../telegram/send.ts";
 import { shouldIncludeReplyInHistory } from "../handlers/access.ts";
@@ -24,7 +24,7 @@ export function buildUserMessage(
   chatConfig: ConfigChatType,
 ): OpenAI.ChatCompletionMessageParam {
   let content = msg.text || "";
-  const sender = (msg as Message.TextMessage & { forward_from?: User }).forward_from || msg.from;
+  const sender = msg.from;
   const isOur = isOurUser(sender, chatConfig);
   let name = sender?.first_name || sender?.last_name || sender?.username;
   if (isOur && chatConfig?.chatParams?.markOurUsers) {

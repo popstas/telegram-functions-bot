@@ -1,6 +1,7 @@
 import { Context } from "telegraf";
 import type { InlineQueryResultArticle } from "telegraf/types";
 import type { Message } from "telegraf/types";
+import type { ChosenInlineResultUpdate } from "../telegram/updateTypes.ts";
 import { useConfig } from "../config.ts";
 import { log } from "../helpers.ts";
 import { requestGptAnswer } from "../helpers/gpt/llm.ts";
@@ -198,7 +199,7 @@ export async function onChosenInlineResult(ctx: Context) {
   if (!config.inlineMode) return;
   const chosen = (
     ctx.update as {
-      chosen_inline_result?: import("telegraf/types").Update.ChosenInlineResultUpdate["chosen_inline_result"];
+      chosen_inline_result?: ChosenInlineResultUpdate["chosen_inline_result"];
     }
   ).chosen_inline_result;
   if (!chosen) return;

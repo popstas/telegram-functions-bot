@@ -1,9 +1,15 @@
-import { Chat, Message, Update, User } from "telegraf/types";
+import { Chat, Message, User } from "telegraf/types";
 import { Context } from "telegraf";
 import { useConfig } from "../config.ts";
 import { log } from "../helpers.ts";
 import { includesUser } from "../utils/users.ts";
 import { ChatParamsType, CompletionParamsType, ConfigChatType } from "../types.ts";
+import type {
+  TitleChat,
+  MessageUpdate,
+  EditedMessageUpdate,
+  CallbackQueryUpdate,
+} from "./updateTypes.ts";
 
 function isAccessAllowed(chatConfig: ConfigChatType, ctxChat: Chat) {
   const privateChat = ctxChat as Chat.PrivateChat;
@@ -65,7 +71,7 @@ function getChatConfig(ctxChat: Chat, ctx: Context): ConfigChatType | undefined 
 
   if (!chat.id) {
     if (ctxChat?.type !== "private") {
-      const chatTitle = (ctxChat as Chat.TitleChat).title;
+      const chatTitle = (ctxChat as TitleChat).title;
       log({
         msg: `This is ${ctxChat?.type} chat, not in whitelist: ${ctxChat.title}`,
         chatId: ctxChat.id,
@@ -124,7 +130,7 @@ function getChatConfig(ctxChat: Chat, ctx: Context): ConfigChatType | undefined 
 
 export function getActionUserMsg(ctx: Context): { user?: User; msg?: Message } {
   if (Object.prototype.hasOwnProperty.call(ctx, "update")) {
-    const updateQuery = ctx.update as Update.CallbackQueryUpdate;
+    const updateQuery = ctx.update as CallbackQueryUpdate;
     const user = updateQuery.callback_query.from;
     const msg = updateQuery.callback_query.message as Message;
     return { user, msg };
@@ -140,8 +146,8 @@ export function getCtxChatMsg(ctx: Context): {
   let msg: Message.TextMessage | undefined;
 
   if (Object.prototype.hasOwnProperty.call(ctx, "update")) {
-    const updateEdited = ctx.update as Update.EditedMessageUpdate;
-    const updateNew = ctx.update as Update.MessageUpdate;
+    const updateEdited = ctx.update as EditedMessageUpdate;
+    const updateNew = ctx.update as MessageUpdate;
     msg = (updateEdited.edited_message || updateNew.message) as Message.TextMessage;
     ctxChat = msg?.chat;
   }

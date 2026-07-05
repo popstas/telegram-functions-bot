@@ -1,7 +1,8 @@
 import { Context } from "telegraf";
-import { Chat, Message, Update, User } from "telegraf/types";
+import { Chat, Message, User } from "telegraf/types";
+import type { MessageReactionUpdate } from "../telegram/updateTypes.ts";
 
-type ReactionUpdate = NonNullable<Update.MessageReactionUpdate["message_reaction"]>;
+type ReactionUpdate = NonNullable<MessageReactionUpdate["message_reaction"]>;
 type ReactionType = ReactionUpdate["new_reaction"][number];
 import onTextMessage from "./onTextMessage.ts";
 import checkAccessLevel from "./access.ts";
@@ -24,7 +25,7 @@ function buildReactionText(reactions: ReactionType[]): string {
   return icons ? `${icons} (reaction)` : "";
 }
 
-function getReactionUser(update: Update.MessageReactionUpdate): User {
+function getReactionUser(update: MessageReactionUpdate): User {
   const { user, actor_chat: actorChat } = update.message_reaction;
   if (user) return user as User;
 
@@ -47,7 +48,7 @@ function getReactionUser(update: Update.MessageReactionUpdate): User {
 }
 
 export default async function onReaction(ctx: Context) {
-  const update = ctx.update as Update.MessageReactionUpdate;
+  const update = ctx.update as MessageReactionUpdate;
   if (!update.message_reaction) return;
 
   const reactionText = buildReactionText(update.message_reaction.new_reaction || []);
