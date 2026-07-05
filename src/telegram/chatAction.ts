@@ -19,9 +19,7 @@ export async function withChatAction<T>(
       .sendChatAction(
         c.chat!.id,
         action as Parameters<BotContext["api"]["sendChatAction"]>[1],
-        c.businessConnectionId
-          ? { business_connection_id: c.businessConnectionId }
-          : undefined,
+        c.businessConnectionId ? { business_connection_id: c.businessConnectionId } : undefined,
       )
       .catch(() => {}); // indicator is best-effort; never break the wrapped work
   await send();

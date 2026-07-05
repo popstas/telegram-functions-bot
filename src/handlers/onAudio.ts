@@ -34,11 +34,7 @@ type WhisperResponse = {
   segments?: (WhisperSegment | WhisperSegmentArray)[];
 };
 
-export async function processAudio(
-  ctx: BotContext,
-  voice: { file_id: string },
-  chatId: number,
-) {
+export async function processAudio(ctx: BotContext, voice: { file_id: string }, chatId: number) {
   const file = await ctx.api.getFile(voice.file_id);
   const fileUrl = `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`;
   const oggPath = tmp.tmpNameSync({ postfix: ".ogg" });

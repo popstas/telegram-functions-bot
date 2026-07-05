@@ -119,9 +119,7 @@ describe("sendTelegramMessage rich path", () => {
   });
 
   it("returns undefined and stops when blocked by user (403) on rich path", async () => {
-    mockSendRichMessage.mockRejectedValueOnce(
-      makeGrammyError(403, "bot was blocked by the user"),
-    );
+    mockSendRichMessage.mockRejectedValueOnce(makeGrammyError(403, "bot was blocked by the user"));
     const res = await sendTelegramMessage(1, "hi", {}, undefined, chatConfig);
     expect(res).toBeUndefined();
     expect(mockSendMessage).not.toHaveBeenCalled();

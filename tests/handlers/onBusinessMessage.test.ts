@@ -91,8 +91,9 @@ describe("onBusinessConnection", () => {
     // Cached: a following message resolves the owner without an API call.
     const msgCtx = businessCtx();
     await mod.onBusinessMessage(msgCtx);
-    expect((msgCtx.api as unknown as { getBusinessConnection: jest.Mock }).getBusinessConnection)
-      .not.toHaveBeenCalled();
+    expect(
+      (msgCtx.api as unknown as { getBusinessConnection: jest.Mock }).getBusinessConnection,
+    ).not.toHaveBeenCalled();
     expect(mockOnTextMessage).toHaveBeenCalledTimes(1);
   });
 });
@@ -127,13 +128,11 @@ describe("onBusinessMessage", () => {
   });
 
   it("resolves the owner via getBusinessConnection on cache miss", async () => {
-    const getBusinessConnection = jest
-      .fn<(id: string) => Promise<unknown>>()
-      .mockResolvedValue({
-        user: { username: "popstas" },
-        rights: { can_reply: true },
-        is_enabled: true,
-      });
+    const getBusinessConnection = jest.fn<(id: string) => Promise<unknown>>().mockResolvedValue({
+      user: { username: "popstas" },
+      rights: { can_reply: true },
+      is_enabled: true,
+    });
     const ctx = businessCtx({ api: { getBusinessConnection } });
 
     await mod.onBusinessMessage(ctx);
@@ -158,12 +157,15 @@ describe("onBusinessMessage", () => {
   });
 
   it("ignores non-text business messages", async () => {
-    const ctx = businessCtx({}, {
-      message_id: 7,
-      chat: { id: 42, type: "private" },
-      from: { username: "customer" },
-      business_connection_id: "conn1",
-    });
+    const ctx = businessCtx(
+      {},
+      {
+        message_id: 7,
+        chat: { id: 42, type: "private" },
+        from: { username: "customer" },
+        business_connection_id: "conn1",
+      },
+    );
     await mod.onBusinessMessage(ctx);
     expect(mockOnTextMessage).not.toHaveBeenCalled();
   });
@@ -180,13 +182,16 @@ describe("onBusinessMessage", () => {
     await mod.onBusinessConnection(connCtx);
 
     // Message authored by the owner (from.id === connection owner id).
-    const ctx = businessCtx({}, {
-      text: "I'll take it from here",
-      message_id: 9,
-      chat: { id: 42, type: "private" },
-      from: { id: 100, username: "popstas" },
-      business_connection_id: "conn1",
-    });
+    const ctx = businessCtx(
+      {},
+      {
+        text: "I'll take it from here",
+        message_id: 9,
+        chat: { id: 42, type: "private" },
+        from: { id: 100, username: "popstas" },
+        business_connection_id: "conn1",
+      },
+    );
     await mod.onBusinessMessage(ctx);
 
     expect(mockNoteSecretaryHumanReply).toHaveBeenCalledWith(42);
@@ -204,14 +209,17 @@ describe("onBusinessMessage", () => {
     } as unknown as BotContext;
     await mod.onBusinessConnection(connCtx);
 
-    const ctx = businessCtx({}, {
-      text: "auto reply",
-      message_id: 9,
-      chat: { id: 42, type: "private" },
-      from: { id: 100, username: "popstas" },
-      sender_business_bot: { id: 555, is_bot: true },
-      business_connection_id: "conn1",
-    });
+    const ctx = businessCtx(
+      {},
+      {
+        text: "auto reply",
+        message_id: 9,
+        chat: { id: 42, type: "private" },
+        from: { id: 100, username: "popstas" },
+        sender_business_bot: { id: 555, is_bot: true },
+        business_connection_id: "conn1",
+      },
+    );
     await mod.onBusinessMessage(ctx);
 
     expect(mockNoteSecretaryHumanReply).not.toHaveBeenCalled();

@@ -126,11 +126,11 @@ export async function processImageMessage(
       role: "user",
     });
 
-    const newMsg = {
+    const newMsg: Message = {
       ...msg,
       text: caption + text,
       entities: [],
-    } as const;
+    };
 
     const contextWithNewMessage = createNewContext(ctx, newMsg);
 

@@ -28,7 +28,7 @@ export function attachFlavor(from: Partial<BotFlavor>, to: Context): BotContext 
   for (const key of FLAVOR_KEYS) {
     const value = from[key];
     if (value !== undefined) {
-      (target as Record<string, unknown>)[key] = value;
+      Object.assign(target, { [key]: value });
     }
   }
   return target;

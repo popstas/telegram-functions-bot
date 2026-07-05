@@ -29,7 +29,9 @@ jest.unstable_mockModule("../src/config.ts", () => ({
   readConfig: jest.fn(),
 }));
 
-const { useBot, botReady, getBots, setRunnerHandle, getRunnerHandles } = await import("../src/bot.ts");
+const { useBot, botReady, getBots, setRunnerHandle, getRunnerHandles } = await import(
+  "../src/bot.ts"
+);
 const { useConfig } = await import("../src/config.ts");
 
 describe("useBot (grammy)", () => {
@@ -53,10 +55,14 @@ describe("useBot (grammy)", () => {
   });
 
   it("passes proxy agent via client.baseFetchConfig when proxy_url set", () => {
-    (useConfig as jest.Mock).mockReturnValue({ auth: { bot_token: "tok-p", proxy_url: "http://proxy:3128" } });
+    (useConfig as jest.Mock).mockReturnValue({
+      auth: { bot_token: "tok-p", proxy_url: "http://proxy:3128" },
+    });
     useBot("tok-proxy");
     const inst = botInstances.find((b) => b.token === "tok-proxy")!;
-    const opts = inst.options as { client: { baseFetchConfig: { agent: unknown; compress: boolean } } };
+    const opts = inst.options as {
+      client: { baseFetchConfig: { agent: unknown; compress: boolean } };
+    };
     expect(opts.client.baseFetchConfig.agent).toBeDefined();
     expect(opts.client.baseFetchConfig.compress).toBe(true);
   });

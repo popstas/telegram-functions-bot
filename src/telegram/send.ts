@@ -402,9 +402,7 @@ export async function sendTelegramDocument(
       fileName = fileName.replace(/_\d{2}_\d{2}_\d{2}/, "");
     }
     const document =
-      file instanceof Buffer
-        ? new InputFile(file, fileName)
-        : new InputFile(file as string);
+      file instanceof Buffer ? new InputFile(file, fileName) : new InputFile(file as string);
     const response = await useBot(chatConfig?.bot_token).api.sendDocument(chat_id, document);
     return response as unknown as Message.DocumentMessage;
   } catch (e: unknown) {

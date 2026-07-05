@@ -1,4 +1,4 @@
-import { Chat, Message, Update, User, UserFromGetMe } from "grammy/types";
+import { Chat, Message, Update, User } from "grammy/types";
 import { Context } from "grammy";
 import { attachFlavor, BotContext } from "./botContext.ts";
 import { useConfig } from "../config.ts";
@@ -60,8 +60,7 @@ function getChatConfig(ctxChat: Chat, ctx: Context): ConfigChatType | undefined 
     ({} as ConfigChatType);
 
   if (!chat.id) {
-    chat =
-      useConfig().chats.find((c) => c.bot_name === ctx.me.username) || ({} as ConfigChatType);
+    chat = useConfig().chats.find((c) => c.bot_name === ctx.me.username) || ({} as ConfigChatType);
 
     if (chat.id && ctxChat?.type === "private") {
       if (!isAccessAllowed(chat, ctxChat)) {

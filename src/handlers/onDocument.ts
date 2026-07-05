@@ -38,11 +38,11 @@ export default async function onDocument(ctx: BotContext) {
       chatTitle,
     });
 
-    const newMsg = {
+    const newMsg: Message = {
       ...msg,
       text: msg.caption,
       entities: [],
-    } as const;
+    };
 
     const contextWithCaption = createNewContext(ctx, newMsg);
     await onTextMessage(contextWithCaption);

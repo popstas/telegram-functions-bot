@@ -166,7 +166,7 @@ async function launchBot(bot_token: string, bot_name: string) {
     });
 
     const handle = run(bot, {
-      runner: { fetch: { allowed_updates: ALLOWED_UPDATES as unknown as string[] } },
+      runner: { fetch: { allowed_updates: ALLOWED_UPDATES } },
     });
     setRunnerHandle(bot_token, handle);
     handle.task()?.catch((error: unknown) => {

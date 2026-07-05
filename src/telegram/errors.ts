@@ -1,11 +1,7 @@
 import { GrammyError } from "grammy";
 
 export function getRetryAfterMs(err: unknown): number | undefined {
-  if (
-    err instanceof GrammyError &&
-    err.error_code === 429 &&
-    err.parameters?.retry_after
-  ) {
+  if (err instanceof GrammyError && err.error_code === 429 && err.parameters?.retry_after) {
     return err.parameters.retry_after * 1000;
   }
   return undefined;

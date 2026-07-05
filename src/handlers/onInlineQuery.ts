@@ -101,12 +101,9 @@ export async function computeInlineAnswer(
   };
 
   try {
-    const result = await requestGptAnswer(
-      msg,
-      chatConfig,
-      { noSendTelegram: true } as BotContext,
-      { skipEvaluators: true },
-    );
+    const result = await requestGptAnswer(msg, chatConfig, { noSendTelegram: true } as BotContext, {
+      skipEvaluators: true,
+    });
     return result?.content || "";
   } finally {
     delete threads[inlineChatId];

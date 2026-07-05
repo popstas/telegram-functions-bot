@@ -40,11 +40,11 @@ export default async function onPhoto(ctx: BotContext) {
       chatTitle,
     });
 
-    const newMsg = {
+    const newMsg: Message = {
       ...msg,
       text: msg.caption,
       entities: [],
-    } as const;
+    };
 
     const contextWithCaption = createNewContext(ctx, newMsg);
 
