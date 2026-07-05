@@ -1,43 +1,59 @@
-import { describe, it, expect } from "@jest/globals";
+import { jest, describe, it, expect, afterEach } from "@jest/globals";
 const { withChatAction } = await import("../../src/telegram/chatAction.ts");
 
-describe("withChatAction (telegraf phase)", () => {
-  it("delegates to ctx.persistentChatAction and returns fn result", async () => {
-    const calls: string[] = [];
-    const ctx = {
-      persistentChatAction: async (action: string, cb: () => Promise<void>) => {
-        calls.push(action);
-        await cb();
-      },
-    };
-    const res = await withChatAction(ctx, "typing", async () => 42);
-    expect(res).toBe(42);
-    expect(calls).toEqual(["typing"]);
+describe("withChatAction (grammY phase)", () => {
+  afterEach(() => {
+    jest.useRealTimers();
   });
-  it("runs fn directly when ctx has no persistentChatAction (synthetic ctx)", async () => {
-    const res = await withChatAction({}, "typing", async () => "ok");
-    expect(res).toBe("ok");
+
+  it("sends the action immediately and every 4s until fn settles", async () => {
+    jest.useFakeTimers();
+    const sendChatAction = jest.fn(async () => true);
+    const ctx = { api: { sendChatAction }, chat: { id: 9 } };
+    let release!: (v: string) => void;
+    const p = withChatAction(ctx, "typing", () => new Promise<string>((r) => (release = r)));
+    await Promise.resolve();
+    expect(sendChatAction).toHaveBeenCalledTimes(1);
+    await jest.advanceTimersByTimeAsync(8000);
+    expect(sendChatAction).toHaveBeenCalledTimes(3);
+    release("done");
+    await expect(p).resolves.toBe("done");
+    await jest.advanceTimersByTimeAsync(8000);
+    expect(sendChatAction).toHaveBeenCalledTimes(3); // stopped after fn settled
+    expect(sendChatAction).toHaveBeenLastCalledWith(9, "typing", undefined);
   });
-  it("propagates fn rejection", async () => {
-    await expect(
-      withChatAction({}, "typing", async () => {
-        throw new Error("boom");
-      }),
-    ).rejects.toThrow("boom");
+
+  it("passes business_connection_id when the context carries one", async () => {
+    const sendChatAction = jest.fn(async () => true);
+    const ctx = { api: { sendChatAction }, chat: { id: 7 }, businessConnectionId: "b1" };
+    const res = await withChatAction(ctx, "typing", async () => 5);
+    expect(res).toBe(5);
+    expect(sendChatAction).toHaveBeenCalledWith(7, "typing", {
+      business_connection_id: "b1",
+    });
   });
-  it("propagates fn rejection through ctx.persistentChatAction", async () => {
-    const calls: string[] = [];
-    const ctx = {
-      persistentChatAction: async (action: string, cb: () => Promise<void>) => {
-        calls.push(action);
-        await cb(); // Telegraf awaits the callback; rejection inside must not escape here unhandled
-      },
-    };
-    await expect(
-      withChatAction(ctx, "typing", async () => {
-        throw new Error("boom-delegate");
-      }),
-    ).rejects.toThrow("boom-delegate");
-    expect(calls).toEqual(["typing"]);
+
+  it("runs fn directly for synthetic contexts (no api / noSendTelegram)", async () => {
+    expect(await withChatAction({}, "typing", async () => 1)).toBe(1);
+    const sendChatAction = jest.fn();
+    await withChatAction(
+      { api: { sendChatAction }, chat: { id: 1 }, noSendTelegram: true },
+      "typing",
+      async () => 2,
+    );
+    expect(sendChatAction).not.toHaveBeenCalled();
+  });
+
+  it("propagates fn rejection and still clears the interval", async () => {
+    jest.useFakeTimers();
+    const sendChatAction = jest.fn(async () => true);
+    const ctx = { api: { sendChatAction }, chat: { id: 3 } };
+    const p = withChatAction(ctx, "typing", async () => {
+      throw new Error("boom");
+    });
+    await expect(p).rejects.toThrow("boom");
+    const callsAfterReject = sendChatAction.mock.calls.length;
+    await jest.advanceTimersByTimeAsync(8000);
+    expect(sendChatAction).toHaveBeenCalledTimes(callsAfterReject); // interval cleared
   });
 });

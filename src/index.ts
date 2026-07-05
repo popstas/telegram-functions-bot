@@ -1,5 +1,6 @@
 import { Context } from "telegraf";
-import { message, editedMessage } from "telegraf/filters";
+import { Bot, BotError } from "grammy";
+import { run, sequentialize, RunnerHandle } from "@grammyjs/runner";
 import { Message } from "grammy/types";
 import type http from "node:http";
 import { useConfig, validateConfig, watchConfigChanges } from "./config.ts";
@@ -7,8 +8,8 @@ import { initCommands, handleAddChat, registerCommandActions } from "./commands.
 import { log } from "./helpers.ts";
 import { initTools } from "./helpers/useTools.ts";
 import express from "express";
-import type { Telegraf } from "telegraf";
-import { useBot } from "./bot.ts";
+import type { BotContext } from "./telegram/botContext.ts";
+import { useBot, botReady, setRunnerHandle } from "./bot.ts";
 import onTextMessage from "./handlers/onTextMessage.ts";
 import onPhoto from "./handlers/onPhoto.ts";
 import onAudio from "./handlers/onAudio.ts";
@@ -26,7 +27,7 @@ import { completePendingAuth } from "./mcp-auth.ts";
 import { registerConfirmActions } from "./telegram/confirm.ts";
 import { isInvalidToken } from "./telegram/errors.ts";
 
-let activeBots: Telegraf[] = [];
+let activeBots: { bot: Bot<BotContext>; handle: RunnerHandle; name: string }[] = [];
 let httpServer: http.Server | null = null;
 let restartTimer: NodeJS.Timeout | null = null;
 let startPromise: Promise<void> | null = null;
@@ -103,120 +104,94 @@ async function startBot() {
   }
 }
 
+const ALLOWED_UPDATES = [
+  "message",
+  "edited_message", // Telegraf's launch derived this implicitly from the filters; explicit now (bot.on edited_message:text depends on it)
+  "message_reaction",
+  "callback_query",
+  "inline_query",
+  "chosen_inline_result",
+  "business_connection",
+  "business_message",
+] as const;
+
 async function launchBot(bot_token: string, bot_name: string) {
   try {
     const bot = useBot(bot_token);
+    await botReady(bot_token); // 401 invalid token rejects here
 
-    // Set up help command
-    bot.help(async (ctx) => ctx.reply("https://github.com/popstas/telegram-functions-bot"));
+    // Per-chat ordering with cross-chat concurrency (Telegraf polled concurrently;
+    // plain grammY bot.start() is strictly sequential — runner restores parallelism).
+    bot.use(
+      sequentialize((ctx) => ctx.chat?.id.toString() ?? (ctx as BotContext).businessConnectionId),
+    );
 
-    // Initialize commands with proper error handling
-    await initCommands(bot);
-
+    bot.command("help", async (ctx) =>
+      ctx.reply("https://github.com/popstas/telegram-functions-bot"),
+    );
+    // Task 16 ports commands.ts; bridge the Telegraf-typed signatures for now.
+    await initCommands(bot as never);
     registerConfirmActions(bot);
-    registerCommandActions(bot);
+    registerCommandActions(bot as never);
 
-    // Set up message handlers
-    bot.on([message("text"), editedMessage("text")], onTextMessage);
-    bot.on(message("photo"), onPhoto);
-    bot.on(message("voice"), onAudio);
-    bot.on(message("audio"), onAudio);
-    bot.on(message("sticker"), onUnsupported);
-    bot.on(message("video"), onUnsupported);
-    bot.on(message("video_note"), onUnsupported);
-    bot.on(message("document"), onDocument);
+    bot.on(["message:text", "edited_message:text"], onTextMessage);
+    bot.on("message:photo", onPhoto);
+    bot.on("message:voice", onAudio);
+    bot.on("message:audio", onAudio);
+    bot.on("message:sticker", onUnsupported);
+    bot.on("message:video", onUnsupported);
+    bot.on("message:video_note", onUnsupported);
+    bot.on("message:document", onDocument);
     bot.on("message_reaction", onReaction);
     bot.on("inline_query", onInlineQuery);
     bot.on("chosen_inline_result", onChosenInlineResult);
-    // Telegram Business ("Chat automation"). These update types are not typed by
-    // telegraf 4.16.3, so cast the filter strings.
-    bot.on("business_connection" as unknown as "message", onBusinessConnection);
-    bot.on("business_message" as unknown as "message", onBusinessMessage);
+    bot.on("business_connection", onBusinessConnection); // natively typed — casts gone
+    bot.on("business_message", onBusinessMessage);
 
-    bot.catch((err, ctx) => {
+    bot.catch((err: BotError<BotContext>) => {
       log({
-        msg: `[${bot_name}] Unhandled error for update ${ctx.update.update_id}: ${err instanceof Error ? err.message : String(err)}`,
+        msg: `[${bot_name}] Unhandled error for update ${err.ctx.update.update_id}: ${err.error instanceof Error ? err.error.message : String(err.error)}`,
         logLevel: "error",
       });
-      if (err instanceof Error) {
-        console.error(err.stack);
-      }
+      if (err.error instanceof Error) console.error(err.error.stack);
     });
 
-    // Set up chat action handler
-    bot.action("add_chat", handleAddChat);
-
-    // Handle form button clicks - format: f:{fieldIndex}:{optionIndex}
-    bot.action(/^f:(\d+):(\d+)$/, async (ctx) => {
+    bot.callbackQuery("add_chat", handleAddChat);
+    bot.callbackQuery(/^f:(\d+):(\d+)$/, async (ctx) => {
       const match = ctx.match;
       if (match && match[1] && match[2]) {
         await handleFormButtonClick(ctx, parseInt(match[1], 10), parseInt(match[2], 10));
       }
     });
-
-    // Handle form label clicks (do nothing, just acknowledge) - format: fl:{fieldIndex}
-    bot.action(/^fl:(\d+)$/, async (ctx) => {
-      await ctx.answerCbQuery();
+    bot.callbackQuery(/^fl:(\d+)$/, async (ctx) => {
+      await ctx.answerCallbackQuery();
     });
 
-    // Start the bot
-    let resolveReady: (() => void) | undefined;
-    let rejectReady: ((error: unknown) => void) | undefined;
-
-    const ready = new Promise<void>((resolve, reject) => {
-      resolveReady = resolve;
-      rejectReady = reject;
+    const handle = run(bot, {
+      runner: { fetch: { allowed_updates: ALLOWED_UPDATES as unknown as string[] } },
     });
-
-    const launchPromise = bot.launch(
-      {
-        allowedUpdates: [
-          "message",
-          "message_reaction",
-          "callback_query",
-          "inline_query",
-          "chosen_inline_result",
-          "business_connection",
-          "business_message",
-        ] as unknown as ("message" | "callback_query")[],
-      },
-      () => {
-        log({ msg: `bot started: ${bot_name}` });
-        resolveReady?.();
-      },
-    );
-
-    launchPromise.catch((error) => {
+    setRunnerHandle(bot_token, handle);
+    handle.task()?.catch((error: unknown) => {
+      log({
+        msg: `[${bot_name}] Runner stopped with error: ${error instanceof Error ? error.message : String(error)}`,
+        logLevel: "error",
+      });
+      scheduleRestart();
+    });
+    log({ msg: `bot started: ${bot_name}` });
+    return { bot, handle, name: bot_name };
+  } catch (error: unknown) {
+    if (isInvalidToken(error)) {
+      log({
+        msg: `[${bot_name}] Error: Invalid bot token (401 Unauthorized). Please check your bot token in the config.`,
+        logLevel: "error",
+      });
+    } else {
       log({
         msg: `[${bot_name}] Error during bot launch: ${error instanceof Error ? error.message : String(error)}`,
         logLevel: "error",
       });
-      if (error instanceof Error) {
-        console.error(error.stack);
-      }
-      rejectReady?.(error);
-    });
-
-    await ready;
-    return bot;
-  } catch (error: unknown) {
-    if (error && typeof error === "object" && "response" in error) {
-      if (isInvalidToken(error)) {
-        log({
-          msg: `[${bot_name}] Error: Invalid bot token (401 Unauthorized). Please check your bot token in the config.`,
-          logLevel: "error",
-        });
-      } else {
-        log({
-          msg: `[${bot_name}] Error during bot launch (2): ${error instanceof Error ? error.message : String(error)}`,
-          logLevel: "error",
-        });
-      }
-    } else {
-      log({
-        msg: `[${bot_name}] Error during bot launch (3): ${error instanceof Error ? error.message : String(error)}`,
-        logLevel: "error",
-      });
+      if (error instanceof Error) console.error(error.stack);
     }
   }
 }
@@ -393,15 +368,15 @@ function scheduleRestart() {
 
 async function stopAllBots() {
   if (activeBots.length === 0) return;
-  const bots = [...activeBots];
+  const entries = [...activeBots];
   activeBots = [];
   await Promise.all(
-    bots.map(async (bot) => {
+    entries.map(async ({ handle, name }) => {
       try {
-        await Promise.resolve(bot.stop("desktop-stop"));
+        await handle.stop();
       } catch (error) {
         log({
-          msg: `Error stopping bot: ${error instanceof Error ? error.message : String(error)}`,
+          msg: `Error stopping bot ${name}: ${error instanceof Error ? error.message : String(error)}`,
           logLevel: "warn",
         });
       }
