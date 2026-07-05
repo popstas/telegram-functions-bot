@@ -10,6 +10,7 @@ import { useConfig } from "../config.ts";
 import { log } from "../helpers.ts";
 import { Message } from "telegraf/types";
 import { prettyText } from "../utils/text.ts";
+import { withChatAction } from "../telegram/chatAction.ts";
 
 tmp.setGracefulCleanup();
 
@@ -139,5 +140,5 @@ export default async function onAudio(ctx: Context & { secondTry?: boolean }) {
     role: "user",
   });
 
-  await ctx.persistentChatAction("typing", async () => processAudio(ctx, voice, chatId));
+  await withChatAction(ctx, "typing", async () => processAudio(ctx, voice, chatId));
 }

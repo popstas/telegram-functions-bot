@@ -18,6 +18,7 @@ import checkAccessLevel, { isGuestModeReply } from "./access.ts";
 import resolveChatButtons from "./resolveChatButtons.ts";
 import { handleFormFlow } from "./formFlow.ts";
 import { editTelegramMessage, sendTelegramMessage } from "../telegram/send.ts";
+import { withChatAction } from "../telegram/chatAction.ts";
 
 // Reproduces Telegraf's reply-keyboard builder output byte-identically (verified in Task 3 Step 1):
 // {"reply_markup":{"keyboard":[["a"],["b"],["c"]],"resize_keyboard":true}}
@@ -456,7 +457,7 @@ export async function answerToMessage(
 
     if (chat.buttonsSync && msg.text === "sync" && msg) {
       let syncResult: Message.TextMessage | undefined;
-      await ctx.persistentChatAction("typing", async () => {
+      await withChatAction(ctx, "typing", async () => {
         if (!msg) return;
         const buttons = await syncButtons(chat, authClient);
         if (!buttons) {
@@ -480,7 +481,7 @@ export async function answerToMessage(
 
   try {
     let msgSent: Message.TextMessage | undefined;
-    await ctx.persistentChatAction("typing", async () => {
+    await withChatAction(ctx, "typing", async () => {
       if (!msg || extraMessageParams.signal?.aborted) {
         return;
       }
@@ -573,7 +574,7 @@ export async function answerToMessage(
   } catch (e) {
     const error = e as { message: string };
     console.log("error:", error);
-    await ctx.persistentChatAction("typing", async () => {});
+    await withChatAction(ctx, "typing", async () => {});
     if (ctx.secondTry) return;
     if (!ctx.secondTry && error.message.includes("context_length_exceeded")) {
       ctx.secondTry = true;

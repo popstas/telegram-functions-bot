@@ -144,19 +144,18 @@ export async function onBusinessMessage(ctx: Context) {
   // update.message), so it cannot be assigned — define it (and update) as own data
   // properties via descriptors. getCtxChatMsg then reads update.message unchanged;
   // routing to the owner config happens via businessOwnerUsername in getChatConfig.
-  // persistentChatAction is stubbed because a bare sendChatAction has no
-  // business_connection_id and would target the wrong surface.
+  // persistentChatAction is shadowed to undefined (not deleted): Object.create
+  // below inherits the real Telegraf Context.prototype, which DOES define
+  // persistentChatAction — without this override it would resolve through the
+  // prototype chain to the real implementation, calling sendChatAction without a
+  // business_connection_id and targeting the wrong surface. Shadowing it makes
+  // withChatAction (via onTextMessage) see no persistentChatAction and just run fn.
   const own = { writable: true, configurable: true };
   const syntheticCtx = Object.create(Object.getPrototypeOf(ctx), {
     ...Object.getOwnPropertyDescriptors(ctx),
     message: { value: bm, ...own },
     update: { value: { ...ctx.update, message: bm }, ...own },
-    persistentChatAction: {
-      value: async (_action: string, cb: () => Promise<void>) => {
-        await cb();
-      },
-      ...own,
-    },
+    persistentChatAction: { value: undefined, ...own },
     businessConnectionId: { value: connectionId, ...own },
     businessOwnerUsername: { value: info.ownerUsername, ...own },
   }) as BusinessCtx;

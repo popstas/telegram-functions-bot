@@ -9,6 +9,7 @@ import { createNewContext } from "../telegram/context.ts";
 import { log } from "../helpers.ts";
 import onTextMessage from "../handlers/onTextMessage.ts";
 import { getErrorDescription } from "../telegram/errors.ts";
+import { withChatAction } from "../telegram/chatAction.ts";
 
 export type ImageMessage = Message.PhotoMessage | Message.DocumentMessage;
 
@@ -134,5 +135,5 @@ export async function processImageMessage(
     await onTextMessage(contextWithNewMessage);
   };
 
-  await ctx.persistentChatAction(uploadAction, run);
+  await withChatAction(ctx, uploadAction, run);
 }

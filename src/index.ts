@@ -360,11 +360,6 @@ async function telegramPostHandler(req: express.Request, res: express.Response) 
     chat: virtualCtx.chat,
     message: virtualMessage,
     botInfo: lastCtx?.botInfo || { username: useConfig().bot_name },
-    // replace to fake action
-    persistentChatAction: async (_action: string, callback: () => Promise<void>) => {
-      log({ msg: `persistentChatAction stub` });
-      return await callback();
-    },
   } as Context & {
     expressRes?: Express.Response;
   };
