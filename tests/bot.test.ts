@@ -1,15 +1,21 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 
 const botInstances: FakeBot[] = [];
+const failOnInit = new Set<string>();
 class FakeBot {
   token: string;
   options: unknown;
   api = { config: { use: jest.fn() } };
-  init = jest.fn(async () => {});
+  init: jest.Mock;
   stop = jest.fn(async () => {});
   constructor(token: string, options?: unknown) {
     this.token = token;
     this.options = options;
+    this.init = failOnInit.has(token)
+      ? jest.fn(async () => {
+          throw new Error("init failed");
+        })
+      : jest.fn(async () => {});
     botInstances.push(this);
   }
 }
@@ -95,5 +101,23 @@ describe("useBot (grammy)", () => {
     expect(inst.stop).toHaveBeenCalled();
 
     onceSpy.mockRestore();
+  });
+
+  it("cleans up registries on init failure and allows a fresh retry", async () => {
+    failOnInit.add("tok-fail");
+    useBot("tok-fail");
+    const failedCount = botInstances.filter((b) => b.token === "tok-fail").length;
+    expect(failedCount).toBe(1);
+
+    await expect(botReady("tok-fail")).rejects.toThrow("init failed");
+
+    expect(getBots()["tok-fail"]).toBeUndefined();
+
+    failOnInit.delete("tok-fail");
+    const retried = useBot("tok-fail");
+    const matching = botInstances.filter((b) => b.token === "tok-fail");
+    expect(matching).toHaveLength(2);
+    expect(retried).toBe(matching[1]);
+    await expect(botReady("tok-fail")).resolves.toBeUndefined();
   });
 });
