@@ -200,6 +200,54 @@ describe("onBusinessMessage", () => {
     expect(mockOnTextMessage).not.toHaveBeenCalled();
   });
 
+  it("shadows persistentChatAction on the synthetic ctx even when the real prototype defines it", async () => {
+    // Regression test: a real Telegraf ctx's prototype carries persistentChatAction
+    // as a method. The synthetic ctx built via Object.create(Object.getPrototypeOf(ctx), ...)
+    // inherits that prototype, so onBusinessMessage must explicitly shadow
+    // persistentChatAction with `{ value: undefined }` — otherwise withChatAction
+    // (invoked from onTextMessage) would resolve the real implementation through the
+    // prototype chain and call sendChatAction without a business_connection_id.
+    class FakeContext {
+      async persistentChatAction(): Promise<void> {
+        throw new Error("real persistentChatAction must not be called");
+      }
+    }
+    const connCtx = {
+      update: {
+        business_connection: {
+          id: "conn1",
+          user: { username: "popstas" },
+          can_reply: true,
+          is_enabled: true,
+        },
+      },
+    } as unknown as Context;
+    await mod.onBusinessConnection(connCtx);
+
+    const ctx = Object.assign(new FakeContext(), {
+      update: {
+        business_message: {
+          text: "hi",
+          message_id: 7,
+          chat: { id: 42, type: "private" },
+          from: { username: "customer" },
+          business_connection_id: "conn1",
+        },
+      },
+      telegram: { callApi: jest.fn() },
+      botInfo: { username: "bot" },
+    }) as unknown as Context;
+
+    await mod.onBusinessMessage(ctx);
+
+    expect(mockOnTextMessage).toHaveBeenCalledTimes(1);
+    const syntheticCtx = mockOnTextMessage.mock.calls[0][0] as { persistentChatAction?: unknown };
+    // The prototype (FakeContext.prototype) defines persistentChatAction as a
+    // function; the own-property shadow must win so it reads as undefined here.
+    expect(typeof syntheticCtx.persistentChatAction).not.toBe("function");
+    expect(syntheticCtx.persistentChatAction).toBeUndefined();
+  });
+
   it("ignores the bot's own sent messages (sender_business_bot)", async () => {
     const connCtx = {
       update: {

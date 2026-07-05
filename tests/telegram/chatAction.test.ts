@@ -25,4 +25,19 @@ describe("withChatAction (telegraf phase)", () => {
       }),
     ).rejects.toThrow("boom");
   });
+  it("propagates fn rejection through ctx.persistentChatAction", async () => {
+    const calls: string[] = [];
+    const ctx = {
+      persistentChatAction: async (action: string, cb: () => Promise<void>) => {
+        calls.push(action);
+        await cb(); // Telegraf awaits the callback; rejection inside must not escape here unhandled
+      },
+    };
+    await expect(
+      withChatAction(ctx, "typing", async () => {
+        throw new Error("boom-delegate");
+      }),
+    ).rejects.toThrow("boom-delegate");
+    expect(calls).toEqual(["typing"]);
+  });
 });
