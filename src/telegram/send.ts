@@ -14,13 +14,7 @@ import { Context, Input } from "telegraf";
 import { log } from "../helpers.ts";
 import telegramifyMarkdown from "telegramify-markdown";
 import { splitBigMessage } from "../utils/text.ts";
-
-interface TelegramError extends Error {
-  response?: {
-    error_code: number;
-    description: string;
-  };
-}
+import { isBlockedByUser, getErrorDescription } from "./errors.ts";
 
 export type ForwardOrigin = {
   type: "user" | "hidden_user";
@@ -148,18 +142,17 @@ export async function sendTelegramMessage(
     try {
       response = await useBot(chatConfig.bot_token).telegram.sendMessage(chat_id, msg, params);
     } catch (e: unknown) {
-      const error = e as TelegramError;
       // Fallback: if error is 'bot was blocked by the user', handle gracefully
       log({
-        msg: `Error sending message to user ${chat_id}: ${error.response?.description || "Unknown error"}, msg: ${msg}`,
+        msg: `Error sending message to user ${chat_id}: ${getErrorDescription(e)}, msg: ${msg}`,
         chatId: chat_id,
         chatTitle: chatConfig.name,
         logLevel: "warn",
       });
-      if (error?.response?.error_code === 403) {
+      if (isBlockedByUser(e)) {
         // Telegram error 403: bot was blocked by the user
         log({
-          msg: `User ${chat_id} blocked the bot. Error: ${error.response?.description || "Unknown error"}`,
+          msg: `User ${chat_id} blocked the bot. Error: ${getErrorDescription(e)}`,
           chatId: chat_id,
           logLevel: "warn",
         });
@@ -372,11 +365,8 @@ export async function sendTelegramDocument(
     const response = await useBot(chatConfig?.bot_token).telegram.sendDocument(chat_id, document);
     return response as unknown as Message.DocumentMessage;
   } catch (e: unknown) {
-    const error = e as TelegramError;
     log({
-      msg: `Error sending document to user ${chat_id}: ${
-        error.response?.description || "Unknown error"
-      }`,
+      msg: `Error sending document to user ${chat_id}: ${getErrorDescription(e)}`,
       chatId: chat_id,
       logLevel: "warn",
     });

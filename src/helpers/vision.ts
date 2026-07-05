@@ -8,6 +8,7 @@ import { sendTelegramMessage } from "../telegram/send.ts";
 import { createNewContext } from "../telegram/context.ts";
 import { log } from "../helpers.ts";
 import onTextMessage from "../handlers/onTextMessage.ts";
+import { getErrorDescription } from "../telegram/errors.ts";
 
 export type ImageMessage = Message.PhotoMessage | Message.DocumentMessage;
 
@@ -28,8 +29,8 @@ export async function recognizeImageText(
   try {
     link = await useBot(chatConfig.bot_token).telegram.getFileLink(fileId);
   } catch (error) {
-    const err = error as Error;
-    if (err.message.includes("wrong file_id") || err.message.includes("temporarily unavailable")) {
+    const d = getErrorDescription(error);
+    if (d.includes("wrong file_id") || d.includes("temporarily unavailable")) {
       throw new Error("Не удалось получить изображение.");
     }
     throw error;

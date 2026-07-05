@@ -24,6 +24,7 @@ import { useMqtt, shutdownMqtt } from "./mqtt.ts";
 import { healthHandler } from "./healthcheck.ts";
 import { completePendingAuth } from "./mcp-auth.ts";
 import { registerConfirmActions } from "./telegram/confirm.ts";
+import { isInvalidToken } from "./telegram/errors.ts";
 
 let activeBots: Telegraf[] = [];
 let httpServer: http.Server | null = null;
@@ -200,8 +201,7 @@ async function launchBot(bot_token: string, bot_name: string) {
     return bot;
   } catch (error: unknown) {
     if (error && typeof error === "object" && "response" in error) {
-      const errorWithResponse = error as { response?: { statusCode?: number } };
-      if (errorWithResponse.response?.statusCode === 401) {
+      if (isInvalidToken(error)) {
         log({
           msg: `[${bot_name}] Error: Invalid bot token (401 Unauthorized). Please check your bot token in the config.`,
           logLevel: "error",

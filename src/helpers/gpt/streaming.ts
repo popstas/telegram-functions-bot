@@ -5,16 +5,7 @@ import { Message } from "telegraf/types";
 import { useBot } from "../../bot.ts";
 import { splitBigMessage } from "../../utils/text.ts";
 import telegramifyMarkdown from "telegramify-markdown";
-
-export function getRetryAfter(error: unknown) {
-  const e = error as {
-    response?: { error_code?: number; parameters?: { retry_after?: number } };
-  };
-  if (e?.response?.error_code === 429 && e.response.parameters?.retry_after) {
-    return e.response.parameters.retry_after * 1000;
-  }
-  return undefined;
-}
+import { getRetryAfterMs } from "../../telegram/errors.ts";
 
 export async function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -29,7 +20,7 @@ export async function safeSend(
     try {
       return (await bot.telegram.sendMessage(chatId, text)) as Message.TextMessage;
     } catch (err) {
-      const wait = getRetryAfter(err);
+      const wait = getRetryAfterMs(err);
       if (wait) {
         await delay(wait);
         continue;
@@ -50,7 +41,7 @@ export async function safeEdit(
       await bot.telegram.editMessageText(m.chat.id, m.message_id, undefined, text);
       return;
     } catch (err) {
-      const wait = getRetryAfter(err);
+      const wait = getRetryAfterMs(err);
       if (wait) {
         await delay(wait);
         continue;
@@ -81,7 +72,7 @@ export async function safeSendDraft(
       });
       return;
     } catch (err) {
-      const wait = getRetryAfter(err);
+      const wait = getRetryAfterMs(err);
       if (wait) {
         await delay(wait);
         continue;
@@ -101,7 +92,7 @@ export async function safeDelete(
       await bot.telegram.deleteMessage(m.chat.id, m.message_id);
       return;
     } catch (err) {
-      const wait = getRetryAfter(err);
+      const wait = getRetryAfterMs(err);
       if (wait) {
         await delay(wait);
         continue;
