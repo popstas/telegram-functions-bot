@@ -1,6 +1,6 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import type { Context } from "telegraf";
-import type { Message, Update } from "telegraf/types";
+import type { Message, Update } from "grammy/types";
 import type { ConfigChatType } from "../../src/types.ts";
 import { createNewContext } from "../../src/telegram/context.ts";
 

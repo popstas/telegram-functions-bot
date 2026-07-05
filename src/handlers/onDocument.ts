@@ -1,5 +1,5 @@
 import { Context } from "telegraf";
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import checkAccessLevel from "./access.ts";
 import onTextMessage from "./onTextMessage.ts";
 import onUnsupported from "./onUnsupported.ts";

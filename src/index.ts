@@ -1,6 +1,6 @@
 import { Context } from "telegraf";
 import { message, editedMessage } from "telegraf/filters";
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import type http from "node:http";
 import { useConfig, validateConfig, watchConfigChanges } from "./config.ts";
 import { initCommands, handleAddChat, registerCommandActions } from "./commands.ts";

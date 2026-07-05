@@ -2,7 +2,7 @@ import { useThreads } from "../threads.ts";
 import { OAuth2Client, Credentials, GoogleAuth } from "google-auth-library";
 import fs from "fs";
 import { useConfig } from "../config.ts";
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import http from "http";
 import url from "url";
 import { ThreadStateType } from "../types.ts";

@@ -2,7 +2,7 @@ import { readConfig } from "./config.ts";
 import { requestGptAnswer } from "./helpers/gpt/llm.ts";
 import { ConfigChatType } from "./types.ts";
 import { Context } from "telegraf";
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import { addToHistory, forgetHistoryOnTimeout } from "./helpers/history.ts";
 import { log } from "./helpers.ts";
 import { agentNameToId } from "./helpers.ts";

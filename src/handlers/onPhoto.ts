@@ -1,5 +1,5 @@
 import { Context } from "telegraf";
-import { Message, Update } from "telegraf/types";
+import { Message, Update } from "grammy/types";
 import onTextMessage from "./onTextMessage.ts";
 import checkAccessLevel from "./access.ts";
 import { processImageMessage } from "../helpers/vision.ts";

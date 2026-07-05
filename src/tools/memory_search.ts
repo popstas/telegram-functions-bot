@@ -2,7 +2,7 @@ import { aiFunction, AIFunctionsProvider } from "@agentic/core";
 import { z } from "zod";
 import type { ConfigChatType, ToolResponse, ThreadStateType } from "../types.ts";
 import { previewEmbedding, searchEmbedding } from "../helpers/embeddings.ts";
-import type { Message } from "telegraf/types";
+import type { Message } from "grammy/types";
 
 export const description = "Search stored chat memory";
 export const details = `- searches vector memory for similar snippets\n- dbPath: toolParams.vector_memory.dbPath`;

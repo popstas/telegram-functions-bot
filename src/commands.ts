@@ -1,5 +1,5 @@
 import { Telegraf, Context } from "telegraf";
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import { ConfigChatType, ChatToolType, ToolParamsType, ToolBotType } from "./types.ts";
 import { generatePrivateChatConfig, useConfig, writeConfig, readConfig } from "./config.ts";
 import { getActionUserMsg, getCtxChatMsg } from "./telegram/context.ts";

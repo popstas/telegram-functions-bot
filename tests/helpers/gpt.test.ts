@@ -7,7 +7,7 @@ import {
   ThreadStateType,
   ToolResponse,
 } from "../../src/types.ts";
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import { OpenAI } from "openai";
 
 // Suppress console.info in tests

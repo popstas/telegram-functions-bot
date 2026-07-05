@@ -1,6 +1,6 @@
 import { Langfuse, LangfuseTraceClient } from "langfuse";
 import { useConfig } from "../config.ts";
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import { ConfigChatType } from "../types.ts";
 
 let langfuse: Langfuse;

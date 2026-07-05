@@ -1,6 +1,6 @@
 import type express from "express";
 import { Context } from "telegraf";
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import { useConfig } from "./config.ts";
 import { log, stringToId } from "./helpers.ts";
 import { requestGptAnswer } from "./helpers/gpt/llm.ts";

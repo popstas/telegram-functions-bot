@@ -7,7 +7,7 @@ import {
 } from "../placeholders.ts";
 import express, { Response } from "express";
 import { Context } from "telegraf";
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import type { TitleChat } from "../../telegram/updateTypes.ts";
 import {
   ConfigChatType,

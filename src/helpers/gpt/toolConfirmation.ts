@@ -1,4 +1,4 @@
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 
 import { ConfigChatType } from "../../types.ts";
 

@@ -1,5 +1,5 @@
 import * as Express from "express";
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import type { TitleChat } from "../../telegram/updateTypes.ts";
 import OpenAI from "openai";
 import type { ChatCompletionMessageToolCall } from "openai/resources/chat/completions";

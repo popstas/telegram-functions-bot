@@ -1,5 +1,5 @@
 import { Context } from "telegraf";
-import { Chat, Message, User } from "telegraf/types";
+import { Chat, Message, User } from "grammy/types";
 import type { MessageReactionUpdate } from "../telegram/updateTypes.ts";
 
 type ReactionUpdate = NonNullable<MessageReactionUpdate["message_reaction"]>;

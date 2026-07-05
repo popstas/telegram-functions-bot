@@ -1,4 +1,4 @@
-import { Chat, Message, User } from "telegraf/types";
+import { Chat, Message, User } from "grammy/types";
 import { Context } from "telegraf";
 import { useConfig } from "../config.ts";
 import { log } from "../helpers.ts";

@@ -1,6 +1,6 @@
 import { Context } from "telegraf";
-import type { InlineQueryResultArticle } from "telegraf/types";
-import type { Message } from "telegraf/types";
+import type { InlineQueryResultArticle } from "grammy/types";
+import type { Message } from "grammy/types";
 import type { ChosenInlineResultUpdate } from "../telegram/updateTypes.ts";
 import { useConfig } from "../config.ts";
 import { log } from "../helpers.ts";

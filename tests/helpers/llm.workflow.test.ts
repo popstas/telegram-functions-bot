@@ -1,5 +1,5 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import type { Message } from "telegraf/types";
+import type { Message } from "grammy/types";
 import type { ConfigChatType, GptContextType } from "../../src/types.ts";
 import OpenAI from "openai";
 

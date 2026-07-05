@@ -1,5 +1,5 @@
 import { Context } from "telegraf";
-import { Message, ReplyKeyboardMarkup } from "telegraf/types";
+import { Message, ReplyKeyboardMarkup } from "grammy/types";
 import type { TitleChat } from "../telegram/updateTypes.ts";
 import { useThreads } from "../threads.ts";
 import { ConfigChatType, ThreadStateType } from "../types.ts";

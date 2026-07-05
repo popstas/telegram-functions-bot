@@ -1,5 +1,5 @@
 import { Context } from "telegraf";
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import type { TitleChat } from "../telegram/updateTypes.ts";
 import OpenAI from "openai";
 import {

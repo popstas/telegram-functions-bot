@@ -5,7 +5,7 @@ import {
   ReplyKeyboardMarkup,
   ReplyKeyboardRemove,
   ForceReply,
-} from "telegraf/types";
+} from "grammy/types";
 import { useBot } from "../bot.ts";
 import { useConfig } from "../config.ts";
 import { includesUser } from "../utils/users.ts";

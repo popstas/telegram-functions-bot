@@ -1,7 +1,7 @@
 import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import type { ChatCompletionChunk } from "openai/resources/chat/completions/completions";
 import type { ChatCompletionStream } from "openai/lib/ChatCompletionStream.js";
-import type { Message } from "telegraf/types";
+import type { Message } from "grammy/types";
 import type { ConfigChatType } from "../../src/types.ts";
 
 const telegramMock = {

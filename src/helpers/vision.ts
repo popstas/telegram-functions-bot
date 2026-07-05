@@ -1,5 +1,5 @@
 import { Context } from "telegraf";
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import { useBot } from "../bot.ts";
 import { llmCall } from "./gpt.ts";
 import { useConfig } from "../config.ts";

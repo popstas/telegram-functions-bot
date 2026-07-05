@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { jest, describe, it, expect, beforeEach, beforeAll } from "@jest/globals";
-import type { Message } from "telegraf/types";
+import type { Message } from "grammy/types";
 import type { ConfigChatType, GptContextType, ToolResponse } from "../../src/types.ts";
 
 const mockExecuteTools = jest.fn();

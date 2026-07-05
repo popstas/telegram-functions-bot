@@ -1,5 +1,5 @@
 import { Context } from "telegraf";
-import type { Message } from "telegraf/types";
+import type { Message } from "grammy/types";
 import { log } from "../helpers.ts";
 import onTextMessage, { noteSecretaryHumanReply } from "./onTextMessage.ts";
 

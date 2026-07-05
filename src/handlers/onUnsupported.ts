@@ -1,6 +1,6 @@
 import checkAccessLevel from "./access.ts";
 import { Context } from "telegraf";
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import { sendTelegramMessage } from "../telegram/send.ts";
 
 type SupportedMediaMessage =

@@ -8,7 +8,7 @@ import { sendTelegramMessage } from "../telegram/send.ts";
 import { convertToMp3, sendAudioWhisper } from "../helpers/stt.ts";
 import { useConfig } from "../config.ts";
 import { log } from "../helpers.ts";
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import { prettyText } from "../utils/text.ts";
 import { withChatAction } from "../telegram/chatAction.ts";
 

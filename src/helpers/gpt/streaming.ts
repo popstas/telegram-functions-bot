@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { convertResponsesOutput } from "./responsesApi.ts";
 import type { ConfigChatType } from "../../types.ts";
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import { useBot } from "../../bot.ts";
 import { splitBigMessage } from "../../utils/text.ts";
 import telegramifyMarkdown from "telegramify-markdown";

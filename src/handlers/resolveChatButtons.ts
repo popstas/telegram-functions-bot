@@ -1,5 +1,5 @@
 import { Context } from "telegraf";
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import { ConfigChatButtonType, ConfigChatType, ThreadStateType } from "../types.ts";
 import { sendTelegramMessage } from "../telegram/send.ts";
 

@@ -1,4 +1,4 @@
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import OpenAI from "openai";
 import { GoogleAuth, OAuth2Client } from "google-auth-library";
 import type { CredentialBody } from "google-auth-library";
