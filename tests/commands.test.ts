@@ -1,6 +1,6 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import type { Message } from "grammy/types";
-import type { Context } from "telegraf";
+import type { BotContext } from "../src/telegram/botContext.ts";
 import type { ConfigChatType } from "../src/types.ts";
 
 const mockUseTools = jest.fn();
@@ -40,7 +40,7 @@ jest.unstable_mockModule("../src/telegram/send.ts", () => ({
 }));
 
 function createFakeBot() {
-  return { action: jest.fn() };
+  return { command: jest.fn(), callbackQuery: jest.fn() };
 }
 
 let config: unknown;
@@ -286,10 +286,10 @@ describe("registerCommandActions", () => {
     commands.registerCommandActions(
       fakeBot as unknown as Parameters<typeof commands.registerCommandActions>[0],
     );
-    const toolCall = fakeBot.action.mock.calls.find(([re]) =>
+    const toolCall = fakeBot.callbackQuery.mock.calls.find(([re]) =>
       (re as RegExp).source.startsWith("^add_tool_"),
     );
-    const skillCall = fakeBot.action.mock.calls.find(([re]) =>
+    const skillCall = fakeBot.callbackQuery.mock.calls.find(([re]) =>
       (re as RegExp).source.startsWith("^add_skill_"),
     );
     addToolHandler = toolCall![1] as (ctx: unknown) => Promise<void>;
@@ -302,34 +302,34 @@ describe("registerCommandActions", () => {
         { name: "foo", module: { description: "Foo", defaultParams: { p: 1 } } },
       ]);
       const ctxReply = jest.fn();
-      const answerCbQuery = jest.fn();
+      const answerCallbackQuery = jest.fn();
       await addToolHandler({
         match: ["add_tool_foo", "foo"],
         chat: { id: 2, type: "private" },
         reply: ctxReply,
-        answerCbQuery,
+        answerCallbackQuery,
         update: { callback_query: { from: { username: "admin" }, message: { chat: { id: 2 } } } },
       });
       expect(config.chats[0].tools).toContain("foo");
       expect(config.chats[0].toolParams).toEqual({ p: 1 });
       expect(ctxReply).toHaveBeenCalledWith(expect.stringContaining("Tool added: foo"));
       expect(mockWriteConfig).toHaveBeenCalled();
-      expect(answerCbQuery).toHaveBeenCalledWith();
-      expect(answerCbQuery).toHaveBeenCalledTimes(1);
+      expect(answerCallbackQuery).toHaveBeenCalledWith();
+      expect(answerCallbackQuery).toHaveBeenCalledTimes(1);
     });
 
     it("answers 'Unknown tool' for a stale button and does not write config", async () => {
       mockUseTools.mockResolvedValue([]);
-      const answerCbQuery = jest.fn();
+      const answerCallbackQuery = jest.fn();
       await addToolHandler({
         match: ["add_tool_nonexistent", "nonexistent"],
         chat: { id: 2, type: "private" },
         reply: jest.fn(),
-        answerCbQuery,
+        answerCallbackQuery,
         update: { callback_query: { from: { username: "admin" }, message: { chat: { id: 2 } } } },
       });
-      expect(answerCbQuery).toHaveBeenCalledWith("Unknown tool");
-      expect(answerCbQuery).toHaveBeenCalledTimes(1);
+      expect(answerCallbackQuery).toHaveBeenCalledWith("Unknown tool");
+      expect(answerCallbackQuery).toHaveBeenCalledTimes(1);
       expect(mockWriteConfig).not.toHaveBeenCalled();
     });
   });
@@ -338,32 +338,32 @@ describe("registerCommandActions", () => {
     it("adds skill to chat config and answers the callback query", async () => {
       mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
       const ctxReply = jest.fn();
-      const answerCbQuery = jest.fn();
+      const answerCallbackQuery = jest.fn();
       await addSkillHandler({
         match: ["add_skill_skill_greet", "skill_greet"],
         chat: { id: 2, type: "private" },
         reply: ctxReply,
-        answerCbQuery,
+        answerCallbackQuery,
         update: { callback_query: { from: { username: "admin" }, message: { chat: { id: 2 } } } },
       });
       expect(config.chats[0].tools).toContain("skill_greet");
       expect(ctxReply).toHaveBeenCalledWith("Skill added: skill_greet");
       expect(mockWriteConfig).toHaveBeenCalled();
-      expect(answerCbQuery).toHaveBeenCalledWith();
+      expect(answerCallbackQuery).toHaveBeenCalledWith();
     });
 
     it("answers 'Unknown skill' for a stale button and does not write config", async () => {
       mockLoadSkills.mockReturnValue([]);
-      const answerCbQuery = jest.fn();
+      const answerCallbackQuery = jest.fn();
       await addSkillHandler({
         match: ["add_skill_nonexistent", "nonexistent"],
         chat: { id: 2, type: "private" },
         reply: jest.fn(),
-        answerCbQuery,
+        answerCallbackQuery,
         update: { callback_query: { from: { username: "admin" }, message: { chat: { id: 2 } } } },
       });
-      expect(answerCbQuery).toHaveBeenCalledWith("Unknown skill");
-      expect(answerCbQuery).toHaveBeenCalledTimes(1);
+      expect(answerCallbackQuery).toHaveBeenCalledWith("Unknown skill");
+      expect(answerCallbackQuery).toHaveBeenCalledTimes(1);
       expect(mockWriteConfig).not.toHaveBeenCalled();
     });
 
@@ -375,7 +375,7 @@ describe("registerCommandActions", () => {
         match: ["add_skill_skill_greet", "skill_greet"],
         chat: { id: 2, type: "private" },
         reply: ctxReply,
-        answerCbQuery: jest.fn(),
+        answerCallbackQuery: jest.fn(),
         update: {
           callback_query: { from: { username: "intruder" }, message: { chat: { id: 2 } } },
         },
@@ -399,7 +399,7 @@ describe("registerCommandActions", () => {
         match: ["add_skill_skill_greet", "skill_greet"],
         chat: { id: 2, type: "supergroup" },
         reply: ctxReply,
-        answerCbQuery: jest.fn(),
+        answerCallbackQuery: jest.fn(),
         update: { callback_query: { from: { username: "admin" }, message: { chat: { id: 2 } } } },
       });
       expect(config.chats[0].tools).toContain("skill_greet");
@@ -414,7 +414,7 @@ describe("registerCommandActions", () => {
         match: ["add_skill_skill_greet", "skill_greet"],
         chat: { id: 999, type: "supergroup" },
         reply: ctxReply,
-        answerCbQuery: jest.fn(),
+        answerCallbackQuery: jest.fn(),
         update: { callback_query: { from: { username: "admin" }, message: { chat: { id: 999 } } } },
       });
       expect(ctxReply).toHaveBeenCalledWith("Chat not found in config");
@@ -435,7 +435,7 @@ describe("registerCommandActions", () => {
         match: ["add_skill_skill_greet", "skill_greet"],
         chat: { id: 2, type: "private" },
         reply: ctxReply,
-        answerCbQuery: jest.fn(),
+        answerCallbackQuery: jest.fn(),
         update: { callback_query: { from: { username: "admin" }, message: { chat: { id: 2 } } } },
       });
       expect(config.chats[0].tools).toEqual(["skill_greet"]);
@@ -448,7 +448,7 @@ describe("registerCommandActions", () => {
 describe("handleAddSkill", () => {
   it("delegates to commandAddSkill", async () => {
     mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
-    const ctx = { chat: { id: 1 } } as unknown as Context;
+    const ctx = { chat: { id: 1 } } as unknown as BotContext;
     const msg = createMsg("admin");
     const chat = {
       bot_token: "t",
@@ -501,7 +501,7 @@ describe("getInfoMessage", () => {
 
 describe("handleForget", () => {
   it("forgets history and sends ok", async () => {
-    const ctx = { chat: { id: 1 } } as unknown as Context;
+    const ctx = { chat: { id: 1 } } as unknown as BotContext;
     mockSendTelegramMessage.mockResolvedValue("ok");
     await commands.handleForget(ctx);
     expect(mockForgetHistory).toHaveBeenCalledWith(1);
@@ -511,7 +511,7 @@ describe("handleForget", () => {
 
 describe("handleInfo", () => {
   it("sends info message", async () => {
-    const ctx = { chat: { id: 1 } } as unknown as Context;
+    const ctx = { chat: { id: 1 } } as unknown as BotContext;
     const msg = createMsg();
     const chat = {
       completionParams: {},
@@ -528,7 +528,7 @@ describe("handleInfo", () => {
 
 describe("handleGoogleAuth", () => {
   it("calls oauth when data present", async () => {
-    const ctx = { chat: { id: 1 } } as unknown as Context;
+    const ctx = { chat: { id: 1 } } as unknown as BotContext;
     const msg = createMsg();
     const chat = {} as ConfigChatType;
     mockGetCtxChatMsg.mockReturnValue({ msg, chat });
@@ -539,7 +539,7 @@ describe("handleGoogleAuth", () => {
 
 describe("handleAddTool", () => {
   it("delegates to commandAddTool", async () => {
-    const ctx = { chat: { id: 1 } } as unknown as Context;
+    const ctx = { chat: { id: 1 } } as unknown as BotContext;
     const msg = createMsg("admin");
     const chat = {
       completionParams: {},
@@ -557,7 +557,7 @@ describe("handleAddChat", () => {
     const ctx = {
       chat: { id: 5, title: "t" },
       reply: jest.fn(),
-    } as unknown as Context;
+    } as unknown as BotContext;
     await commands.handleAddChat(ctx);
     expect(config.chats[0]).toEqual({ name: "t", id: 5 });
     expect(mockWriteConfig).toHaveBeenCalledWith(undefined, config);
@@ -566,14 +566,34 @@ describe("handleAddChat", () => {
 });
 
 describe("handleStart", () => {
-  it("stores vars from deeplink", async () => {
+  it("stores vars from deeplink via ctx.match", async () => {
     const ctx = {
       chat: { id: 1 },
-      startPayload: Buffer.from("from:pop").toString("base64"),
-    } as unknown as Context & {
-      startPayload?: string;
-    };
+      match: Buffer.from("from:pop").toString("base64"),
+    } as unknown as BotContext;
     const msg = createMsg();
+    const chat: ConfigChatType = {
+      id: 1,
+      completionParams: {},
+      chatParams: {},
+      toolParams: {},
+      deeplinks: [{ name: "from" }],
+    } as ConfigChatType;
+    mockGetCtxChatMsg.mockReturnValue({ msg, chat });
+    (config as { chats: ConfigChatType[] }).chats.push(chat);
+    await commands.handleStart(ctx);
+    expect(mockReadConfig).toHaveBeenCalled();
+    expect(mockWriteConfig).toHaveBeenCalledWith(undefined, config);
+    expect((config as { chats: ConfigChatType[] }).chats[0].user_vars?.[0]).toEqual({
+      username: "user",
+      vars: { from: "pop" },
+    });
+  });
+
+  it("stores vars from deeplink via message text fallback", async () => {
+    const ctx = { chat: { id: 1 } } as unknown as BotContext;
+    const payload = Buffer.from("from:pop").toString("base64");
+    const msg = { ...createMsg(), text: `/start ${payload}` };
     const chat: ConfigChatType = {
       id: 1,
       completionParams: {},

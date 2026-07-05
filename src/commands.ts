@@ -1,5 +1,6 @@
-import { Telegraf, Context } from "telegraf";
+import { Bot } from "grammy";
 import { Message } from "grammy/types";
+import type { BotContext } from "./telegram/botContext.ts";
 import { ConfigChatType, ChatToolType, ToolParamsType, ToolBotType } from "./types.ts";
 import { generatePrivateChatConfig, useConfig, writeConfig, readConfig } from "./config.ts";
 import { getActionUserMsg, getCtxChatMsg } from "./telegram/context.ts";
@@ -11,37 +12,37 @@ import useTools from "./helpers/useTools.ts";
 import { loadSkills, skillToolName } from "./helpers/skills.ts";
 import { includesUser } from "./utils/users.ts";
 
-export async function handleForget(ctx: Context) {
+export async function handleForget(ctx: BotContext) {
   forgetHistory(ctx.chat!.id);
   return await sendTelegramMessage(ctx.chat!.id, "OK", undefined, ctx);
 }
 
-export async function handleInfo(ctx: Context) {
+export async function handleInfo(ctx: BotContext) {
   const { msg, chat }: { msg?: Message.TextMessage; chat?: ConfigChatType } = getCtxChatMsg(ctx);
   if (!chat || !msg) return;
   const answer = await getInfoMessage(msg, chat);
   return sendTelegramMessage(ctx.chat!.id, answer, undefined, ctx);
 }
 
-export async function handleGoogleAuth(ctx: Context) {
+export async function handleGoogleAuth(ctx: BotContext) {
   const { msg, chat }: { msg?: Message.TextMessage; chat?: ConfigChatType } = getCtxChatMsg(ctx);
   if (!chat || !msg) return;
   await commandGoogleOauth(msg);
 }
 
-export async function handleAddTool(ctx: Context) {
+export async function handleAddTool(ctx: BotContext) {
   const { msg, chat }: { msg?: Message.TextMessage; chat?: ConfigChatType } = getCtxChatMsg(ctx);
   if (!chat || !msg) return;
   await commandAddTool(msg, chat);
 }
 
-export async function handleAddSkill(ctx: Context) {
+export async function handleAddSkill(ctx: BotContext) {
   const { msg, chat }: { msg?: Message.TextMessage; chat?: ConfigChatType } = getCtxChatMsg(ctx);
   if (!chat || !msg) return;
   await commandAddSkill(msg, chat);
 }
 
-export async function handleAddChat(ctx: Context) {
+export async function handleAddChat(ctx: BotContext) {
   const chatId = ctx.chat?.id;
   const chatName = (ctx.chat as { title?: string })?.title || `Chat ${chatId}`;
   if (!chatId) return;
@@ -53,10 +54,11 @@ export async function handleAddChat(ctx: Context) {
   await ctx.reply(`Chat added: ${chatName}`);
 }
 
-export async function handleStart(ctx: Context) {
+export async function handleStart(ctx: BotContext) {
   const { msg, chat } = getCtxChatMsg(ctx);
   const rawPayload =
-    (ctx as unknown as { startPayload?: string }).startPayload || msg?.text?.split(" ")[1];
+    (typeof (ctx as { match?: unknown }).match === "string" && (ctx as { match?: string }).match) ||
+    msg?.text?.split(" ")[1];
   if (!msg || !chat || !rawPayload) return;
 
   const config = readConfig();
@@ -86,8 +88,8 @@ export async function handleStart(ctx: Context) {
   writeConfig(undefined, config);
 }
 
-export async function initCommands(bot: Telegraf) {
-  bot.start(handleStart);
+export async function initCommands(bot: Bot<BotContext>) {
+  bot.command("start", handleStart);
   bot.command("forget", handleForget);
 
   bot.command("info", handleInfo);
@@ -98,7 +100,7 @@ export async function initCommands(bot: Telegraf) {
 
   bot.command("add_skill", handleAddSkill);
 
-  await bot.telegram.setMyCommands([
+  await bot.api.setMyCommands([
     {
       command: "/forget",
       description: "Забыть историю сообщений",
@@ -128,7 +130,7 @@ const EXCLUDED_TOOLS = ["change_chat_settings", "memory_add", "memory_delete", "
  * Returns `true` when the handler already answered the callback query itself
  * (the Unknown-tool branch), so the caller must not answer it again.
  */
-async function handleAddToolAction(ctx: Context, toolName: string): Promise<boolean> {
+async function handleAddToolAction(ctx: BotContext, toolName: string): Promise<boolean> {
   const config = useConfig();
   const chatId = ctx.chat?.id;
   if (!chatId) return false;
@@ -140,7 +142,7 @@ async function handleAddToolAction(ctx: Context, toolName: string): Promise<bool
   const globalTools = await useTools();
   const tool = globalTools.find((t) => t.name === toolName);
   if (!tool) {
-    await ctx.answerCbQuery("Unknown tool");
+    await ctx.answerCallbackQuery("Unknown tool");
     return true;
   }
 
@@ -182,7 +184,7 @@ async function handleAddToolAction(ctx: Context, toolName: string): Promise<bool
  * Returns `true` when the handler already answered the callback query itself
  * (the Unknown-skill branch), so the caller must not answer it again.
  */
-async function handleAddSkillAction(ctx: Context, toolName: string): Promise<boolean> {
+async function handleAddSkillAction(ctx: BotContext, toolName: string): Promise<boolean> {
   const config = useConfig();
   const chatId = ctx.chat?.id;
   if (!chatId) return false;
@@ -194,7 +196,7 @@ async function handleAddSkillAction(ctx: Context, toolName: string): Promise<boo
 
   const skill = loadSkills().find((s) => skillToolName(s) === toolName);
   if (!skill) {
-    await ctx.answerCbQuery("Unknown skill");
+    await ctx.answerCallbackQuery("Unknown skill");
     return true;
   }
 
@@ -232,14 +234,14 @@ async function handleAddSkillAction(ctx: Context, toolName: string): Promise<boo
  * per bot at startup (launchBot) instead of one dynamic bot.action() per
  * tool/skill on every /add_tool or /add_skill invocation.
  */
-export function registerCommandActions(bot: Telegraf): void {
-  bot.action(/^add_tool_(.+)$/, async (ctx) => {
-    const answered = await handleAddToolAction(ctx, (ctx.match as RegExpExecArray)[1]);
-    if (!answered) await ctx.answerCbQuery();
+export function registerCommandActions(bot: Bot<BotContext>): void {
+  bot.callbackQuery(/^add_tool_(.+)$/, async (ctx) => {
+    const answered = await handleAddToolAction(ctx, ctx.match[1]);
+    if (!answered) await ctx.answerCallbackQuery();
   });
-  bot.action(/^add_skill_(.+)$/, async (ctx) => {
-    const answered = await handleAddSkillAction(ctx, (ctx.match as RegExpExecArray)[1]);
-    if (!answered) await ctx.answerCbQuery();
+  bot.callbackQuery(/^add_skill_(.+)$/, async (ctx) => {
+    const answered = await handleAddSkillAction(ctx, ctx.match[1]);
+    if (!answered) await ctx.answerCallbackQuery();
   });
 }
 

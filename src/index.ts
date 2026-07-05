@@ -128,10 +128,9 @@ async function launchBot(bot_token: string, bot_name: string) {
     bot.command("help", async (ctx) =>
       ctx.reply("https://github.com/popstas/telegram-functions-bot"),
     );
-    // Task 16 ports commands.ts; bridge the Telegraf-typed signatures for now.
-    await initCommands(bot as never);
+    await initCommands(bot);
     registerConfirmActions(bot);
-    registerCommandActions(bot as never);
+    registerCommandActions(bot);
 
     bot.on(["message:text", "edited_message:text"], onTextMessage);
     bot.on("message:photo", onPhoto);
