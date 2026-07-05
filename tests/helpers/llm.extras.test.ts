@@ -661,6 +661,14 @@ describe("requestGptAnswer", () => {
     expect(res?.content).toBe("a");
   });
 
+  it("does not throw when chatConfig has no chatParams", async () => {
+    const msg: Message.TextMessage = { ...baseMsg };
+    const configWithoutChatParams: ConfigChatType = { ...chatConfig };
+    delete configWithoutChatParams.chatParams;
+    const res = await requestGptAnswer(msg, configWithoutChatParams);
+    expect(res?.content).toBe("a");
+  });
+
   it("passes web_search_preview tool to API", async () => {
     const api = {
       responses: {

@@ -794,14 +794,14 @@ export async function requestGptAnswer(
   systemMessage = systemMessage.replace(/\{date}/g, date);
   systemMessage = await replaceUrlPlaceholders(
     systemMessage,
-    chatConfig.chatParams.placeholderCacheTime,
+    chatConfig.chatParams?.placeholderCacheTime,
   );
   systemMessage = await replaceToolPlaceholders(
     systemMessage,
     chatTools,
     chatConfig,
     thread,
-    chatConfig.chatParams.placeholderCacheTime,
+    chatConfig.chatParams?.placeholderCacheTime,
   );
   const userVars = chatConfig.user_vars?.find((u) => u.username === msg.from?.username)?.vars || {};
   systemMessage = replaceVarsPlaceholders(systemMessage, userVars);
