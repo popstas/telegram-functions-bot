@@ -1,4 +1,3 @@
-import { Context } from "telegraf";
 import { Message } from "grammy/types";
 import checkAccessLevel from "./access.ts";
 import onTextMessage from "./onTextMessage.ts";
@@ -6,8 +5,9 @@ import onUnsupported from "./onUnsupported.ts";
 import { processImageMessage } from "../helpers/vision.ts";
 import { log } from "../helpers.ts";
 import { createNewContext } from "../telegram/context.ts";
+import type { BotContext } from "../telegram/botContext.ts";
 
-export default async function onDocument(ctx: Context) {
+export default async function onDocument(ctx: BotContext) {
   if (!("message" in ctx.update)) return;
 
   const access = await checkAccessLevel(ctx);

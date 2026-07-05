@@ -55,11 +55,10 @@ function createCtx(message: Record<string, unknown>): Context {
   return {
     message,
     update: { message },
-    telegram: {
-      getFileLink: jest.fn().mockResolvedValue({ href: "http://file" }),
-    },
-    persistentChatAction: async (_: string, fn: () => Promise<void>) => {
-      await fn();
+    api: {
+      getFile: jest.fn(async () => ({ file_path: "voice/f.oga" })),
+      token: "tok",
+      sendChatAction: jest.fn().mockResolvedValue(undefined),
     },
   } as unknown as Context;
 }
@@ -98,22 +97,20 @@ describe("onAudio main", () => {
     );
   });
 
-  it("invokes persistentChatAction when supported", async () => {
+  it("invokes withChatAction (sendChatAction) when supported", async () => {
     const msg = {
       chat: { id: 1, type: "private", title: "t" },
       voice: { file_id: "v" },
     } as Message.VoiceMessage;
     mockCheckAccessLevel.mockResolvedValue({ msg });
     mockUseConfig.mockReturnValue({ stt: { whisperBaseUrl: "http://w" } });
-    const persistentChatAction = jest.fn(async (_: string, fn: () => Promise<void>) => {
-      await fn();
-    });
     const ctx = {
       ...createCtx(msg),
       chat: msg.chat,
-      persistentChatAction,
-    } as Context & { secondTry?: boolean };
+    } as Context;
     await onAudio(ctx);
-    expect(persistentChatAction).toHaveBeenCalledWith("typing", expect.any(Function));
+    const chatId = msg.chat.id;
+    const { api } = ctx as unknown as { api: { sendChatAction: jest.Mock } };
+    expect(api.sendChatAction).toHaveBeenCalledWith(chatId, "typing", undefined);
   });
 });

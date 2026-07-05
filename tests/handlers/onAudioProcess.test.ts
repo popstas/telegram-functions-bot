@@ -37,11 +37,9 @@ beforeAll(async () => {
 
 function createCtx(): Context {
   return {
-    telegram: {
-      getFileLink: jest.fn().mockResolvedValue({ href: "http://file" }),
-    },
-    persistentChatAction: async (_: string, fn: () => Promise<void>) => {
-      await fn();
+    api: {
+      getFile: jest.fn(async () => ({ file_path: "voice/f.oga" })),
+      token: "tok",
     },
     message: {} as Message,
     update: { message: {} } as unknown as { message: Message },

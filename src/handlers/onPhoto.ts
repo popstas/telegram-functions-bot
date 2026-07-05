@@ -1,4 +1,3 @@
-import { Context } from "telegraf";
 import { Message, Update } from "grammy/types";
 import onTextMessage from "./onTextMessage.ts";
 import checkAccessLevel from "./access.ts";
@@ -6,13 +5,14 @@ import { processImageMessage } from "../helpers/vision.ts";
 import { log } from "../helpers.ts";
 import { createNewContext } from "../telegram/context.ts";
 import type { MessageUpdate } from "../telegram/updateTypes.ts";
+import type { BotContext } from "../telegram/botContext.ts";
 
 // Type guard to check if update has a message
 function isMessageUpdate(update: Update): update is MessageUpdate {
   return "message" in update;
 }
 
-export default async function onPhoto(ctx: Context) {
+export default async function onPhoto(ctx: BotContext) {
   if (!("message" in ctx.update) || !isMessageUpdate(ctx.update)) {
     return; // Not a message update
   }
