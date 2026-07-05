@@ -74,7 +74,7 @@ describe("createRichDraftFlusher", () => {
     );
   });
 
-  it("finish() awaits in-flight flush, then clears via empty plain draft", async () => {
+  it("finish() awaits in-flight flush and never sends a clear draft", async () => {
     let release!: () => void;
     sendRichMessageDraft.mockImplementationOnce(
       () => new Promise<true>((r) => (release = () => r(true))),
@@ -90,10 +90,12 @@ describe("createRichDraftFlusher", () => {
     release();
     const { fullText } = await finishP;
     expect(fullText).toBe("slow");
-    expect(sendMessageDraft).toHaveBeenCalledWith(5, 1, "", undefined);
+    // An empty draft is a "Thinking…" placeholder, not a clear — it must never
+    // be sent: the final sendRichMessage persists the draft.
+    expect(sendMessageDraft).not.toHaveBeenCalled();
   });
 
-  it("finish() skips the clear when the stream ended before the first flush", async () => {
+  it("finish() sends nothing when the stream ended before the first flush", async () => {
     const f = createRichDraftFlusher(fakeBot, msg);
     f.add("short answer");
     const { fullText } = await f.finish(); // finish before the 2s tick
@@ -102,20 +104,10 @@ describe("createRichDraftFlusher", () => {
     expect(sendMessageDraft).not.toHaveBeenCalled();
   });
 
-  it("finish() skips the clear when nothing was ever added (tool-call-only round)", async () => {
+  it("finish() sends nothing when no deltas arrived (tool-call-only round)", async () => {
     const f = createRichDraftFlusher(fakeBot, msg);
     await f.finish();
     expect(sendRichMessageDraft).not.toHaveBeenCalled();
-    expect(sendMessageDraft).not.toHaveBeenCalled();
-  });
-
-  it("finish() skips the clear when every flush failed", async () => {
-    sendRichMessageDraft.mockRejectedValueOnce(new Error("TEXTDRAFT_PEER_INVALID"));
-    const f = createRichDraftFlusher(fakeBot, msg);
-    f.add("x");
-    await jest.advanceTimersByTimeAsync(2000);
-    await f.finish();
-    expect(sendRichMessageDraft).toHaveBeenCalledTimes(1);
     expect(sendMessageDraft).not.toHaveBeenCalled();
   });
 
