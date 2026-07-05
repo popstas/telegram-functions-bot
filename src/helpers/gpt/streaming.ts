@@ -19,6 +19,10 @@ export function createRichDraftFlusher(bot: ReturnType<typeof useBot>, msg: Mess
   let fullText = "";
   let flushTimeout: NodeJS.Timeout | undefined;
   let processing = true;
+  // Whether a rich draft was actually sent. Without this, finish() would send a
+  // clear-draft even when the stream ended before the first 2s flush (short
+  // answers, tool-call-only rounds), which briefly shows an empty draft bubble.
+  let painted = false;
   // In-flight flush guard: finish() must await it so a late flush can't repaint
   // the draft after the clear below (same invariant as the old draft flusher).
   let activeFlush: Promise<void> | undefined;
@@ -27,6 +31,7 @@ export function createRichDraftFlusher(bot: ReturnType<typeof useBot>, msg: Mess
     try {
       // 429s are retried by the auto-retry transformer installed in useBot().
       await bot.api.sendRichMessageDraft(msg.chat.id, draftId, { markdown: fullText }, threadOpts);
+      painted = true;
     } catch (err) {
       console.warn("sendRichMessageDraft failed", err);
     }
@@ -58,13 +63,15 @@ export function createRichDraftFlusher(bot: ReturnType<typeof useBot>, msg: Mess
       flushTimeout = undefined;
     }
     if (activeFlush) await activeFlush;
-    try {
-      // Clear the ephemeral draft (empty text allowed since Bot API 10.1); the
-      // persisted answer is sent by the normal rich send path. Smoke item 5
-      // verifies an empty plain draft clears a rich draft.
-      await bot.api.sendMessageDraft(msg.chat.id, draftId, "", threadOpts);
-    } catch (err) {
-      console.warn("sendMessageDraft clear failed", err);
+    if (painted) {
+      try {
+        // Clear the ephemeral draft (empty text allowed since Bot API 10.1); the
+        // persisted answer is sent by the normal rich send path. Smoke item 5
+        // verifies an empty plain draft clears a rich draft.
+        await bot.api.sendMessageDraft(msg.chat.id, draftId, "", threadOpts);
+      } catch (err) {
+        console.warn("sendMessageDraft clear failed", err);
+      }
     }
     return { fullText } as const;
   }

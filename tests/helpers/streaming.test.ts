@@ -93,6 +93,32 @@ describe("createRichDraftFlusher", () => {
     expect(sendMessageDraft).toHaveBeenCalledWith(5, 1, "", undefined);
   });
 
+  it("finish() skips the clear when the stream ended before the first flush", async () => {
+    const f = createRichDraftFlusher(fakeBot, msg);
+    f.add("short answer");
+    const { fullText } = await f.finish(); // finish before the 2s tick
+    expect(fullText).toBe("short answer");
+    expect(sendRichMessageDraft).not.toHaveBeenCalled();
+    expect(sendMessageDraft).not.toHaveBeenCalled();
+  });
+
+  it("finish() skips the clear when nothing was ever added (tool-call-only round)", async () => {
+    const f = createRichDraftFlusher(fakeBot, msg);
+    await f.finish();
+    expect(sendRichMessageDraft).not.toHaveBeenCalled();
+    expect(sendMessageDraft).not.toHaveBeenCalled();
+  });
+
+  it("finish() skips the clear when every flush failed", async () => {
+    sendRichMessageDraft.mockRejectedValueOnce(new Error("TEXTDRAFT_PEER_INVALID"));
+    const f = createRichDraftFlusher(fakeBot, msg);
+    f.add("x");
+    await jest.advanceTimersByTimeAsync(2000);
+    await f.finish();
+    expect(sendRichMessageDraft).toHaveBeenCalledTimes(1);
+    expect(sendMessageDraft).not.toHaveBeenCalled();
+  });
+
   it("swallows draft errors and keeps streaming", async () => {
     sendRichMessageDraft.mockRejectedValueOnce(new Error("boom"));
     const f = createRichDraftFlusher(fakeBot, msg);
