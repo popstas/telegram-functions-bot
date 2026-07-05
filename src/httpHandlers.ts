@@ -1,5 +1,5 @@
 import type express from "express";
-import { Context } from "telegraf";
+import type { BotContext } from "./telegram/botContext.ts";
 import { Message } from "grammy/types";
 import { useConfig } from "./config.ts";
 import { log, stringToId } from "./helpers.ts";
@@ -120,7 +120,7 @@ export async function agentPostHandler(req: express.Request, res: express.Respon
 
   const resObj = await requestGptAnswer(msg, agentConfig, {
     noSendTelegram: true,
-  } as unknown as Context);
+  } as unknown as BotContext);
   const answer = resObj?.content || "";
   log({
     msg: answer,

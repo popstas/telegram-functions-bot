@@ -13,7 +13,6 @@ const mockOnTextMessage = jest.fn();
 const mockOnPhoto = jest.fn();
 const mockOnAudio = jest.fn();
 const mockOnUnsupported = jest.fn();
-const mockUseLastCtx = jest.fn();
 
 jest.unstable_mockModule("langfuse", () => ({
   Langfuse: class {},
@@ -109,11 +108,6 @@ jest.unstable_mockModule("../src/handlers/onUnsupported.ts", () => ({
   default: (...args: unknown[]) => mockOnUnsupported(...args),
 }));
 
-jest.unstable_mockModule("../src/helpers/lastCtx.ts", () => ({
-  __esModule: true,
-  useLastCtx: () => mockUseLastCtx(),
-}));
-
 jest.unstable_mockModule("express", () => ({
   __esModule: true,
   default: mockExpress,
@@ -146,7 +140,6 @@ beforeEach(async () => {
   mockOnPhoto.mockReset();
   mockOnAudio.mockReset();
   mockOnUnsupported.mockReset();
-  mockUseLastCtx.mockReset();
   mockExpress.mockClear();
 
   const config = {
@@ -217,7 +210,6 @@ describe("telegramPostHandler", () => {
 
   it("sends message when ok", async () => {
     const res = createRes();
-    mockUseLastCtx.mockReturnValue({});
     await telegramPostHandler(
       {
         params: { chatId: "1" },
@@ -238,7 +230,6 @@ describe("telegramPostHandlerTest", () => {
       headers: { authorization: "Bearer change_me" },
     } as unknown as Request;
     const res = createRes();
-    mockUseLastCtx.mockReturnValue({});
     await telegramPostHandlerTest(req, res);
     expect(req.params.chatId).toBe("-4534736935");
     expect(res.status).toHaveBeenCalledWith(400);

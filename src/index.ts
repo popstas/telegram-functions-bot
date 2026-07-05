@@ -1,7 +1,6 @@
-import { Context } from "telegraf";
-import { Bot, BotError } from "grammy";
+import { Bot, BotError, Context } from "grammy";
 import { run, sequentialize, RunnerHandle } from "@grammyjs/runner";
-import { Message } from "grammy/types";
+import { Message, Update } from "grammy/types";
 import type http from "node:http";
 import { useConfig, validateConfig, watchConfigChanges } from "./config.ts";
 import { initCommands, handleAddChat, registerCommandActions } from "./commands.ts";
@@ -9,6 +8,7 @@ import { log } from "./helpers.ts";
 import { initTools } from "./helpers/useTools.ts";
 import express from "express";
 import type { BotContext } from "./telegram/botContext.ts";
+import { attachFlavor } from "./telegram/botContext.ts";
 import { useBot, botReady, setRunnerHandle } from "./bot.ts";
 import onTextMessage from "./handlers/onTextMessage.ts";
 import onPhoto from "./handlers/onPhoto.ts";
@@ -19,7 +19,6 @@ import onReaction from "./handlers/onReaction.ts";
 import { onInlineQuery, onChosenInlineResult } from "./handlers/onInlineQuery.ts";
 import { onBusinessMessage, onBusinessConnection } from "./handlers/onBusinessMessage.ts";
 import { handleFormButtonClick } from "./handlers/formFlow.ts";
-import { useLastCtx } from "./helpers/lastCtx.ts";
 import { agentGetHandler, agentPostHandler, toolPostHandler } from "./httpHandlers.ts";
 import { useMqtt, shutdownMqtt } from "./mqtt.ts";
 import { healthHandler } from "./healthcheck.ts";
@@ -301,47 +300,32 @@ async function telegramPostHandler(req: express.Request, res: express.Response) 
     return res.status(400).send("Wrong chat_id");
   }
 
-  const chat = { id: parseInt(chatId), title: chatConfig.name };
-  const from = { username: useConfig().http.telegram_from_username };
-  const virtualCtx = {
-    chat: {
-      id: chat.id,
-      title: chat.title,
-      type: "supergroup" as const,
-    },
-    update: {
-      update_id: Date.now(),
-      message: {
-        text,
-        chat: {
-          id: chat.id,
-          title: chat.title,
-          type: "supergroup" as const,
-        },
-        from,
-        message_id: Date.now(),
-        date: Math.floor(Date.now() / 1000),
-      } as Message.TextMessage,
-    },
-  } as unknown as Context;
+  // Build a real grammY Context from boot — no dependency on a previously
+  // received Telegram message. bot.botInfo is only readable after init().
+  const bot = useBot(chatConfig.bot_token);
+  await botReady(chatConfig.bot_token);
 
-  const lastCtx = useLastCtx();
-
-  // Create context - use lastCtx if available, otherwise create minimal context
-  const virtualMessage = (virtualCtx.update as { message: Message.TextMessage }).message;
-  const newCtx = {
-    ...(lastCtx || {}),
-    update: virtualCtx.update,
-    chat: virtualCtx.chat,
-    message: virtualMessage,
-    botInfo: lastCtx?.botInfo || { username: useConfig().bot_name },
-  } as Context & {
-    expressRes?: Express.Response;
+  const from = {
+    id: 0,
+    is_bot: false,
+    first_name: "http",
+    username: useConfig().http.telegram_from_username,
   };
+  const update = {
+    update_id: Date.now(),
+    message: {
+      text,
+      chat: { id: parseInt(chatId), title: chatConfig.name, type: "supergroup" as const },
+      from,
+      message_id: Date.now(),
+      date: Math.floor(Date.now() / 1000),
+    },
+  } as unknown as Update;
+
+  const newCtx = attachFlavor({ expressRes: res }, new Context(update, bot.api, bot.botInfo));
 
   try {
-    newCtx.expressRes = res;
-    await onTextMessage(newCtx as Context, undefined, async (sentMsg: Message.TextMessage) => {
+    await onTextMessage(newCtx, undefined, async (sentMsg: Message.TextMessage) => {
       if (sentMsg) {
         const text = (sentMsg as Message.TextMessage).text;
         res.contentType("text/plain; charset=utf-8");

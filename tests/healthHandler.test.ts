@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 
 const mockUseConfig = jest.fn();
 const mockGetBots = jest.fn();
+const mockGetRunnerHandles = jest.fn();
 const mockIsMqttConnected = jest.fn();
 
 jest.unstable_mockModule("../src/config.ts", () => ({
@@ -14,6 +15,7 @@ jest.unstable_mockModule("../src/config.ts", () => ({
 jest.unstable_mockModule("../src/bot", () => ({
   __esModule: true,
   getBots: () => mockGetBots(),
+  getRunnerHandles: () => mockGetRunnerHandles(),
 }));
 
 jest.unstable_mockModule("../src/mqtt.ts", () => ({
@@ -29,6 +31,7 @@ beforeEach(async () => {
   jest.resetModules();
   mockUseConfig.mockReset();
   mockGetBots.mockReset();
+  mockGetRunnerHandles.mockReset();
   mockIsMqttConnected.mockReset();
   ({ healthHandler, getHealthStatus } = await import("../src/healthcheck.ts"));
 });
@@ -43,27 +46,47 @@ describe("getHealthStatus", () => {
   it("returns healthy state", () => {
     mockUseConfig.mockReturnValue({ mqtt: { host: "h" } });
     mockIsMqttConnected.mockReturnValue(true);
-    mockGetBots.mockReturnValue({
-      b: {
-        polling: { abortController: { signal: { aborted: false } } },
-        botInfo: { username: "b" },
-      },
-    });
+    mockGetBots.mockReturnValue({ b: { botInfo: { username: "b" } } });
+    mockGetRunnerHandles.mockReturnValue({ b: { isRunning: () => true } });
     expect(getHealthStatus()).toEqual({ healthy: true, errors: [] });
   });
 
   it("returns errors when issues", () => {
     mockUseConfig.mockReturnValue({ mqtt: { host: "h" } });
     mockIsMqttConnected.mockReturnValue(false);
-    mockGetBots.mockReturnValue({
-      b: {
-        polling: { abortController: { signal: { aborted: true } } },
-        botInfo: { username: "b" },
-      },
-    });
+    mockGetBots.mockReturnValue({ b: { botInfo: { username: "b" } } });
+    mockGetRunnerHandles.mockReturnValue({ b: { isRunning: () => false } });
     expect(getHealthStatus()).toEqual({
       healthy: false,
       errors: ["MQTT is not connected", "Bot b is not running"],
+    });
+  });
+
+  it("reports not running when no runner handle exists", () => {
+    mockUseConfig.mockReturnValue({ mqtt: { host: "" } });
+    mockIsMqttConnected.mockReturnValue(true);
+    mockGetBots.mockReturnValue({ b: { botInfo: { username: "b" } } });
+    mockGetRunnerHandles.mockReturnValue({});
+    expect(getHealthStatus()).toEqual({
+      healthy: false,
+      errors: ["Bot b is not running"],
+    });
+  });
+
+  it("falls back to token slice when botInfo getter throws", () => {
+    mockUseConfig.mockReturnValue({ mqtt: { host: "" } });
+    mockIsMqttConnected.mockReturnValue(true);
+    mockGetBots.mockReturnValue({
+      "12345678abc": {
+        get botInfo() {
+          throw new Error("Bot not initialized!");
+        },
+      },
+    });
+    mockGetRunnerHandles.mockReturnValue({});
+    expect(getHealthStatus()).toEqual({
+      healthy: false,
+      errors: ["Bot 12345678 is not running"],
     });
   });
 });
