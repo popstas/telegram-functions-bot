@@ -10,7 +10,8 @@ import { useBot } from "../bot.ts";
 import { useConfig } from "../config.ts";
 import { includesUser } from "../utils/users.ts";
 import { ConfigChatButtonType, ConfigChatType } from "../types.ts";
-import { Context, Input } from "telegraf";
+import { InputFile } from "grammy";
+import type { BotContext } from "./botContext.ts";
 import { log } from "../helpers.ts";
 import telegramifyMarkdown from "telegramify-markdown";
 import { splitBigMessage } from "../utils/text.ts";
@@ -49,16 +50,11 @@ function telegramifyWithCodeBlocks(text: string): string {
     .join("");
 }
 
-export interface ExtraCtx {
-  noSendTelegram?: boolean;
-  progressCallback?: (msg: string) => void;
-}
-
 export async function sendTelegramMessage(
   chat_id: number,
   text: string,
   extraMessageParams?: Record<string, unknown>,
-  ctx?: Context & ExtraCtx,
+  ctx?: BotContext,
   chatConfig?: ConfigChatType,
 ): Promise<Message.TextMessage | undefined> {
   if (!chat_id) {
@@ -70,7 +66,7 @@ export async function sendTelegramMessage(
   }
   chatConfig =
     chatConfig ||
-    useConfig().chats.find((c) => c.bot_name === ctx?.botInfo.username) ||
+    useConfig().chats.find((c) => c.bot_name === ctx?.me.username) ||
     ({} as ConfigChatType);
 
   if (ctx?.noSendTelegram) {
@@ -78,7 +74,6 @@ export async function sendTelegramMessage(
     return undefined;
   }
 
-  let response: Message.TextMessage | undefined;
   const params: Record<string, unknown> = {
     ...extraMessageParams,
     // disable_web_page_preview: true,
@@ -90,6 +85,12 @@ export async function sendTelegramMessage(
   const plainText = Boolean(params.plainText);
   if (plainText) {
     delete params.plainText;
+  }
+
+  // Bot API 7+ replaced reply_to_message_id; translate so handlers stay unchanged.
+  if (params.reply_to_message_id) {
+    params.reply_parameters = { message_id: params.reply_to_message_id };
+    delete params.reply_to_message_id;
   }
 
   // strip <final_answer> tags, preserve content
@@ -112,65 +113,106 @@ export async function sendTelegramMessage(
     await sendTelegramMessage(chat_id, thinkText, params, ctx, chatConfig);
   }
 
-  // Автоматически определить режим разметки, если не задан явно (skip when plainText to avoid double-encoding URLs)
-  if (!plainText && !params.parse_mode) {
-    if (text.trim().startsWith("<") && !text.trim().startsWith("<think>")) {
-      params.parse_mode = "HTML";
-    } else {
-      params.parse_mode = "MarkdownV2";
-    }
-  }
+  let response: Message.TextMessage | undefined;
 
-  let processedText = text;
-
-  // Process the text based on parse_mode (plainText leaves text unchanged)
-  if (!plainText && params.parse_mode === "HTML") {
-    processedText = sanitizeTelegramHtml(text);
-  } else if (
-    !plainText &&
-    (params.parse_mode === "MarkdownV2" || params.parse_mode === "Markdown")
-  ) {
-    processedText = telegramifyWithCodeBlocks(text);
-  }
-
-  const msgs = splitBigMessage(processedText);
-
-  for (const [index, msg] of msgs.entries()) {
-    if (index > 0) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
+  if (!plainText) {
+    // Rich path: raw markdown in, native rendering out, no 4096 splitting.
     try {
-      response = await useBot(chatConfig.bot_token).telegram.sendMessage(chat_id, msg, params);
+      const richOther: Record<string, unknown> = {};
+      for (const key of [
+        "reply_markup",
+        "reply_parameters",
+        "message_thread_id",
+        "business_connection_id",
+        "disable_notification",
+      ]) {
+        if (params[key] !== undefined) richOther[key] = params[key];
+      }
+      const rich = await useBot(chatConfig.bot_token).api.sendRichMessage(
+        chat_id,
+        { markdown: text },
+        richOther,
+      );
+      // RichMessageMessage has no .text — synthesize it for downstream readers
+      // (HTTP handler answers with sentMsg.text).
+      response = { ...rich, text } as unknown as Message.TextMessage;
     } catch (e: unknown) {
-      // Fallback: if error is 'bot was blocked by the user', handle gracefully
-      log({
-        msg: `Error sending message to user ${chat_id}: ${getErrorDescription(e)}, msg: ${msg}`,
-        chatId: chat_id,
-        chatTitle: chatConfig.name,
-        logLevel: "warn",
-      });
       if (isBlockedByUser(e)) {
-        // Telegram error 403: bot was blocked by the user
         log({
           msg: `User ${chat_id} blocked the bot. Error: ${getErrorDescription(e)}`,
           chatId: chat_id,
           logLevel: "warn",
         });
-        continue;
+        return undefined;
       }
-      const failsafeParams = {
-        reply_markup: params.reply_markup as
-          | InlineKeyboardMarkup
-          | ReplyKeyboardMarkup
-          | ReplyKeyboardRemove
-          | ForceReply
-          | undefined,
-      };
-      response = await useBot(chatConfig.bot_token).telegram.sendMessage(
-        chat_id,
-        msg,
-        failsafeParams,
-      );
+      log({
+        msg: `sendRichMessage failed, falling back to legacy send: ${getErrorDescription(e)}`,
+        chatId: chat_id,
+        chatTitle: chatConfig.name,
+        logLevel: "warn",
+      });
+      response = undefined; // fall through to legacy path
+    }
+  }
+
+  if (!response) {
+    // Legacy path: plainText sends and rich-send fallback.
+    // Автоматически определить режим разметки, если не задан явно (skip when plainText to avoid double-encoding URLs)
+    if (!plainText && !params.parse_mode) {
+      if (text.trim().startsWith("<") && !text.trim().startsWith("<think>")) {
+        params.parse_mode = "HTML";
+      } else {
+        params.parse_mode = "MarkdownV2";
+      }
+    }
+
+    let processedText = text;
+
+    // Process the text based on parse_mode (plainText leaves text unchanged)
+    if (!plainText && params.parse_mode === "HTML") {
+      processedText = sanitizeTelegramHtml(text);
+    } else if (
+      !plainText &&
+      (params.parse_mode === "MarkdownV2" || params.parse_mode === "Markdown")
+    ) {
+      processedText = telegramifyWithCodeBlocks(text);
+    }
+
+    const msgs = splitBigMessage(processedText);
+
+    for (const [index, msg] of msgs.entries()) {
+      if (index > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+      try {
+        response = await useBot(chatConfig.bot_token).api.sendMessage(chat_id, msg, params);
+      } catch (e: unknown) {
+        // Fallback: if error is 'bot was blocked by the user', handle gracefully
+        log({
+          msg: `Error sending message to user ${chat_id}: ${getErrorDescription(e)}, msg: ${msg}`,
+          chatId: chat_id,
+          chatTitle: chatConfig.name,
+          logLevel: "warn",
+        });
+        if (isBlockedByUser(e)) {
+          // Telegram error 403: bot was blocked by the user
+          log({
+            msg: `User ${chat_id} blocked the bot. Error: ${getErrorDescription(e)}`,
+            chatId: chat_id,
+            logLevel: "warn",
+          });
+          continue;
+        }
+        const failsafeParams = {
+          reply_markup: params.reply_markup as
+            | InlineKeyboardMarkup
+            | ReplyKeyboardMarkup
+            | ReplyKeyboardRemove
+            | ForceReply
+            | undefined,
+        };
+        response = await useBot(chatConfig.bot_token).api.sendMessage(chat_id, msg, failsafeParams);
+      }
     }
   }
 
@@ -179,7 +221,7 @@ export async function sendTelegramMessage(
     const deleteAfter = typeof params.deleteAfter === "number" ? params.deleteAfter * 1000 : 10000;
     if (response)
       setTimeout(async () => {
-        await useBot(chatConfig?.bot_token).telegram.deleteMessage(
+        await useBot(chatConfig?.bot_token).api.deleteMessage(
           response!.chat.id,
           response!.message_id,
         );
@@ -187,10 +229,7 @@ export async function sendTelegramMessage(
   }
 
   if (forDelete) {
-    await useBot(chatConfig.bot_token).telegram.deleteMessage(
-      forDelete.chat.id,
-      forDelete.message_id,
-    );
+    await useBot(chatConfig.bot_token).api.deleteMessage(forDelete.chat.id, forDelete.message_id);
     forDelete = undefined;
   }
 
@@ -206,7 +245,7 @@ export async function editTelegramMessage(
   message: Message.TextMessage,
   text: string,
   extraMessageParams?: Record<string, unknown>,
-  ctx?: Context & ExtraCtx,
+  ctx?: BotContext,
   chatConfig?: ConfigChatType,
 ): Promise<Message.TextMessage | undefined> {
   if (!message?.chat?.id) {
@@ -215,7 +254,7 @@ export async function editTelegramMessage(
 
   chatConfig =
     chatConfig ||
-    useConfig().chats.find((c) => c.bot_name === ctx?.botInfo.username) ||
+    useConfig().chats.find((c) => c.bot_name === ctx?.me.username) ||
     ({} as ConfigChatType);
 
   if (ctx?.noSendTelegram) {
@@ -239,10 +278,9 @@ export async function editTelegramMessage(
     params.parse_mode === "HTML" ? sanitizeTelegramHtml(text) : telegramifyWithCodeBlocks(text);
 
   try {
-    return (await useBot(chatConfig.bot_token).telegram.editMessageText(
+    return (await useBot(chatConfig.bot_token).api.editMessageText(
       message.chat.id,
       message.message_id,
-      undefined,
       processedText,
       params,
     )) as Message.TextMessage;
@@ -263,10 +301,7 @@ export async function editTelegramMessage(
     );
     if (newMsg?.chat?.id === message.chat.id && newMsg.message_id !== message.message_id) {
       try {
-        await useBot(chatConfig.bot_token).telegram.deleteMessage(
-          message.chat.id,
-          message.message_id,
-        );
+        await useBot(chatConfig.bot_token).api.deleteMessage(message.chat.id, message.message_id);
       } catch (deleteErr) {
         log({
           msg: `Failed to delete message after edit fallback: ${(deleteErr as Error).message}`,
@@ -360,9 +395,9 @@ export async function sendTelegramDocument(
     }
     const document =
       file instanceof Buffer
-        ? Input.fromBuffer(file, fileName)
-        : Input.fromLocalFile(file as string);
-    const response = await useBot(chatConfig?.bot_token).telegram.sendDocument(chat_id, document);
+        ? new InputFile(file, fileName)
+        : new InputFile(file as string);
+    const response = await useBot(chatConfig?.bot_token).api.sendDocument(chat_id, document);
     return response as unknown as Message.DocumentMessage;
   } catch (e: unknown) {
     log({
