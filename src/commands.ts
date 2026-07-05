@@ -124,22 +124,24 @@ export async function initCommands(bot: Telegraf) {
 
 const EXCLUDED_TOOLS = ["change_chat_settings", "memory_add", "memory_delete", "memory_search"];
 
-async function handleAddToolAction(ctx: Context, toolName: string) {
+/**
+ * Returns `true` when the handler already answered the callback query itself
+ * (the Unknown-tool branch), so the caller must not answer it again.
+ */
+async function handleAddToolAction(ctx: Context, toolName: string): Promise<boolean> {
   const config = useConfig();
   const chatId = ctx.chat?.id;
-  if (!chatId) return;
+  if (!chatId) return false;
 
   const { user } = getActionUserMsg(ctx);
   const username = user?.username || "without_username";
-  if (!user || !includesUser(config.adminUsers, username)) return;
+  if (!user || !includesUser(config.adminUsers, username)) return false;
 
   const globalTools = await useTools();
   const tool = globalTools.find((t) => t.name === toolName);
   if (!tool) {
-    await (ctx as Context & { answerCbQuery: (t?: string) => Promise<unknown> }).answerCbQuery(
-      "Unknown tool",
-    );
-    return;
+    await ctx.answerCbQuery("Unknown tool");
+    return true;
   }
 
   let chatConfig: ConfigChatType | undefined;
@@ -155,7 +157,7 @@ async function handleAddToolAction(ctx: Context, toolName: string) {
       void ctx.reply("Chat not found in config");
     }
   }
-  if (!chatConfig) return;
+  if (!chatConfig) return false;
 
   if (!chatConfig.tools) chatConfig.tools = [];
   const hasTool = (chatConfig.tools || []).some((t) => typeof t === "string" && t === tool.name);
@@ -173,24 +175,27 @@ async function handleAddToolAction(ctx: Context, toolName: string) {
   await ctx.reply(
     `Tool added: ${tool.name}${tool.module.defaultParams ? `, with default config: ${JSON.stringify(tool.module.defaultParams)}` : ""}`,
   );
+  return false;
 }
 
-async function handleAddSkillAction(ctx: Context, toolName: string) {
+/**
+ * Returns `true` when the handler already answered the callback query itself
+ * (the Unknown-skill branch), so the caller must not answer it again.
+ */
+async function handleAddSkillAction(ctx: Context, toolName: string): Promise<boolean> {
   const config = useConfig();
   const chatId = ctx.chat?.id;
-  if (!chatId) return;
+  if (!chatId) return false;
 
   // check admin
   const { user } = getActionUserMsg(ctx);
   const username = user?.username || "without_username";
-  if (!user || !includesUser(config.adminUsers, username)) return;
+  if (!user || !includesUser(config.adminUsers, username)) return false;
 
   const skill = loadSkills().find((s) => skillToolName(s) === toolName);
   if (!skill) {
-    await (ctx as Context & { answerCbQuery: (t?: string) => Promise<unknown> }).answerCbQuery(
-      "Unknown skill",
-    );
-    return;
+    await ctx.answerCbQuery("Unknown skill");
+    return true;
   }
 
   let targetChat: ConfigChatType | undefined;
@@ -208,17 +213,18 @@ async function handleAddSkillAction(ctx: Context, toolName: string) {
       void ctx.reply("Chat not found in config");
     }
   }
-  if (!targetChat) return;
+  if (!targetChat) return false;
 
   if (!targetChat.tools) targetChat.tools = [];
   const hasTool = (targetChat.tools || []).some((t) => typeof t === "string" && t === toolName);
   if (hasTool) {
     await ctx.reply(`Skill already added: ${toolName}`);
-    return;
+    return false;
   }
   targetChat.tools.push(toolName);
   writeConfig(undefined, config);
   await ctx.reply(`Skill added: ${toolName}`);
+  return false;
 }
 
 /**
@@ -228,12 +234,12 @@ async function handleAddSkillAction(ctx: Context, toolName: string) {
  */
 export function registerCommandActions(bot: Telegraf): void {
   bot.action(/^add_tool_(.+)$/, async (ctx) => {
-    await handleAddToolAction(ctx, (ctx.match as RegExpExecArray)[1]);
-    await ctx.answerCbQuery();
+    const answered = await handleAddToolAction(ctx, (ctx.match as RegExpExecArray)[1]);
+    if (!answered) await ctx.answerCbQuery();
   });
   bot.action(/^add_skill_(.+)$/, async (ctx) => {
-    await handleAddSkillAction(ctx, (ctx.match as RegExpExecArray)[1]);
-    await ctx.answerCbQuery();
+    const answered = await handleAddSkillAction(ctx, (ctx.match as RegExpExecArray)[1]);
+    if (!answered) await ctx.answerCbQuery();
   });
 }
 

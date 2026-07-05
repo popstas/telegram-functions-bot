@@ -315,6 +315,7 @@ describe("registerCommandActions", () => {
       expect(ctxReply).toHaveBeenCalledWith(expect.stringContaining("Tool added: foo"));
       expect(mockWriteConfig).toHaveBeenCalled();
       expect(answerCbQuery).toHaveBeenCalledWith();
+      expect(answerCbQuery).toHaveBeenCalledTimes(1);
     });
 
     it("answers 'Unknown tool' for a stale button and does not write config", async () => {
@@ -328,6 +329,7 @@ describe("registerCommandActions", () => {
         update: { callback_query: { from: { username: "admin" }, message: { chat: { id: 2 } } } },
       });
       expect(answerCbQuery).toHaveBeenCalledWith("Unknown tool");
+      expect(answerCbQuery).toHaveBeenCalledTimes(1);
       expect(mockWriteConfig).not.toHaveBeenCalled();
     });
   });
@@ -361,6 +363,7 @@ describe("registerCommandActions", () => {
         update: { callback_query: { from: { username: "admin" }, message: { chat: { id: 2 } } } },
       });
       expect(answerCbQuery).toHaveBeenCalledWith("Unknown skill");
+      expect(answerCbQuery).toHaveBeenCalledTimes(1);
       expect(mockWriteConfig).not.toHaveBeenCalled();
     });
 
