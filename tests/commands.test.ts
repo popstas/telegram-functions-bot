@@ -486,23 +486,16 @@ describe("getInfoMessage", () => {
     expect(res).toContain("Настройки приватного режима");
   });
 
-  it("shows the streaming mode when streaming is enabled", async () => {
+  it("shows streaming status when streaming is enabled", async () => {
     mockUseTools.mockResolvedValue([]);
     const msg = createMsg();
-    const editChat: ConfigChatType = {
+    const streamingChat: ConfigChatType = {
       name: "c",
       completionParams: { model: "m" },
       chatParams: { streaming: true },
       toolParams: {},
     } as ConfigChatType;
-    expect(await commands.getInfoMessage(msg, editChat)).toContain("Streaming: yes (edit mode)");
-    const draftChat: ConfigChatType = {
-      name: "c",
-      completionParams: { model: "m" },
-      chatParams: { streaming: true, streamMode: "draft" },
-      toolParams: {},
-    } as ConfigChatType;
-    expect(await commands.getInfoMessage(msg, draftChat)).toContain("Streaming: yes (draft mode)");
+    expect(await commands.getInfoMessage(msg, streamingChat)).toContain("Streaming: yes");
   });
 });
 

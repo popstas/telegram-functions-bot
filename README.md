@@ -36,7 +36,7 @@ Telegram bot with functions tools.
 - Guest mode: answer when mentioned in a reply to another user, with reply context (enable with global `guestMode`)
 - Reply-to-message context is always added to history when the bot is mentioned (not gated on guest mode)
 - Skills: Claude-Code-style `SKILL.md` directories exposed as runnable `skill_<name>` tools, attachable per chat with `/add_skill`
-- Draft streaming mode: stream partial answers as an ephemeral Telegram draft via `sendMessageDraft` (`chatParams.streamMode: draft`)
+- Streaming: stream partial answers as an ephemeral Telegram rich-message draft via `sendRichMessageDraft` (enable with `chatParams.streaming`)
 
 ## Desktop launcher
 
@@ -727,6 +727,7 @@ chatParams:
           prompt: "Reply only: 'forwarded to Stas'."
           override: true # replace secretary.prompt entirely
   ```
+
 - **Manual takeover (Telegram Business):** if the connection owner replies to a customer
   manually, the bot pauses auto-answers in that chat for the rest of the session and resumes
   in the next session (after `sessionDurationSeconds` of inactivity). The bot's own sent
@@ -789,32 +790,28 @@ Independent of guest mode, whenever the bot is mentioned in a **reply to another
 (in private chats and groups alike), the replied-to message is added to the thread history so the
 model keeps the conversational context. This used to require an enabled `guestMode.prompt`; it now
 always happens when the bot is mentioned. The `guestMode` block still controls the guest-mode
-*system prompt*, but no longer gates reply-context inclusion. Replies to the bot's own prior
+_system prompt_, but no longer gates reply-context inclusion. Replies to the bot's own prior
 message (already in history) and to one's own message are skipped to avoid duplication.
 
 ## Telegram streaming mode
 
-Enable live streaming of the model's answer into Telegram with `chatParams.streaming: true`. Two
-rendering modes are available via `chatParams.streamMode`:
+Enable live streaming of the model's answer into Telegram with `chatParams.streaming: true`:
 
 ```yaml
 chatParams:
   streaming: true
-  streamMode: edit # or "draft"
 ```
 
-- `edit` (default) — the bot sends a real message and edits it every ~2s as new text arrives. This
-  is the original behavior and works on any Telegram Bot API version.
-- `draft` — the bot pushes partial text as an **ephemeral message draft** via the Bot API
-  `sendMessageDraft` method, then persists one final message when generation finishes. The draft
-  is a short-lived (~30s) preview that does not spam edits; the final answer is sent through the
-  normal send path.
+The bot streams the answer as a Telegram **rich-message draft** via the Bot API 10.1
+`sendRichMessageDraft` method, updating it roughly every 2 seconds as new text arrives. The draft
+is cleared once generation finishes and the final answer is sent through the normal send path.
 
-The `draft` mode requires a Telegram Bot API backend that supports `sendMessageDraft`
-(**Bot API 9.3**, December 2025; available to all bots from 9.5, March 2026). If your backend is
-older, use `streamMode: edit`. Streaming of either mode is disabled for image answers and for
-turns that do not send a Telegram message (inline queries and form-flow turns). The active mode is
-shown in `/info` next to "Streaming".
+`sendRichMessageDraft` requires a Telegram Bot API backend on **Bot API 10.1** or newer. The old
+`streamMode` option (which selected between edit-in-place and draft streaming) has been removed —
+edit-mode streaming no longer exists. Existing configs that still set `streamMode` will log a
+`checkConfigSchema` unknown-field warning; this is expected and the field can be deleted. Streaming
+is disabled for image answers and for turns that do not send a Telegram message (inline queries and
+form-flow turns). Streaming status is shown in `/info` next to "Streaming".
 
 ## Default response format
 

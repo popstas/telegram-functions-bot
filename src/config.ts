@@ -356,7 +356,6 @@ export function generateConfig(): ConfigType {
           answerReactions: true,
           useResponsesApi: false,
           streaming: false,
-          streamMode: "edit",
           responseButtons: false,
           responseButtonsAgent: false,
           responseButtonsMessage: true,
