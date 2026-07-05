@@ -793,6 +793,20 @@ always happens when the bot is mentioned. The `guestMode` block still controls t
 _system prompt_, but no longer gates reply-context inclusion. Replies to the bot's own prior
 message (already in history) and to one's own message are skipped to avoid duplication.
 
+## Message formatting
+
+Final answers are sent as Telegram **rich messages** via the Bot API 10.1 `sendRichMessage`
+method: raw markdown goes in, and Telegram renders headings, code blocks, tables, and other
+markdown natively — the message is sent in one piece, with no 4096-character splitting.
+
+- A tool/answer response can opt out with `plainText: true` in its extra message params, which
+  sends the text as-is with no `parse_mode` (useful for URLs containing `%` encoding). Plain-text
+  sends always use the legacy path below; rich rendering is skipped for them.
+- If `sendRichMessage` fails (unsupported Bot API version, malformed markdown, etc.), the bot logs
+  a warning and falls back to the legacy send path: auto-detected `parse_mode` (`HTML` or
+  `MarkdownV2`), markdown escaping via `telegramify-markdown`, and splitting into ≤4096-character
+  chunks.
+
 ## Telegram streaming mode
 
 Enable live streaming of the model's answer into Telegram with `chatParams.streaming: true`:
