@@ -23,6 +23,7 @@ import { agentGetHandler, agentPostHandler, toolPostHandler } from "./httpHandle
 import { useMqtt, shutdownMqtt } from "./mqtt.ts";
 import { healthHandler } from "./healthcheck.ts";
 import { completePendingAuth } from "./mcp-auth.ts";
+import { registerConfirmActions } from "./telegram/confirm.ts";
 
 let activeBots: Telegraf[] = [];
 let httpServer: http.Server | null = null;
@@ -110,6 +111,8 @@ async function launchBot(bot_token: string, bot_name: string) {
 
     // Initialize commands with proper error handling
     await initCommands(bot);
+
+    registerConfirmActions(bot);
 
     // Set up message handlers
     bot.on([message("text"), editedMessage("text")], onTextMessage);
