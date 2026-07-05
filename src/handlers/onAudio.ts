@@ -82,7 +82,12 @@ export async function processAudio(ctx: BotContext, voice: { file_id: string }, 
     }
 
     const paragraphs = prettyText(text);
-    await sendTelegramMessage(chatId, paragraphs, undefined, ctx);
+    // Blockquote so the recognized text reads as a quote of the voice message.
+    const quoted = paragraphs
+      .split("\n")
+      .map((line) => `> ${line}`.trimEnd())
+      .join("\n");
+    await sendTelegramMessage(chatId, quoted, undefined, ctx);
 
     const fakeMsg = { ...ctx.message, text } as Message;
     const newCtx = createNewContext(ctx, fakeMsg);
