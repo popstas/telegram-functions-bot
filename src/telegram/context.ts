@@ -1,5 +1,6 @@
-import { Chat, Message, User } from "grammy/types";
-import { Context } from "telegraf";
+import { Chat, Message, Update, User, UserFromGetMe } from "grammy/types";
+import { Context } from "grammy";
+import { attachFlavor, BotContext } from "./botContext.ts";
 import { useConfig } from "../config.ts";
 import { log } from "../helpers.ts";
 import { includesUser } from "../utils/users.ts";
@@ -60,7 +61,7 @@ function getChatConfig(ctxChat: Chat, ctx: Context): ConfigChatType | undefined 
 
   if (!chat.id) {
     chat =
-      useConfig().chats.find((c) => c.bot_name === ctx.botInfo.username) || ({} as ConfigChatType);
+      useConfig().chats.find((c) => c.bot_name === ctx.me.username) || ({} as ConfigChatType);
 
     if (chat.id && ctxChat?.type === "private") {
       if (!isAccessAllowed(chat, ctxChat)) {
@@ -162,14 +163,10 @@ export function getCtxChatMsg(ctx: Context): {
   return { chat, msg };
 }
 
-export function createNewContext(ctx: Context, newMsg: Message) {
-  return Object.create(Object.getPrototypeOf(ctx), {
-    ...Object.getOwnPropertyDescriptors(ctx),
-    message: { value: newMsg, writable: true, configurable: true },
-    update: {
-      value: { ...ctx.update, message: newMsg },
-      writable: true,
-      configurable: true,
-    },
-  });
+export function createNewContext(ctx: BotContext, newMsg: Message): BotContext {
+  // grammY ctx.message/chat/from are getters over ctx.update — descriptor cloning
+  // copies nothing. Build a real Context around the substituted update instead.
+  const update = { ...ctx.update, message: newMsg } as Update;
+  const fresh = new Context(update, ctx.api, ctx.me);
+  return attachFlavor(ctx, fresh);
 }
