@@ -1,4 +1,4 @@
-import { Context } from "telegraf";
+import type { BotContext } from "../telegram/botContext.ts";
 import { Message } from "grammy/types";
 import { useBot } from "../bot.ts";
 import { llmCall } from "./gpt.ts";
@@ -26,9 +26,11 @@ export async function recognizeImageText(
     throw new Error("Не удалось получить изображение.");
   }
 
-  let link;
+  let link: string;
   try {
-    link = await useBot(chatConfig.bot_token).telegram.getFileLink(fileId);
+    const bot = useBot(chatConfig.bot_token);
+    const file = await bot.api.getFile(fileId);
+    link = `https://api.telegram.org/file/bot${bot.token}/${file.file_path}`;
   } catch (error) {
     const d = getErrorDescription(error);
     if (d.includes("wrong file_id") || d.includes("temporarily unavailable")) {
@@ -58,7 +60,7 @@ export async function recognizeImageText(
                 type: "text",
                 text: prompt,
               },
-              { type: "image_url", image_url: { url: link.toString() } },
+              { type: "image_url", image_url: { url: link } },
             ],
           },
         ],
@@ -75,7 +77,7 @@ export async function recognizeImageText(
 }
 
 export async function processImageMessage(
-  ctx: Context,
+  ctx: BotContext,
   msg: ImageMessage,
   chat: ConfigChatType,
   uploadAction: "upload_photo" | "upload_document",

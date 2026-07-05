@@ -31,7 +31,7 @@ function createChat(): ConfigChatType {
 }
 
 function createFakeBot() {
-  return { action: jest.fn() };
+  return { callbackQuery: jest.fn() };
 }
 
 beforeEach(async () => {
@@ -49,7 +49,7 @@ describe("telegramConfirm", () => {
     const fakeBot = createFakeBot();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     registerConfirmActions(fakeBot as any);
-    const handler = fakeBot.action.mock.calls[0][1] as (ctx: unknown) => Promise<void>;
+    const handler = fakeBot.callbackQuery.mock.calls[0][1] as (ctx: unknown) => Promise<void>;
 
     const msg = createMsg();
     const chatConfig = createChat();
@@ -64,13 +64,13 @@ describe("telegramConfirm", () => {
     await Promise.resolve();
     expect(mockSendTelegramMessage).toHaveBeenCalled();
 
-    const answerCbQuery = jest.fn();
+    const answerCallbackQuery = jest.fn();
     await handler({
       match: ["confirm_1", "confirm", "1"],
       from: { id: 10 },
-      answerCbQuery,
+      answerCallbackQuery,
     });
-    expect(answerCbQuery).toHaveBeenCalledWith();
+    expect(answerCallbackQuery).toHaveBeenCalledWith();
     await expect(resultPromise).resolves.toBe(42);
   });
 
@@ -78,7 +78,7 @@ describe("telegramConfirm", () => {
     const fakeBot = createFakeBot();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     registerConfirmActions(fakeBot as any);
-    const handler = fakeBot.action.mock.calls[0][1] as (ctx: unknown) => Promise<void>;
+    const handler = fakeBot.callbackQuery.mock.calls[0][1] as (ctx: unknown) => Promise<void>;
 
     const msg = createMsg();
     const chatConfig = createChat();
@@ -95,7 +95,7 @@ describe("telegramConfirm", () => {
     await handler({
       match: ["cancel_1", "cancel", "1"],
       from: { id: 10 },
-      answerCbQuery: jest.fn(),
+      answerCallbackQuery: jest.fn(),
     });
     await expect(resultPromise).resolves.toBe(-1);
     expect(mockSendTelegramMessage).toHaveBeenCalledTimes(1);
@@ -105,7 +105,7 @@ describe("telegramConfirm", () => {
     const fakeBot = createFakeBot();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     registerConfirmActions(fakeBot as any);
-    const handler = fakeBot.action.mock.calls[0][1] as (ctx: unknown) => Promise<void>;
+    const handler = fakeBot.callbackQuery.mock.calls[0][1] as (ctx: unknown) => Promise<void>;
 
     const msg = createMsg();
     const chatConfig = createChat();
@@ -124,23 +124,23 @@ describe("telegramConfirm", () => {
     });
     await Promise.resolve();
 
-    const answerCbQuery = jest.fn();
+    const answerCallbackQuery = jest.fn();
     await handler({
       match: ["confirm_1", "confirm", "1"],
       from: { id: 999 },
-      answerCbQuery,
+      answerCallbackQuery,
     });
     await Promise.resolve();
 
     expect(onConfirm).not.toHaveBeenCalled();
-    expect(answerCbQuery).not.toHaveBeenCalled();
+    expect(answerCallbackQuery).not.toHaveBeenCalled();
     expect(resolved).toBe(false);
 
     // The confirmation should still be pending: the rightful user can still confirm it.
     await handler({
       match: ["confirm_1", "confirm", "1"],
       from: { id: 10 },
-      answerCbQuery: jest.fn(),
+      answerCallbackQuery: jest.fn(),
     });
     await expect(resultPromise).resolves.toBe(42);
   });
@@ -149,17 +149,17 @@ describe("telegramConfirm", () => {
     const fakeBot = createFakeBot();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     registerConfirmActions(fakeBot as any);
-    const handler = fakeBot.action.mock.calls[0][1] as (ctx: unknown) => Promise<void>;
-    const answerCbQuery = jest.fn();
-    await handler({ match: ["confirm_99", "confirm", "99"], from: { id: 1 }, answerCbQuery });
-    expect(answerCbQuery).toHaveBeenCalledWith("Expired");
+    const handler = fakeBot.callbackQuery.mock.calls[0][1] as (ctx: unknown) => Promise<void>;
+    const answerCallbackQuery = jest.fn();
+    await handler({ match: ["confirm_99", "confirm", "99"], from: { id: 1 }, answerCallbackQuery });
+    expect(answerCallbackQuery).toHaveBeenCalledWith("Expired");
   });
 
   it("skips sending when noSendTelegram is true but still resolves on click", async () => {
     const fakeBot = createFakeBot();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     registerConfirmActions(fakeBot as any);
-    const handler = fakeBot.action.mock.calls[0][1] as (ctx: unknown) => Promise<void>;
+    const handler = fakeBot.callbackQuery.mock.calls[0][1] as (ctx: unknown) => Promise<void>;
 
     const msg = createMsg();
     const chatConfig = createChat();
@@ -178,7 +178,7 @@ describe("telegramConfirm", () => {
     await handler({
       match: ["confirm_1", "confirm", "1"],
       from: { id: 10 },
-      answerCbQuery: jest.fn(),
+      answerCallbackQuery: jest.fn(),
     });
     await expect(resultPromise).resolves.toBe(42);
   });

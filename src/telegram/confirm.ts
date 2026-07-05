@@ -1,5 +1,6 @@
-import { Telegraf, Context } from "telegraf";
+import { Bot } from "grammy";
 import { Message } from "grammy/types";
+import type { BotContext } from "./botContext.ts";
 import { sendTelegramMessage } from "./send.ts";
 import { ConfigChatType } from "../types.ts";
 
@@ -18,18 +19,18 @@ const pendingConfirmations = new Map<number, PendingConfirmation>();
  * Static handler for confirm_<id>/cancel_<id> buttons. Registered ONCE per bot at
  * startup (launchBot) instead of two dynamic bot.action() per confirmation.
  */
-export function registerConfirmActions(bot: Telegraf): void {
-  bot.action(/^(confirm|cancel)_(\d+)$/, async (ctx: Context & { match: RegExpExecArray }) => {
+export function registerConfirmActions(bot: Bot<BotContext>): void {
+  bot.callbackQuery(/^(confirm|cancel)_(\d+)$/, async (ctx) => {
     const kind = ctx.match[1] as "confirm" | "cancel";
     const id = parseInt(ctx.match[2], 10);
     const pending = pendingConfirmations.get(id);
     if (!pending) {
-      await ctx.answerCbQuery("Expired");
+      await ctx.answerCallbackQuery("Expired");
       return;
     }
     // Same guard as before: only the user the confirmation was sent for may answer.
     if (ctx.from?.id !== pending.fromId) return;
-    await ctx.answerCbQuery();
+    await ctx.answerCallbackQuery();
     pendingConfirmations.delete(id);
     const res = kind === "confirm" ? await pending.onConfirm() : await pending.onCancel();
     pending.resolve(res);
