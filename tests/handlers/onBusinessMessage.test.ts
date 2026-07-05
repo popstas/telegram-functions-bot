@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import type { Context } from "telegraf";
+import type { BotContext } from "../../src/telegram/botContext.ts";
 import type { ConfigType } from "../../src/types.ts";
 
 const mockUseConfig = jest.fn();
@@ -41,22 +41,27 @@ const baseConfig = (): ConfigType =>
     ],
   }) as unknown as ConfigType;
 
-const businessCtx = (over: Record<string, unknown> = {}, update: Record<string, unknown> = {}) =>
+// Default business_message fixture. grammY exposes it via the native
+// ctx.businessMessage getter, so the mock ctx sets it as a plain top-level field
+// (mirroring what the real getter would return) rather than nesting it under update.
+const defaultBusinessMessage = () => ({
+  text: "hi",
+  message_id: 7,
+  chat: { id: 42, type: "private" },
+  from: { username: "customer" },
+  business_connection_id: "conn1",
+});
+
+const businessCtx = (
+  over: Record<string, unknown> = {},
+  messageOverride?: Record<string, unknown>,
+) =>
   ({
-    update: {
-      business_message: {
-        text: "hi",
-        message_id: 7,
-        chat: { id: 42, type: "private" },
-        from: { username: "customer" },
-        business_connection_id: "conn1",
-      },
-      ...update,
-    },
-    telegram: { callApi: jest.fn() },
-    botInfo: { username: "bot" },
+    businessMessage: messageOverride ?? defaultBusinessMessage(),
+    api: { getBusinessConnection: jest.fn() },
+    me: { username: "bot" },
     ...over,
-  }) as unknown as Context;
+  }) as unknown as BotContext;
 
 beforeEach(async () => {
   jest.resetModules();
@@ -73,22 +78,21 @@ beforeEach(async () => {
 describe("onBusinessConnection", () => {
   it("caches the connection owner and reply permission", async () => {
     const ctx = {
-      update: {
-        business_connection: {
-          id: "conn1",
-          user: { username: "popstas" },
-          can_reply: true,
-          is_enabled: true,
-        },
+      businessConnection: {
+        id: "conn1",
+        user: { username: "popstas" },
+        rights: { can_reply: true },
+        is_enabled: true,
       },
-    } as unknown as Context;
+    } as unknown as BotContext;
 
     await mod.onBusinessConnection(ctx);
 
     // Cached: a following message resolves the owner without an API call.
     const msgCtx = businessCtx();
     await mod.onBusinessMessage(msgCtx);
-    expect((msgCtx.telegram as unknown as { callApi: jest.Mock }).callApi).not.toHaveBeenCalled();
+    expect((msgCtx.api as unknown as { getBusinessConnection: jest.Mock }).getBusinessConnection)
+      .not.toHaveBeenCalled();
     expect(mockOnTextMessage).toHaveBeenCalledTimes(1);
   });
 });
@@ -96,15 +100,13 @@ describe("onBusinessConnection", () => {
 describe("onBusinessMessage", () => {
   it("routes a text business message to onTextMessage with business fields", async () => {
     const connCtx = {
-      update: {
-        business_connection: {
-          id: "conn1",
-          user: { username: "popstas" },
-          can_reply: true,
-          is_enabled: true,
-        },
+      businessConnection: {
+        id: "conn1",
+        user: { username: "popstas" },
+        rights: { can_reply: true },
+        is_enabled: true,
       },
-    } as unknown as Context;
+    } as unknown as BotContext;
     await mod.onBusinessConnection(connCtx);
 
     const ctx = businessCtx();
@@ -112,40 +114,43 @@ describe("onBusinessMessage", () => {
 
     expect(mockOnTextMessage).toHaveBeenCalledTimes(1);
     const passed = mockOnTextMessage.mock.calls[0][0] as {
-      businessConnectionId: string;
+      businessConnectionId?: string;
       businessOwnerUsername: string;
       message: { text: string };
     };
+    // businessConnectionId is derived natively by grammY from the message, not
+    // set as an explicit flavor prop (setting it directly would collide with
+    // grammY's own businessConnectionId getter).
     expect(passed.businessConnectionId).toBe("conn1");
     expect(passed.businessOwnerUsername).toBe("popstas");
     expect(passed.message.text).toBe("hi");
   });
 
   it("resolves the owner via getBusinessConnection on cache miss", async () => {
-    const callApi = jest
-      .fn<(m: string, p: object) => Promise<unknown>>()
-      .mockResolvedValue({ user: { username: "popstas" }, can_reply: true, is_enabled: true });
-    const ctx = businessCtx({ telegram: { callApi } });
+    const getBusinessConnection = jest
+      .fn<(id: string) => Promise<unknown>>()
+      .mockResolvedValue({
+        user: { username: "popstas" },
+        rights: { can_reply: true },
+        is_enabled: true,
+      });
+    const ctx = businessCtx({ api: { getBusinessConnection } });
 
     await mod.onBusinessMessage(ctx);
 
-    expect(callApi).toHaveBeenCalledWith("getBusinessConnection", {
-      business_connection_id: "conn1",
-    });
+    expect(getBusinessConnection).toHaveBeenCalledWith("conn1");
     expect(mockOnTextMessage).toHaveBeenCalledTimes(1);
   });
 
   it("does not route when the connection cannot reply", async () => {
     const connCtx = {
-      update: {
-        business_connection: {
-          id: "conn1",
-          user: { username: "popstas" },
-          can_reply: false,
-          is_enabled: true,
-        },
+      businessConnection: {
+        id: "conn1",
+        user: { username: "popstas" },
+        rights: {},
+        is_enabled: true,
       },
-    } as unknown as Context;
+    } as unknown as BotContext;
     await mod.onBusinessConnection(connCtx);
 
     await mod.onBusinessMessage(businessCtx());
@@ -153,127 +158,60 @@ describe("onBusinessMessage", () => {
   });
 
   it("ignores non-text business messages", async () => {
-    const ctx = businessCtx(
-      {},
-      {
-        business_message: {
-          message_id: 7,
-          chat: { id: 42, type: "private" },
-          from: { username: "customer" },
-          business_connection_id: "conn1",
-        },
-      },
-    );
+    const ctx = businessCtx({}, {
+      message_id: 7,
+      chat: { id: 42, type: "private" },
+      from: { username: "customer" },
+      business_connection_id: "conn1",
+    });
     await mod.onBusinessMessage(ctx);
     expect(mockOnTextMessage).not.toHaveBeenCalled();
   });
 
   it("pauses auto-answer when the owner replies manually (matched by id)", async () => {
     const connCtx = {
-      update: {
-        business_connection: {
-          id: "conn1",
-          user: { id: 100, username: "popstas" },
-          can_reply: true,
-          is_enabled: true,
-        },
+      businessConnection: {
+        id: "conn1",
+        user: { id: 100, username: "popstas" },
+        rights: { can_reply: true },
+        is_enabled: true,
       },
-    } as unknown as Context;
+    } as unknown as BotContext;
     await mod.onBusinessConnection(connCtx);
 
     // Message authored by the owner (from.id === connection owner id).
-    const ctx = businessCtx(
-      {},
-      {
-        business_message: {
-          text: "I'll take it from here",
-          message_id: 9,
-          chat: { id: 42, type: "private" },
-          from: { id: 100, username: "popstas" },
-          business_connection_id: "conn1",
-        },
-      },
-    );
+    const ctx = businessCtx({}, {
+      text: "I'll take it from here",
+      message_id: 9,
+      chat: { id: 42, type: "private" },
+      from: { id: 100, username: "popstas" },
+      business_connection_id: "conn1",
+    });
     await mod.onBusinessMessage(ctx);
 
     expect(mockNoteSecretaryHumanReply).toHaveBeenCalledWith(42);
     expect(mockOnTextMessage).not.toHaveBeenCalled();
   });
 
-  it("shadows persistentChatAction on the synthetic ctx even when the real prototype defines it", async () => {
-    // Regression test: a real Telegraf ctx's prototype carries persistentChatAction
-    // as a method. The synthetic ctx built via Object.create(Object.getPrototypeOf(ctx), ...)
-    // inherits that prototype, so onBusinessMessage must explicitly shadow
-    // persistentChatAction with `{ value: undefined }` — otherwise withChatAction
-    // (invoked from onTextMessage) would resolve the real implementation through the
-    // prototype chain and call sendChatAction without a business_connection_id.
-    class FakeContext {
-      async persistentChatAction(): Promise<void> {
-        throw new Error("real persistentChatAction must not be called");
-      }
-    }
-    const connCtx = {
-      update: {
-        business_connection: {
-          id: "conn1",
-          user: { username: "popstas" },
-          can_reply: true,
-          is_enabled: true,
-        },
-      },
-    } as unknown as Context;
-    await mod.onBusinessConnection(connCtx);
-
-    const ctx = Object.assign(new FakeContext(), {
-      update: {
-        business_message: {
-          text: "hi",
-          message_id: 7,
-          chat: { id: 42, type: "private" },
-          from: { username: "customer" },
-          business_connection_id: "conn1",
-        },
-      },
-      telegram: { callApi: jest.fn() },
-      botInfo: { username: "bot" },
-    }) as unknown as Context;
-
-    await mod.onBusinessMessage(ctx);
-
-    expect(mockOnTextMessage).toHaveBeenCalledTimes(1);
-    const syntheticCtx = mockOnTextMessage.mock.calls[0][0] as { persistentChatAction?: unknown };
-    // The prototype (FakeContext.prototype) defines persistentChatAction as a
-    // function; the own-property shadow must win so it reads as undefined here.
-    expect(typeof syntheticCtx.persistentChatAction).not.toBe("function");
-    expect(syntheticCtx.persistentChatAction).toBeUndefined();
-  });
-
   it("ignores the bot's own sent messages (sender_business_bot)", async () => {
     const connCtx = {
-      update: {
-        business_connection: {
-          id: "conn1",
-          user: { id: 100, username: "popstas" },
-          can_reply: true,
-          is_enabled: true,
-        },
+      businessConnection: {
+        id: "conn1",
+        user: { id: 100, username: "popstas" },
+        rights: { can_reply: true },
+        is_enabled: true,
       },
-    } as unknown as Context;
+    } as unknown as BotContext;
     await mod.onBusinessConnection(connCtx);
 
-    const ctx = businessCtx(
-      {},
-      {
-        business_message: {
-          text: "auto reply",
-          message_id: 9,
-          chat: { id: 42, type: "private" },
-          from: { id: 100, username: "popstas" },
-          sender_business_bot: { id: 555, is_bot: true },
-          business_connection_id: "conn1",
-        },
-      },
-    );
+    const ctx = businessCtx({}, {
+      text: "auto reply",
+      message_id: 9,
+      chat: { id: 42, type: "private" },
+      from: { id: 100, username: "popstas" },
+      sender_business_bot: { id: 555, is_bot: true },
+      business_connection_id: "conn1",
+    });
     await mod.onBusinessMessage(ctx);
 
     expect(mockNoteSecretaryHumanReply).not.toHaveBeenCalled();
@@ -289,7 +227,7 @@ describe("getChatConfig business routing", () => {
         message: { text: "hi", chat: { id: 42, type: "private" }, from: { username: "customer" } },
       },
       businessOwnerUsername: "popstas",
-    } as unknown as Context;
+    } as unknown as BotContext;
 
     const { chat } = ctxMod.getCtxChatMsg(ctx);
     expect(chat?.name).toBe("Private popstas");
@@ -304,7 +242,7 @@ describe("getChatConfig business routing", () => {
         message: { text: "hi", chat: { id: 42, type: "private" }, from: { username: "customer" } },
       },
       businessOwnerUsername: "nobody",
-    } as unknown as Context;
+    } as unknown as BotContext;
 
     const { chat } = ctxMod.getCtxChatMsg(ctx);
     expect(chat).toBeUndefined();

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import type { Context } from "telegraf";
+import type { BotContext } from "../../src/telegram/botContext.ts";
 import type { ConfigChatType } from "../../src/types.ts";
 
 const mockOnTextMessage = jest.fn();
@@ -24,11 +24,12 @@ const baseChat: ConfigChatType = {
   toolParams: {},
 } as ConfigChatType;
 
-function createReactionCtx(update: object): Context {
+function createReactionCtx(update: object): BotContext {
   return {
+    messageReaction: update,
     update: { message_reaction: update },
-    botInfo: { id: 1, is_bot: true, username: "bot", first_name: "bot" },
-  } as unknown as Context;
+    me: { id: 1, is_bot: true, username: "bot", first_name: "bot" },
+  } as unknown as BotContext;
 }
 
 beforeEach(async () => {
@@ -49,7 +50,7 @@ describe("onReaction", () => {
       new_reaction: [{ type: "emoji", emoji: "❤️" }],
     });
 
-    mockCheckAccessLevel.mockImplementation(async (reactionCtx: Context) => ({
+    mockCheckAccessLevel.mockImplementation(async (reactionCtx: BotContext) => ({
       msg: reactionCtx.message,
       chat: baseChat,
     }));
@@ -57,7 +58,7 @@ describe("onReaction", () => {
     await onReaction(ctx);
 
     expect(mockOnTextMessage).toHaveBeenCalledTimes(1);
-    const forwardedCtx = mockOnTextMessage.mock.calls[0][0] as Context;
+    const forwardedCtx = mockOnTextMessage.mock.calls[0][0] as BotContext;
     expect((forwardedCtx.message as { text: string }).text).toBe("❤️ (reaction)");
   });
 
@@ -71,7 +72,7 @@ describe("onReaction", () => {
       new_reaction: [{ type: "emoji", emoji: "❤️" }],
     });
 
-    mockCheckAccessLevel.mockImplementation(async (reactionCtx: Context) => ({
+    mockCheckAccessLevel.mockImplementation(async (reactionCtx: BotContext) => ({
       msg: reactionCtx.message,
       chat: { ...baseChat, chatParams: { answerReactions: false } },
     }));

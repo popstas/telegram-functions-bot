@@ -1,7 +1,6 @@
-import { Context } from "telegraf";
 import type { InlineQueryResultArticle } from "grammy/types";
 import type { Message } from "grammy/types";
-import type { ChosenInlineResultUpdate } from "../telegram/updateTypes.ts";
+import type { BotContext } from "../telegram/botContext.ts";
 import { useConfig } from "../config.ts";
 import { log } from "../helpers.ts";
 import { requestGptAnswer } from "../helpers/gpt/llm.ts";
@@ -105,7 +104,7 @@ export async function computeInlineAnswer(
     const result = await requestGptAnswer(
       msg,
       chatConfig,
-      { noSendTelegram: true } as Context & { noSendTelegram?: boolean },
+      { noSendTelegram: true } as BotContext,
       { skipEvaluators: true },
     );
     return result?.content || "";
@@ -143,7 +142,7 @@ function scheduleLiveAnswer(
   liveTimers.set(from.id, timer);
 }
 
-export async function onInlineQuery(ctx: Context) {
+export async function onInlineQuery(ctx: BotContext) {
   const config = useConfig();
   if (!config.inlineMode) return;
   const inlineQuery = ctx.inlineQuery;
@@ -194,14 +193,10 @@ export async function onInlineQuery(ctx: Context) {
   await ctx.answerInlineQuery(results, { cache_time: 0 });
 }
 
-export async function onChosenInlineResult(ctx: Context) {
+export async function onChosenInlineResult(ctx: BotContext) {
   const config = useConfig();
   if (!config.inlineMode) return;
-  const chosen = (
-    ctx.update as {
-      chosen_inline_result?: ChosenInlineResultUpdate["chosen_inline_result"];
-    }
-  ).chosen_inline_result;
+  const chosen = ctx.chosenInlineResult;
   if (!chosen) return;
 
   const { result_id, query, inline_message_id, from } = chosen;
@@ -237,7 +232,7 @@ export async function onChosenInlineResult(ctx: Context) {
   try {
     const answer = await computeInlineAnswer(button.prompt, query || "", from);
     const text = (answer || "(empty answer)").slice(0, TELEGRAM_MAX_MESSAGE_LENGTH);
-    await ctx.telegram.editMessageText(undefined, undefined, inline_message_id, text);
+    await ctx.api.editMessageTextInline(inline_message_id, text);
     log({ msg: `inline answer delivered (${text.length} chars) for "${button.name}"` });
   } catch (e) {
     const message = (e as Error).message;
@@ -246,7 +241,7 @@ export async function onChosenInlineResult(ctx: Context) {
     // forever. Guard the edit itself so a failed edit cannot throw out of here.
     try {
       const text = `Error: ${message}`.slice(0, TELEGRAM_MAX_MESSAGE_LENGTH);
-      await ctx.telegram.editMessageText(undefined, undefined, inline_message_id, text);
+      await ctx.api.editMessageTextInline(inline_message_id, text);
     } catch {
       // ignore — nothing more we can do to update the inline message
     }

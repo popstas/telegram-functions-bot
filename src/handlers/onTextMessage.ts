@@ -97,9 +97,8 @@ function escapeRegExp(value: string): string {
 // Mark an incoming Business message as read on behalf of the connected business account.
 // Telegram's Bot API exposes this only via `readBusinessMessage` (Bot API 9.0), which
 // requires a business_connection_id — there is no mark-as-read for regular chats.
-// The synthetic ctx built by onBusinessMessage.ts (still telegraf-shaped, Task 19) only
-// exposes `ctx.telegram.callApi`, so this is accessed via a raw cast (same pattern as
-// onBusinessMessage.ts) rather than grammY's `ctx.api`.
+// The synthetic ctx built by onBusinessMessage.ts (Task 19) is a real grammY Context, so
+// this goes through the typed `ctx.api.readBusinessMessage` directly.
 async function markBusinessMessageRead(
   ctx: BotContext,
   chatId: number,
@@ -107,13 +106,7 @@ async function markBusinessMessageRead(
   businessConnectionId: string,
 ) {
   try {
-    await (
-      ctx as unknown as { telegram: { callApi: (m: string, p: object) => Promise<unknown> } }
-    ).telegram.callApi("readBusinessMessage", {
-      business_connection_id: businessConnectionId,
-      chat_id: chatId,
-      message_id: messageId,
-    });
+    await ctx.api.readBusinessMessage(businessConnectionId, chatId, messageId);
   } catch (e) {
     log({
       msg: `readBusinessMessage failed: ${(e as Error).message}`,
