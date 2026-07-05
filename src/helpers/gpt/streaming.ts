@@ -3,170 +3,33 @@ import { convertResponsesOutput } from "./responsesApi.ts";
 import type { ConfigChatType } from "../../types.ts";
 import { Message } from "grammy/types";
 import { useBot } from "../../bot.ts";
-import { splitBigMessage } from "../../utils/text.ts";
-import telegramifyMarkdown from "telegramify-markdown";
-import { getRetryAfterMs } from "../../telegram/errors.ts";
 
-export async function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+let nextDraftId = 1;
+export const __testStreaming = {
+  reset() {
+    nextDraftId = 1;
+  },
+};
 
-export async function safeSend(
-  bot: ReturnType<typeof useBot>,
-  chatId: number | string,
-  text: string,
-): Promise<Message.TextMessage> {
-  for (;;) {
-    try {
-      return (await bot.telegram.sendMessage(chatId, text)) as Message.TextMessage;
-    } catch (err) {
-      const wait = getRetryAfterMs(err);
-      if (wait) {
-        await delay(wait);
-        continue;
-      }
-      console.warn("sendMessage failed", err);
-      throw err;
-    }
-  }
-}
-
-export async function safeEdit(
-  bot: ReturnType<typeof useBot>,
-  m: Message.TextMessage,
-  text: string,
-): Promise<void> {
-  for (;;) {
-    try {
-      await bot.telegram.editMessageText(m.chat.id, m.message_id, undefined, text);
-      return;
-    } catch (err) {
-      const wait = getRetryAfterMs(err);
-      if (wait) {
-        await delay(wait);
-        continue;
-      }
-      console.warn("editMessageText failed", err);
-      return;
-    }
-  }
-}
-
-export async function safeSendDraft(
-  bot: ReturnType<typeof useBot>,
-  chatId: number | string,
-  text: string,
-  messageThreadId?: number,
-): Promise<void> {
-  const api = (
-    bot.telegram as unknown as {
-      callApi: (method: string, payload: Record<string, unknown>) => Promise<unknown>;
-    }
-  ).callApi;
-  for (;;) {
-    try {
-      await api.call(bot.telegram, "sendMessageDraft", {
-        chat_id: chatId,
-        text,
-        ...(messageThreadId !== undefined ? { message_thread_id: messageThreadId } : {}),
-      });
-      return;
-    } catch (err) {
-      const wait = getRetryAfterMs(err);
-      if (wait) {
-        await delay(wait);
-        continue;
-      }
-      console.warn("sendMessageDraft failed", err);
-      return;
-    }
-  }
-}
-
-export async function safeDelete(
-  bot: ReturnType<typeof useBot>,
-  m: Message.TextMessage,
-): Promise<void> {
-  for (;;) {
-    try {
-      await bot.telegram.deleteMessage(m.chat.id, m.message_id);
-      return;
-    } catch (err) {
-      const wait = getRetryAfterMs(err);
-      if (wait) {
-        await delay(wait);
-        continue;
-      }
-      console.warn("deleteMessage failed", err);
-      return;
-    }
-  }
-}
-
-function createFlusher(bot: ReturnType<typeof useBot>, msg: Message.TextMessage) {
-  const sentMessages: Message.TextMessage[] = [];
-  const lastChunks: string[] = [];
-  let fullText = "";
-  let flushTimeout: NodeJS.Timeout | undefined;
-  let processing = true;
-
-  async function sendChunks(text: string) {
-    const chunks = splitBigMessage(text);
-    for (let i = 0; i < chunks.length; i++) {
-      if (lastChunks[i] === chunks[i]) continue;
-      lastChunks[i] = chunks[i];
-      if (!sentMessages[i]) {
-        sentMessages[i] = await safeSend(bot, msg.chat.id, chunks[i]);
-      } else {
-        await safeEdit(bot, sentMessages[i], chunks[i]);
-      }
-    }
-  }
-
-  async function flush() {
-    await sendChunks(fullText);
-  }
-
-  function scheduleFlush() {
-    if (flushTimeout) return;
-    flushTimeout = setTimeout(async () => {
-      flushTimeout = undefined;
-      await flush();
-      if (processing) scheduleFlush();
-    }, 2000);
-  }
-
-  function add(delta: string) {
-    fullText += delta;
-    scheduleFlush();
-  }
-
-  async function finish() {
-    processing = false;
-    if (flushTimeout) {
-      clearTimeout(flushTimeout);
-      flushTimeout = undefined;
-    }
-    // await flush();
-    return { fullText, sentMessages } as const;
-  }
-
-  return { add, finish, sentMessages } as const;
-}
-
-export function createDraftFlusher(bot: ReturnType<typeof useBot>, msg: Message.TextMessage) {
-  const sentMessages: Message.TextMessage[] = [];
-  let fullText = "";
-  let flushTimeout: NodeJS.Timeout | undefined;
-  let processing = true;
-  // Promise for an in-flight flush (which may be sleeping on a 429 retry inside
-  // safeSendDraft). finish() must await it before clearing, otherwise a late
-  // flush can write stale text back over the cleared draft.
-  let activeFlush: Promise<void> | undefined;
+export function createRichDraftFlusher(bot: ReturnType<typeof useBot>, msg: Message.TextMessage) {
+  const draftId = nextDraftId++;
   const messageThreadId = (msg as { message_thread_id?: number }).message_thread_id;
+  const threadOpts =
+    messageThreadId !== undefined ? { message_thread_id: messageThreadId } : undefined;
+  let fullText = "";
+  let flushTimeout: NodeJS.Timeout | undefined;
+  let processing = true;
+  // In-flight flush guard: finish() must await it so a late flush can't repaint
+  // the draft after the clear below (same invariant as the old draft flusher).
+  let activeFlush: Promise<void> | undefined;
 
   async function flush() {
-    await safeSendDraft(bot, msg.chat.id, fullText, messageThreadId);
+    try {
+      // 429s are retried by the auto-retry transformer installed in useBot().
+      await bot.api.sendRichMessageDraft(msg.chat.id, draftId, { markdown: fullText }, threadOpts);
+    } catch (err) {
+      console.warn("sendRichMessageDraft failed", err);
+    }
   }
 
   function scheduleFlush() {
@@ -194,14 +57,19 @@ export function createDraftFlusher(bot: ReturnType<typeof useBot>, msg: Message.
       clearTimeout(flushTimeout);
       flushTimeout = undefined;
     }
-    // Wait for any in-flight flush to settle so it cannot overwrite the clear below.
     if (activeFlush) await activeFlush;
-    // Clear the ephemeral draft; the persisted final answer is sent by the normal send path.
-    await safeSendDraft(bot, msg.chat.id, "", messageThreadId);
-    return { fullText, sentMessages } as const;
+    try {
+      // Clear the ephemeral draft (empty text allowed since Bot API 10.1); the
+      // persisted answer is sent by the normal rich send path. Smoke item 5
+      // verifies an empty plain draft clears a rich draft.
+      await bot.api.sendMessageDraft(msg.chat.id, draftId, "", threadOpts);
+    } catch (err) {
+      console.warn("sendMessageDraft clear failed", err);
+    }
+    return { fullText } as const;
   }
 
-  return { add, finish, sentMessages } as const;
+  return { add, finish } as const;
 }
 
 export async function handleStream<T, R>(
@@ -221,11 +89,6 @@ export async function handleStream<T, R>(
     onChunk?(chunk: T): void;
     finalize(
       fullText: string,
-      helpers: {
-        sentMessages: Message.TextMessage[];
-        safeEdit: (m: Message.TextMessage, t: string) => Promise<void>;
-        safeDelete: (m: Message.TextMessage) => Promise<void>;
-      },
       toolCalls: {
         index: number;
         id?: string;
@@ -234,10 +97,9 @@ export async function handleStream<T, R>(
       }[],
     ): Promise<R>;
   },
-): Promise<R & { sentMessages: Message.TextMessage[] }> {
+): Promise<R> {
   const bot = useBot(chatConfig?.bot_token);
-  const useDraft = chatConfig?.chatParams?.streamMode === "draft";
-  const flusher = useDraft ? createDraftFlusher(bot, msg) : createFlusher(bot, msg);
+  const flusher = createRichDraftFlusher(bot, msg);
   const finalToolCalls: Record<
     number,
     {
@@ -271,19 +133,9 @@ export async function handleStream<T, R>(
     }
   }
 
-  const { fullText, sentMessages } = await flusher.finish();
+  const { fullText } = await flusher.finish();
 
-  const res = await callbacks.finalize(
-    fullText,
-    {
-      sentMessages,
-      safeEdit: (m, t) => safeEdit(bot, m, t),
-      safeDelete: (m) => safeDelete(bot, m),
-    },
-    Object.values(finalToolCalls),
-  );
-
-  return { ...res, sentMessages };
+  return await callbacks.finalize(fullText, Object.values(finalToolCalls));
 }
 
 export async function handleResponseStream(
@@ -294,7 +146,6 @@ export async function handleResponseStream(
   res: OpenAI.ChatCompletion;
   webSearchDetails?: string;
   images?: { id?: string; result: string }[];
-  sentMessages: Message.TextMessage[];
 }> {
   if (chatConfig?.chatParams?.responseButtons) {
     let completed: OpenAI.Responses.Response | undefined;
@@ -306,8 +157,7 @@ export async function handleResponseStream(
     if (!completed) {
       throw new Error("No response.completed event received");
     }
-    const result = await convertResponsesOutput(completed);
-    return { ...result, sentMessages: [] };
+    return await convertResponsesOutput(completed);
   }
 
   let completed: OpenAI.Responses.Response | undefined;
@@ -350,23 +200,11 @@ export async function handleResponseStream(
         completed = (chunk as OpenAI.Responses.ResponseCompletedEvent).response;
       }
     },
-    async finalize(_fullText, helpers, toolCalls) {
+    async finalize(_fullText, toolCalls) {
       if (!completed) {
         throw new Error("No response.completed event received");
       }
       const result = await convertResponsesOutput(completed);
-      const finalOutput = result.res.choices?.[0]?.message?.content ?? "";
-      const processed = telegramifyMarkdown(finalOutput, "escape");
-      const chunks = splitBigMessage(processed);
-      for (let i = 0; i < chunks.length; i++) {
-        if (helpers.sentMessages[i]) {
-          await helpers.safeEdit(helpers.sentMessages[i], chunks[i]);
-        }
-      }
-      for (const m of helpers.sentMessages) {
-        await helpers.safeDelete(m);
-      }
-      helpers.sentMessages.length = 0;
       if (!result.res.choices[0].message.tool_calls?.length && toolCalls.length) {
         (result.res.choices[0].message as OpenAI.ChatCompletionAssistantMessageParam).tool_calls =
           toolCalls as OpenAI.ChatCompletionMessageToolCall[];
@@ -385,7 +223,6 @@ export async function handleCompletionStream(
   chatConfig?: ConfigChatType,
 ): Promise<{
   res: OpenAI.ChatCompletion;
-  sentMessages: Message.TextMessage[];
 }> {
   if (chatConfig?.chatParams?.responseButtons) {
     let fullText = "";
@@ -461,7 +298,7 @@ export async function handleCompletionStream(
       (res.choices[0].message as OpenAI.ChatCompletionAssistantMessageParam).tool_calls =
         Object.values(finalToolCalls) as OpenAI.ChatCompletionMessageToolCall[];
     }
-    return { res, sentMessages: [] };
+    return { res };
   }
 
   return handleStream(stream, msg, chatConfig, {
@@ -471,9 +308,8 @@ export async function handleCompletionStream(
     extractToolCalls(chunk: ChatCompletionChunk) {
       return chunk.choices?.[0]?.delta?.tool_calls || [];
     },
-    async finalize(fullText, helpers, toolCalls) {
+    async finalize(fullText, toolCalls) {
       let res: OpenAI.ChatCompletion;
-      let finalOutput = "";
       const withFinalCC = stream as unknown as {
         finalChatCompletion?: () => Promise<OpenAI.ChatCompletion>;
         finalMessage?: () => Promise<OpenAI.ChatCompletionMessageParam>;
@@ -481,11 +317,9 @@ export async function handleCompletionStream(
       };
       if (typeof withFinalCC.finalChatCompletion === "function") {
         res = await withFinalCC.finalChatCompletion();
-        finalOutput = res.choices?.[0]?.message?.content ?? "";
       } else if (typeof withFinalCC.finalMessage === "function") {
         const message = await withFinalCC.finalMessage();
         res = { choices: [{ index: 0, message }] } as OpenAI.ChatCompletion;
-        finalOutput = typeof message?.content === "string" ? message.content : "";
       } else if (typeof withFinalCC.finalContent === "function") {
         const content = await withFinalCC.finalContent();
         res = {
@@ -496,7 +330,6 @@ export async function handleCompletionStream(
             } as OpenAI.ChatCompletion.Choice,
           ],
         } as OpenAI.ChatCompletion;
-        finalOutput = typeof content === "string" ? content : "";
       } else {
         res = {
           choices: [
@@ -512,20 +345,7 @@ export async function handleCompletionStream(
             } as OpenAI.ChatCompletion.Choice,
           ],
         } as OpenAI.ChatCompletion;
-        finalOutput = fullText;
       }
-
-      const processed = telegramifyMarkdown(finalOutput, "escape");
-      const chunks = splitBigMessage(processed);
-      for (let i = 0; i < chunks.length; i++) {
-        if (helpers.sentMessages[i]) {
-          await helpers.safeEdit(helpers.sentMessages[i], chunks[i]);
-        }
-      }
-      for (const m of helpers.sentMessages) {
-        await helpers.safeDelete(m);
-      }
-      helpers.sentMessages.length = 0;
 
       return { res };
     },
