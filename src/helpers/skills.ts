@@ -82,7 +82,7 @@ export function loadSkills(skillsDir?: string): SkillType[] {
       dir = undefined;
     }
   }
-  if (!dir) dir = "skills";
+  if (!dir) dir = "data/skills";
 
   const baseDir = path.resolve(dir);
   if (!existsSync(baseDir)) {
