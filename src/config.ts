@@ -361,6 +361,12 @@ export function generateConfig(): ConfigType {
           responseButtonsMessage: true,
           vector_memory: false,
           markReplyToMessage: false,
+          relay: {
+            send_to: [-1001234567890],
+            types: ["voice"],
+            header: "{name} (@{username}), {date} {time}",
+            reply: "Принял",
+          },
           secretary: {
             firstAnswerDelay: 15,
             sessionDurationSeconds: 600,

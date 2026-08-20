@@ -13,6 +13,7 @@ import { sendTelegramMessage } from "../telegram/send.ts";
 import { useConfig } from "../config.ts";
 import { log } from "../helpers.ts";
 import { llmCall } from "../helpers/gpt/llm.ts";
+import { resolveRecipientChatId } from "../helpers/recipients.ts";
 
 /**
  * Main entry point for form flow handling.
@@ -301,27 +302,15 @@ async function sendToRecipients(
   message: string,
   chatConfig: ConfigChatType,
 ): Promise<void> {
-  const config = useConfig();
-
   for (const recipient of recipients) {
-    let chatId: number | undefined;
+    const chatId = resolveRecipientChatId(recipient);
 
-    if (typeof recipient === "number") {
-      chatId = recipient;
-    } else {
-      // Try to find chat by username or name
-      const recipientChat = config.chats.find(
-        (c) => c.username === recipient || c.name === recipient,
-      );
-      chatId = recipientChat?.id;
-
-      if (!chatId) {
-        log({
-          msg: `Form: Could not find chat for recipient: ${recipient}`,
-          logLevel: "warn",
-        });
-        continue;
-      }
+    if (!chatId) {
+      log({
+        msg: `Form: Could not find chat for recipient: ${recipient}`,
+        logLevel: "warn",
+      });
+      continue;
     }
 
     try {

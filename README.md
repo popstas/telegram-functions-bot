@@ -684,6 +684,53 @@ inlineMode:
   means the `chosen_inline_result` update never arrived (inline feedback is not at 100%); a
   `no inline_message_id` warning points at the same cause.
 
+## Relay mode
+
+Relay mode turns a chat into a one-way mailbox: every incoming message is copied to the
+configured targets as-is and never reaches the LLM. Built for collecting daily voice
+"commits" from managers — each person writes the bot in a private chat, so nobody sees
+anyone else's messages, and everything lands in one group.
+
+Enable it via `chatParams.relay`:
+
+```yaml
+chats:
+  - name: default
+    chatParams:
+      relay:
+        send_to: [-1001234567890]
+        reply: "Принял"
+```
+
+| Field     | Required | Meaning                                                                                                            |
+| --------- | -------- | ------------------------------------------------------------------------------------------------------------------ |
+| `send_to` | yes      | Where to copy. A chat id, a numeric string, or the `name`/`username` of a chat from `config.chats`.                |
+| `types`   | no       | Limit to these message types. Omitted = relay everything.                                                          |
+| `header`  | no       | Text sent before each copied message. Default `{name} (@{username}), {date} {time}`. Empty string sends no header. |
+| `reply`   | no       | Confirmation sent back to the author. Omitted = stay silent.                                                       |
+
+Header placeholders: `{name}`, `{username}`, `{date}`, `{time}`. When the author has no
+username the template's empty `(@)` is dropped. `{name}` is always the person who wrote
+the bot, so a manager forwarding a client's message is still credited by name.
+
+Known `types` values: `text`, `voice`, `audio`, `photo`, `video`, `video_note`,
+`document`, `sticker`, `animation`, `location`, `contact`, `poll`, and `other` for
+anything else. Relay a voice-only mailbox with `types: [voice]`.
+
+Notes:
+
+- Access uses the normal whitelist: the global `privateUsers` / `adminUsers`, or a
+  per-chat `privateUsers`. Someone outside it never reaches the relay.
+- Messages are sent with `copyMessage`, so the group sees the content without a
+  "forwarded from" link back to the author's account.
+- A target equal to the source chat is dropped, so a config matched by the group it posts
+  into cannot relay its own copies in a loop. If that leaves no targets, the message falls
+  through to the normal handlers.
+- An album (`media_group_id`) gets one header, then every part is copied under it.
+- Commands registered before the relay middleware (`/help` and friends) still work.
+- If every target fails or cannot be resolved, the author is told the message did not go
+  through instead of getting a silent success.
+
 ## Secretary mode
 
 Secretary mode debounces answers per chat: after the first incoming message the bot waits
