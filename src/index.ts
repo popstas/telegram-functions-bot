@@ -13,6 +13,7 @@ import { useBot, botReady, setRunnerHandle } from "./bot.ts";
 import onTextMessage from "./handlers/onTextMessage.ts";
 import onPhoto from "./handlers/onPhoto.ts";
 import onAudio from "./handlers/onAudio.ts";
+import relayMiddleware from "./handlers/relay.ts";
 import onUnsupported from "./handlers/onUnsupported.ts";
 import onDocument from "./handlers/onDocument.ts";
 import onReaction from "./handlers/onReaction.ts";
@@ -157,6 +158,10 @@ async function launchBot(bot_token: string, bot_name: string) {
     await initCommands(bot);
     registerConfirmActions(bot);
     registerCommandActions(bot);
+
+    // Relay chats copy every incoming message to their targets and stop here,
+    // so registration must precede the per-type LLM handlers below.
+    bot.on("message", relayMiddleware);
 
     bot.on(["message:text", "edited_message:text"], onTextMessage);
     bot.on("message:photo", onPhoto);
