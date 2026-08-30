@@ -334,8 +334,14 @@ export async function executeTools(
   return Promise.all(toolPromises) as Promise<ToolResponse[]>;
 }
 
-export async function resolveChatTools(msg: Message.TextMessage, chatConfig: ConfigChatType) {
-  if (msg.chat.type === "private" || isAdminUser(msg)) {
+export async function resolveChatTools(
+  msg: Message.TextMessage,
+  chatConfig: ConfigChatType,
+  noSendTelegram?: boolean,
+) {
+  // http/cli callers fabricate a "private" chat without a real Telegram user,
+  // so they must not get the implicit settings tool
+  if (!noSendTelegram && (msg.chat.type === "private" || isAdminUser(msg))) {
     if (!chatConfig.tools) chatConfig.tools = [];
     if (!chatConfig.tools.includes("change_chat_settings"))
       chatConfig.tools.push("change_chat_settings");

@@ -613,13 +613,13 @@ export async function processToolResults({
       const toolResMessageLimit = 8000;
       const parts = parseToolContent(toolRes.content);
       for (const part of parts) {
-        if (part.type === "text" && part.text && showMessages) {
+        if (part.type === "text" && part.text && showMessages && !noSendTelegram) {
           const msgContentLimited =
             part.text.length > toolResMessageLimit
               ? part.text.slice(0, toolResMessageLimit) + "..."
               : part.text;
           await sendTelegramMessage(msg.chat.id, msgContentLimited, params, undefined, chatConfig);
-        } else if (part.type === "resource") {
+        } else if (part.type === "resource" && !noSendTelegram) {
           if (part.resource?.blob) {
             const buffer = Buffer.from(part.resource.blob, "base64");
             await sendTelegramDocument(
@@ -692,7 +692,7 @@ export async function processToolResults({
     generationName: "after-tools",
   });
 
-  if (webSearchDetails && chatConfig.chatParams?.showToolMessages !== false) {
+  if (!noSendTelegram && webSearchDetails && chatConfig.chatParams?.showToolMessages !== false) {
     await sendTelegramMessage(
       msg.chat.id,
       webSearchDetails,
@@ -702,7 +702,7 @@ export async function processToolResults({
     );
   }
 
-  if (images && images.length) {
+  if (!noSendTelegram && images && images.length) {
     for (const img of images) {
       const buffer = Buffer.from(img.result, "base64");
       await sendTelegramDocument(
@@ -760,7 +760,7 @@ export async function requestGptAnswer(
     } as ThreadStateType;
   }
 
-  const chatTools = await resolveChatTools(msg, chatConfig);
+  const chatTools = await resolveChatTools(msg, chatConfig, ctx?.noSendTelegram);
 
   const builtInToolNames = (chatConfig.tools || []).filter(
     (t) => typeof t === "string" && (t === "web_search_preview" || t === "image_generation"),

@@ -211,6 +211,39 @@ describe("processToolResults non forget", () => {
     expect(mockSendTelegramMessage).toHaveBeenCalled();
     expect(mockCreate).toHaveBeenCalled();
   });
+
+  it("does not send tool output to telegram when noSendTelegram", async () => {
+    const tool_res = [{ content: "done" }];
+    const messageAgent: OpenAI.ChatCompletionMessage = {
+      role: "assistant",
+      content: "",
+      tool_calls: [
+        {
+          id: "1",
+          type: "function",
+          function: { name: "tool", arguments: "{}" },
+        },
+      ],
+    } as OpenAI.ChatCompletionMessage;
+    mockCreate.mockResolvedValueOnce({
+      choices: [{ message: { content: "answer" } }],
+    });
+
+    const res = await processToolResults({
+      tool_res,
+      messageAgent,
+      chatConfig,
+      msg: { ...baseMsg },
+      expressRes: undefined,
+      noSendTelegram: true,
+      gptContext: { ...baseContext },
+      level: 1,
+    });
+
+    expect(res.content).toBe("answer");
+    expect(mockSendTelegramMessage).not.toHaveBeenCalled();
+    expect(mockSendTelegramDocument).not.toHaveBeenCalled();
+  });
 });
 
 describe("runEvaluatorWorkflow via requestGptAnswer", () => {

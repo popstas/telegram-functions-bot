@@ -183,6 +183,7 @@ export async function toolPostHandler(req: express.Request, res: express.Respons
       from: { id: 0, is_bot: false, first_name: "http" },
     } as Message.TextMessage,
     agentConfig,
+    true,
   );
 
   const argsStr = typeof args === "string" ? args : JSON.stringify(args || {});

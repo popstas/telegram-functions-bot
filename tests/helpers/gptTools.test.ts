@@ -109,6 +109,15 @@ describe("resolveChatTools", () => {
     expect(result).toEqual([]);
   });
 
+  it("skips change_chat_settings for http/cli calls", async () => {
+    mockUseTools.mockResolvedValue([]);
+    mockIsAdminUser.mockReturnValue(false);
+    const cfg: ConfigChatType = { ...baseConfig, tools: [] };
+    const result = await tools.resolveChatTools(baseMsg, cfg, true);
+    expect(cfg.tools).not.toContain("change_chat_settings");
+    expect(result).toEqual([]);
+  });
+
   it("includes global and agent tools", async () => {
     const globalTool = { name: "foo", module: { call: jest.fn() } };
     mockUseTools.mockResolvedValue([globalTool]);
