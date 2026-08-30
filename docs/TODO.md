@@ -1,10 +1,5 @@
 # TODO
 
-- [x] Добавить возможность использовать скиллы: запускать python и другие команды из references скилла
-- [x] Добавить возможность админу подключать скиллы прямо из чата Telegram
-- [x] если сообщение - reply на другое сообщение с bot mention, то бот должен также использовать это сообщение в контексте, добавлять в history
-- [x] support new telegram bot streaming mode instead of old way
-
 ## Post-merge follow-ups (grammY port, 2026-07-05)
 
 From the final whole-branch review and live smoke testing; all agreed as post-merge, none block the port:
@@ -14,6 +9,7 @@ From the final whole-branch review and live smoke testing; all agreed as post-me
 - [ ] Streaming flusher hardening (`src/helpers/gpt/streaming.ts`): guard against a late queued flush repainting the draft after `finish()`; `try/finally` around the stream loop so an LLM stream error can't leave the 2s flush loop running forever.
 - [ ] Restart path re-registers middleware on the cached Bot instance (`scheduleRestart` → `launchBot` on same bot) — guard registration or evict `bots[token]` on stop.
 - [ ] `chatParams` declared required in `types.ts` but genuinely undefined at runtime for chats that omit it — make it optional (or normalize at config load) so the compiler catches the remaining unguarded reads (`history.ts:31`, `formFlow.ts:185`, `commands.ts:364`, `tools.ts:294` — all currently reachability-safe).
+- [ ] `resolveChatTools` мутирует живой объект конфига (`chatConfig.tools.push("change_chat_settings")`) — при следующем `writeConfig()` инъекция может уехать в YAML чата; сделать без мутации, как соседняя логика memory-тулов.
 - [ ] Docs: mention `sequentialize` (per-chat serialization) and `@grammyjs/auto-retry` (429 handling) in AGENTS.md/README.
 - [ ] Healthcheck edge: a chat with `bot_token` but no `bot_name` is never launched yet creates a registry entry → `/health` reports "not running" permanently.
 - [ ] `pendingConfirmations` map has no expiry; an `onConfirm`/`onCancel` throw leaves the confirm promise hanging (pre-existing latent).

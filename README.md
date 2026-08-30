@@ -135,7 +135,7 @@ Run `python references/hello.py <name>` to print a greeting.
   `Exit code: N`). Commands run on the host with the bot user's privileges. A skill only runs in a
   chat that lists it in `tools[]`, and only admins can attach it (via `/add_skill` or by editing
   config) — the same trust model as the `powershell`/`ssh_command` tools.
-- The skills directory defaults to `skills` and is configurable with the top-level `skillsDir`
+- The skills directory defaults to `data/skills` and is configurable with the top-level `skillsDir`
   config option. A missing directory, a missing `SKILL.md`, or malformed frontmatter is skipped
   with a warning and never breaks startup.
 
