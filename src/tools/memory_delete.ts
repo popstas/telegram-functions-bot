@@ -4,7 +4,7 @@ import type { ConfigChatType, ToolResponse, ThreadStateType } from "../types.ts"
 import { deleteEmbedding, searchEmbedding, previewEmbedding } from "../helpers/embeddings.ts";
 import { sendTelegramMessage } from "../telegram/send.ts";
 import { telegramConfirm } from "../telegram/confirm.ts";
-import type { Message } from "telegraf/types";
+import type { Message } from "grammy/types";
 
 export const description = "Delete stored chat memory";
 export const details = `- deletes vector memory for similar snippets\n- dbPath: toolParams.vector_memory.dbPath`;

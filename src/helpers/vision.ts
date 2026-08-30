@@ -1,5 +1,5 @@
-import { Context } from "telegraf";
-import { Message } from "telegraf/types";
+import type { BotContext } from "../telegram/botContext.ts";
+import { Message } from "grammy/types";
 import { useBot } from "../bot.ts";
 import { llmCall } from "./gpt.ts";
 import { useConfig } from "../config.ts";
@@ -8,6 +8,8 @@ import { sendTelegramMessage } from "../telegram/send.ts";
 import { createNewContext } from "../telegram/context.ts";
 import { log } from "../helpers.ts";
 import onTextMessage from "../handlers/onTextMessage.ts";
+import { getErrorDescription } from "../telegram/errors.ts";
+import { withChatAction } from "../telegram/chatAction.ts";
 
 export type ImageMessage = Message.PhotoMessage | Message.DocumentMessage;
 
@@ -24,12 +26,14 @@ export async function recognizeImageText(
     throw new Error("Не удалось получить изображение.");
   }
 
-  let link;
+  let link: string;
   try {
-    link = await useBot(chatConfig.bot_token).telegram.getFileLink(fileId);
+    const bot = useBot(chatConfig.bot_token);
+    const file = await bot.api.getFile(fileId);
+    link = `https://api.telegram.org/file/bot${bot.token}/${file.file_path}`;
   } catch (error) {
-    const err = error as Error;
-    if (err.message.includes("wrong file_id") || err.message.includes("temporarily unavailable")) {
+    const d = getErrorDescription(error);
+    if (d.includes("wrong file_id") || d.includes("temporarily unavailable")) {
       throw new Error("Не удалось получить изображение.");
     }
     throw error;
@@ -56,7 +60,7 @@ export async function recognizeImageText(
                 type: "text",
                 text: prompt,
               },
-              { type: "image_url", image_url: { url: link.toString() } },
+              { type: "image_url", image_url: { url: link } },
             ],
           },
         ],
@@ -73,7 +77,7 @@ export async function recognizeImageText(
 }
 
 export async function processImageMessage(
-  ctx: Context,
+  ctx: BotContext,
   msg: ImageMessage,
   chat: ConfigChatType,
   uploadAction: "upload_photo" | "upload_document",
@@ -122,16 +126,16 @@ export async function processImageMessage(
       role: "user",
     });
 
-    const newMsg = {
+    const newMsg: Message = {
       ...msg,
       text: caption + text,
       entities: [],
-    } as const;
+    };
 
     const contextWithNewMessage = createNewContext(ctx, newMsg);
 
     await onTextMessage(contextWithNewMessage);
   };
 
-  await ctx.persistentChatAction(uploadAction, run);
+  await withChatAction(ctx, uploadAction, run);
 }

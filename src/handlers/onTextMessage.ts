@@ -1,5 +1,6 @@
-import { Context, Markup } from "telegraf";
-import { Chat, Message } from "telegraf/types";
+import type { BotContext } from "../telegram/botContext.ts";
+import { Message, ReplyKeyboardMarkup } from "grammy/types";
+import type { TitleChat } from "../telegram/updateTypes.ts";
 import { useThreads } from "../threads.ts";
 import { ConfigChatType, ThreadStateType } from "../types.ts";
 import { syncButtons, useConfig } from "../config.ts";
@@ -11,13 +12,24 @@ import {
   initThread,
 } from "../helpers/history.ts";
 import { rememberSave, isRememberCommand, stripRememberPrefix } from "../helpers/memory.ts";
-import { setLastCtx } from "../helpers/lastCtx.ts";
 import { addOauthToThread, ensureAuth } from "../helpers/google.ts";
 import { generateButtonsFromAgent, requestGptAnswer } from "../helpers/gpt.ts";
 import checkAccessLevel, { isGuestModeReply } from "./access.ts";
 import resolveChatButtons from "./resolveChatButtons.ts";
 import { handleFormFlow } from "./formFlow.ts";
 import { editTelegramMessage, sendTelegramMessage } from "../telegram/send.ts";
+import { withChatAction } from "../telegram/chatAction.ts";
+
+// Reproduces Telegraf's reply-keyboard builder output byte-identically (verified in Task 3 Step 1):
+// {"reply_markup":{"keyboard":[["a"],["b"],["c"]],"resize_keyboard":true}}
+function buildReplyKeyboard(names: string[]): { reply_markup: ReplyKeyboardMarkup } {
+  return {
+    reply_markup: {
+      keyboard: names.map((n) => [n]),
+      resize_keyboard: true,
+    },
+  };
+}
 
 // Track active responses per chat to allow cancellation
 interface ActiveResponse {
@@ -33,7 +45,7 @@ const activeResponses = new Map<number, ActiveResponse>();
 // bot answers once using the latest message context.
 interface SecretaryState {
   timer: ReturnType<typeof setTimeout>;
-  ctx: Context & { secondTry?: boolean };
+  ctx: BotContext;
   msg: Message.TextMessage;
   chat: ConfigChatType;
   callback?: (msg: Message.TextMessage) => Promise<void> | void;
@@ -84,22 +96,16 @@ function escapeRegExp(value: string): string {
 // Mark an incoming Business message as read on behalf of the connected business account.
 // Telegram's Bot API exposes this only via `readBusinessMessage` (Bot API 9.0), which
 // requires a business_connection_id — there is no mark-as-read for regular chats.
-// telegraf 4.16.3 has no typings for this method, so call it via the raw callApi cast
-// (same pattern as onBusinessMessage.ts).
+// The synthetic ctx built by onBusinessMessage.ts (Task 19) is a real grammY Context, so
+// this goes through the typed `ctx.api.readBusinessMessage` directly.
 async function markBusinessMessageRead(
-  ctx: Context,
+  ctx: BotContext,
   chatId: number,
   messageId: number,
   businessConnectionId: string,
 ) {
   try {
-    await (
-      ctx.telegram as unknown as { callApi: (m: string, p: object) => Promise<unknown> }
-    ).callApi("readBusinessMessage", {
-      business_connection_id: businessConnectionId,
-      chat_id: chatId,
-      message_id: messageId,
-    });
+    await ctx.api.readBusinessMessage(businessConnectionId, chatId, messageId);
   } catch (e) {
     log({
       msg: `readBusinessMessage failed: ${(e as Error).message}`,
@@ -158,14 +164,14 @@ function applySecretaryTurnOverride(
 // Cancel any in-flight answer for the chat, then start a new one. Bookkeeping
 // for cancellation lives in `activeResponses`.
 function launchAnswer(
-  ctx: Context & { secondTry?: boolean },
+  ctx: BotContext,
   msg: Message.TextMessage,
   chat: ConfigChatType,
   callback?: (msg: Message.TextMessage) => Promise<void> | void,
 ) {
   const chatId = msg.chat.id;
   const answerId = msg.message_id?.toString() || "";
-  const businessConnectionId = (ctx as { businessConnectionId?: string }).businessConnectionId;
+  const businessConnectionId = ctx.businessConnectionId;
   const extraMessageParams = {
     ...(ctx.message?.message_id ? { reply_to_message_id: ctx.message?.message_id } : {}),
     ...(businessConnectionId ? { business_connection_id: businessConnectionId } : {}),
@@ -178,7 +184,7 @@ function launchAnswer(
       msg: "cancelling previous response",
       chatId,
       answerId,
-      chatTitle: (msg.chat as Chat.TitleChat).title,
+      chatTitle: (msg.chat as TitleChat).title,
       role: "system",
       username: msg?.from?.username,
       logLevel: "debug",
@@ -236,7 +242,7 @@ function launchAnswer(
           logLevel: "error",
           chatId,
           answerId,
-          chatTitle: (msg.chat as Chat.TitleChat).title,
+          chatTitle: (msg.chat as TitleChat).title,
           role: "system",
           username: msg?.from?.username,
         });
@@ -252,17 +258,15 @@ function launchAnswer(
 }
 
 export default async function onTextMessage(
-  ctx: Context & { secondTry?: boolean },
+  ctx: BotContext,
   next?: () => Promise<void> | void,
   callback?: (msg: Message.TextMessage) => Promise<void> | void,
 ) {
-  setLastCtx(ctx);
-
   const access = await checkAccessLevel(ctx);
   if (!access) return;
   const { msg, chat } = access;
 
-  const chatTitle = (ctx.message?.chat as Chat.TitleChat).title || "";
+  const chatTitle = (msg.chat as TitleChat)?.title || "";
   const chatId = msg.chat.id;
   const answerId = msg.message_id?.toString() || "";
 
@@ -431,7 +435,7 @@ export default async function onTextMessage(
 }
 
 export async function answerToMessage(
-  ctx: Context & { secondTry?: boolean },
+  ctx: BotContext,
   msg: Message.TextMessage,
   chat: ConfigChatType,
   extraMessageParams: Record<string, unknown> & { signal?: AbortSignal },
@@ -445,7 +449,7 @@ export async function answerToMessage(
 
     if (chat.buttonsSync && msg.text === "sync" && msg) {
       let syncResult: Message.TextMessage | undefined;
-      await ctx.persistentChatAction("typing", async () => {
+      await withChatAction(ctx, "typing", async () => {
         if (!msg) return;
         const buttons = await syncButtons(chat, authClient);
         if (!buttons) {
@@ -459,7 +463,7 @@ export async function answerToMessage(
           return;
         }
 
-        const extraParams = Markup.keyboard(buttons.map((b) => b.name)).resize();
+        const extraParams = buildReplyKeyboard(buttons.map((b) => b.name));
         const answer = `Готово: ${buttons.map((b) => b.name).join(", ")}`;
         syncResult = await sendTelegramMessage(msg.chat.id, answer, extraParams, ctx, chat);
       });
@@ -469,7 +473,7 @@ export async function answerToMessage(
 
   try {
     let msgSent: Message.TextMessage | undefined;
-    await ctx.persistentChatAction("typing", async () => {
+    await withChatAction(ctx, "typing", async () => {
       if (!msg || extraMessageParams.signal?.aborted) {
         return;
       }
@@ -520,10 +524,10 @@ export async function answerToMessage(
       const buttons = res?.buttons || chat.buttonsSynced || chat.buttons;
       thread.dynamicButtons = res?.buttons;
       if (buttons) {
-        const extraParamsButtons = Markup.keyboard(buttons.map((b) => b.name)).resize();
+        const extraParamsButtons = buildReplyKeyboard(buttons.map((b) => b.name));
         Object.assign(extraParams, extraParamsButtons);
       }
-      const chatTitle = (msg.chat as Chat.TitleChat).title;
+      const chatTitle = (msg.chat as TitleChat).title;
       const answerId = msg.message_id?.toString() || "";
       log({
         msg: text,
@@ -562,7 +566,7 @@ export async function answerToMessage(
   } catch (e) {
     const error = e as { message: string };
     console.log("error:", error);
-    await ctx.persistentChatAction("typing", async () => {});
+    await withChatAction(ctx, "typing", async () => {});
     if (ctx.secondTry) return;
     if (!ctx.secondTry && error.message.includes("context_length_exceeded")) {
       ctx.secondTry = true;
@@ -592,7 +596,7 @@ async function applyResponseButtonsAgent({
   answerText: string;
   baseExtraParams: Record<string, unknown>;
   chat: ConfigChatType;
-  ctx: Context;
+  ctx: BotContext;
   msg: Message.TextMessage;
   originalMessage: Message.TextMessage;
   signal?: AbortSignal;
@@ -610,7 +614,7 @@ async function applyResponseButtonsAgent({
 
     const extraParamsWithButtons = {
       ...baseExtraParams,
-      ...Markup.keyboard(generatedButtons.map((b) => b.name)).resize(),
+      ...buildReplyKeyboard(generatedButtons.map((b) => b.name)),
     };
 
     const shouldSendButtonsMessage = chat.chatParams?.responseButtonsMessage ?? true;

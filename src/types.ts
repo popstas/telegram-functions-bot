@@ -1,4 +1,4 @@
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import OpenAI from "openai";
 import { GoogleAuth, OAuth2Client } from "google-auth-library";
 import type { CredentialBody } from "google-auth-library";
@@ -133,6 +133,29 @@ export type FormConfigType = {
   items: FormFieldType[];
 };
 
+// Relay configuration: forward every incoming message to other chats as-is
+export type RelayConfigType = {
+  send_to: (string | number)[]; // chat ids, or name/username of a chat from config.chats
+  types?: RelayMessageType[]; // limit to these message types; omitted = relay everything
+  header?: string; // template sent before the copied message, placeholders: {name} {username} {date} {time}
+  reply?: string; // confirmation sent back to the author, omitted = stay silent
+};
+
+export type RelayMessageType =
+  | "text"
+  | "voice"
+  | "audio"
+  | "photo"
+  | "video"
+  | "video_note"
+  | "document"
+  | "sticker"
+  | "animation"
+  | "location"
+  | "contact"
+  | "poll"
+  | "other";
+
 // Form state stored in thread
 export type FormStateType = {
   active: boolean;
@@ -152,7 +175,6 @@ export type ChatParamsType = {
   placeholderCacheTime?: number;
   useResponsesApi?: boolean;
   streaming?: boolean;
-  streamMode?: "edit" | "draft"; // how streaming partial text is shown; "edit" (default) edits a real message, "draft" uses Telegram sendMessageDraft (Bot API 9.3+)
   answerReactions?: boolean;
   responseButtons?: boolean;
   responseButtonsAgent?: boolean;
@@ -161,6 +183,7 @@ export type ChatParamsType = {
   markReplyToMessage?: boolean;
   secretary?: SecretaryConfigType;
   form?: FormConfigType[];
+  relay?: RelayConfigType;
 };
 
 // Secretary mode configuration (per-chat debounce)

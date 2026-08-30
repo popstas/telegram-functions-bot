@@ -1,5 +1,6 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import type { Context, Message } from "telegraf/types";
+import type { Context } from "grammy";
+import type { Message } from "grammy/types";
 
 const mockConvertToMp3 = jest.fn();
 const mockSendAudioWhisper = jest.fn();
@@ -36,11 +37,9 @@ beforeAll(async () => {
 
 function createCtx(): Context {
   return {
-    telegram: {
-      getFileLink: jest.fn().mockResolvedValue({ href: "http://file" }),
-    },
-    persistentChatAction: async (_: string, fn: () => Promise<void>) => {
-      await fn();
+    api: {
+      getFile: jest.fn(async () => ({ file_path: "voice/f.oga" })),
+      token: "tok",
     },
     message: {} as Message,
     update: { message: {} } as unknown as { message: Message },
@@ -64,7 +63,7 @@ describe("processAudio", () => {
     mockSendAudioWhisper.mockResolvedValue({ text: "hello" });
     const ctx = createCtx();
     await processAudio(ctx as Context, { file_id: "f" }, 1);
-    expect(mockSendTelegramMessage).toHaveBeenCalledWith(1, "hello.", undefined, ctx);
+    expect(mockSendTelegramMessage).toHaveBeenCalledWith(1, "> hello.", undefined, ctx);
     expect(mockOnTextMessage).toHaveBeenCalled();
   });
 

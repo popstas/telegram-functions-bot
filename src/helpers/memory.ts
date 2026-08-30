@@ -1,5 +1,5 @@
 import type { ConfigChatType } from "../types.ts";
-import type { Message } from "telegraf/types";
+import type { Message } from "grammy/types";
 import { saveEmbedding } from "./embeddings.ts";
 
 export function isRememberCommand(text: string): boolean {

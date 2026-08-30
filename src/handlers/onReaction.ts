@@ -1,7 +1,8 @@
-import { Context } from "telegraf";
-import { Chat, Message, Update, User } from "telegraf/types";
+import { Chat, Message, User } from "grammy/types";
+import type { BotContext } from "../telegram/botContext.ts";
+import type { MessageReactionUpdate } from "../telegram/updateTypes.ts";
 
-type ReactionUpdate = NonNullable<Update.MessageReactionUpdate["message_reaction"]>;
+type ReactionUpdate = NonNullable<MessageReactionUpdate["message_reaction"]>;
 type ReactionType = ReactionUpdate["new_reaction"][number];
 import onTextMessage from "./onTextMessage.ts";
 import checkAccessLevel from "./access.ts";
@@ -24,8 +25,8 @@ function buildReactionText(reactions: ReactionType[]): string {
   return icons ? `${icons} (reaction)` : "";
 }
 
-function getReactionUser(update: Update.MessageReactionUpdate): User {
-  const { user, actor_chat: actorChat } = update.message_reaction;
+function getReactionUser(reaction: ReactionUpdate): User {
+  const { user, actor_chat: actorChat } = reaction;
   if (user) return user as User;
 
   if (actorChat) {
@@ -46,18 +47,18 @@ function getReactionUser(update: Update.MessageReactionUpdate): User {
   } as User;
 }
 
-export default async function onReaction(ctx: Context) {
-  const update = ctx.update as Update.MessageReactionUpdate;
-  if (!update.message_reaction) return;
+export default async function onReaction(ctx: BotContext) {
+  const reaction = ctx.messageReaction;
+  if (!reaction) return;
 
-  const reactionText = buildReactionText(update.message_reaction.new_reaction || []);
+  const reactionText = buildReactionText(reaction.new_reaction || []);
   if (!reactionText) return;
 
   const reactionMessage: Message.TextMessage = {
-    message_id: update.message_reaction.message_id,
-    date: update.message_reaction.date,
-    chat: update.message_reaction.chat as Chat,
-    from: getReactionUser(update),
+    message_id: reaction.message_id,
+    date: reaction.date,
+    chat: reaction.chat as Chat,
+    from: getReactionUser(reaction),
     text: reactionText,
     entities: [],
   } as Message.TextMessage;

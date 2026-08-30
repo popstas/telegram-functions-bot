@@ -1,7 +1,7 @@
 import checkAccessLevel from "./access.ts";
-import { Context } from "telegraf";
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import { sendTelegramMessage } from "../telegram/send.ts";
+import type { BotContext } from "../telegram/botContext.ts";
 
 type SupportedMediaMessage =
   | Message.VideoMessage
@@ -9,7 +9,7 @@ type SupportedMediaMessage =
   | Message.DocumentMessage
   | Message.StickerMessage;
 
-export default async function onUnsupported(ctx: Context) {
+export default async function onUnsupported(ctx: BotContext) {
   const access = await checkAccessLevel(ctx);
   if (!access) return;
   const { msg } = access;

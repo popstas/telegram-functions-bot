@@ -1,8 +1,41 @@
-import { Context } from "telegraf";
-import { Message } from "telegraf/types";
-import { useBot } from "../bot.ts";
+import { Bot } from "grammy";
+import { Message } from "grammy/types";
+import type { BotContext } from "./botContext.ts";
 import { sendTelegramMessage } from "./send.ts";
 import { ConfigChatType } from "../types.ts";
+
+let nextConfirmId = 1;
+
+type PendingConfirmation = {
+  fromId?: number;
+  onConfirm: () => unknown;
+  onCancel: () => unknown;
+  resolve: (res: unknown) => void;
+};
+
+const pendingConfirmations = new Map<number, PendingConfirmation>();
+
+/**
+ * Static handler for confirm_<id>/cancel_<id> buttons. Registered ONCE per bot at
+ * startup (launchBot) instead of two dynamic bot.action() per confirmation.
+ */
+export function registerConfirmActions(bot: Bot<BotContext>): void {
+  bot.callbackQuery(/^(confirm|cancel)_(\d+)$/, async (ctx) => {
+    const kind = ctx.match[1] as "confirm" | "cancel";
+    const id = parseInt(ctx.match[2], 10);
+    const pending = pendingConfirmations.get(id);
+    if (!pending) {
+      await ctx.answerCallbackQuery("Expired");
+      return;
+    }
+    // Same guard as before: only the user the confirmation was sent for may answer.
+    if (ctx.from?.id !== pending.fromId) return;
+    await ctx.answerCallbackQuery();
+    pendingConfirmations.delete(id);
+    const res = kind === "confirm" ? await pending.onConfirm() : await pending.onCancel();
+    pending.resolve(res);
+  });
+}
 
 /**
  * Send confirmation request with inline buttons and resolve based on user choice.
@@ -25,9 +58,7 @@ export async function telegramConfirm<T>(params: {
   noSendTelegram?: boolean;
 }): Promise<T> {
   const { chatId, msg, chatConfig, text, onConfirm, onCancel, noSendTelegram = false } = params;
-  const id = Date.now().toString();
-  const confirmAction = `confirm_${id}`;
-  const cancelAction = `cancel_${id}`;
+  const id = nextConfirmId++;
 
   if (!noSendTelegram) {
     await sendTelegramMessage(
@@ -37,8 +68,8 @@ export async function telegramConfirm<T>(params: {
         reply_markup: {
           inline_keyboard: [
             [
-              { text: "Yes", callback_data: confirmAction },
-              { text: "No", callback_data: cancelAction },
+              { text: "Yes", callback_data: `confirm_${id}` },
+              { text: "No", callback_data: `cancel_${id}` },
             ],
           ],
         },
@@ -49,20 +80,20 @@ export async function telegramConfirm<T>(params: {
   }
 
   return new Promise<T>((resolve) => {
-    useBot(chatConfig.bot_token!).action(confirmAction, async (ctx: Context) => {
-      if (ctx.from?.id !== msg.from?.id) return;
-      await ctx.answerCbQuery();
-      const res = await onConfirm();
-      resolve(res);
-    });
-
-    useBot(chatConfig.bot_token!).action(cancelAction, async (ctx: Context) => {
-      if (ctx.from?.id !== msg.from?.id) return;
-      await ctx.answerCbQuery();
-      const res = await onCancel();
-      resolve(res);
+    pendingConfirmations.set(id, {
+      fromId: msg.from?.id,
+      onConfirm,
+      onCancel,
+      resolve: resolve as (res: unknown) => void,
     });
   });
 }
+
+export const __testConfirm = {
+  reset() {
+    pendingConfirmations.clear();
+    nextConfirmId = 1;
+  },
+};
 
 export default telegramConfirm;

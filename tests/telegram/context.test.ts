@@ -1,7 +1,7 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import type { Context } from "telegraf";
-import type { Message, Update } from "telegraf/types";
+import type { Message, Update } from "grammy/types";
 import type { ConfigChatType } from "../../src/types.ts";
+import type { BotContext } from "../../src/telegram/botContext.ts";
 import { createNewContext } from "../../src/telegram/context.ts";
 
 const mockUseConfig = jest.fn();
@@ -33,8 +33,8 @@ beforeEach(async () => {
 function createCtx(update?: Partial<Update>, botName = "bot") {
   return {
     ...(update ? { update } : {}),
-    botInfo: { username: botName },
-  } as unknown as Context;
+    me: { username: botName },
+  } as unknown as BotContext;
 }
 
 function createMsg(username: string): Message.TextMessage {
@@ -132,10 +132,17 @@ describe("getCtxChatMsg", () => {
 
 describe("createNewContext", () => {
   it("creates new context with new message", () => {
-    const ctx = createCtx({ message: createMsg("u") });
+    const oldMsg = createMsg("u");
     const newMsg = createMsg("new");
+    const ctx = {
+      update: { update_id: 1, message: oldMsg },
+      api: {},
+      me: { username: "test_bot" },
+      secondTry: true,
+    } as unknown as BotContext;
     const newCtx = createNewContext(ctx, newMsg);
-    expect(newCtx.message).toEqual(newMsg);
-    expect(newCtx.update).toEqual({ message: newMsg });
+    expect(newCtx.message).toBe(newMsg); // getter over the substituted update
+    expect(newCtx.update.message).toBe(newMsg);
+    expect((newCtx as { secondTry?: boolean }).secondTry).toBe(true); // flavor re-attached
   });
 });

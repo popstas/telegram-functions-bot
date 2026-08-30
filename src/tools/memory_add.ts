@@ -2,7 +2,7 @@ import { aiFunction, AIFunctionsProvider } from "@agentic/core";
 import { z } from "zod";
 import type { ConfigChatType, ToolResponse, ThreadStateType } from "../types.ts";
 import { rememberSave } from "../helpers/memory.ts";
-import type { Message } from "telegraf/types";
+import type { Message } from "grammy/types";
 
 export const description = "Add/store text into vector memory";
 export const details = `- stores text to vector memory\n- dbPath: toolParams.vector_memory.dbPath`;

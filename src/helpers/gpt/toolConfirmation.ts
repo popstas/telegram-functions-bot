@@ -1,4 +1,4 @@
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 
 import { ConfigChatType } from "../../types.ts";
 
@@ -10,11 +10,11 @@ export function applyConfirmationOverride(
 
   if (msg.text.includes("noconfirm")) {
     updatedConfig = JSON.parse(JSON.stringify(chatConfig));
-    updatedConfig.chatParams.confirmation = false;
+    updatedConfig.chatParams = { ...updatedConfig.chatParams, confirmation: false };
     msg.text = msg.text.replace("noconfirm", "");
   } else if (msg.text.includes("confirm")) {
     updatedConfig = JSON.parse(JSON.stringify(chatConfig));
-    updatedConfig.chatParams.confirmation = true;
+    updatedConfig.chatParams = { ...updatedConfig.chatParams, confirmation: true };
     msg.text = msg.text.replace("confirm", "");
   }
 

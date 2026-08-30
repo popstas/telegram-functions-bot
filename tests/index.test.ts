@@ -13,7 +13,6 @@ const mockOnTextMessage = jest.fn();
 const mockOnPhoto = jest.fn();
 const mockOnAudio = jest.fn();
 const mockOnUnsupported = jest.fn();
-const mockUseLastCtx = jest.fn();
 
 jest.unstable_mockModule("langfuse", () => ({
   Langfuse: class {},
@@ -40,16 +39,34 @@ jest.unstable_mockModule("../src/config.ts", () => ({
   updateChatInConfig: jest.fn(),
 }));
 
+const runnerHandle = {
+  task: () => Promise.resolve(),
+  stop: jest.fn(async () => {}),
+  isRunning: () => true,
+};
+const mockRun = jest.fn(() => runnerHandle);
+const mockBotReady = jest.fn(async () => {});
+
+jest.unstable_mockModule("@grammyjs/runner", () => ({
+  __esModule: true,
+  run: (...args: unknown[]) => mockRun(...args),
+  sequentialize: jest.fn(() => (_ctx: unknown, next: () => void) => next()),
+}));
+
 jest.unstable_mockModule("../src/bot", () => ({
   __esModule: true,
   useBot: (...args: unknown[]) => mockUseBot(...args),
+  botReady: (...args: unknown[]) => mockBotReady(...args),
   getBots: () => ({}),
+  setRunnerHandle: jest.fn(),
+  getRunnerHandles: () => ({}),
 }));
 
 jest.unstable_mockModule("../src/commands.ts", () => ({
   __esModule: true,
   initCommands: (...args: unknown[]) => mockInitCommands(...args),
   handleAddChat: jest.fn(),
+  registerCommandActions: jest.fn(),
 }));
 
 jest.unstable_mockModule("../src/helpers.ts", () => ({
@@ -91,11 +108,6 @@ jest.unstable_mockModule("../src/handlers/onUnsupported.ts", () => ({
   default: (...args: unknown[]) => mockOnUnsupported(...args),
 }));
 
-jest.unstable_mockModule("../src/helpers/lastCtx.ts", () => ({
-  __esModule: true,
-  useLastCtx: () => mockUseLastCtx(),
-}));
-
 jest.unstable_mockModule("express", () => ({
   __esModule: true,
   default: mockExpress,
@@ -111,15 +123,15 @@ beforeEach(async () => {
   mockValidateConfig.mockReset().mockReturnValue(true);
   mockWatchConfigChanges.mockReset();
   mockUseBot.mockReset().mockReturnValue({
-    help: jest.fn(),
+    use: jest.fn(),
+    command: jest.fn(),
     on: jest.fn(),
-    action: jest.fn(),
     catch: jest.fn(),
-    launch: jest.fn().mockImplementation((_config, onLaunch) => {
-      onLaunch?.();
-      return Promise.resolve();
-    }),
+    callbackQuery: jest.fn(),
   });
+  mockRun.mockClear();
+  runnerHandle.stop.mockClear();
+  mockBotReady.mockReset().mockImplementation(async () => {});
   mockInitCommands.mockReset();
   mockWriteConfig.mockReset();
   mockLog.mockReset();
@@ -128,7 +140,6 @@ beforeEach(async () => {
   mockOnPhoto.mockReset();
   mockOnAudio.mockReset();
   mockOnUnsupported.mockReset();
-  mockUseLastCtx.mockReset();
   mockExpress.mockClear();
 
   const config = {
@@ -199,7 +210,6 @@ describe("telegramPostHandler", () => {
 
   it("sends message when ok", async () => {
     const res = createRes();
-    mockUseLastCtx.mockReturnValue({});
     await telegramPostHandler(
       {
         params: { chatId: "1" },
@@ -220,7 +230,6 @@ describe("telegramPostHandlerTest", () => {
       headers: { authorization: "Bearer change_me" },
     } as unknown as Request;
     const res = createRes();
-    mockUseLastCtx.mockReturnValue({});
     await telegramPostHandlerTest(req, res);
     expect(req.params.chatId).toBe("-4534736935");
     expect(res.status).toHaveBeenCalledWith(400);
@@ -235,12 +244,20 @@ describe("launchBot", () => {
     expect(mockLog).toHaveBeenCalledWith({ msg: "bot started: main" });
   });
 
-  it("logs auth error when token invalid", async () => {
-    const err = { response: { statusCode: 401 } };
-    mockUseBot.mockImplementationOnce(() => {
-      throw err;
-    });
+  it("logs auth error when botReady rejects with 401", async () => {
+    // Build the GrammyError from the same post-reset grammy instance the src graph
+    // uses, so `isInvalidToken`'s `instanceof GrammyError` matches (resetModules in
+    // beforeEach would otherwise give a static import a different class realm).
+    const { GrammyError } = await import("grammy");
+    const err = new GrammyError(
+      "Call to method failed! (401: Unauthorized)",
+      { ok: false, error_code: 401, description: "Unauthorized", parameters: {} } as never,
+      "getMe",
+      {},
+    );
+    mockBotReady.mockRejectedValueOnce(err);
     await index.launchBot("bad", "bad");
+    expect(mockRun).not.toHaveBeenCalled();
     expect(mockLog).toHaveBeenCalledWith(
       expect.objectContaining({
         msg: expect.stringContaining("Invalid bot token"),

@@ -1,6 +1,6 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import type { Message } from "telegraf/types";
-import type { Context } from "telegraf";
+import type { Message } from "grammy/types";
+import type { BotContext } from "../src/telegram/botContext.ts";
 import type { ConfigChatType } from "../src/types.ts";
 
 const mockUseTools = jest.fn();
@@ -39,15 +39,9 @@ jest.unstable_mockModule("../src/telegram/send.ts", () => ({
   buildButtonRows: () => [],
 }));
 
-let actionCb: (ctx: unknown) => Promise<void>;
-const mockAction = jest.fn((name: string, cb: (ctx: unknown) => Promise<void>) => {
-  actionCb = cb;
-});
-
-jest.unstable_mockModule("../src/bot", () => ({
-  __esModule: true,
-  useBot: () => ({ action: mockAction }),
-}));
+function createFakeBot() {
+  return { command: jest.fn(), callbackQuery: jest.fn() };
+}
 
 let config: unknown;
 
@@ -91,7 +85,6 @@ let commands: typeof import("../src/commands.ts");
 
 beforeEach(async () => {
   jest.resetModules();
-  actionCb = async () => {};
   config = {
     adminUsers: ["admin"],
     chats: [] as ConfigChatType[],
@@ -171,7 +164,7 @@ describe("getToolsInfo", () => {
 });
 
 describe("commandAddTool", () => {
-  it("sends list and handles action", async () => {
+  it("sends list of available tools", async () => {
     mockUseTools.mockResolvedValue([
       { name: "foo", module: { description: "Foo", defaultParams: { p: 1 } } },
     ]);
@@ -197,13 +190,6 @@ describe("commandAddTool", () => {
       undefined,
       chat,
     );
-    expect(mockAction).toHaveBeenCalledWith("add_tool_foo", expect.any(Function));
-    const ctxReply = jest.fn();
-    await actionCb({ chat: { id: 2, type: "private" }, reply: ctxReply });
-    expect(config.chats[0].tools).toContain("foo");
-    expect(config.chats[0].toolParams).toEqual({ p: 1 });
-    expect(ctxReply).toHaveBeenCalledWith(expect.stringContaining("Tool added: foo"));
-    expect(mockWriteConfig).toHaveBeenCalled();
   });
 
   it("ignores a non-admin invocation before listing tools", async () => {
@@ -223,7 +209,7 @@ describe("commandAddTool", () => {
 });
 
 describe("commandAddSkill", () => {
-  it("sends skill list and admin adds skill", async () => {
+  it("sends skill list", async () => {
     mockLoadSkills.mockReturnValue([
       { name: "greet", description: "Greet skill", dir: "/s/greet" },
     ]);
@@ -249,17 +235,10 @@ describe("commandAddSkill", () => {
       undefined,
       chat,
     );
-    expect(mockAction).toHaveBeenCalledWith("add_skill_skill_greet", expect.any(Function));
-    const ctxReply = jest.fn();
-    await actionCb({ chat: { id: 2, type: "private" }, reply: ctxReply });
-    expect(config.chats[0].tools).toContain("skill_greet");
-    expect(ctxReply).toHaveBeenCalledWith("Skill added: skill_greet");
-    expect(mockWriteConfig).toHaveBeenCalled();
   });
 
   it("replies with helpful message when no skills found", async () => {
     mockLoadSkills.mockReturnValue([]);
-    mockAction.mockClear();
     const msg = createMsg("admin");
     const chat: ConfigChatType = {
       bot_token: "t",
@@ -278,97 +257,6 @@ describe("commandAddSkill", () => {
       undefined,
       chat,
     );
-    expect(mockAction).not.toHaveBeenCalled();
-  });
-
-  it("ignores non-admin tap", async () => {
-    mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
-    mockGetActionUserMsg.mockReturnValue({ user: { username: "intruder" } });
-    const msg = createMsg("admin");
-    const chat: ConfigChatType = {
-      bot_token: "t",
-      completionParams: {},
-      chatParams: {},
-      toolParams: {},
-      name: "c",
-    } as ConfigChatType;
-    mockSendTelegramMessage.mockResolvedValue("ok");
-    await commands.commandAddSkill(msg, chat);
-    const ctxReply = jest.fn();
-    await actionCb({ chat: { id: 2, type: "private" }, reply: ctxReply });
-    expect(config.chats.length).toBe(0);
-    expect(ctxReply).not.toHaveBeenCalled();
-    expect(mockWriteConfig).not.toHaveBeenCalled();
-  });
-
-  it("adds a skill to a matching group chat", async () => {
-    mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
-    config.chats.push({
-      id: 2,
-      tools: [],
-      completionParams: {},
-      chatParams: {},
-      toolParams: {},
-    });
-    const msg = createMsg("admin");
-    const chat: ConfigChatType = {
-      bot_token: "t",
-      completionParams: {},
-      chatParams: {},
-      toolParams: {},
-      name: "c",
-    } as ConfigChatType;
-    mockSendTelegramMessage.mockResolvedValue("ok");
-    await commands.commandAddSkill(msg, chat);
-    const ctxReply = jest.fn();
-    await actionCb({ chat: { id: 2, type: "supergroup" }, reply: ctxReply });
-    expect(config.chats[0].tools).toContain("skill_greet");
-    expect(ctxReply).toHaveBeenCalledWith("Skill added: skill_greet");
-    expect(mockWriteConfig).toHaveBeenCalled();
-  });
-
-  it("replies 'Chat not found in config' for an unconfigured group chat", async () => {
-    mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
-    const msg = createMsg("admin");
-    const chat: ConfigChatType = {
-      bot_token: "t",
-      completionParams: {},
-      chatParams: {},
-      toolParams: {},
-      name: "c",
-    } as ConfigChatType;
-    mockSendTelegramMessage.mockResolvedValue("ok");
-    await commands.commandAddSkill(msg, chat);
-    const ctxReply = jest.fn();
-    await actionCb({ chat: { id: 999, type: "supergroup" }, reply: ctxReply });
-    expect(ctxReply).toHaveBeenCalledWith("Chat not found in config");
-    expect(mockWriteConfig).not.toHaveBeenCalled();
-  });
-
-  it("does not add a duplicate skill", async () => {
-    mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
-    config.chats.push({
-      username: "admin",
-      tools: ["skill_greet"],
-      completionParams: {},
-      chatParams: {},
-      toolParams: {},
-    });
-    const msg = createMsg("admin");
-    const chat: ConfigChatType = {
-      bot_token: "t",
-      completionParams: {},
-      chatParams: {},
-      toolParams: {},
-      name: "c",
-    } as ConfigChatType;
-    mockSendTelegramMessage.mockResolvedValue("ok");
-    await commands.commandAddSkill(msg, chat);
-    const ctxReply = jest.fn();
-    await actionCb({ chat: { id: 2, type: "private" }, reply: ctxReply });
-    expect(config.chats[0].tools).toEqual(["skill_greet"]);
-    expect(ctxReply).toHaveBeenCalledWith("Skill already added: skill_greet");
-    expect(mockWriteConfig).not.toHaveBeenCalled();
   });
 
   it("ignores a non-admin invocation before listing skills", async () => {
@@ -388,10 +276,179 @@ describe("commandAddSkill", () => {
   });
 });
 
+describe("registerCommandActions", () => {
+  let fakeBot: ReturnType<typeof createFakeBot>;
+  let addToolHandler: (ctx: unknown) => Promise<void>;
+  let addSkillHandler: (ctx: unknown) => Promise<void>;
+
+  beforeEach(() => {
+    fakeBot = createFakeBot();
+    commands.registerCommandActions(
+      fakeBot as unknown as Parameters<typeof commands.registerCommandActions>[0],
+    );
+    const toolCall = fakeBot.callbackQuery.mock.calls.find(([re]) =>
+      (re as RegExp).source.startsWith("^add_tool_"),
+    );
+    const skillCall = fakeBot.callbackQuery.mock.calls.find(([re]) =>
+      (re as RegExp).source.startsWith("^add_skill_"),
+    );
+    addToolHandler = toolCall![1] as (ctx: unknown) => Promise<void>;
+    addSkillHandler = skillCall![1] as (ctx: unknown) => Promise<void>;
+  });
+
+  describe("add_tool_<name>", () => {
+    it("adds tool to chat config and answers the callback query", async () => {
+      mockUseTools.mockResolvedValue([
+        { name: "foo", module: { description: "Foo", defaultParams: { p: 1 } } },
+      ]);
+      const ctxReply = jest.fn();
+      const answerCallbackQuery = jest.fn();
+      await addToolHandler({
+        match: ["add_tool_foo", "foo"],
+        chat: { id: 2, type: "private" },
+        reply: ctxReply,
+        answerCallbackQuery,
+        update: { callback_query: { from: { username: "admin" }, message: { chat: { id: 2 } } } },
+      });
+      expect(config.chats[0].tools).toContain("foo");
+      expect(config.chats[0].toolParams).toEqual({ p: 1 });
+      expect(ctxReply).toHaveBeenCalledWith(expect.stringContaining("Tool added: foo"));
+      expect(mockWriteConfig).toHaveBeenCalled();
+      expect(answerCallbackQuery).toHaveBeenCalledWith();
+      expect(answerCallbackQuery).toHaveBeenCalledTimes(1);
+    });
+
+    it("answers 'Unknown tool' for a stale button and does not write config", async () => {
+      mockUseTools.mockResolvedValue([]);
+      const answerCallbackQuery = jest.fn();
+      await addToolHandler({
+        match: ["add_tool_nonexistent", "nonexistent"],
+        chat: { id: 2, type: "private" },
+        reply: jest.fn(),
+        answerCallbackQuery,
+        update: { callback_query: { from: { username: "admin" }, message: { chat: { id: 2 } } } },
+      });
+      expect(answerCallbackQuery).toHaveBeenCalledWith("Unknown tool");
+      expect(answerCallbackQuery).toHaveBeenCalledTimes(1);
+      expect(mockWriteConfig).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("add_skill_<name>", () => {
+    it("adds skill to chat config and answers the callback query", async () => {
+      mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
+      const ctxReply = jest.fn();
+      const answerCallbackQuery = jest.fn();
+      await addSkillHandler({
+        match: ["add_skill_skill_greet", "skill_greet"],
+        chat: { id: 2, type: "private" },
+        reply: ctxReply,
+        answerCallbackQuery,
+        update: { callback_query: { from: { username: "admin" }, message: { chat: { id: 2 } } } },
+      });
+      expect(config.chats[0].tools).toContain("skill_greet");
+      expect(ctxReply).toHaveBeenCalledWith("Skill added: skill_greet");
+      expect(mockWriteConfig).toHaveBeenCalled();
+      expect(answerCallbackQuery).toHaveBeenCalledWith();
+    });
+
+    it("answers 'Unknown skill' for a stale button and does not write config", async () => {
+      mockLoadSkills.mockReturnValue([]);
+      const answerCallbackQuery = jest.fn();
+      await addSkillHandler({
+        match: ["add_skill_nonexistent", "nonexistent"],
+        chat: { id: 2, type: "private" },
+        reply: jest.fn(),
+        answerCallbackQuery,
+        update: { callback_query: { from: { username: "admin" }, message: { chat: { id: 2 } } } },
+      });
+      expect(answerCallbackQuery).toHaveBeenCalledWith("Unknown skill");
+      expect(answerCallbackQuery).toHaveBeenCalledTimes(1);
+      expect(mockWriteConfig).not.toHaveBeenCalled();
+    });
+
+    it("ignores non-admin tap", async () => {
+      mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
+      mockGetActionUserMsg.mockReturnValue({ user: { username: "intruder" } });
+      const ctxReply = jest.fn();
+      await addSkillHandler({
+        match: ["add_skill_skill_greet", "skill_greet"],
+        chat: { id: 2, type: "private" },
+        reply: ctxReply,
+        answerCallbackQuery: jest.fn(),
+        update: {
+          callback_query: { from: { username: "intruder" }, message: { chat: { id: 2 } } },
+        },
+      });
+      expect(config.chats.length).toBe(0);
+      expect(ctxReply).not.toHaveBeenCalled();
+      expect(mockWriteConfig).not.toHaveBeenCalled();
+    });
+
+    it("adds a skill to a matching group chat", async () => {
+      mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
+      config.chats.push({
+        id: 2,
+        tools: [],
+        completionParams: {},
+        chatParams: {},
+        toolParams: {},
+      });
+      const ctxReply = jest.fn();
+      await addSkillHandler({
+        match: ["add_skill_skill_greet", "skill_greet"],
+        chat: { id: 2, type: "supergroup" },
+        reply: ctxReply,
+        answerCallbackQuery: jest.fn(),
+        update: { callback_query: { from: { username: "admin" }, message: { chat: { id: 2 } } } },
+      });
+      expect(config.chats[0].tools).toContain("skill_greet");
+      expect(ctxReply).toHaveBeenCalledWith("Skill added: skill_greet");
+      expect(mockWriteConfig).toHaveBeenCalled();
+    });
+
+    it("replies 'Chat not found in config' for an unconfigured group chat", async () => {
+      mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
+      const ctxReply = jest.fn();
+      await addSkillHandler({
+        match: ["add_skill_skill_greet", "skill_greet"],
+        chat: { id: 999, type: "supergroup" },
+        reply: ctxReply,
+        answerCallbackQuery: jest.fn(),
+        update: { callback_query: { from: { username: "admin" }, message: { chat: { id: 999 } } } },
+      });
+      expect(ctxReply).toHaveBeenCalledWith("Chat not found in config");
+      expect(mockWriteConfig).not.toHaveBeenCalled();
+    });
+
+    it("does not add a duplicate skill", async () => {
+      mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
+      config.chats.push({
+        username: "admin",
+        tools: ["skill_greet"],
+        completionParams: {},
+        chatParams: {},
+        toolParams: {},
+      });
+      const ctxReply = jest.fn();
+      await addSkillHandler({
+        match: ["add_skill_skill_greet", "skill_greet"],
+        chat: { id: 2, type: "private" },
+        reply: ctxReply,
+        answerCallbackQuery: jest.fn(),
+        update: { callback_query: { from: { username: "admin" }, message: { chat: { id: 2 } } } },
+      });
+      expect(config.chats[0].tools).toEqual(["skill_greet"]);
+      expect(ctxReply).toHaveBeenCalledWith("Skill already added: skill_greet");
+      expect(mockWriteConfig).not.toHaveBeenCalled();
+    });
+  });
+});
+
 describe("handleAddSkill", () => {
   it("delegates to commandAddSkill", async () => {
     mockLoadSkills.mockReturnValue([{ name: "greet", description: "G", dir: "/s/greet" }]);
-    const ctx = { chat: { id: 1 } } as unknown as Context;
+    const ctx = { chat: { id: 1 } } as unknown as BotContext;
     const msg = createMsg("admin");
     const chat = {
       bot_token: "t",
@@ -429,29 +486,22 @@ describe("getInfoMessage", () => {
     expect(res).toContain("Настройки приватного режима");
   });
 
-  it("shows the streaming mode when streaming is enabled", async () => {
+  it("shows streaming status when streaming is enabled", async () => {
     mockUseTools.mockResolvedValue([]);
     const msg = createMsg();
-    const editChat: ConfigChatType = {
+    const streamingChat: ConfigChatType = {
       name: "c",
       completionParams: { model: "m" },
       chatParams: { streaming: true },
       toolParams: {},
     } as ConfigChatType;
-    expect(await commands.getInfoMessage(msg, editChat)).toContain("Streaming: yes (edit mode)");
-    const draftChat: ConfigChatType = {
-      name: "c",
-      completionParams: { model: "m" },
-      chatParams: { streaming: true, streamMode: "draft" },
-      toolParams: {},
-    } as ConfigChatType;
-    expect(await commands.getInfoMessage(msg, draftChat)).toContain("Streaming: yes (draft mode)");
+    expect(await commands.getInfoMessage(msg, streamingChat)).toContain("Streaming: yes");
   });
 });
 
 describe("handleForget", () => {
   it("forgets history and sends ok", async () => {
-    const ctx = { chat: { id: 1 } } as unknown as Context;
+    const ctx = { chat: { id: 1 } } as unknown as BotContext;
     mockSendTelegramMessage.mockResolvedValue("ok");
     await commands.handleForget(ctx);
     expect(mockForgetHistory).toHaveBeenCalledWith(1);
@@ -461,7 +511,7 @@ describe("handleForget", () => {
 
 describe("handleInfo", () => {
   it("sends info message", async () => {
-    const ctx = { chat: { id: 1 } } as unknown as Context;
+    const ctx = { chat: { id: 1 } } as unknown as BotContext;
     const msg = createMsg();
     const chat = {
       completionParams: {},
@@ -478,7 +528,7 @@ describe("handleInfo", () => {
 
 describe("handleGoogleAuth", () => {
   it("calls oauth when data present", async () => {
-    const ctx = { chat: { id: 1 } } as unknown as Context;
+    const ctx = { chat: { id: 1 } } as unknown as BotContext;
     const msg = createMsg();
     const chat = {} as ConfigChatType;
     mockGetCtxChatMsg.mockReturnValue({ msg, chat });
@@ -489,7 +539,7 @@ describe("handleGoogleAuth", () => {
 
 describe("handleAddTool", () => {
   it("delegates to commandAddTool", async () => {
-    const ctx = { chat: { id: 1 } } as unknown as Context;
+    const ctx = { chat: { id: 1 } } as unknown as BotContext;
     const msg = createMsg("admin");
     const chat = {
       completionParams: {},
@@ -507,7 +557,7 @@ describe("handleAddChat", () => {
     const ctx = {
       chat: { id: 5, title: "t" },
       reply: jest.fn(),
-    } as unknown as Context;
+    } as unknown as BotContext;
     await commands.handleAddChat(ctx);
     expect(config.chats[0]).toEqual({ name: "t", id: 5 });
     expect(mockWriteConfig).toHaveBeenCalledWith(undefined, config);
@@ -516,14 +566,34 @@ describe("handleAddChat", () => {
 });
 
 describe("handleStart", () => {
-  it("stores vars from deeplink", async () => {
+  it("stores vars from deeplink via ctx.match", async () => {
     const ctx = {
       chat: { id: 1 },
-      startPayload: Buffer.from("from:pop").toString("base64"),
-    } as unknown as Context & {
-      startPayload?: string;
-    };
+      match: Buffer.from("from:pop").toString("base64"),
+    } as unknown as BotContext;
     const msg = createMsg();
+    const chat: ConfigChatType = {
+      id: 1,
+      completionParams: {},
+      chatParams: {},
+      toolParams: {},
+      deeplinks: [{ name: "from" }],
+    } as ConfigChatType;
+    mockGetCtxChatMsg.mockReturnValue({ msg, chat });
+    (config as { chats: ConfigChatType[] }).chats.push(chat);
+    await commands.handleStart(ctx);
+    expect(mockReadConfig).toHaveBeenCalled();
+    expect(mockWriteConfig).toHaveBeenCalledWith(undefined, config);
+    expect((config as { chats: ConfigChatType[] }).chats[0].user_vars?.[0]).toEqual({
+      username: "user",
+      vars: { from: "pop" },
+    });
+  });
+
+  it("stores vars from deeplink via message text fallback", async () => {
+    const ctx = { chat: { id: 1 } } as unknown as BotContext;
+    const payload = Buffer.from("from:pop").toString("base64");
+    const msg = { ...createMsg(), text: `/start ${payload}` };
     const chat: ConfigChatType = {
       id: 1,
       completionParams: {},

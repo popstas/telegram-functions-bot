@@ -1,6 +1,6 @@
 import { jest, describe, it, expect, beforeAll, beforeEach } from "@jest/globals";
 import type { Credentials } from "google-auth-library";
-import type { Message } from "telegraf/types";
+import type { Message } from "grammy/types";
 
 const mockExistsSync = jest.fn();
 const mockReadFileSync = jest.fn();

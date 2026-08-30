@@ -4,7 +4,7 @@ import { readConfig } from "../config.ts";
 import { BrainstormParamsType, ConfigChatType, ConfigType, ThreadStateType } from "../types.ts";
 import { buildMessages } from "../helpers/gpt.ts";
 import { llmCall } from "../helpers/gpt.ts";
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 
 type ToolArgsType = {
   systemMessage: string;

@@ -3,7 +3,7 @@ import { fileURLToPath } from "url";
 import { resolve } from "path";
 import type express from "express";
 import { useConfig } from "./config.ts";
-import { getBots } from "./bot.ts";
+import { getBots, getRunnerHandles } from "./bot.ts";
 import { isMqttConnected } from "./mqtt.ts";
 
 export type HealthResponse = {
@@ -13,6 +13,7 @@ export type HealthResponse = {
 
 export function getHealthStatus() {
   const bots = getBots();
+  const handles = getRunnerHandles();
   const errors: string[] = [];
 
   const mqttConfig = useConfig().mqtt;
@@ -20,15 +21,17 @@ export function getHealthStatus() {
     errors.push("MQTT is not connected");
   }
 
-  Object.values(bots).forEach((bot) => {
-    const polling = (
-      bot as unknown as {
-        polling?: { abortController: { signal: AbortSignal } };
+  Object.entries(bots).forEach(([token, bot]) => {
+    const handle = handles[token];
+    if (!handle?.isRunning()) {
+      // bot.botInfo throws before init() — the `?.` doesn't guard a throwing getter.
+      let name: string | undefined;
+      try {
+        name = bot.botInfo?.username;
+      } catch {
+        /* not inited */
       }
-    ).polling;
-    const isRunning = polling && !polling.abortController.signal.aborted;
-    if (!isRunning) {
-      errors.push(`Bot ${bot.botInfo?.username} is not running`);
+      errors.push(`Bot ${name ?? token.slice(0, 8)} is not running`);
     }
   });
 

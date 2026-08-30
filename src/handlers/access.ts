@@ -1,8 +1,9 @@
-import { Context } from "telegraf";
-import { Chat, Message } from "telegraf/types";
+import type { BotContext } from "../telegram/botContext.ts";
+import { Message } from "grammy/types";
 import { ConfigChatType } from "../types.ts";
 import { useConfig } from "../config.ts";
 import { getCtxChatMsg } from "../telegram/context.ts";
+import type { TitleChat } from "../telegram/updateTypes.ts";
 import { isAdminUser, sendTelegramMessage } from "../telegram/send.ts";
 import { log } from "../helpers.ts";
 
@@ -13,7 +14,7 @@ function escapeRegExp(value: string): string {
 }
 
 export default async function checkAccessLevel(
-  ctx: Context,
+  ctx: BotContext,
 ): Promise<{ msg: Message.TextMessage; chat: ConfigChatType } | false | undefined> {
   const { msg, chat } = getCtxChatMsg(ctx);
   if (!msg) {
@@ -21,7 +22,7 @@ export default async function checkAccessLevel(
     return;
   }
 
-  const chatTitle = (ctx.message?.chat as Chat.TitleChat)?.title || "";
+  const chatTitle = (ctx.message?.chat as TitleChat)?.title || "";
   const chatId = msg.chat.id;
   const isPrivate = msg.chat.type === "private";
 

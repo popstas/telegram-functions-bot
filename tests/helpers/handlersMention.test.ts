@@ -1,5 +1,6 @@
 import { jest } from "@jest/globals";
-import { Context, Message } from "telegraf/types";
+import type { Context } from "grammy";
+import { Message } from "grammy/types";
 
 const mockSendTelegramMessage = jest.fn();
 const mockCheckAccessLevel = jest.fn();

@@ -152,6 +152,12 @@ describe("skills loader", () => {
       expect(spec.function.parameters.required).toEqual(["command"]);
     });
 
+    it("keeps module.description short: frontmatter description without instructions", () => {
+      const tool = buildSkillTool(skill);
+      expect(tool.module.description).toBe("Greets");
+      expect(tool.module.description).not.toContain("references/hi.py");
+    });
+
     it("runs the command with cwd = skill dir and returns stdout", async () => {
       mockExec.mockImplementation((_cmd: string, _opts: unknown, cb: ExecCb) => {
         cb(null, "hello world", "");

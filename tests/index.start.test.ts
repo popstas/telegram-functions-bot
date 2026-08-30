@@ -1,16 +1,23 @@
 import { jest, describe, it, expect, beforeAll, beforeEach, afterEach } from "@jest/globals";
+import { makeGrammyError } from "./testHelpers.ts";
 
 const botInstance = {
-  help: jest.fn(),
+  use: jest.fn(),
+  command: jest.fn(),
   on: jest.fn(),
-  action: jest.fn(),
   catch: jest.fn(),
-  launch: jest.fn().mockImplementation((_config, onLaunch) => {
-    onLaunch?.();
-    return Promise.resolve();
-  }),
+  callbackQuery: jest.fn(),
   botInfo: { username: "bot" },
 };
+
+const runnerHandle = {
+  task: () => Promise.resolve(),
+  stop: jest.fn(async () => {}),
+  isRunning: () => true,
+};
+const mockRun = jest.fn(() => runnerHandle);
+const mockBotReady = jest.fn(async () => {});
+const mockSetRunnerHandle = jest.fn();
 
 const mockUseConfig = jest.fn();
 const mockValidateConfig = jest.fn();
@@ -51,16 +58,26 @@ const expressApp = {
 const mockExpress = jest.fn(() => expressApp);
 mockExpress.json = jest.fn(() => (_req: unknown, _res: unknown, next: () => void) => next());
 
+jest.unstable_mockModule("@grammyjs/runner", () => ({
+  __esModule: true,
+  run: (...args: unknown[]) => mockRun(...args),
+  sequentialize: jest.fn(() => (_ctx: unknown, next: () => void) => next()),
+}));
+
 jest.unstable_mockModule("../src/bot.ts", () => ({
   __esModule: true,
   useBot: () => mockUseBot(),
+  botReady: (...args: unknown[]) => mockBotReady(...args),
   getBots: () => ({ main: botInstance }),
+  setRunnerHandle: (...args: unknown[]) => mockSetRunnerHandle(...args),
+  getRunnerHandles: () => ({}),
 }));
 
 jest.unstable_mockModule("../src/commands.ts", () => ({
   __esModule: true,
   initCommands: (...args: unknown[]) => mockInitCommands(...args),
   handleAddChat: jest.fn(),
+  registerCommandActions: jest.fn(),
 }));
 
 jest.unstable_mockModule("../src/helpers/useTools.ts", () => ({
@@ -112,15 +129,18 @@ beforeEach(() => {
   expressApp.post.mockReset();
   expressApp.listen.mockReset();
   expressApp.listen.mockImplementation((_: number, cb: () => void) => cb());
-  botInstance.help.mockReset();
+  botInstance.use.mockReset();
+  botInstance.command.mockReset();
   botInstance.on.mockReset();
-  botInstance.action.mockReset();
   botInstance.catch.mockReset();
-  botInstance.launch.mockReset();
-  botInstance.launch.mockImplementation((_config, onLaunch) => {
-    onLaunch?.();
-    return Promise.resolve();
-  });
+  botInstance.callbackQuery.mockReset();
+  mockRun.mockReset();
+  mockRun.mockReturnValue(runnerHandle);
+  runnerHandle.stop.mockReset();
+  runnerHandle.stop.mockImplementation(async () => {});
+  mockBotReady.mockReset();
+  mockBotReady.mockImplementation(async () => {});
+  mockSetRunnerHandle.mockReset();
 });
 
 afterEach(async () => {
@@ -156,6 +176,8 @@ describe("start", () => {
     expect(mockWatchConfigChanges).toHaveBeenCalled();
     expect(mockInitTools).toHaveBeenCalled();
     expect(mockUseBot).toHaveBeenCalledTimes(2);
+    expect(mockRun).toHaveBeenCalledTimes(2);
+    expect(mockSetRunnerHandle).toHaveBeenCalledTimes(2);
     expect(expressApp.listen).toHaveBeenCalled();
     expect(mockUseMqtt).toHaveBeenCalled();
   });
@@ -195,19 +217,14 @@ describe("start", () => {
 });
 
 describe("launchBot", () => {
-  it("logs invalid token", async () => {
+  it("logs invalid token when botReady rejects with 401", async () => {
     mockUseConfig.mockReturnValue({ chats: [] });
-    const err = { response: { statusCode: 401 } };
-    mockUseBot.mockImplementationOnce(() => {
-      throw err;
-    });
+    mockBotReady.mockRejectedValueOnce(makeGrammyError(401, "Unauthorized"));
     mockInitCommands.mockReset();
     mockLog.mockReset();
 
-    jest.resetModules();
-    index = await import("../src/index.ts");
-
     await index.launchBot("t", "b");
+    expect(mockRun).not.toHaveBeenCalled();
     expect(mockLog).toHaveBeenCalledWith({
       msg: expect.stringContaining("Invalid bot token"),
       logLevel: "error",

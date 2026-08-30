@@ -7,7 +7,7 @@ import {
   ThreadStateType,
   ToolResponse,
 } from "../../src/types.ts";
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import { OpenAI } from "openai";
 
 // Suppress console.info in tests
@@ -18,7 +18,7 @@ beforeAll(() => {
 // Mock the bot module with proper typing
 jest.mock("../../src/bot", () => ({
   useBot: () => ({
-    telegram: {
+    api: {
       sendMessage: jest.fn().mockImplementation(() => Promise.resolve({ message_id: 1 })),
     },
   }),

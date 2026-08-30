@@ -1,5 +1,6 @@
-import { Context, Markup } from "telegraf";
-import { Message, Chat } from "telegraf/types";
+import type { BotContext } from "../telegram/botContext.ts";
+import { Message } from "grammy/types";
+import type { TitleChat } from "../telegram/updateTypes.ts";
 import OpenAI from "openai";
 import {
   ConfigChatType,
@@ -12,13 +13,14 @@ import { sendTelegramMessage } from "../telegram/send.ts";
 import { useConfig } from "../config.ts";
 import { log } from "../helpers.ts";
 import { llmCall } from "../helpers/gpt/llm.ts";
+import { resolveRecipientChatId } from "../helpers/recipients.ts";
 
 /**
  * Main entry point for form flow handling.
  * Returns a message if the form was handled, undefined to continue normal processing.
  */
 export async function handleFormFlow(
-  ctx: Context,
+  ctx: BotContext,
   msg: Message.TextMessage,
   chat: ConfigChatType,
   thread: ThreadStateType,
@@ -43,7 +45,7 @@ export async function handleFormFlow(
  * Start a new form flow
  */
 async function startForm(
-  ctx: Context,
+  ctx: BotContext,
   msg: Message.TextMessage,
   chat: ConfigChatType,
   thread: ThreadStateType,
@@ -58,7 +60,7 @@ async function startForm(
     collectedData: {},
   };
 
-  const chatTitle = (msg.chat as Chat.TitleChat).title || "";
+  const chatTitle = (msg.chat as TitleChat).title || "";
   log({
     msg: `Form started: ${form.intro.slice(0, 50)}...`,
     chatId: msg.chat.id,
@@ -78,7 +80,7 @@ async function startForm(
  * Process a message in an active form flow
  */
 async function processFormMessage(
-  ctx: Context,
+  ctx: BotContext,
   msg: Message.TextMessage,
   chat: ConfigChatType,
   thread: ThreadStateType,
@@ -101,7 +103,7 @@ async function processFormMessage(
   }
 
   const userText = msg.text || "";
-  const chatTitle = (msg.chat as Chat.TitleChat).title || "";
+  const chatTitle = (msg.chat as TitleChat).title || "";
 
   // Get unfilled fields
   const unfilledFields = getUnfilledFields(form, formState);
@@ -150,26 +152,23 @@ async function processFormMessage(
  * @param optionIndex - index of the option in field.options
  */
 export async function handleFormButtonClick(
-  ctx: Context,
+  ctx: BotContext,
   fieldIndex: number,
   optionIndex: number,
 ): Promise<void> {
   const callbackQuery = ctx.callbackQuery;
-  if (!callbackQuery || !("message" in callbackQuery)) {
+  const cbMessage = callbackQuery?.message;
+  if (!callbackQuery || !cbMessage || cbMessage.date === 0) {
     return;
   }
-
-  const chatId = callbackQuery.message?.chat.id;
-  if (!chatId) {
-    return;
-  }
+  const chatId = cbMessage.chat.id;
 
   // Find the chat config
   const config = useConfig();
   const chat = config.chats.find((c) => c.id === chatId || c.ids?.includes(chatId));
 
   if (!chat?.chatParams?.form) {
-    await ctx.answerCbQuery("Form not configured");
+    await ctx.answerCallbackQuery("Form not configured");
     return;
   }
 
@@ -179,7 +178,7 @@ export async function handleFormButtonClick(
   const thread = threads[chatId];
 
   if (!thread?.formState?.active) {
-    await ctx.answerCbQuery("No active form");
+    await ctx.answerCallbackQuery("No active form");
     return;
   }
 
@@ -187,20 +186,20 @@ export async function handleFormButtonClick(
   const form = chat.chatParams.form[formState.formIndex];
 
   if (!form) {
-    await ctx.answerCbQuery("Form not found");
+    await ctx.answerCallbackQuery("Form not found");
     return;
   }
 
   // Get field and option by index
   const field = form.items[fieldIndex];
   if (!field || field.type !== "button" || !field.options) {
-    await ctx.answerCbQuery("Invalid field");
+    await ctx.answerCallbackQuery("Invalid field");
     return;
   }
 
   const option = field.options[optionIndex];
   if (!option) {
-    await ctx.answerCbQuery("Invalid option");
+    await ctx.answerCallbackQuery("Invalid option");
     return;
   }
 
@@ -210,7 +209,7 @@ export async function handleFormButtonClick(
   // Update collected data with button selection
   formState.collectedData[fieldName] = value;
 
-  const chatTitle = (callbackQuery.message?.chat as Chat.TitleChat).title || "";
+  const chatTitle = (cbMessage.chat as TitleChat).title || "";
   log({
     msg: `Form button clicked: ${fieldName} = ${value}`,
     chatId,
@@ -220,7 +219,7 @@ export async function handleFormButtonClick(
   });
 
   // Answer callback to remove loading state
-  await ctx.answerCbQuery(`${fieldName}: ${value}`);
+  await ctx.answerCallbackQuery(`${fieldName}: ${value}`);
 
   // Check if form is complete
   const stillUnfilled = getUnfilledFields(form, formState);
@@ -229,7 +228,7 @@ export async function handleFormButtonClick(
     // Complete the form
     const virtualMsg = {
       chat: { id: chatId },
-      message_id: callbackQuery.message?.message_id,
+      message_id: cbMessage.message_id,
       from: callbackQuery.from,
       text: "",
       date: Math.floor(Date.now() / 1000),
@@ -258,7 +257,7 @@ export async function handleFormButtonClick(
  * Complete the form and send results
  */
 async function completeForm(
-  ctx: Context,
+  ctx: BotContext,
   msg: Message.TextMessage,
   chat: ConfigChatType,
   thread: ThreadStateType,
@@ -270,7 +269,7 @@ async function completeForm(
     return undefined;
   }
 
-  const chatTitle = (msg.chat as Chat.TitleChat).title || "";
+  const chatTitle = (msg.chat as TitleChat).title || "";
 
   // Format the message using template
   const formattedMessage = formatTemplate(form.message_template, formState.collectedData);
@@ -303,27 +302,15 @@ async function sendToRecipients(
   message: string,
   chatConfig: ConfigChatType,
 ): Promise<void> {
-  const config = useConfig();
-
   for (const recipient of recipients) {
-    let chatId: number | undefined;
+    const chatId = resolveRecipientChatId(recipient);
 
-    if (typeof recipient === "number") {
-      chatId = recipient;
-    } else {
-      // Try to find chat by username or name
-      const recipientChat = config.chats.find(
-        (c) => c.username === recipient || c.name === recipient,
-      );
-      chatId = recipientChat?.id;
-
-      if (!chatId) {
-        log({
-          msg: `Form: Could not find chat for recipient: ${recipient}`,
-          logLevel: "warn",
-        });
-        continue;
-      }
+    if (!chatId) {
+      log({
+        msg: `Form: Could not find chat for recipient: ${recipient}`,
+        logLevel: "warn",
+      });
+      continue;
     }
 
     try {
@@ -438,7 +425,7 @@ function getUnfilledFields(form: FormConfigType, state: FormStateType): FormFiel
 function buildFormButtons(
   form: FormConfigType,
   state: FormStateType,
-): ReturnType<typeof Markup.inlineKeyboard> | undefined {
+): { reply_markup: { inline_keyboard: { text: string; callback_data: string }[][] } } | undefined {
   const unfilledButtonFields = form.items
     .map((field, index) => ({ field, index }))
     .filter(({ field }) => field.type === "button" && !state.collectedData[field.name]);
@@ -473,7 +460,7 @@ function buildFormButtons(
     }
   }
 
-  return buttons.length > 0 ? Markup.inlineKeyboard(buttons) : undefined;
+  return buttons.length > 0 ? { reply_markup: { inline_keyboard: buttons } } : undefined;
 }
 
 /**

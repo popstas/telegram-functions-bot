@@ -1,4 +1,3 @@
-import { Context } from "telegraf";
 import fs from "fs";
 
 import tmp from "tmp";
@@ -8,8 +7,11 @@ import { sendTelegramMessage } from "../telegram/send.ts";
 import { convertToMp3, sendAudioWhisper } from "../helpers/stt.ts";
 import { useConfig } from "../config.ts";
 import { log } from "../helpers.ts";
-import { Message } from "telegraf/types";
+import { Message } from "grammy/types";
 import { prettyText } from "../utils/text.ts";
+import { withChatAction } from "../telegram/chatAction.ts";
+import { createNewContext } from "../telegram/context.ts";
+import type { BotContext } from "../telegram/botContext.ts";
 
 tmp.setGracefulCleanup();
 
@@ -32,18 +34,15 @@ type WhisperResponse = {
   segments?: (WhisperSegment | WhisperSegmentArray)[];
 };
 
-export async function processAudio(
-  ctx: Context & { secondTry?: boolean },
-  voice: { file_id: string },
-  chatId: number,
-) {
-  const link = await ctx.telegram.getFileLink(voice.file_id);
+export async function processAudio(ctx: BotContext, voice: { file_id: string }, chatId: number) {
+  const file = await ctx.api.getFile(voice.file_id);
+  const fileUrl = `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`;
   const oggPath = tmp.tmpNameSync({ postfix: ".ogg" });
   let mp3Path: string | null = null;
   let progressTimer: NodeJS.Timeout | null = null;
 
   try {
-    const response = await fetch(link.href);
+    const response = await fetch(fileUrl);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -83,18 +82,15 @@ export async function processAudio(
     }
 
     const paragraphs = prettyText(text);
-    await sendTelegramMessage(chatId, paragraphs, undefined, ctx);
+    // Blockquote so the recognized text reads as a quote of the voice message.
+    const quoted = paragraphs
+      .split("\n")
+      .map((line) => `> ${line}`.trimEnd())
+      .join("\n");
+    await sendTelegramMessage(chatId, quoted, undefined, ctx);
 
-    const fakeMsg = { ...ctx.message, text };
-    const newCtx = Object.create(Object.getPrototypeOf(ctx), {
-      ...Object.getOwnPropertyDescriptors(ctx),
-      message: { value: fakeMsg, writable: true, configurable: true },
-      update: {
-        value: { ...ctx.update, message: fakeMsg },
-        writable: true,
-        configurable: true,
-      },
-    }) as Context & { secondTry?: boolean };
+    const fakeMsg = { ...ctx.message, text } as Message;
+    const newCtx = createNewContext(ctx, fakeMsg);
     await onTextMessage(newCtx);
   } catch (error) {
     console.error("Error processing audio:", error);
@@ -115,7 +111,7 @@ export async function processAudio(
   }
 }
 
-export default async function onAudio(ctx: Context & { secondTry?: boolean }) {
+export default async function onAudio(ctx: BotContext) {
   const chatId = ctx.chat?.id;
   if (!chatId) return;
 
@@ -139,5 +135,5 @@ export default async function onAudio(ctx: Context & { secondTry?: boolean }) {
     role: "user",
   });
 
-  await ctx.persistentChatAction("typing", async () => processAudio(ctx, voice, chatId));
+  await withChatAction(ctx, "typing", async () => processAudio(ctx, voice, chatId));
 }

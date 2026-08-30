@@ -6,8 +6,9 @@ import {
   replaceVarsPlaceholders,
 } from "../placeholders.ts";
 import express, { Response } from "express";
-import { Context } from "telegraf";
-import { Chat, Message } from "telegraf/types";
+import { Message } from "grammy/types";
+import type { BotContext } from "../../telegram/botContext.ts";
+import type { TitleChat } from "../../telegram/updateTypes.ts";
 import {
   ConfigChatType,
   GptContextType,
@@ -437,7 +438,7 @@ export async function generateButtonsFromAgent(
 
   if (options?.signal?.aborted) return undefined;
 
-  const chatTitle = (msg.chat as Chat.TitleChat).title;
+  const chatTitle = (msg.chat as TitleChat).title;
   const answerId = msg.message_id?.toString() || "";
   log({
     msg: "start generate buttons",
@@ -612,13 +613,13 @@ export async function processToolResults({
       const toolResMessageLimit = 8000;
       const parts = parseToolContent(toolRes.content);
       for (const part of parts) {
-        if (part.type === "text" && part.text && showMessages) {
+        if (part.type === "text" && part.text && showMessages && !noSendTelegram) {
           const msgContentLimited =
             part.text.length > toolResMessageLimit
               ? part.text.slice(0, toolResMessageLimit) + "..."
               : part.text;
           await sendTelegramMessage(msg.chat.id, msgContentLimited, params, undefined, chatConfig);
-        } else if (part.type === "resource") {
+        } else if (part.type === "resource" && !noSendTelegram) {
           if (part.resource?.blob) {
             const buffer = Buffer.from(part.resource.blob, "base64");
             await sendTelegramDocument(
@@ -691,7 +692,7 @@ export async function processToolResults({
     generationName: "after-tools",
   });
 
-  if (webSearchDetails && chatConfig.chatParams?.showToolMessages !== false) {
+  if (!noSendTelegram && webSearchDetails && chatConfig.chatParams?.showToolMessages !== false) {
     await sendTelegramMessage(
       msg.chat.id,
       webSearchDetails,
@@ -701,7 +702,7 @@ export async function processToolResults({
     );
   }
 
-  if (images && images.length) {
+  if (!noSendTelegram && images && images.length) {
     for (const img of images) {
       const buffer = Buffer.from(img.result, "base64");
       await sendTelegramDocument(
@@ -730,11 +731,7 @@ export async function processToolResults({
 export async function requestGptAnswer(
   msg: Message.TextMessage,
   chatConfig: ConfigChatType,
-  ctx?: Context & {
-    expressRes?: express.Response;
-    progressCallback?: (msg: string) => void;
-    noSendTelegram?: boolean;
-  },
+  ctx?: BotContext,
   options?: {
     skipEvaluators?: boolean;
     responseFormat?: OpenAI.Chat.Completions.ChatCompletionCreateParams["response_format"];
@@ -763,7 +760,7 @@ export async function requestGptAnswer(
     } as ThreadStateType;
   }
 
-  const chatTools = await resolveChatTools(msg, chatConfig);
+  const chatTools = await resolveChatTools(msg, chatConfig, ctx?.noSendTelegram);
 
   const builtInToolNames = (chatConfig.tools || []).filter(
     (t) => typeof t === "string" && (t === "web_search_preview" || t === "image_generation"),
@@ -797,14 +794,14 @@ export async function requestGptAnswer(
   systemMessage = systemMessage.replace(/\{date}/g, date);
   systemMessage = await replaceUrlPlaceholders(
     systemMessage,
-    chatConfig.chatParams.placeholderCacheTime,
+    chatConfig.chatParams?.placeholderCacheTime,
   );
   systemMessage = await replaceToolPlaceholders(
     systemMessage,
     chatTools,
     chatConfig,
     thread,
-    chatConfig.chatParams.placeholderCacheTime,
+    chatConfig.chatParams?.placeholderCacheTime,
   );
   const userVars = chatConfig.user_vars?.find((u) => u.username === msg.from?.username)?.vars || {};
   systemMessage = replaceVarsPlaceholders(systemMessage, userVars);

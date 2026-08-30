@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { encodingForModel, TiktokenModel } from "js-tiktoken";
+import { encodingForModel, getEncoding, TiktokenModel } from "js-tiktoken";
 import { ChatToolType, ConfigChatType, ThreadStateType } from "../../types.ts";
 import { getToolsPrompts, getToolsSystemMessages } from "./tools.ts";
 
@@ -82,9 +82,15 @@ export function getTokensCount(chatConfig: ConfigChatType, text: string) {
   try {
     const tokenizer = encodingForModel(chatConfig.completionParams.model as TiktokenModel);
     return tokenizer.encode(text).length;
-  } catch (error) {
-    console.error(error);
-    console.error("model:", chatConfig.completionParams.model);
-    return 0;
+  } catch {
+    // Unknown/newer model name (e.g. gpt-5.1) — fall back to the base encoding
+    // used by GPT-4o/5-family models instead of returning 0.
+    try {
+      return getEncoding("o200k_base").encode(text).length;
+    } catch (error) {
+      console.error(error);
+      console.error("model:", chatConfig.completionParams.model);
+      return 0;
+    }
   }
 }

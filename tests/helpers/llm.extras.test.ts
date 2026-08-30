@@ -1,5 +1,6 @@
 import { jest, describe, it, expect, beforeEach, beforeAll } from "@jest/globals";
-import type { Context, Message } from "telegraf/types";
+import type { Context } from "grammy";
+import type { Message } from "grammy/types";
 import type { ConfigChatType, ThreadStateType } from "../../src/types.ts";
 import OpenAI from "openai";
 import type { ChatCompletionStream } from "openai/lib/ChatCompletionStream.js";
@@ -26,10 +27,9 @@ const mockIsAdminUser = jest.fn();
 const mockForward = jest.fn();
 const mockUseConfig = jest.fn();
 const mockUseBot = jest.fn(() => ({
-  telegram: {
-    sendMessage: jest.fn(),
-    editMessageText: jest.fn(),
-    deleteMessage: jest.fn(),
+  api: {
+    sendRichMessageDraft: jest.fn(),
+    sendMessageDraft: jest.fn(),
   },
 }));
 
@@ -658,6 +658,14 @@ describe("requestGptAnswer", () => {
     expect(mockForward).toHaveBeenCalledWith(msg, chatConfig);
     expect(msg.text).toBe("Переслано от: Bob\nhi");
     expect(threads[1]).toBeDefined();
+    expect(res?.content).toBe("a");
+  });
+
+  it("does not throw when chatConfig has no chatParams", async () => {
+    const msg: Message.TextMessage = { ...baseMsg };
+    const configWithoutChatParams: ConfigChatType = { ...chatConfig };
+    delete configWithoutChatParams.chatParams;
+    const res = await requestGptAnswer(msg, configWithoutChatParams);
     expect(res?.content).toBe("a");
   });
 

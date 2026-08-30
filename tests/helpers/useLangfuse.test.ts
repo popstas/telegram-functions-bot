@@ -1,5 +1,5 @@
 import { jest, describe, it, beforeEach, expect } from "@jest/globals";
-import type { Message } from "telegraf/types";
+import type { Message } from "grammy/types";
 
 const mockTrace = jest.fn();
 class MockLangfuse {

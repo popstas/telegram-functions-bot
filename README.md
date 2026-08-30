@@ -36,7 +36,7 @@ Telegram bot with functions tools.
 - Guest mode: answer when mentioned in a reply to another user, with reply context (enable with global `guestMode`)
 - Reply-to-message context is always added to history when the bot is mentioned (not gated on guest mode)
 - Skills: Claude-Code-style `SKILL.md` directories exposed as runnable `skill_<name>` tools, attachable per chat with `/add_skill`
-- Draft streaming mode: stream partial answers as an ephemeral Telegram draft via `sendMessageDraft` (`chatParams.streamMode: draft`)
+- Streaming: stream partial answers as an ephemeral Telegram rich-message draft via `sendRichMessageDraft` (enable with `chatParams.streaming`)
 
 ## Desktop launcher
 
@@ -135,7 +135,7 @@ Run `python references/hello.py <name>` to print a greeting.
   `Exit code: N`). Commands run on the host with the bot user's privileges. A skill only runs in a
   chat that lists it in `tools[]`, and only admins can attach it (via `/add_skill` or by editing
   config) — the same trust model as the `powershell`/`ssh_command` tools.
-- The skills directory defaults to `skills` and is configurable with the top-level `skillsDir`
+- The skills directory defaults to `data/skills` and is configurable with the top-level `skillsDir`
   config option. A missing directory, a missing `SKILL.md`, or malformed frontmatter is skipped
   with a warning and never breaks startup.
 
@@ -684,6 +684,53 @@ inlineMode:
   means the `chosen_inline_result` update never arrived (inline feedback is not at 100%); a
   `no inline_message_id` warning points at the same cause.
 
+## Relay mode
+
+Relay mode turns a chat into a one-way mailbox: every incoming message is copied to the
+configured targets as-is and never reaches the LLM. Built for collecting daily voice
+"commits" from managers — each person writes the bot in a private chat, so nobody sees
+anyone else's messages, and everything lands in one group.
+
+Enable it via `chatParams.relay`:
+
+```yaml
+chats:
+  - name: default
+    chatParams:
+      relay:
+        send_to: [-1001234567890]
+        reply: "Принял"
+```
+
+| Field     | Required | Meaning                                                                                                            |
+| --------- | -------- | ------------------------------------------------------------------------------------------------------------------ |
+| `send_to` | yes      | Where to copy. A chat id, a numeric string, or the `name`/`username` of a chat from `config.chats`.                |
+| `types`   | no       | Limit to these message types. Omitted = relay everything.                                                          |
+| `header`  | no       | Text sent before each copied message. Default `{name} (@{username}), {date} {time}`. Empty string sends no header. |
+| `reply`   | no       | Confirmation sent back to the author. Omitted = stay silent.                                                       |
+
+Header placeholders: `{name}`, `{username}`, `{date}`, `{time}`. When the author has no
+username the template's empty `(@)` is dropped. `{name}` is always the person who wrote
+the bot, so a manager forwarding a client's message is still credited by name.
+
+Known `types` values: `text`, `voice`, `audio`, `photo`, `video`, `video_note`,
+`document`, `sticker`, `animation`, `location`, `contact`, `poll`, and `other` for
+anything else. Relay a voice-only mailbox with `types: [voice]`.
+
+Notes:
+
+- Access uses the normal whitelist: the global `privateUsers` / `adminUsers`, or a
+  per-chat `privateUsers`. Someone outside it never reaches the relay.
+- Messages are sent with `copyMessage`, so the group sees the content without a
+  "forwarded from" link back to the author's account.
+- A target equal to the source chat is dropped, so a config matched by the group it posts
+  into cannot relay its own copies in a loop. If that leaves no targets, the message falls
+  through to the normal handlers.
+- An album (`media_group_id`) gets one header, then every part is copied under it.
+- Commands registered before the relay middleware (`/help` and friends) still work.
+- If every target fails or cannot be resolved, the author is told the message did not go
+  through instead of getting a silent success.
+
 ## Secretary mode
 
 Secretary mode debounces answers per chat: after the first incoming message the bot waits
@@ -727,6 +774,7 @@ chatParams:
           prompt: "Reply only: 'forwarded to Stas'."
           override: true # replace secretary.prompt entirely
   ```
+
 - **Manual takeover (Telegram Business):** if the connection owner replies to a customer
   manually, the bot pauses auto-answers in that chat for the rest of the session and resumes
   in the next session (after `sessionDurationSeconds` of inactivity). The bot's own sent
@@ -789,32 +837,42 @@ Independent of guest mode, whenever the bot is mentioned in a **reply to another
 (in private chats and groups alike), the replied-to message is added to the thread history so the
 model keeps the conversational context. This used to require an enabled `guestMode.prompt`; it now
 always happens when the bot is mentioned. The `guestMode` block still controls the guest-mode
-*system prompt*, but no longer gates reply-context inclusion. Replies to the bot's own prior
+_system prompt_, but no longer gates reply-context inclusion. Replies to the bot's own prior
 message (already in history) and to one's own message are skipped to avoid duplication.
+
+## Message formatting
+
+Final answers are sent as Telegram **rich messages** via the Bot API 10.1 `sendRichMessage`
+method: raw markdown goes in, and Telegram renders headings, code blocks, tables, and other
+markdown natively — the message is sent in one piece, with no 4096-character splitting.
+
+- A tool/answer response can opt out with `plainText: true` in its extra message params, which
+  sends the text as-is with no `parse_mode` (useful for URLs containing `%` encoding). Plain-text
+  sends always use the legacy path below; rich rendering is skipped for them.
+- If `sendRichMessage` fails (unsupported Bot API version, malformed markdown, etc.), the bot logs
+  a warning and falls back to the legacy send path: auto-detected `parse_mode` (`HTML` or
+  `MarkdownV2`), markdown escaping via `telegramify-markdown`, and splitting into ≤4096-character
+  chunks.
 
 ## Telegram streaming mode
 
-Enable live streaming of the model's answer into Telegram with `chatParams.streaming: true`. Two
-rendering modes are available via `chatParams.streamMode`:
+Enable live streaming of the model's answer into Telegram with `chatParams.streaming: true`:
 
 ```yaml
 chatParams:
   streaming: true
-  streamMode: edit # or "draft"
 ```
 
-- `edit` (default) — the bot sends a real message and edits it every ~2s as new text arrives. This
-  is the original behavior and works on any Telegram Bot API version.
-- `draft` — the bot pushes partial text as an **ephemeral message draft** via the Bot API
-  `sendMessageDraft` method, then persists one final message when generation finishes. The draft
-  is a short-lived (~30s) preview that does not spam edits; the final answer is sent through the
-  normal send path.
+The bot streams the answer as a Telegram **rich-message draft** via the Bot API 10.1
+`sendRichMessageDraft` method, updating it roughly every 2 seconds as new text arrives. The draft
+is cleared once generation finishes and the final answer is sent through the normal send path.
 
-The `draft` mode requires a Telegram Bot API backend that supports `sendMessageDraft`
-(**Bot API 9.3**, December 2025; available to all bots from 9.5, March 2026). If your backend is
-older, use `streamMode: edit`. Streaming of either mode is disabled for image answers and for
-turns that do not send a Telegram message (inline queries and form-flow turns). The active mode is
-shown in `/info` next to "Streaming".
+`sendRichMessageDraft` requires a Telegram Bot API backend on **Bot API 10.1** or newer. The old
+`streamMode` option (which selected between edit-in-place and draft streaming) has been removed —
+edit-mode streaming no longer exists. Existing configs that still set `streamMode` will log a
+`checkConfigSchema` unknown-field warning; this is expected and the field can be deleted. Streaming
+is disabled for image answers and for turns that do not send a Telegram message (inline queries and
+form-flow turns). Streaming status is shown in `/info` next to "Streaming".
 
 ## Default response format
 

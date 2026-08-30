@@ -1,5 +1,6 @@
 import { jest, describe, it, expect, beforeEach, afterEach, beforeAll } from "@jest/globals";
-import type { Context, Message } from "telegraf/types";
+import type { Context } from "grammy";
+import type { Message } from "grammy/types";
 import type { ConfigChatType } from "../../src/types.ts";
 
 interface Thread {
@@ -383,7 +384,7 @@ describe("onTextMessage secretary mode", () => {
   });
 
   describe("markAsReaded", () => {
-    const callApi = jest.fn(() => Promise.resolve());
+    const readBusinessMessage = jest.fn(() => Promise.resolve(true));
 
     function createBusinessCtx(
       message: Record<string, unknown>,
@@ -391,7 +392,7 @@ describe("onTextMessage secretary mode", () => {
       return {
         ...createCtx(message),
         businessConnectionId: "conn-1",
-        telegram: { callApi },
+        api: { readBusinessMessage },
       } as unknown as Context & { secondTry?: boolean };
     }
 
@@ -401,7 +402,7 @@ describe("onTextMessage secretary mode", () => {
     } as ConfigChatType;
 
     beforeEach(() => {
-      callApi.mockClear();
+      readBusinessMessage.mockClear();
     });
 
     it("marks the answered message as read in a Business chat", async () => {
@@ -412,11 +413,7 @@ describe("onTextMessage secretary mode", () => {
       await jest.advanceTimersByTimeAsync(15000);
       await Promise.resolve();
 
-      expect(callApi).toHaveBeenCalledWith("readBusinessMessage", {
-        business_connection_id: "conn-1",
-        chat_id: 1,
-        message_id: 42,
-      });
+      expect(readBusinessMessage).toHaveBeenCalledWith("conn-1", 1, 42);
     });
 
     it("does not mark as read when markAsReaded is unset", async () => {
@@ -427,7 +424,7 @@ describe("onTextMessage secretary mode", () => {
       await jest.advanceTimersByTimeAsync(15000);
       await Promise.resolve();
 
-      expect(callApi).not.toHaveBeenCalled();
+      expect(readBusinessMessage).not.toHaveBeenCalled();
     });
 
     it("is a no-op (still answers) without a business connection", async () => {

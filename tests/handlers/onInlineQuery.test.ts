@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import type { Context } from "telegraf";
+import type { BotContext } from "../../src/telegram/botContext.ts";
 import type { ConfigType } from "../../src/types.ts";
 
 const mockUseConfig = jest.fn();
@@ -82,7 +82,7 @@ describe("onInlineQuery", () => {
     const ctx = {
       inlineQuery: { query: "hello", from: { id: 5 } },
       answerInlineQuery,
-    } as unknown as Context;
+    } as unknown as BotContext;
 
     await mod.onInlineQuery(ctx);
 
@@ -106,7 +106,7 @@ describe("onInlineQuery", () => {
     const ctx = {
       inlineQuery: { query: "hi", from: { id: 1 } },
       answerInlineQuery,
-    } as unknown as Context;
+    } as unknown as BotContext;
 
     await mod.onInlineQuery(ctx);
     expect(answerInlineQuery).not.toHaveBeenCalled();
@@ -118,7 +118,7 @@ describe("onInlineQuery", () => {
     const ctx = {
       inlineQuery: { query: "hello", from: { id: 5 } },
       answerInlineQuery,
-    } as unknown as Context;
+    } as unknown as BotContext;
 
     await mod.onInlineQuery(ctx);
     const results = (answerInlineQuery as jest.Mock).mock.calls[0][0] as Array<{ id: string }>;
@@ -137,7 +137,7 @@ describe("onInlineQuery", () => {
     const ctx = {
       inlineQuery: { query: "weather", from: { id: 7 } },
       answerInlineQuery,
-    } as unknown as Context;
+    } as unknown as BotContext;
 
     await mod.onInlineQuery(ctx);
     // first call: no cached answer yet, schedules computation
@@ -200,141 +200,127 @@ describe("onChosenInlineResult", () => {
   it("runs the chosen button prompt and edits the message", async () => {
     mockUseConfig.mockReturnValue(baseConfig());
     mockRequestGptAnswer.mockResolvedValue({ content: "the answer" });
-    const editMessageText = jest.fn();
+    const editMessageTextInline = jest.fn();
     const ctx = {
-      update: {
-        chosen_inline_result: {
-          result_id: "btn:0",
-          query: "what is 2+2",
-          inline_message_id: "abc123",
-          from: { id: 9 },
-        },
+      chosenInlineResult: {
+        result_id: "btn:0",
+        query: "what is 2+2",
+        inline_message_id: "abc123",
+        from: { id: 9 },
       },
-      telegram: { editMessageText },
-    } as unknown as Context;
+      api: { editMessageTextInline },
+    } as unknown as BotContext;
 
     await mod.onChosenInlineResult(ctx);
 
     expect(mockRequestGptAnswer).toHaveBeenCalledTimes(1);
-    expect(editMessageText).toHaveBeenCalledWith(undefined, undefined, "abc123", "the answer");
+    expect(editMessageTextInline).toHaveBeenCalledWith("abc123", "the answer");
     expect(loggedMessages()).toContainEqual(expect.stringContaining("inline answer delivered"));
   });
 
   it("ignores results without inline_message_id", async () => {
     mockUseConfig.mockReturnValue(baseConfig());
-    const editMessageText = jest.fn();
+    const editMessageTextInline = jest.fn();
     const ctx = {
-      update: {
-        chosen_inline_result: {
-          result_id: "btn:0",
-          query: "x",
-          from: { id: 9 },
-        },
+      chosenInlineResult: {
+        result_id: "btn:0",
+        query: "x",
+        from: { id: 9 },
       },
-      telegram: { editMessageText },
-    } as unknown as Context;
+      api: { editMessageTextInline },
+    } as unknown as BotContext;
 
     await mod.onChosenInlineResult(ctx);
     expect(mockRequestGptAnswer).not.toHaveBeenCalled();
-    expect(editMessageText).not.toHaveBeenCalled();
+    expect(editMessageTextInline).not.toHaveBeenCalled();
     expect(loggedMessages()).toContainEqual(expect.stringContaining("no inline_message_id"));
   });
 
   it("surfaces the error in the inline message when the LLM call rejects", async () => {
     mockUseConfig.mockReturnValue(baseConfig());
     mockRequestGptAnswer.mockRejectedValue(new Error("boom"));
-    const editMessageText = jest.fn();
+    const editMessageTextInline = jest.fn();
     const ctx = {
-      update: {
-        chosen_inline_result: {
-          result_id: "btn:0",
-          query: "x",
-          inline_message_id: "abc",
-          from: { id: 9 },
-        },
+      chosenInlineResult: {
+        result_id: "btn:0",
+        query: "x",
+        inline_message_id: "abc",
+        from: { id: 9 },
       },
-      telegram: { editMessageText },
-    } as unknown as Context;
+      api: { editMessageTextInline },
+    } as unknown as BotContext;
 
     await expect(mod.onChosenInlineResult(ctx)).resolves.toBeUndefined();
     // The ⏳ placeholder is replaced with an error message so the user is not
     // left waiting forever.
-    expect(editMessageText).toHaveBeenCalledWith(undefined, undefined, "abc", "Error: boom");
+    expect(editMessageTextInline).toHaveBeenCalledWith("abc", "Error: boom");
   });
 
   it("does not throw when the error-surfacing edit also fails", async () => {
     mockUseConfig.mockReturnValue(baseConfig());
     mockRequestGptAnswer.mockRejectedValue(new Error("boom"));
-    const editMessageText = jest.fn().mockRejectedValue(new Error("edit failed"));
+    const editMessageTextInline = jest.fn().mockRejectedValue(new Error("edit failed"));
     const ctx = {
-      update: {
-        chosen_inline_result: {
-          result_id: "btn:0",
-          query: "x",
-          inline_message_id: "abc",
-          from: { id: 9 },
-        },
+      chosenInlineResult: {
+        result_id: "btn:0",
+        query: "x",
+        inline_message_id: "abc",
+        from: { id: 9 },
       },
-      telegram: { editMessageText },
-    } as unknown as Context;
+      api: { editMessageTextInline },
+    } as unknown as BotContext;
 
     await expect(mod.onChosenInlineResult(ctx)).resolves.toBeUndefined();
   });
 
   it("ignores a malformed result_id", async () => {
     mockUseConfig.mockReturnValue(baseConfig());
-    const editMessageText = jest.fn();
+    const editMessageTextInline = jest.fn();
     const ctx = {
-      update: {
-        chosen_inline_result: {
-          result_id: "garbage",
-          query: "x",
-          inline_message_id: "abc",
-          from: { id: 9 },
-        },
+      chosenInlineResult: {
+        result_id: "garbage",
+        query: "x",
+        inline_message_id: "abc",
+        from: { id: 9 },
       },
-      telegram: { editMessageText },
-    } as unknown as Context;
+      api: { editMessageTextInline },
+    } as unknown as BotContext;
 
     await mod.onChosenInlineResult(ctx);
     expect(mockRequestGptAnswer).not.toHaveBeenCalled();
-    expect(editMessageText).not.toHaveBeenCalled();
+    expect(editMessageTextInline).not.toHaveBeenCalled();
   });
 
   it("ignores an out-of-range button index", async () => {
     mockUseConfig.mockReturnValue(baseConfig());
-    const editMessageText = jest.fn();
+    const editMessageTextInline = jest.fn();
     const ctx = {
-      update: {
-        chosen_inline_result: {
-          result_id: "btn:99",
-          query: "x",
-          inline_message_id: "abc",
-          from: { id: 9 },
-        },
+      chosenInlineResult: {
+        result_id: "btn:99",
+        query: "x",
+        inline_message_id: "abc",
+        from: { id: 9 },
       },
-      telegram: { editMessageText },
-    } as unknown as Context;
+      api: { editMessageTextInline },
+    } as unknown as BotContext;
 
     await mod.onChosenInlineResult(ctx);
     expect(mockRequestGptAnswer).not.toHaveBeenCalled();
-    expect(editMessageText).not.toHaveBeenCalled();
+    expect(editMessageTextInline).not.toHaveBeenCalled();
   });
 
   it("ignores the live result id", async () => {
     mockUseConfig.mockReturnValue(baseConfig());
-    const editMessageText = jest.fn();
+    const editMessageTextInline = jest.fn();
     const ctx = {
-      update: {
-        chosen_inline_result: {
-          result_id: "live",
-          query: "x",
-          inline_message_id: "abc",
-          from: { id: 9 },
-        },
+      chosenInlineResult: {
+        result_id: "live",
+        query: "x",
+        inline_message_id: "abc",
+        from: { id: 9 },
       },
-      telegram: { editMessageText },
-    } as unknown as Context;
+      api: { editMessageTextInline },
+    } as unknown as BotContext;
 
     await mod.onChosenInlineResult(ctx);
     expect(mockRequestGptAnswer).not.toHaveBeenCalled();

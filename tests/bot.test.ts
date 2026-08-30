@@ -1,93 +1,124 @@
-import { jest, describe, it, beforeEach, expect } from "@jest/globals";
+import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 
-const mockStop = jest.fn();
-const mockGetMe = jest.fn(() => Promise.resolve({ id: 12345, username: "test_bot" }));
-const TelegrafMock = jest.fn().mockImplementation(() => ({
-  stop: mockStop,
-  telegram: {
-    getMe: mockGetMe,
-  },
-  botInfo: null,
+const botInstances: FakeBot[] = [];
+const failOnInit = new Set<string>();
+class FakeBot {
+  token: string;
+  options: unknown;
+  api = { config: { use: jest.fn() } };
+  init: jest.Mock;
+  stop = jest.fn(async () => {});
+  constructor(token: string, options?: unknown) {
+    this.token = token;
+    this.options = options;
+    this.init = failOnInit.has(token)
+      ? jest.fn(async () => {
+          throw new Error("init failed");
+        })
+      : jest.fn(async () => {});
+    botInstances.push(this);
+  }
+}
+
+jest.unstable_mockModule("grammy", () => ({ Bot: FakeBot }));
+jest.unstable_mockModule("@grammyjs/auto-retry", () => ({
+  autoRetry: jest.fn(() => "auto-retry-transformer"),
 }));
-const mockUseConfig = jest.fn();
-
 jest.unstable_mockModule("../src/config.ts", () => ({
-  useConfig: () => mockUseConfig(),
-  updateChatInConfig: jest.fn(),
+  useConfig: jest.fn(() => ({ auth: { bot_token: "tok-1", proxy_url: "" } })),
+  readConfig: jest.fn(),
 }));
 
-jest.unstable_mockModule("telegraf", () => ({
-  Telegraf: TelegrafMock,
-}));
+const { useBot, botReady, getBots, setRunnerHandle, getRunnerHandles } = await import(
+  "../src/bot.ts"
+);
+const { useConfig } = await import("../src/config.ts");
 
-jest.unstable_mockModule("https-proxy-agent", () => ({
-  HttpsProxyAgent: jest.fn().mockImplementation((url: string) => ({ proxyUrl: url })),
-}));
+describe("useBot (grammy)", () => {
+  beforeEach(() => {
+    botInstances.length = 0;
+    (useConfig as jest.Mock).mockReturnValue({ auth: { bot_token: "tok-1", proxy_url: "" } });
+  });
 
-let useBot: typeof import("../src/bot.ts").useBot;
-let HttpsProxyAgent: typeof import("https-proxy-agent").HttpsProxyAgent;
+  it("creates one Bot per token and caches it", () => {
+    const a = useBot("t1");
+    expect(useBot("t1")).toBe(a);
+    expect(useBot("t2")).not.toBe(a);
+  });
 
-beforeEach(async () => {
-  jest.resetModules();
-  jest.clearAllMocks();
-  ({ useBot } = await import("../src/bot.ts"));
-  ({ HttpsProxyAgent } = await import("https-proxy-agent"));
-});
+  it("installs the auto-retry transformer and starts init", async () => {
+    useBot("t3");
+    const inst = botInstances.find((b) => b.token === "t3")!;
+    expect(inst.api.config.use).toHaveBeenCalledWith("auto-retry-transformer");
+    expect(inst.init).toHaveBeenCalled();
+    await expect(botReady("t3")).resolves.toBeUndefined();
+  });
 
-describe("useBot", () => {
-  it("creates bot with config token and caches instance", async () => {
-    mockUseConfig.mockReturnValue({ auth: { bot_token: "token1" } });
-    const onceSpy = jest.spyOn(process, "once").mockImplementation(() => process);
+  it("passes proxy agent via client.baseFetchConfig when proxy_url set", () => {
+    (useConfig as jest.Mock).mockReturnValue({
+      auth: { bot_token: "tok-p", proxy_url: "http://proxy:3128" },
+    });
+    useBot("tok-proxy");
+    const inst = botInstances.find((b) => b.token === "tok-proxy")!;
+    const opts = inst.options as {
+      client: { baseFetchConfig: { agent: unknown; compress: boolean } };
+    };
+    expect(opts.client.baseFetchConfig.agent).toBeDefined();
+    expect(opts.client.baseFetchConfig.compress).toBe(true);
+  });
 
+  it("stores and returns runner handles", () => {
+    const handle = { isRunning: () => true } as never;
+    setRunnerHandle("t1", handle);
+    expect(getRunnerHandles()["t1"]).toBe(handle);
+  });
+
+  it("getBots exposes the registry", () => {
+    useBot("t9");
+    expect(Object.keys(getBots())).toContain("t9");
+  });
+
+  it("uses config token and caches instance when no token is passed", () => {
+    (useConfig as jest.Mock).mockReturnValue({ auth: { bot_token: "default-tok", proxy_url: "" } });
     const first = useBot();
-    // Allow any pending promises to resolve
-    await new Promise(process.nextTick);
     const second = useBot();
-
     expect(first).toBe(second);
-    expect(TelegrafMock).toHaveBeenCalledTimes(1);
-    expect(TelegrafMock).toHaveBeenCalledWith("token1", {});
-    expect(onceSpy).toHaveBeenCalledWith("SIGINT", expect.any(Function));
-    expect(onceSpy).toHaveBeenCalledWith("SIGTERM", expect.any(Function));
-    onceSpy.mockRestore();
+    const matching = botInstances.filter((b) => b.token === "default-tok");
+    expect(matching).toHaveLength(1);
   });
 
-  it("uses provided token when passed", async () => {
-    mockUseConfig.mockReturnValue({ auth: { bot_token: "token1" } });
-    const bot = useBot("custom");
-    // Allow any pending promises to resolve
-    await new Promise(process.nextTick);
-    const again = useBot("custom");
-    expect(bot).toBe(again);
-    expect(TelegrafMock).toHaveBeenCalledTimes(1);
-    expect(TelegrafMock).toHaveBeenCalledWith("custom", {});
+  it("does not pass client options when proxy_url is not set", () => {
+    useBot("tok-noproxy");
+    const inst = botInstances.find((b) => b.token === "tok-noproxy")!;
+    expect(inst.options).toBeUndefined();
   });
 
-  it("passes proxy agent to Telegraf when proxy_url is configured", async () => {
-    mockUseConfig.mockReturnValue({
-      auth: { bot_token: "token1", proxy_url: "http://proxy:8080" },
-    });
+  it("does not register per-token process signal handlers (shutdown is wired in index.ts)", () => {
     const onceSpy = jest.spyOn(process, "once").mockImplementation(() => process);
 
-    useBot();
-    await new Promise(process.nextTick);
+    useBot("tok-sig");
 
-    expect(HttpsProxyAgent).toHaveBeenCalledWith("http://proxy:8080");
-    expect(TelegrafMock).toHaveBeenCalledWith("token1", {
-      telegram: { agent: { proxyUrl: "http://proxy:8080" } },
-    });
+    expect(onceSpy).not.toHaveBeenCalledWith("SIGINT", expect.any(Function));
+    expect(onceSpy).not.toHaveBeenCalledWith("SIGTERM", expect.any(Function));
+
     onceSpy.mockRestore();
   });
 
-  it("does not pass proxy agent when proxy_url is not set", async () => {
-    mockUseConfig.mockReturnValue({ auth: { bot_token: "token1" } });
-    const onceSpy = jest.spyOn(process, "once").mockImplementation(() => process);
+  it("cleans up registries on init failure and allows a fresh retry", async () => {
+    failOnInit.add("tok-fail");
+    useBot("tok-fail");
+    const failedCount = botInstances.filter((b) => b.token === "tok-fail").length;
+    expect(failedCount).toBe(1);
 
-    useBot();
-    await new Promise(process.nextTick);
+    await expect(botReady("tok-fail")).rejects.toThrow("init failed");
 
-    expect(HttpsProxyAgent).not.toHaveBeenCalled();
-    expect(TelegrafMock).toHaveBeenCalledWith("token1", {});
-    onceSpy.mockRestore();
+    expect(getBots()["tok-fail"]).toBeUndefined();
+
+    failOnInit.delete("tok-fail");
+    const retried = useBot("tok-fail");
+    const matching = botInstances.filter((b) => b.token === "tok-fail");
+    expect(matching).toHaveLength(2);
+    expect(retried).toBe(matching[1]);
+    await expect(botReady("tok-fail")).resolves.toBeUndefined();
   });
 });

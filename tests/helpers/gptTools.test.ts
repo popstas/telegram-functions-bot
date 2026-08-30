@@ -1,6 +1,6 @@
 import { jest, describe, it, beforeEach, expect } from "@jest/globals";
 import path from "node:path";
-import type { Message } from "telegraf/types";
+import type { Message } from "grammy/types";
 import type { ConfigChatType, ChatToolType, ThreadStateType } from "../../src/types.ts";
 import type { ChatCompletionMessageToolCall } from "openai/resources/chat/completions";
 
@@ -17,8 +17,7 @@ const mockPublish = jest.fn();
 const mockUseLangfuse = jest.fn().mockReturnValue({ trace: null });
 const mockRequestGptAnswer = jest.fn();
 const mockUseBot = jest.fn(() => ({
-  action: jest.fn((_, cb) => cb()),
-  telegram: { sendMessage: jest.fn() },
+  api: { sendMessage: jest.fn() },
 }));
 const mockTelegramConfirm = jest.fn();
 
@@ -107,6 +106,15 @@ describe("resolveChatTools", () => {
     const cfg: ConfigChatType = { ...baseConfig, tools: [] };
     const result = await tools.resolveChatTools(baseMsg, cfg);
     expect(cfg.tools).toContain("change_chat_settings");
+    expect(result).toEqual([]);
+  });
+
+  it("skips change_chat_settings for http/cli calls", async () => {
+    mockUseTools.mockResolvedValue([]);
+    mockIsAdminUser.mockReturnValue(false);
+    const cfg: ConfigChatType = { ...baseConfig, tools: [] };
+    const result = await tools.resolveChatTools(baseMsg, cfg, true);
+    expect(cfg.tools).not.toContain("change_chat_settings");
     expect(result).toEqual([]);
   });
 

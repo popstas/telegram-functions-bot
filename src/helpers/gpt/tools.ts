@@ -1,5 +1,6 @@
 import * as Express from "express";
-import { Chat, Message } from "telegraf/types";
+import { Message } from "grammy/types";
+import type { TitleChat } from "../../telegram/updateTypes.ts";
 import OpenAI from "openai";
 import type { ChatCompletionMessageToolCall } from "openai/resources/chat/completions";
 import {
@@ -197,7 +198,7 @@ export async function executeTools(
       );
     }
 
-    const chatTitle = (msg.chat as Chat.TitleChat).title;
+    const chatTitle = (msg.chat as TitleChat).title;
     const chatId = msg.chat.id;
     const answerId = msg.message_id?.toString() || "";
     const showMessages = chatConfig.chatParams?.showToolMessages !== false;
@@ -247,7 +248,7 @@ export async function executeTools(
               msg: `Retrying tool ${toolCall.function.name} after 400 error`,
               chatId: msg.chat.id,
               answerId,
-              chatTitle: (msg.chat as Chat.TitleChat).title,
+              chatTitle: (msg.chat as TitleChat).title,
               role: "tool",
               logLevel: "warn",
             });
@@ -299,7 +300,7 @@ export async function executeTools(
           expressRes,
           noSendTelegram,
         );
-        const chatTitle = (msg.chat as Chat.TitleChat).title;
+        const chatTitle = (msg.chat as TitleChat).title;
         const answerId = msg.message_id?.toString() || "";
         log({
           msg: "tools called",
@@ -333,8 +334,14 @@ export async function executeTools(
   return Promise.all(toolPromises) as Promise<ToolResponse[]>;
 }
 
-export async function resolveChatTools(msg: Message.TextMessage, chatConfig: ConfigChatType) {
-  if (msg.chat.type === "private" || isAdminUser(msg)) {
+export async function resolveChatTools(
+  msg: Message.TextMessage,
+  chatConfig: ConfigChatType,
+  noSendTelegram?: boolean,
+) {
+  // http/cli callers fabricate a "private" chat without a real Telegram user,
+  // so they must not get the implicit settings tool
+  if (!noSendTelegram && (msg.chat.type === "private" || isAdminUser(msg))) {
     if (!chatConfig.tools) chatConfig.tools = [];
     if (!chatConfig.tools.includes("change_chat_settings"))
       chatConfig.tools.push("change_chat_settings");

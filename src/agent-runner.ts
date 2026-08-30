@@ -1,8 +1,8 @@
 import { readConfig } from "./config.ts";
 import { requestGptAnswer } from "./helpers/gpt/llm.ts";
 import { ConfigChatType } from "./types.ts";
-import { Context } from "telegraf";
-import { Message } from "telegraf/types";
+import type { BotContext } from "./telegram/botContext.ts";
+import { Message } from "grammy/types";
 import { addToHistory, forgetHistoryOnTimeout } from "./helpers/history.ts";
 import { log } from "./helpers.ts";
 import { agentNameToId } from "./helpers.ts";
@@ -26,7 +26,7 @@ export async function runAgent(
   const ctx = {
     noSendTelegram: true,
     progressCallback: progress,
-  } as unknown as Context;
+  } as unknown as BotContext;
   log({
     msg: msg.text,
     chatId,
