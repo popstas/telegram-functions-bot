@@ -1,3 +1,35 @@
+## [2026.8.30](https://github.com/popstas/telegram-functions-bot/compare/v2026.5.28...v2026.8.30) (2026-08-30)
+
+
+### Bug Fixes
+
+* address codex review findings ([8c763cf](https://github.com/popstas/telegram-functions-bot/commit/8c763cf4ee760015fececda9e705c87c8b40e681))
+* **gpt:** tolerate chats without chatParams (placeholderCacheTime crash, confirm/noconfirm crash) ([9732297](https://github.com/popstas/telegram-functions-bot/commit/973229776647fce39054f83498d2d59fbf42ba77))
+* **grammy:** answer edited messages without crash; wire signal shutdown to runner; drop dead lastCtx ([7d557fe](https://github.com/popstas/telegram-functions-bot/commit/7d557fec12d2ae13281b3e00668edc3d9f941a4a))
+* **http:** keep HTTP/CLI agent calls out of Telegram ([78d5ab7](https://github.com/popstas/telegram-functions-bot/commit/78d5ab7e7f0428b5d6125c0dc3d666bb91dbe162))
+* **review:** correct streaming/skills docs, fail closed on bad skill args, close test gaps ([b5b241a](https://github.com/popstas/telegram-functions-bot/commit/b5b241a8032d16d7e7c61d004b9b7c3d76e6fdf9))
+* **send:** sanitize reply_parameters — drop synthetic out-of-range ids, allow sending without reply ([0fcebd7](https://github.com/popstas/telegram-functions-bot/commit/0fcebd7739f04e4cc281d3da4a4c3df88f22fad2))
+* **skills:** show only short description in /info ([187392a](https://github.com/popstas/telegram-functions-bot/commit/187392a5fad4c497d8002f7cbc9ed55af247e92b))
+* **streaming:** drop clear-draft, it showed Thinking bubble ([9997474](https://github.com/popstas/telegram-functions-bot/commit/9997474e89d90a05509b4445c20f178457456c0f))
+* **streaming:** skip clear-draft when no draft painted ([234a384](https://github.com/popstas/telegram-functions-bot/commit/234a384fa61d04685da57458a7a5254049c37aed))
+* **tokens:** fall back to o200k_base for unknown model names ([ed7709b](https://github.com/popstas/telegram-functions-bot/commit/ed7709b51287fc298015aa742e2b2350f30b314b))
+
+
+### Features
+
+* add /add_skill admin command to attach skills to a chat ([24a8fff](https://github.com/popstas/telegram-functions-bot/commit/24a8fff927b03a0cc36256c5de1fbfae83f9f7fd))
+* add sendMessageDraft streaming mode (streamMode: draft) ([f0254c6](https://github.com/popstas/telegram-functions-bot/commit/f0254c6a01eb4d2c1f1086b8e46398f7084b41e5))
+* add skill discovery and SKILL.md loader ([9df15aa](https://github.com/popstas/telegram-functions-bot/commit/9df15aa0f4c90293e8b3fbca1765e9cd55964270))
+* add skillsDir and streamMode config schema samples ([b80b0dd](https://github.com/popstas/telegram-functions-bot/commit/b80b0ddb4b6dee2f9cdc2503f080ac37afa7c1bc))
+* always add reply-to-message context to history when bot is mentioned ([babf849](https://github.com/popstas/telegram-functions-bot/commit/babf84988e4ac8f20268af4258aa8d2bad0f7ebb))
+* **audio:** send recognized speech as blockquote ([4706cdb](https://github.com/popstas/telegram-functions-bot/commit/4706cdb2f1e00aa3d24994c749213f0d6b3e4e40))
+* **config:** default skillsDir data/skills, streaming on ([05b62c4](https://github.com/popstas/telegram-functions-bot/commit/05b62c4e49877d5a05894f50e922c8ce1a57cc4e))
+* **config:** drop streamMode — streaming always uses rich drafts ([ea665db](https://github.com/popstas/telegram-functions-bot/commit/ea665db0061bbff4daab1c2402d4bd6efbca26b5))
+* expose skills as runnable skill_<name> tools ([420e3f6](https://github.com/popstas/telegram-functions-bot/commit/420e3f6e2b1880ea83cf9a6f6aa7fe0e4c780a9e))
+* **relay:** copy incoming messages to other chats instead of answering ([e72adec](https://github.com/popstas/telegram-functions-bot/commit/e72adec25b19b4b238d3a5227f92ec1f806762a0))
+* **send:** rich messages as the default outbound path with legacy fallback ([72257a6](https://github.com/popstas/telegram-functions-bot/commit/72257a6befb2f515a8622322acd640ba09b38f65))
+* **streaming:** rich message drafts via Bot API 10.1; drop edit-mode streaming ([9874f7c](https://github.com/popstas/telegram-functions-bot/commit/9874f7c24409fa4b61c197b4433331d58eab2725))
+
 ## [2026.5.28](https://github.com/popstas/telegram-functions-bot/compare/v2026.2.4...v2026.5.28) (2026-05-28)
 
 
