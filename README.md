@@ -428,6 +428,18 @@ GET `/agent/:agentName` returns current agent status.
 
 You can set `http_token` per chat in `config.yml`; it overrides the global token.
 
+Agents reached over HTTP (`/agent/:agentName`, `/agent/:agentName/tool/:toolName`) and over the
+CLI inherit `completionParams` and `chatParams` from the chat named `default`, key by key, the
+same way a Telegram chat does — an agent that declares no model runs the default chat's model,
+not a hardcoded one. Only those two blocks are inherited: `tools` and everything else stay
+exactly as the agent declares them.
+
+When neither the agent nor the `default` chat sets a model, the fallback is `gpt-5.6-luna`.
+That model rejects function tools on `/v1/chat/completions`, so a chat that relies on the
+fallback **and** uses tools needs `chatParams.useResponsesApi: true` — otherwise the API answers
+400. The responses API is also bypassed for turns containing an image, so a tool-carrying chat on
+that model will fail on photo messages.
+
 ### HTTP tool call
 
 POST `/agent/:agentName/tool/:toolName` with JSON `{ "args": { ... } }`.

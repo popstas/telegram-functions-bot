@@ -335,3 +335,22 @@ describe("runEvaluatorWorkflow via requestGptAnswer", () => {
     expect(mockCreate).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("model fallback", () => {
+  it("falls back to gpt-5.6-luna when the chat sets no model", async () => {
+    mockCreate.mockResolvedValue({ choices: [{ message: { content: "hi" } }] });
+    const configNoModel = {
+      name: "chat",
+      completionParams: {},
+      chatParams: {},
+      toolParams: {},
+    } as ConfigChatType;
+
+    await requestGptAnswer({ ...baseMsg }, configNoModel);
+
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ model: "gpt-5.6-luna" }),
+      expect.anything(),
+    );
+  });
+});

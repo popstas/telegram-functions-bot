@@ -43,6 +43,14 @@ import { convertResponsesInput, convertResponsesOutput } from "./responsesApi.ts
 import { handleResponseStream, handleCompletionStream } from "./streaming.ts";
 import type { ChatCompletionStream } from "openai/lib/ChatCompletionStream.js";
 
+/**
+ * Model used when neither the chat nor the `default` chat declares one.
+ * Note it may carry API restrictions: gpt-5.6-luna rejects function tools on
+ * /v1/chat/completions, so a chat relying on this fallback together with tools
+ * needs `chatParams.useResponsesApi: true`.
+ */
+export const DEFAULT_MODEL = "gpt-5.6-luna";
+
 export const EVALUATOR_PROMPT = `
 You are an impartial quality auditor for a Telegram bot.
 Your goal is to evaluate how complete and useful the assistant's answer ("Assistant answer") is in relation to the user's original request ("User request").
@@ -216,7 +224,7 @@ export async function requestNextModelAnswer({
     : undefined;
   const model = modelExternal
     ? modelExternal.model
-    : gptContext.thread.completionParams?.model || "gpt-5-mini";
+    : gptContext.thread.completionParams?.model || DEFAULT_MODEL;
   const apiParams = {
     messages: gptContext.messages,
     model,
@@ -813,7 +821,7 @@ export async function requestGptAnswer(
     : undefined;
   const model = modelExternal
     ? modelExternal.model
-    : thread.completionParams?.model || "gpt-5-mini";
+    : thread.completionParams?.model || DEFAULT_MODEL;
   const apiParams = {
     messages,
     model,

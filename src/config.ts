@@ -652,3 +652,34 @@ export function reloadConfig(): ConfigType {
   config = readConfig();
   return config;
 }
+
+/**
+ * Apply the `default` chat's `completionParams`/`chatParams` to an agent config.
+ *
+ * Telegram messages get this merge in getChatConfig(), but agents reached over
+ * HTTP (`/agent/:name`, `/tool/:agent/:tool`) and the CLI look their config up by
+ * `agent_name` and used it raw — so an agent without its own `completionParams`
+ * silently ran the hardcoded fallback model instead of the one the default chat
+ * declares, and missed `chatParams` such as `useResponsesApi`.
+ *
+ * Only those two blocks are inherited: `tools` and the rest stay exactly as the
+ * agent declares them.
+ */
+export function mergeAgentDefaults(
+  chatConfig: ConfigChatType,
+  chats: ConfigChatType[] = useConfig().chats || [],
+): ConfigChatType {
+  const defaultChat = chats.find((c) => c.name === "default");
+  if (!defaultChat || defaultChat === chatConfig) return chatConfig;
+  return {
+    ...chatConfig,
+    completionParams: {
+      ...(defaultChat.completionParams || {}),
+      ...(chatConfig.completionParams || {}),
+    },
+    chatParams: {
+      ...(defaultChat.chatParams || {}),
+      ...(chatConfig.chatParams || {}),
+    },
+  } as ConfigChatType;
+}

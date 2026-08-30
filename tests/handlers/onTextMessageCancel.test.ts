@@ -125,6 +125,7 @@ jest.unstable_mockModule("../../src/telegram/send.ts", () => ({
 }));
 
 jest.unstable_mockModule("../../src/config.ts", () => ({
+  mergeAgentDefaults: (c: unknown) => c,
   __esModule: true,
   useConfig: () => mockUseConfig(),
   syncButtons: jest.fn(),

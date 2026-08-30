@@ -2,6 +2,7 @@ import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals
 import type { Request, Response } from "express";
 
 const mockUseConfig = jest.fn();
+const mockMergeAgentDefaults = jest.fn((c: unknown) => c);
 const mockRequestGptAnswer = jest.fn();
 const mockAddToHistory = jest.fn();
 const mockLog = jest.fn();
@@ -10,6 +11,7 @@ jest.unstable_mockModule("../src/config.ts", () => ({
   __esModule: true,
   useConfig: () => mockUseConfig(),
   readConfig: () => ({}),
+  mergeAgentDefaults: (...args: unknown[]) => mockMergeAgentDefaults(...(args as [unknown])),
   updateChatInConfig: jest.fn(),
 }));
 
@@ -53,6 +55,8 @@ beforeEach(async () => {
   mockRequestGptAnswer.mockReset();
   mockAddToHistory.mockReset();
   mockLog.mockReset();
+  mockMergeAgentDefaults.mockReset();
+  mockMergeAgentDefaults.mockImplementation((c: unknown) => c);
   ({ agentPostHandler, agentGetHandler } = await import("../src/httpHandlers.ts"));
 });
 
@@ -129,6 +133,27 @@ describe("agentPostHandler", () => {
     await agentPostHandler(req, res);
     expect(mockAddToHistory).toHaveBeenCalled();
     expect(res.end).toHaveBeenCalledWith("answer");
+  });
+
+  it("answers with the config merged from the default chat", async () => {
+    mockUseConfig.mockReturnValue(baseConfig);
+    mockRequestGptAnswer.mockResolvedValue({ content: "answer" });
+    const merged = {
+      name: "agent",
+      agent_name: "agent",
+      http_token: "t",
+      completionParams: { model: "gpt-5.6-luna" },
+      chatParams: { useResponsesApi: true },
+    };
+    mockMergeAgentDefaults.mockReturnValue(merged);
+    const req = {
+      params: { agentName: "agent" },
+      body: { text: "hi" },
+      headers: { authorization: "Bearer t" },
+    } as unknown as Request;
+    await agentPostHandler(req, createRes());
+    expect(mockMergeAgentDefaults).toHaveBeenCalled();
+    expect(mockRequestGptAnswer).toHaveBeenCalledWith(expect.anything(), merged, expect.anything());
   });
 
   it("posts webhook when provided", async () => {

@@ -1,4 +1,4 @@
-import { readConfig } from "./config.ts";
+import { readConfig, mergeAgentDefaults } from "./config.ts";
 import { requestGptAnswer } from "./helpers/gpt/llm.ts";
 import { ConfigChatType } from "./types.ts";
 import type { BotContext } from "./telegram/botContext.ts";
@@ -13,8 +13,9 @@ export async function runAgent(
   progress?: (msg: string) => void,
 ): Promise<string> {
   const config = readConfig();
-  const chat = config.chats.find((c) => c.agent_name === agentName);
-  if (!chat) throw new Error(`Agent not found: ${agentName}`);
+  const chatRaw = config.chats.find((c) => c.agent_name === agentName);
+  if (!chatRaw) throw new Error(`Agent not found: ${agentName}`);
+  const chat = mergeAgentDefaults(chatRaw, config.chats);
   const chatId = chat.id || parseInt("333" + agentNameToId(agentName));
   const msg: Message.TextMessage = {
     chat: { id: chatId, type: "private" as const, first_name: "cli" },

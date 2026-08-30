@@ -86,6 +86,8 @@ Use the npm scripts for development:
 - `src/helpers/useTools.ts` — Global tool loading (`initTools`), per-chat MCP tools (`useChatMcpTools` with lazy-init cache)
 - `src/helpers/gpt/tools.ts` — `resolveChatTools()` merges global tools + per-chat MCP tools + agent tools; `executeTools()` runs tool calls
 - `src/config.ts` — `generateConfig()` full-example defines schema; `checkConfigSchema()` validates against it
+- `src/config.ts` — `mergeAgentDefaults()` applies the `default` chat's `completionParams`/`chatParams` to agents resolved by `agent_name` (HTTP `/agent/:name`, `/tool`, CLI `runAgent`), which otherwise use their raw config; the model fallback when nothing declares one is `DEFAULT_MODEL` in `src/helpers/gpt/llm.ts`.
+- `src/config.ts` — `mergeAgentDefaults()` applies the `default` chat's `completionParams`/`chatParams` to agents resolved by `agent_name` (HTTP `/agent/:name`, `/tool`, CLI `runAgent`), which otherwise use their raw config; the model fallback when nothing declares one is `DEFAULT_MODEL` in `src/helpers/gpt/llm.ts`.
 
 ## Key file relationships (skills, reply context, streaming)
 - `src/helpers/skills.ts` — Skills subsystem: `loadSkills()` scans `config.skillsDir` (default `skills/`) for `SKILL.md` dirs; `buildSkillTool()`/`loadSkillTools()` expose each as a `skill_<name>` tool that `exec`s a command with `cwd` = skill dir (mirrors `src/tools/powershell.ts`); appended to `globalTools` in `initTools()`. Types: `SkillType`, `ConfigType.skillsDir` in `src/types.ts`.

@@ -14,6 +14,7 @@ const mockExpress = jest.fn(() => expressApp);
 mockExpress.json = jest.fn(() => (_req: Request, _res: Response, next: () => void) => next());
 
 jest.unstable_mockModule("../src/config.ts", () => ({
+  mergeAgentDefaults: (c: unknown) => c,
   __esModule: true,
   useConfig: () => mockUseConfig(),
   validateConfig: jest.fn(),

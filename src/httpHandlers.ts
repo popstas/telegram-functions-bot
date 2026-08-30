@@ -1,7 +1,7 @@
 import type express from "express";
 import type { BotContext } from "./telegram/botContext.ts";
 import { Message } from "grammy/types";
-import { useConfig } from "./config.ts";
+import { useConfig, mergeAgentDefaults } from "./config.ts";
 import { log, stringToId } from "./helpers.ts";
 import { requestGptAnswer } from "./helpers/gpt/llm.ts";
 import { resolveChatTools } from "./helpers/gpt/tools.ts";
@@ -43,7 +43,8 @@ export async function agentPostHandler(req: express.Request, res: express.Respon
   const { agentName } = req.params;
   const { text, webhook, chat_id: chatIdFromBody } = req.body || {};
   const token = req.headers["authorization"];
-  const agentConfig = useConfig().chats.find((c) => c.agent_name === agentName);
+  const agentConfigRaw = useConfig().chats.find((c) => c.agent_name === agentName);
+  const agentConfig = agentConfigRaw && mergeAgentDefaults(agentConfigRaw);
   if (!checkAuth(agentConfig, token)) {
     log({
       msg: "Unauthorized",
@@ -150,7 +151,8 @@ export async function toolPostHandler(req: express.Request, res: express.Respons
   const { agentName, toolName } = req.params;
   const args = req.body || {};
   const token = req.headers["authorization"];
-  const agentConfig = useConfig().chats.find((c) => c.agent_name === agentName);
+  const agentConfigRaw = useConfig().chats.find((c) => c.agent_name === agentName);
+  const agentConfig = agentConfigRaw && mergeAgentDefaults(agentConfigRaw);
   if (!checkAuth(agentConfig, token)) {
     log({
       msg: "Unauthorized",

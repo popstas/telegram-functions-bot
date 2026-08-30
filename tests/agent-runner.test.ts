@@ -1,6 +1,7 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 
 const mockReadConfig = jest.fn();
+const mockMergeAgentDefaults = jest.fn((c: unknown) => c);
 const mockRequestGptAnswer = jest.fn();
 const mockAddToHistory = jest.fn();
 const mockForgetHistoryOnTimeout = jest.fn();
@@ -13,6 +14,7 @@ afterEach(() => {
 
 jest.unstable_mockModule("../src/config.ts", () => ({
   readConfig: () => mockReadConfig(),
+  mergeAgentDefaults: (...args: unknown[]) => mockMergeAgentDefaults(...(args as [unknown])),
   updateChatInConfig: jest.fn(),
 }));
 

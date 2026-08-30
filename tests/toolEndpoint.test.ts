@@ -9,6 +9,7 @@ const mockLog = jest.fn();
 
 // Mock the modules
 jest.unstable_mockModule("../src/config.ts", () => ({
+  mergeAgentDefaults: (c: unknown) => c,
   useConfig: () => mockUseConfig(),
   updateChatInConfig: jest.fn(),
 }));

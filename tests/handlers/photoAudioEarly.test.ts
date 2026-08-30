@@ -25,6 +25,7 @@ jest.unstable_mockModule("../../src/handlers/access.ts", () => ({
 }));
 
 jest.unstable_mockModule("../../src/config.ts", () => ({
+  mergeAgentDefaults: (c: unknown) => c,
   useConfig: () => mockUseConfig(),
   readConfig: jest.fn(),
   syncButtons: jest.fn(),
