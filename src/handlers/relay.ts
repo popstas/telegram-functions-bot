@@ -4,6 +4,7 @@ import type { NextFunction } from "grammy";
 import { getCtxChatMsg } from "../telegram/context.ts";
 import { getFullName, sendTelegramMessage } from "../telegram/send.ts";
 import { resolveRecipientChatId } from "../helpers/recipients.ts";
+import { answerAfterRelay } from "./relayAnswer.ts";
 import { log } from "../helpers.ts";
 import type { BotContext } from "../telegram/botContext.ts";
 import type { RelayMessageType } from "../types.ts";
@@ -92,6 +93,8 @@ export async function relayMessage(ctx: BotContext, now = new Date()): Promise<b
 
   const header = renderHeader(relay.header ?? DEFAULT_RELAY_HEADER, msg, now);
   let relayed = 0;
+  // targetId -> message_id of the copy, so the agent answer can reply to it.
+  const copies = new Map<number, number>();
 
   for (const { recipient, targetId } of targets) {
     if (!targetId) {
@@ -112,7 +115,9 @@ export async function relayMessage(ctx: BotContext, now = new Date()): Promise<b
           if (groupKey) markHeaderSent(groupKey, now.getTime());
         }
       }
-      await ctx.api.copyMessage(targetId, chatId, msg.message_id);
+      const copied = await ctx.api.copyMessage(targetId, chatId, msg.message_id);
+      // The id is what the answer replies to. Relaying itself must not depend on it.
+      if (copied?.message_id) copies.set(targetId, copied.message_id);
       relayed++;
       log({
         msg: `Relay: ${type} from ${msg.from?.username || msg.from?.id} sent to ${targetId}`,
@@ -135,6 +140,13 @@ export async function relayMessage(ctx: BotContext, now = new Date()): Promise<b
   }
 
   if (relay.reply) await sendTelegramMessage(chatId, relay.reply, undefined, ctx);
+
+  // An agent run takes tens of seconds. The confirmation is already out, nobody waits.
+  if (relay.answer) {
+    void answerAfterRelay(ctx, msg, copies, relay.answer).catch((error) =>
+      log({ msg: `Relay answer failed: ${(error as Error).message}`, chatId, logLevel: "warn" }),
+    );
+  }
   return true;
 }
 

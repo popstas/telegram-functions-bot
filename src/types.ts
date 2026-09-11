@@ -134,11 +134,21 @@ export type FormConfigType = {
 };
 
 // Relay configuration: forward every incoming message to other chats as-is
+// Optional step after relaying: ask an external agent and send back a non-empty
+// answer. An empty answer is a legitimate result and means stay silent.
+export type RelayAnswerConfigType = {
+  url: string;
+  token: string;
+  send_to: number | string; // target chat id, or "author" to answer the author privately
+  timeout?: number; // seconds, defaults to 120
+};
+
 export type RelayConfigType = {
   send_to: (string | number)[]; // chat ids, or name/username of a chat from config.chats
   types?: RelayMessageType[]; // limit to these message types; omitted = relay everything
   header?: string; // template sent before the copied message, placeholders: {name} {username} {date} {time}
   reply?: string; // confirmation sent back to the author, omitted = stay silent
+  answer?: RelayAnswerConfigType; // omitted = no agent step
 };
 
 export type RelayMessageType =
