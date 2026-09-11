@@ -34,12 +34,17 @@ type WhisperResponse = {
   segments?: (WhisperSegment | WhisperSegmentArray)[];
 };
 
-export async function processAudio(ctx: BotContext, voice: { file_id: string }, chatId: number) {
+/**
+ * Расшифровывает голосовое и возвращает текст. Ничего не отправляет в чат:
+ * этим пользуется и onAudio (который отправляет сам), и реле (которому нельзя).
+ * Любая ошибка это пустая строка. Исключение наружу не летит: вызывающий
+ * решает сам, молчать ему или сообщать пользователю.
+ */
+export async function transcribe(ctx: BotContext, voice: { file_id: string }): Promise<string> {
   const file = await ctx.api.getFile(voice.file_id);
   const fileUrl = `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`;
   const oggPath = tmp.tmpNameSync({ postfix: ".ogg" });
   let mp3Path: string | null = null;
-  let progressTimer: NodeJS.Timeout | null = null;
 
   try {
     const response = await fetch(fileUrl);
@@ -51,18 +56,13 @@ export async function processAudio(ctx: BotContext, voice: { file_id: string }, 
 
     mp3Path = await convertToMp3(oggPath);
 
-    progressTimer = setInterval(() => {
-      void sendTelegramMessage(chatId, "Распознавание продолжается...", undefined, ctx);
-    }, 60_000);
-
     const res = (await sendAudioWhisper({ mp3Path })) as WhisperResponse;
-
     if (res.error) {
-      await sendTelegramMessage(chatId, `Ошибка распознавания: ${res.error}`, undefined, ctx);
-      return;
+      console.error("Whisper returned an error:", res.error);
+      return "";
     }
 
-    const text =
+    return (
       res.text ||
       res.segments
         ?.map((segment) => {
@@ -74,7 +74,28 @@ export async function processAudio(ctx: BotContext, voice: { file_id: string }, 
         })
         .filter(Boolean)
         .join(" ") ||
-      "";
+      ""
+    );
+  } catch (error) {
+    console.error("Error transcribing audio:", error);
+    return "";
+  } finally {
+    try {
+      if (fs.existsSync(oggPath)) fs.unlinkSync(oggPath);
+      if (mp3Path && fs.existsSync(mp3Path)) fs.unlinkSync(mp3Path);
+    } catch (cleanupError) {
+      console.error("Error cleaning up temporary files:", cleanupError);
+    }
+  }
+}
+
+export async function processAudio(ctx: BotContext, voice: { file_id: string }, chatId: number) {
+  const progressTimer: NodeJS.Timeout = setInterval(() => {
+    void sendTelegramMessage(chatId, "Распознавание продолжается...", undefined, ctx);
+  }, 60_000);
+
+  try {
+    const text = await transcribe(ctx, voice);
 
     if (!text) {
       await sendTelegramMessage(chatId, "Не удалось распознать аудио", undefined, ctx);
@@ -101,13 +122,7 @@ export async function processAudio(ctx: BotContext, voice: { file_id: string }, 
       ctx,
     );
   } finally {
-    try {
-      if (progressTimer) clearInterval(progressTimer);
-      if (fs.existsSync(oggPath)) fs.unlinkSync(oggPath);
-      if (mp3Path && fs.existsSync(mp3Path)) fs.unlinkSync(mp3Path);
-    } catch (cleanupError) {
-      console.error("Error cleaning up temporary files:", cleanupError);
-    }
+    clearInterval(progressTimer);
   }
 }
 

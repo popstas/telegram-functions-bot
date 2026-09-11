@@ -73,20 +73,20 @@ describe("processAudio", () => {
     await processAudio(ctx as Context, { file_id: "f" }, 1);
     expect(mockSendTelegramMessage).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("Ошибка распознавания: bad"),
+      expect.stringContaining("Не удалось распознать аудио"),
       undefined,
       ctx,
     );
     expect(mockOnTextMessage).not.toHaveBeenCalled();
   });
 
-  it("handles fetch error", async () => {
+  it("handles fetch error as unrecognized audio", async () => {
     (global.fetch as unknown as jest.Mock).mockRejectedValue(new Error("fail"));
     const ctx = createCtx();
     await processAudio(ctx as Context, { file_id: "f" }, 1);
     expect(mockSendTelegramMessage).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("Произошла ошибка"),
+      expect.stringContaining("Не удалось распознать аудио"),
       undefined,
       ctx,
     );
