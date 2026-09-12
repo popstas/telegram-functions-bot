@@ -134,6 +134,51 @@ describe("answerAfterRelay", () => {
     });
   });
 
+  it("рассылает ответ по списку целей: автору и в группу", async () => {
+    mockFetchJson({ answer: "ответ" });
+    const ctx = createCtx();
+    await answerAfterRelay(ctx, textMsg("что отвечать на дорого"), new Map([[-5375745951, 900]]), {
+      ...CFG,
+      send_to: ["author", -5375745951],
+    });
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(ctx.api.sendMessage).toHaveBeenCalledTimes(2);
+    expect(ctx.api.sendMessage).toHaveBeenNthCalledWith(1, 111, "ответ", {
+      reply_parameters: { message_id: 42 },
+    });
+    expect(ctx.api.sendMessage).toHaveBeenNthCalledWith(2, -5375745951, "ответ", {
+      reply_parameters: { message_id: 900 },
+    });
+  });
+
+  it("в списке целей расшифровка добавляется только группе", async () => {
+    mockFetchJson({ answer: "ответ" });
+    mockTranscribe.mockResolvedValue("вопрос голосом");
+    const ctx = createCtx();
+    const voice = { ...textMsg(""), text: undefined, voice: { file_id: "v1" } } as unknown as Message;
+    await answerAfterRelay(ctx, voice, new Map([[-5375745951, 900]]), {
+      ...CFG,
+      send_to: ["author", -5375745951],
+    });
+    expect(ctx.api.sendMessage).toHaveBeenNthCalledWith(1, 111, "ответ", {
+      reply_parameters: { message_id: 42 },
+    });
+    expect(ctx.api.sendMessage).toHaveBeenNthCalledWith(2, -5375745951, "> вопрос голосом\n\nответ", {
+      reply_parameters: { message_id: 900 },
+    });
+  });
+
+  it("сбой отправки в одну цель не отменяет вторую", async () => {
+    mockFetchJson({ answer: "ответ" });
+    const ctx = createCtx();
+    ctx.api.sendMessage.mockRejectedValueOnce(new Error("chat not found"));
+    await answerAfterRelay(ctx, textMsg("вопрос"), new Map([[-5375745951, 900]]), {
+      ...CFG,
+      send_to: ["author", -5375745951],
+    });
+    expect(ctx.api.sendMessage).toHaveBeenCalledTimes(2);
+  });
+
   it("не зовёт раннер, когда текста нет", async () => {
     mockFetchJson({ answer: "не должно уйти" });
     mockTranscribe.mockResolvedValue("");

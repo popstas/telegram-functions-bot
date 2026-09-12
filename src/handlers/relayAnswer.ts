@@ -61,17 +61,28 @@ export async function answerAfterRelay(
   });
   if (!answer) return;
 
-  const toAuthor = cfg.send_to === "author";
-  const targetId = toAuthor ? msg.chat.id : Number(cfg.send_to);
-  // In the group the reply points at the copy, in the private chat at the original.
-  const replyTo = toAuthor ? msg.message_id : copies.get(targetId);
-  // The transcript is for the group only: leadership cannot judge an answer to a
-  // voice message without hearing it. The author needs no retelling of their own voice.
-  const body = !toAuthor && !msg.text && !msg.caption ? `> ${text}\n\n${answer}` : answer;
+  const targets = Array.isArray(cfg.send_to) ? cfg.send_to : [cfg.send_to];
+  for (const target of targets) {
+    const toAuthor = target === "author";
+    const targetId = toAuthor ? msg.chat.id : Number(target);
+    // In the group the reply points at the copy, in the private chat at the original.
+    const replyTo = toAuthor ? msg.message_id : copies.get(targetId);
+    // The transcript is for the group only: leadership cannot judge an answer to a
+    // voice message without hearing it. The author needs no retelling of their own voice.
+    const body = !toAuthor && !msg.text && !msg.caption ? `> ${text}\n\n${answer}` : answer;
 
-  await ctx.api.sendMessage(
-    targetId,
-    body,
-    replyTo ? { reply_parameters: { message_id: replyTo } } : undefined,
-  );
+    try {
+      await ctx.api.sendMessage(
+        targetId,
+        body,
+        replyTo ? { reply_parameters: { message_id: replyTo } } : undefined,
+      );
+    } catch (error) {
+      // One unreachable target must not swallow the answer for the others.
+      log({
+        msg: `Relay answer to ${targetId}: ${(error as Error).message}`,
+        logLevel: "warn",
+      });
+    }
+  }
 }

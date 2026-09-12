@@ -139,7 +139,10 @@ export type FormConfigType = {
 export type RelayAnswerConfigType = {
   url: string;
   token: string;
-  send_to: number | string; // target chat id, or "author" to answer the author privately
+  // Target chat id, or "author" to answer the author privately. A list sends the
+  // same answer to every target: the author gets it in private and the group keeps
+  // a copy for review.
+  send_to: number | string | (number | string)[];
   timeout?: number; // seconds, defaults to 120
 };
 
