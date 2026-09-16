@@ -285,7 +285,7 @@ export function generateConfig(): ConfigType {
           historyLimit: 20,
           showToolMessages: true,
           answerReactions: true,
-          useResponsesApi: false,
+          useResponsesApi: true,
           streaming: true,
           responseButtons: false,
           responseButtonsAgent: false,
