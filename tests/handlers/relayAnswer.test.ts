@@ -155,7 +155,11 @@ describe("answerAfterRelay", () => {
     mockFetchJson({ answer: "ответ" });
     mockTranscribe.mockResolvedValue("вопрос голосом");
     const ctx = createCtx();
-    const voice = { ...textMsg(""), text: undefined, voice: { file_id: "v1" } } as unknown as Message;
+    const voice = {
+      ...textMsg(""),
+      text: undefined,
+      voice: { file_id: "v1" },
+    } as unknown as Message;
     await answerAfterRelay(ctx, voice, new Map([[-5375745951, 900]]), {
       ...CFG,
       send_to: ["author", -5375745951],
@@ -163,9 +167,14 @@ describe("answerAfterRelay", () => {
     expect(ctx.api.sendMessage).toHaveBeenNthCalledWith(1, 111, "ответ", {
       reply_parameters: { message_id: 42 },
     });
-    expect(ctx.api.sendMessage).toHaveBeenNthCalledWith(2, -5375745951, "> вопрос голосом\n\nответ", {
-      reply_parameters: { message_id: 900 },
-    });
+    expect(ctx.api.sendMessage).toHaveBeenNthCalledWith(
+      2,
+      -5375745951,
+      "> вопрос голосом\n\nответ",
+      {
+        reply_parameters: { message_id: 900 },
+      },
+    );
   });
 
   it("сбой отправки в одну цель не отменяет вторую", async () => {
