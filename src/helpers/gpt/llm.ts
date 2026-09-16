@@ -45,11 +45,17 @@ import type { ChatCompletionStream } from "openai/lib/ChatCompletionStream.js";
 
 /**
  * Model used when neither the chat nor the `default` chat declares one.
- * Note it may carry API restrictions: gpt-5.6-luna rejects function tools on
- * /v1/chat/completions, so a chat relying on this fallback together with tools
- * needs `chatParams.useResponsesApi: true`.
+ * Note it may carry API restrictions, see `modelRejectsCompletionsTools()`.
  */
 export const DEFAULT_MODEL = "gpt-5.6-luna";
+
+/**
+ * gpt-5.6-luna rejects function tools together with reasoning on
+ * /v1/chat/completions (400 "use /v1/responses or set reasoning_effort to 'none'").
+ */
+export function modelRejectsCompletionsTools(model?: string): boolean {
+  return !!model && model.startsWith("gpt-5.6-luna");
+}
 
 export const EVALUATOR_PROMPT = `
 You are an impartial quality auditor for a Telegram bot.
@@ -98,11 +104,20 @@ export async function llmCall({
       (m) => Array.isArray(m.content) && m.content.some((c) => c.type === "image_url"),
     );
     const isStreaming = chatConfig?.chatParams?.streaming && !noSendTelegram && !hasImages;
+    const isLocal = !!(localModel || chatConfig?.local_model);
+    const needsToolsWorkaround =
+      !isLocal && !!apiParams.tools?.length && modelRejectsCompletionsTools(apiParams.model);
+    // Chats without an explicit useResponsesApi are routed to Responses API when
+    // the model can't take function tools on chat completions.
     const useResponses =
-      !localModel &&
-      !chatConfig?.local_model &&
-      chatConfig?.chatParams?.useResponsesApi &&
-      !hasImages;
+      !isLocal &&
+      !hasImages &&
+      (chatConfig?.chatParams?.useResponsesApi ||
+        (needsToolsWorkaround && chatConfig?.chatParams?.useResponsesApi === undefined));
+    if (!useResponses && needsToolsWorkaround) {
+      // images or explicit useResponsesApi: false keep chat completions
+      apiParams = { ...apiParams, reasoning_effort: "none" };
+    }
     const apiResponses = apiFunc as unknown as {
       responses: OpenAI.Responses;
     };
