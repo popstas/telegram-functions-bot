@@ -160,6 +160,90 @@ beforeEach(() => {
 });
 
 describe("llmCall", () => {
+  describe("gpt-5.6-luna function tools workaround", () => {
+    const lunaTools = [
+      {
+        type: "function",
+        function: { name: "t", description: "d", parameters: { type: "object", properties: {} } },
+      },
+    ];
+    const makeApi = () => ({
+      responses: { create: jest.fn().mockResolvedValue({ output_text: "r" }) },
+      chat: {
+        completions: {
+          create: jest.fn().mockResolvedValue({ choices: [{ message: { content: "c" } }] }),
+        },
+      },
+    });
+
+    it("routes luna with tools to responses api when useResponsesApi is unset", async () => {
+      const api = makeApi();
+      mockUseApi.mockReturnValue(api);
+      await llm.llmCall({
+        apiParams: {
+          messages: [{ role: "user", content: "hi" }],
+          model: "gpt-5.6-luna",
+          tools: lunaTools,
+        } as OpenAI.ChatCompletionCreateParams,
+        msg: { ...baseMsg },
+        chatConfig: { ...chatConfig, local_model: undefined, chatParams: { streaming: false } },
+      });
+      expect(api.responses.create).toHaveBeenCalled();
+      expect(api.chat.completions.create).not.toHaveBeenCalled();
+    });
+
+    it("sends reasoning_effort none when luna with tools stays on chat completions", async () => {
+      const api = makeApi();
+      mockUseApi.mockReturnValue(api);
+      await llm.llmCall({
+        apiParams: {
+          messages: [{ role: "user", content: "hi" }],
+          model: "gpt-5.6-luna",
+          tools: lunaTools,
+        } as OpenAI.ChatCompletionCreateParams,
+        msg: { ...baseMsg },
+        chatConfig: {
+          ...chatConfig,
+          local_model: undefined,
+          chatParams: { streaming: false, useResponsesApi: false },
+        },
+      });
+      expect(api.responses.create).not.toHaveBeenCalled();
+      const called = (api.chat.completions.create as jest.Mock).mock.calls[0][0] as {
+        reasoning_effort?: string;
+      };
+      expect(called.reasoning_effort).toBe("none");
+    });
+
+    it("leaves other models and luna without tools untouched", async () => {
+      const api = makeApi();
+      mockUseApi.mockReturnValue(api);
+      await llm.llmCall({
+        apiParams: {
+          messages: [{ role: "user", content: "hi" }],
+          model: "gpt-5-mini",
+          tools: lunaTools,
+        } as OpenAI.ChatCompletionCreateParams,
+        msg: { ...baseMsg },
+        chatConfig: { ...chatConfig, local_model: undefined, chatParams: { streaming: false } },
+      });
+      await llm.llmCall({
+        apiParams: {
+          messages: [{ role: "user", content: "hi" }],
+          model: "gpt-5.6-luna",
+        } as OpenAI.ChatCompletionCreateParams,
+        msg: { ...baseMsg },
+        chatConfig: { ...chatConfig, local_model: undefined, chatParams: { streaming: false } },
+      });
+      expect(api.responses.create).not.toHaveBeenCalled();
+      const calls = (api.chat.completions.create as jest.Mock).mock.calls as [
+        { reasoning_effort?: string },
+      ][];
+      expect(calls).toHaveLength(2);
+      expect(calls.every(([p]) => p.reasoning_effort === undefined)).toBe(true);
+    });
+  });
+
   it("calls API directly when no trace", async () => {
     mockUseLangfuse.mockReturnValue({ trace: undefined });
     const params = {

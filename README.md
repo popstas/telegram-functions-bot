@@ -435,10 +435,11 @@ not a hardcoded one. Only those two blocks are inherited: `tools` and everything
 exactly as the agent declares them.
 
 When neither the agent nor the `default` chat sets a model, the fallback is `gpt-5.6-luna`.
-That model rejects function tools on `/v1/chat/completions`, so a chat that relies on the
-fallback **and** uses tools needs `chatParams.useResponsesApi: true` — otherwise the API answers
-400. The responses API is also bypassed for turns containing an image, so a tool-carrying chat on
-that model will fail on photo messages.
+That model rejects function tools with reasoning on `/v1/chat/completions`, so the bot handles it
+automatically: a luna request with function tools goes through the Responses API when the chat
+does not set `chatParams.useResponsesApi`. When the request stays on chat completions (the chat
+sets `useResponsesApi: false`, or the turn contains an image) it is sent with
+`reasoning_effort: "none"` instead.
 
 ### HTTP tool call
 
