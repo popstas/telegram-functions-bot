@@ -1,3 +1,18 @@
+## [2026.9.17](https://github.com/popstas/telegram-functions-bot/compare/v2026.8.30...v2026.9.17) (2026-09-16)
+
+
+### Bug Fixes
+
+* **llm:** route gpt-5.6-luna tool calls to Responses API ([6ef982a](https://github.com/popstas/telegram-functions-bot/commit/6ef982aaef86a9741249c991842b13865201ddf1))
+
+
+### Features
+
+* **agents:** default model gpt-5.6-luna, inherit default chat params ([ff621b8](https://github.com/popstas/telegram-functions-bot/commit/ff621b8432217e50563cacd353cb5157d652b0bb))
+* **config:** enable useResponsesApi in the generated default chat ([844fbfb](https://github.com/popstas/telegram-functions-bot/commit/844fbfb790092d8a00612777322423c2a51fc7bf))
+* **relay:** answer.send_to accepts a list of targets ([be712d3](https://github.com/popstas/telegram-functions-bot/commit/be712d3626588079b2143bd98674013a75396407))
+* **relay:** optional answer step that asks an external agent after relaying ([b19bdc1](https://github.com/popstas/telegram-functions-bot/commit/b19bdc1eb3583c4fbaf7f224ba6e294d27a1f813))
+
 ## [2026.8.30](https://github.com/popstas/telegram-functions-bot/compare/v2026.5.28...v2026.8.30) (2026-08-30)
 
 
