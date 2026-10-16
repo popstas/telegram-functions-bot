@@ -13,6 +13,7 @@ import { sendTelegramMessage } from "../telegram/send.ts";
 import { useConfig } from "../config.ts";
 import { log } from "../helpers.ts";
 import { llmCall } from "../helpers/gpt/llm.ts";
+import { DEFAULT_MODEL } from "../constants.ts";
 import { resolveRecipientChatId } from "../helpers/recipients.ts";
 
 /**
@@ -370,7 +371,7 @@ async function extractFormData(
       { role: "system", content: agentConfig.systemMessage || "" },
       { role: "user", content: userMessage },
     ],
-    model: agentConfig.completionParams?.model || "gpt-4.1-nano",
+    model: agentConfig.completionParams?.model || DEFAULT_MODEL,
     temperature: agentConfig.completionParams?.temperature,
     response_format: agentConfig.response_format,
   };

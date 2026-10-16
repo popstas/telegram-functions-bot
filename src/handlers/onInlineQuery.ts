@@ -6,6 +6,7 @@ import { log } from "../helpers.ts";
 import { requestGptAnswer } from "../helpers/gpt/llm.ts";
 import { useThreads } from "../threads.ts";
 import type { ConfigChatType } from "../types.ts";
+import { DEFAULT_MODEL } from "../constants.ts";
 
 const DEFAULT_DEBOUNCE_MS = 1000;
 const LIVE_RESULT_ID = "live";
@@ -60,7 +61,7 @@ function buildInlineChatConfig(prompt: string): ConfigChatType {
     ? ({ ...defaultChat } as ConfigChatType)
     : ({
         name: "inline",
-        completionParams: { model: "gpt-5-mini" },
+        completionParams: { model: DEFAULT_MODEL },
         chatParams: {},
         toolParams: {},
       } as ConfigChatType);

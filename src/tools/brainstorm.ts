@@ -4,6 +4,7 @@ import { readConfig } from "../config.ts";
 import { BrainstormParamsType, ConfigChatType, ConfigType, ThreadStateType } from "../types.ts";
 import { buildMessages } from "../helpers/gpt.ts";
 import { llmCall } from "../helpers/gpt.ts";
+import { DEFAULT_MODEL } from "../constants.ts";
 import { Message } from "grammy/types";
 
 type ToolArgsType = {
@@ -51,7 +52,7 @@ export class BrainstormClient extends AIFunctionsProvider {
     const { res } = await llmCall({
       apiParams: {
         messages,
-        model: thread.completionParams?.model || "gpt-5-mini",
+        model: thread.completionParams?.model || DEFAULT_MODEL,
         temperature: thread.completionParams?.temperature,
       },
       msg,

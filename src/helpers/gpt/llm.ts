@@ -42,12 +42,13 @@ import { APIUserAbortError } from "openai";
 import { convertResponsesInput, convertResponsesOutput } from "./responsesApi.ts";
 import { handleResponseStream, handleCompletionStream } from "./streaming.ts";
 import type { ChatCompletionStream } from "openai/lib/ChatCompletionStream.js";
+import { DEFAULT_MODEL } from "../../constants.ts";
 
 /**
  * Model used when neither the chat nor the `default` chat declares one.
  * Note it may carry API restrictions, see `modelRejectsCompletionsTools()`.
  */
-export const DEFAULT_MODEL = "gpt-5.6-luna";
+export { DEFAULT_MODEL };
 
 /**
  * gpt-5.6-luna rejects function tools together with reasoning on

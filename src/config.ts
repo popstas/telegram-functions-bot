@@ -18,6 +18,7 @@ import {
   ConfigChatButtonType,
 } from "./types.ts";
 import { log, safeFilename } from "./helpers.ts";
+import { DEFAULT_MODEL } from "./constants.ts";
 import { readGoogleSheet } from "./helpers/readGoogleSheet.ts";
 import { OAuth2Client, GoogleAuth } from "google-auth-library";
 import { useThreads } from "./threads.ts";
@@ -245,7 +246,7 @@ export function generateConfig(): ConfigType {
       whisperBaseUrl: "",
     },
     vision: {
-      model: "gpt-5-mini",
+      model: DEFAULT_MODEL,
     },
     logLevel: "info",
     langfuse: {
@@ -270,7 +271,7 @@ export function generateConfig(): ConfigType {
         name: "default",
         agent_name: "default",
         completionParams: {
-          model: "gpt-5-mini",
+          model: DEFAULT_MODEL,
         },
         systemMessage: "You are using functions to answer the questions. Current date: {date}",
         tools: ["javascript_interpreter", "brainstorm", "fetch"],
@@ -318,7 +319,7 @@ export function generateConfig(): ConfigType {
         username: "telegram_username_for_private_chats",
         prefix: "бот",
         completionParams: {
-          model: "gpt-5-mini",
+          model: DEFAULT_MODEL,
           temperature: 0.7,
         },
         local_model: "",
